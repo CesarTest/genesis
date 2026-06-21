@@ -1,0 +1,29 @@
+---
+# genesis playbooks/create.yml
+#  - Deploy Ironic 
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System 
+# SPDX-License-Identifier: Apache-2.0
+# 	
+- ansible.builtin.import_playbook: "{{bifrost_shoot_path|trim}}/install.yaml"
+  #become: true
+  vars:
+    bifrost_shoot_path: >-
+     {{ bifrost_playbooks_path 
+      | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
+      | realpath  }}
+    create_image_via_dib: false  
+
+- hosts: target
+  become: true
+  tasks:
+     - name: "OVER CLOUD: adjust config file if VMs instead Baremetal Node"
+       ansible.builtin.lineinfile:
+         path: /etc/ironic/ironic.conf
+         regexp: '^automated_clean'
+         line: automated_clean = false
+
+     - name: "OVERCLOUD: restart service"
+       service: 
+         name: ironic
+         state: restarted 

@@ -1,0 +1,26 @@
+---
+ test-ironic.maas.lab:
+    uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
+    ipa_kernel_url: "http://10.10.10.20:8080/ipa-debian-master.kernel"
+    ipa_ramdisk_url: "http://10.10.20.8080/ipa-debian-master.initramfs"
+    driver_info:
+       redfish_username: "root@pam"
+       redfish_address: "https://cdglab.duckdns.org:8000/"
+       redfish_password: "cesardgm"
+       redfish_system_id: "/redfish/v1/Systems/102"
+       #ansible_deploy_playbook: deploy_custom.yaml
+    nics:
+      -
+        mac: BC:24:11:8D:EE:11
+    driver: "redfish"
+    ipv4_address: "10.10.10.40"
+    properties:
+      cpu_arch: "x86_64"
+      ram: "2048"
+      disk_size: "30"
+      cpus: "8"
+    name: test-ironic
+    instance_info:
+      image_source: "file://home/cesar/CentOS-Stream-GenericCloud-9-20260611.1.x86_64.qcow2"
+
+ 

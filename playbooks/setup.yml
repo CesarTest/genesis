@@ -1,0 +1,37 @@
+---
+# genesis playbooks/create.yml
+#  - Enroll inventory to Ironic
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System 
+# SPDX-License-Identifier: Apache-2.0
+- ansible.builtin.import_playbook: "{{bifrost_shoot_path | trim}}/enroll-dynamic.yaml"
+  become: true
+  vars: 
+    bifrost_shoot_path: >-
+     {{ bifrost_playbooks_path 
+      | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
+      | realpath  }}
+      
+      
+  #---------------------------------------------------------------
+  # -> Environment do not work for import_playbook => You must set at shooting bash script command
+  # -> Keeping the syntax, just in case  
+  #---------------------------------------------------------------  
+  #  bifrost_inventory_path: >-
+  #    {{ ( bifrost_inventory_source | dirname )
+  #    | default(inventory_path, True)       
+  #    | realpath  }}     
+  #  bifrost_dynamic_inventory_path: >-
+  #    {{ ( bifrost_dynamic_inventory | dirname )
+  #    | default(playbook_dir + '/../openstack.bifrost/bifrost/, True)       
+  #    | realpath  }} 
+  #environment:
+  #  ANSIBLE_INVENTORY: >-
+  #   {{ bifrost_dynamic_inventory 
+  #    | default( bifrost_dynamic_inventory_path + '/inventory.py', True) }}  
+  #  BIFROST_INVENTORY_SOURCE: "{{ bifrost_inventory_source | default( bifrost_inventory_path + '/group_vars.yml' )}}"
+  #  OS_CLOUD: "{{ bifrost_cloud | default('bifrost') }}"
+  #---------------------------------------------------------------
+  # -> EnvironmentDo not work for import_playbook => You must set at shooting bash script command
+  # -> Keeping the syntax, just in case  
+  #--------------------------------------------------------------- 

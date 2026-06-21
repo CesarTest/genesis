@@ -1,0 +1,1845 @@
+#!/bin/bash
+#########################################################################################
+#  GENESIS INTERACTIVE MENU
+#---------------------------------------------------------------------------------------
+#   Provide CLI user interface for Genesis System. 
+#     - Interactive Mode: Menu System
+#     - Command Mode: Flags to automate transitions
+#---------------------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date: 18-June-2026
+########################################################################################
+
+####################################################
+#  ENVIRONMENT
+####################################################
+
+#----------------------------
+# ECHO COLORS TABLE
+#----------------------------
+#Black        0;30     Dark Gray     1;30
+#Red          0;31     Light Red     1;31
+#Green        0;32     Light Green   1;32
+#Brown/Orange 0;33     Yellow        1;33
+#Blue         0;34     Light Blue    1;34
+#Purple       0;35     Light Purple  1;35
+#Cyan         0;36     Light Cyan    1;36
+#Light Gray   0;37     White         1;37
+
+#--------------------------------
+#  GENERAL PARAMETERS
+#--------------------------------
+
+# 1.- Constant Values
+#--------------------
+ERROR="1"
+OK="0"
+NC="0"
+BLACK="1" ; RED="2"    ; BROWN="7"   ; BLUE="6"  ; PURPLE="5" ; CYAN="13"; SILVER="9"
+GRAY="8"  ; ORANGE="4" ; YELLOW="10" ; SKY="11"  ; LILA="12"  ; SEA="3"; WHITE="14"
+COLOR=( '\033[0m' \
+        '\033[0;30m'  '\033[0;31m' '\033[0;32m' '\033[0;33m' '\033[0;34m' '\033[0;35m' '\033[0;36m' '\033[0;37m' \
+        '\033[1;90m'  '\033[1;91m' '\033[1;92m' '\033[1;93m' '\033[1;94m' '\033[1;95m' '\033[1;96m' '\033[1;97m' \
+      )
+
+# 2.- Default Values
+#--------------------
+# 2.1.- Environment Definition
+DEBUG_ANSIBLE_FLAGS='-v '
+VIRTUAL_ENVIRONMENT="/opt/stack/bifrost/bin/activate"
+WORKING_PATH=$(dirname "$(readlink -f "$0")")
+PROJECT_ANSIBLE_CFG="${WORKING_PATH}/ansible.cfg"
+HOSTS_WORKING_PATH="${WORKING_PATH}/hosts"
+BIFROST_WORKING_PATH="${WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
+IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
+#RUN_BACKGROUND="Yes"
+
+# 2.2.- Online Installation
+DHCP_NIC=0; DHCP_IP=1
+PXE=( "ens19" "10.10.10.20/24" )      
+LOCALE="en_US.UTF-8"
+
+# 2.3.- Dependencies
+GENESIS_HOSTS_PATH="${WORKING_PATH}/hosts/rhcsa"
+PIP=0; SCRIPTS=1; INSTALLER=2
+DEPENDENCIES=( 'collections/requirements.yml' \
+               'roles/requirements.yml' \
+	           'roles/openstack.bifrost/openstack.bifrost/scripts/env-setup.sh' \
+		     )
+
+DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
+	                     'ansible-galaxy role install --force -r ' \
+						 '' \
+						)
+
+########################################################################################
+# MODULE 1 => MENU DEFINITION
+########################################################################################
+
+#========================================================
+#   Function: defineMenu
+#--------------------------------------------------------
+#   Menu properties to deploy
+#========================================================
+function defineMenu() {
+
+	#---------------------
+	#  LOCAL ENVIRONMENT
+	#---------------------
+	if [ ! -n "${MENU}" ] ; then MENU="0" ; fi
+    if [ -n "${PROJECT_ANSIBLE_CFG}" ] ; then export ANSIBLE_CONFIG="${PROJECT_ANSIBLE_CFG}" ; fi
+
+	#---------------------
+	# MENU PROPERTIES
+	#---------------------
+	case "${MENU}" in
+	    0|"MAIN        : back to main menu")
+		      MENU_TEXT="INSTRUCTIONS: \n A.- Baremetal Nodes Installation Cycle: SETUP -> DEPLOY -> PROVISION \n B.- Genesis Node  Installation Cycle: REFRESH -> CREATE -> INIT \n C.- Troubleshooting: Baremetal Nodes {ANSIBLE,SSH,GRAPHICS,NETWORK,NTP}, Genesis Node {LOAD,DEPLOY} \n ___________\n STATE TRANSITIONS MENU \n___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (setup.yaml)${COLOR[$NC]}" \
+                              "${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - DEPLOY   : unattended installation (deploy.yaml)${COLOR[$NC]}" \
+                              "${COLOR[$BLUE]}[BAREMETAL] - PROVISIONING: node drivers and services installation (install.yaml)${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "0"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+       1|"${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}")
+	          if [ ! -n "${REFRESH_LOG}"  ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
+		      MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
+			  MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
+	          PARAMETRO=(     "PXE_DHCP_NIC" "PXE_DHCP_IP" "REFRESH_LOG" )
+              VALOR_DEFECTO=( "${PXE[$DHCP_NIC]}" "${PXE[$DHCP_IP]}" "${REFRESH_LOG}")
+	          SOLICITA_PARAMETRO=("-----> DHCP NIC [${VALOR_DEFECTO[0]}]:" \
+			              "-----> DHCP IP  [${VALOR_DEFECTO[1]}]:" \
+			              "-----> Log File [${VALOR_DEFECTO[2]}]:" \
+                            )
+              RETURNING_MENU="0"
+              RUN_ACTION="1"
+              unset PXE_DHCP_NIC PXE_DHCP_IP REFRESH_LOG
+              ;;
+
+
+	   2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}")
+	         if [ ! -n "${INSTALL_LOG}" ] ; then local INSTALL_LOG="${HOME}/deploy.log" ; fi
+		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[Genesis]   - DEPLOY      : Genesis installation (create.yml)${COLOR[$NC]}"
+	         PARAMETRO=(     "INSTALL_LOG"   )
+             VALOR_DEFECTO=( "${INSTALL_LOG}" )
+	         SOLICITA_PARAMETRO=("-----> Log File    [${VALOR_DEFECTO[0]}]:" \
+                                    )
+             RETURNING_MENU="0"
+             RUN_ACTION="2"
+             unset PXE_DHCP_POOL INSTALL_LOG
+             ;;
+
+	   3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")
+	         if [ ! -n "${INSTALL_LOG}" ] ; then local INIT_LOG="${HOME}/init.log" ; fi
+		     MENU_TEXT="(3)___________ ${COLOR[$ORANGE]}[IRONIC]   -  INIT : load operating system installation images${COLOR[$NC]}"
+	         PARAMETRO=(     "INIT_LOG"    )
+             VALOR_DEFECTO=( "${INIT_LOG}" )
+	         SOLICITA_PARAMETRO=("-----> Log File    [${VALOR_DEFECTO[0]}]:" \
+                                )
+             RETURNING_MENU="0"
+             RUN_ACTION="3"
+             unset INIT_LOG
+		     ;;
+
+
+	   4|"${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (setup.yaml)${COLOR[$NC]}")
+	         if [ ! -n "${SETUP_LOG}" ] ; then local SETUP_LOG="${HOME}/setup.log"  ; fi
+	         MENU_TEXT="(4)___________ ${COLOR[$ORANGE]}[$LABEL]   - SETUP       : Enroll Baremetal Nodes to Ironic (setup.yaml)${COLOR[$NC]}"
+			 
+             RUTA_OPCIONES=( "${HOSTS_WORKING_PATH}" )
+	         PARAMETRO=(     "BAREMETAL_NODES"    "SETUP_LOG"   )
+             VALOR_DEFECTO=( "0"  "${SETUP_LOG}" )
+	         SOLICITA_PARAMETRO=("-----> Baremetal Nodes Data Model   [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File                     [${VALOR_DEFECTO[1]}]:" \
+                                    )
+             MENU_SKIP_PATHS="1"
+			 RETURNING_MENU="0"
+             RUN_ACTION="4"
+             unset BAREMETAL_NODES SETUP_LOG
+		     ;;
+
+       5|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}")
+		     MENU_TEXT="(5)___________ [STRING] - ANSIBLE     : Ansible Initial Setup"
+	         #PARAMETRO=(     "NODE_LIST" )
+	         #EXT_OPCIONES=( ".list"      )
+                 #VALOR_DEFECTO=( "0"         )
+	         #SOLICITA_PARAMETRO=("-----> List of Nodes full Path  [${VALOR_DEFECTO[0]}]:" \
+                 #                )
+             RETURNING_MENU="0"
+             RUN_ACTION="5"
+             unset NODE_LIST
+             ;;
+
+       6|"${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (deploy.yaml)${COLOR[$NC]}")
+	         if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${IDAS_DEFAULT_INVENTORY}" ; fi
+	         if [ ! -n "${TARGET}" ]    ; then local TARGET=''                       ; fi
+	         if [ ! -n "${KICKSTART_LOG}" ] ; then local KICKSTART_LOG="${HOME}/kickstart.log"  ; fi
+	         MENU_TEXT="(2)___________ ${COLOR[$SEA]}[STRING] - KICKSTART   : unattended installation (kickstart.yaml)${COLOR[$NC]}"
+	         PARAMETRO=(     "INVENTORY"      "TARGET"    "KICKSTART_LOG" )
+             VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}" "${KICKSTART_LOG}"   )
+	         SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
+	                             "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+                                    )
+             RETURNING_MENU="0"
+             RUN_ACTION="6"
+             unset INVENTORY TARGET KICKSTART_LOG
+	         ;;
+
+
+	     7|"${COLOR[$BLUE]}[BAREMETAL] - PROVISIONING: node drivers and services installation (install.yaml)${COLOR[$NC]}")
+	          if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${IDAS_DEFAULT_INVENTORY}" ; fi
+	          if [ ! -n "${TARGET}" ]    ; then local TARGET=''                    ; fi
+	          if [ ! -n "${PROVISION_LOG}" ] ; then local PROVISION_LOG="${HOME}/provision.log"  ; fi
+	          MENU_TEXT="(7)___________ ${COLOR[$BLUE]}[STRING] - PROVISIONING: subsystem basic installation (install_iCAS.yaml)${COLOR[$NC]}"
+	          PARAMETRO=(     "INVENTORY"      "TARGET"     "PROVISION_LOG")
+              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${PROVISION_LOG}" )
+	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+                             )
+              RETURNING_MENU="0"
+              RUN_ACTION="7"
+              unset INVENTORY TARGET PROVISION_LOG
+		  ;;
+
+
+	    8|"${COLOR[$NC]}[BAREMETAL] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}")
+		      MENU_TEXT="PROVISIONING TESTS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[STRING] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}" \
+                              "[STRING] - SSH         : Load Relationships Map" \
+                              "[STRING] - GRAPHICS    : Install propietary 3er party driver" \
+                              "[STRING] - NETWORK     : Install network configurations" \
+                              "[STRING] - NTP         : Deploy NTP configuration" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[STRING] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+
+
+	    9|"${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}")
+		      MENU_TEXT="TROUBLESHOOTING TOOLS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[STRING] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
+                              "[STRING] - GATHER STRING CONFIGURATIONS  : Fetch relevant configuration files from String" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[STRING] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+
+       10|"${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}")
+		      MENU_TEXT="SOFT-CONFIGURATIONS TOOLS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}" \
+                              "[BAREMETAL] - GATHER BAREMETAL CONFIGURATIONS  : Fetch relevant configuration files from Baremetal Nodes" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+        11|"Exit")
+	         echo "Removing Temporal Files... rm -f ${OUT_TMP} 2> /dev/null"
+	         rm -f "${OUT_TMP}"
+             echo "Removing Temporal Files... rm -f ${TMP_FILE}"
+             rm -f "${TMP_FILE}" 2> /dev/null
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}     Thank you for using Genesis System... hoping you enjoy the experience !!!!  ${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+             exit 0
+             ;;
+
+        12|"[STRING] - SSH         : Load Relationships Map")
+	          if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${IDAS_DEFAULT_INVENTORY}" ; fi
+	          if [ ! -n "${TARGET}" ]    ; then local TARGET=""                       ; fi
+	          if [ ! -n "${SSH_LOG}" ]   ; then local SSH_LOG="${HOME}/ssh.log"       ; fi
+		      MENU_TEXT="(12)___________ SSH: Load Relationships Map"
+	          PARAMETRO=(     "INVENTORY"      "TARGET"     "SSH_LOG" )
+              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${SSH_LOG}")
+	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+                                     )
+              RETURNING_MENU="8"
+              RUN_ACTION="12"
+              unset INVENTORY TARGET SSH_LOG
+		      ;;
+
+        13|"[STRING] - GRAPHICS    : Install propietary 3er party driver")
+	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="${IDAS_DEFAULT_INVENTORY}" ; fi
+	          if [ ! -n "${TARGET}" ]       ; then local TARGET=""                       ; fi
+	          if [ ! -n "${DRIVER_LOG}" ]   ; then local DRIVER_LOG="${HOME}/graphics.log"; fi
+		      MENU_TEXT="(13)___________ GRAPHICS : Install propietary 3er party driver"
+	          PARAMETRO=(     "INVENTORY"      "TARGET"     "DRIVER_LOG")
+              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${DRIVER_LOG}")
+	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+                                     )
+              RETURNING_MENU="8"
+              RUN_ACTION="13"
+              unset INVENTORY TARGET DRIVER_LOG
+              ;;
+
+       14|"[STRING] - NETWORK     : Install network configurations")
+	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="${IDAS_DEFAULT_INVENTORY}" ; fi
+	          if [ ! -n "${TARGET}" ]       ; then local TARGET=""                       ; fi
+	          if [ ! -n "${NET_LOG}" ]      ; then local NET_LOG="${HOME}/network.log"   ; fi
+ 		      MENU_TEXT="(14)___________ NETWORK : Install network configurations"
+	          PARAMETRO=(     "INVENTORY"      "TARGET"     "NET_LOG")
+              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${NET_LOG}")
+	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+                                     )
+              RETURNING_MENU="8"
+              RUN_ACTION="14"
+              unset INVENTORY TARGET NET_LOG
+              ;;
+
+       15|"[STRING] - NTP         : Deploy NTP configuration")
+	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="/etc/core/inventory_ip" ; fi
+	          if [ ! -n "${TARGET}" ]       ; then local TARGET=""                       ; fi
+	          if [ ! -n "${NTP_LOG}" ]      ; then local NTP_LOG="${HOME}/ntp.log"             ; fi
+		      MENU_TEXT="(15)___________ NTP         : Deploy NTP configuration"
+	          PARAMETRO=(     "INVENTORY"      "TARGET"     "NTP_LOG")
+              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${NTP_LOG}")
+	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+                                     )
+              RETURNING_MENU="8"
+              RUN_ACTION="15"
+              unset INVENTORY TARGET NTP_LOG
+              ;;
+
+       22|"[STRING] - GATHER STRING CONFIGURATIONS  : Fetch relevant configuration files from String")
+	          if [ ! -n "${GATHERING_FOLDER}" ]   ; then local GATHERING_FOLDER="${IDAS_CFGS_PATH}/gathering" ; fi
+	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="/etc/core/inventory_ip" ; fi
+	          if [ ! -n "${TARGET}"        ]      ; then local TARGET=""                                           ; fi
+	          if [ ! -n "${GATHERING_LOG}" ]      ; then local GATHERING_LOG="${HOME}/gathering.log"               ; fi
+		      MENU_TEXT="(22)___________ [STRING] - GATHER STRING CONFIGURATIONS  : Fetch relevant configuration files from String"
+	          PARAMETRO=(     "INVENTORY"   "TARGET" "GATHERING_FOLDER"  "GATHERING_LOG" )
+              VALOR_DEFECTO=( "${INVENTORY}"  "${TARGET}" "${GATHERING_FOLDER}" "${GATHERING_LOG}" )
+	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Target Machines            [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Results Uploading Folder   [${VALOR_DEFECTO[2]}]:" \
+	                              "-----> Log File                   [${VALOR_DEFECTO[3]}]:" \
+                                     )
+              RETURNING_MENU="10"
+              RUN_ACTION="22"
+              unset GATHERING_FOLDER INVENTORY  TARGET GATHERING_LOG
+              ;;
+
+	     [?])
+	         echo "Removing Temporal Files... rm -f ${OUT_TMP} 2> /dev/null"
+	         rm -f "${OUT_TMP}"
+             echo "Removing Temporal Files... rm -f ${TMP_FILE}"
+             rm -f "${TMP_FILE}" 2> /dev/null
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}     Thank you for using Genesis System... hoping you enjoy the experience !!!!  ${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+             exit 0
+	         ;;
+	esac
+        OUT="$?"
+}
+
+########################################################################################
+# MODULE 2 => HELPERS
+#     Auxiliar functions
+#  I.e.: ayuda(), error(), etc.
+########################################################################################
+
+#========================================================
+#   Function: ayuda
+#--------------------------------------------------------
+#  Show help, the options of the command
+#========================================================
+function ayuda() {
+	echo -e "------------------------------------------------------"
+	echo -e "genesisCli -[hHAKPMGNRSLDi:t:s:v:l:g:p:] "
+	echo -e "  -h <HELP>        : Show this help"
+	echo -e "  -A <ANSIBLE>     : Shoot ansible initializations"
+	echo -e "  -K <KICKSTART>   : Shoot kickstart "
+	echo -e "  -P <PROVISION>   : Shoot provision "
+	echo -e "  -G <GRAPHICS>    : Shoot graphics"
+	echo -e "  -M <MAP SSH>     : Shoot map ssh"
+	echo -e "  -N <NETWORK>     : Shoot network"
+	echo -e "  -T <NTP>         : Shoot NTP "
+	echo -e "  -S <SETUP>       : Shoot setup iDAS"
+	echo -e "  -L <LOAD CFGs>   : Shoot load iDAS CFGs"
+	echo -e "  -D <DEPLOY>      : Shoot deploy iDAS"
+	echo -e "  -R <REFRESH>     : Shoot refresh iDAS build"
+    echo -e "  -i <INVENTORY>  [/etc/core/inventory_ip] : Full path to inventory file"
+    echo -e "  -t <TARGET>     []    : comma separated IP addresses of target machines"
+    echo -e "  -s <SLOT>       [1]   : slot for setting up iDAS unattended installation files"
+    echo -e "  -v <VAULT>      [root]: vault password where iDAS setup critical parameters are encrypted"
+    echo -e "  -l <LOG_FILE>   [${HOME}/tests.log] : full path to log direct actions"
+    echo -e "  -g <CFGS_CORE>  []    : String CFGs to Load"
+    echo -e "  -b <GENESIS_BUILD> []    : Path to build file"
+    echo -e "  -p <PROJECT_NAME> [pansa]    : Project Name to install"	
+	echo -e "------------------------------------------------------"
+        OUT="$OK"
+}
+
+#========================================================
+#   Function: error
+#--------------------------------------------------------
+#  Print Error Messages
+#
+# Parameters:
+#    $1 Type of Error
+#    $2 Missing Parameters
+#========================================================
+function error() {
+
+	local RUTA_ACTUAL=`pwd`
+	local TIMESTAMP=$(date -R)
+	local LABEL="genesisCli"
+	case "$1" in
+		"-x"|"-noExec")   echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [${LABEL}] ABORTING: No {Exists/Execution Permisions} [$2] ${COLOR[$NC]}" ;;
+		"-w"|"-noWrite")  echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [${LABEL}] ABORTING: No {Exists/Write Permisions} [$2] ${COLOR[$NC]}" ;;
+		"-r"|"-noRead")   echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [${LABEL}] ABORTING: No {Exists/Read Permisions} [$2] ${COLOR[$NC]}" ;;
+		"-e"|"-noExist")   echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | ${LABEL}] ABORTING: No {File/Folder} found [$2] ${COLOR[$NC]}" ;;
+
+		"-o"|"-noOwner")  echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [${LABEL}] ABORTING: No owner of path [$2] ${COLOR[$NC]}"
+			              echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [${LABEL}] ABORTING: Usually you need to be 'root' to shoot iDAS ${COLOR[$NC]}" ;;
+		[?])              echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [${LABEL}] ABORTING: Undefined error: [$2] ${COLOR[$NC]}" ;;
+	esac
+
+	OUT="${ERROR}"
+}
+
+
+#===================================================
+#   Function: detectOS 
+#---------------------------------------------------
+#  Private Function
+#
+#  Detect Operating System
+#===================================================
+detectOS() {
+
+ # 1.- Detect OS
+ #--------------
+ if [ -f /etc/os-release ]; then
+    # freedesktop.org and systemd
+    . /etc/os-release
+    OS=$ID
+    VER=$VERSION_ID
+ elif type lsb_release >/dev/null 2>&1; then
+    # linuxbase.org
+    OS=$(lsb_release -si)
+    VER=$(lsb_release -sr)
+ elif [ -f /etc/lsb-release ]; then
+    # For some versions of Debian/Ubuntu without lsb_release command
+    . /etc/lsb-release
+    OS=$DISTRIB_ID
+    VER=$DISTRIB_RELEASE
+ elif [ -f /etc/debian_version ]; then
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
+ elif [ -f /etc/SuSe-release ]; then
+    # Older SuSE/etc.
+    local SUSE=$(head -1 /etc/SuSe-release)
+    local SUSE="${SUSE%%(*}"
+    OS="${SUSE%% *}"
+    VER=$(echo "${SUSE}" | tr -dc '0-9')
+ elif [ -f /etc/redhat-release ]; then
+    # Older Red Hat, CentOS, etc.
+    local RH=$(cat /etc/redhat-release)
+    OS="${RH%% *}"
+    VER=$(echo "${RH}" | tr -dc '0-9')
+ else
+    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+    OS=$(uname -s)
+    VER=$(uname -r)
+ fi
+
+ # 2.- Formatting Output
+ #---------------
+ OS=$( echo "${OS}"  | tr -d ' ' | tr [:upper:] [:lower:] )
+ VER=$( echo "${VER}"  | tr -d ' ' | tr [:upper:] [:lower:] )
+ LOG_HEADER="[${OS}-${VER}]-"
+}
+
+#===================================================
+#   Function: {distro}Fixes
+#---------------------------------------------------
+#  Private Function
+#
+#  Pack Distro Specific fixes
+#===================================================
+ubuntuFixes() {
+
+  # 1.- Fix Locales
+  #----------------
+  echo "${LOG_HEADER} -> sudo locale-gen ${LOCALE}"
+  sudo locale-gen "${LOCALE}"
+
+  echo "${LOG_HEADER} -> dpkg-reconfigure --frontend=noninteractive locales"
+  sudo dpkg-reconfigure --frontend=noninteractive locales
+
+  echo "${LOG_HEADER} ->  update-locale LANG=${LOCALE}"
+  sudo update-locale LANG="${LOCALE}"
+
+  echo "export LC_ALL=C.UTF-8"
+  export LC_ALL="C.UTF-8"
+
+  # 2.- Set Fix IP to Network Interface
+  #----------------------------
+  echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false"
+  sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false
+
+  echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=[${PXE[$DHCP_IP]}]"
+  sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=["${PXE[$DHCP_IP]}"]
+
+  echo "${LOG_HEADER} -> sudo netplan apply"
+  sudo netplan apply
+  
+}
+
+redhatFixes() {
+    
+	# 1.- Repositories
+	#-------------------
+	# EPEL 
+	echo "${LOG_HEADER} ->  sudo yum install epel-release -y"
+	sudo yum install epel-release -y
+    
+	echo "${LOG_HEADER} -> sudo yum update -y"
+        sudo yum update -y
+
+    echo "${LOG_HEADER} ->  sudo cat >> /etc/hosts <<EOF \n 192.168.1.133   cdglab.duckdns.org	cdglab \n EOF"
+    sudo cat >> /etc/hosts <<EOF
+192.168.1.133   cdglab.duckdns.org	cdglab
+EOF
+
+	# Change SSH Configuration
+	echo "${LOG_HEADER} ->  sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
+	sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+	
+	echo "${LOG_HEADER} -> echo '    StrictHostKeyChecking no' >> /etc/ssh/ssh_config"
+    sudo echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+	
+	echo "${LOG_HEADER} -> echo systemctl restart sshd.service" 
+    sudo systemctl restart sshd.service
+	
+	# 2.- Set Fix IP to Network Interface
+    #----------------------------
+	if [ -n "${DETECT_CONEXION}" ] ; then 
+	  echo "${LOG_HEADER} ->  nmcli con add con-name pxe ifname ${PXE[$DHCP_NIC]} type ethernet ipv4.methodmanual ipv4.addresses=${PXE[$DHCP_IP]}"
+      nmcli con add con-name "pxe" ifname "${PXE[$DHCP_NIC]}" type "ethernet" ipv4.method="manual" ipv4.addresses="${PXE[$DHCP_IP]}"
+	  echo "${LOG_HEADER} -> nmcli con up pxe"
+	  nmcli con up "pxe"
+    fi	  
+}
+
+#===================================================
+#   Function: setEnvironment
+#---------------------------------------------------
+#  Private Function
+#
+#  Set environment
+#===================================================
+setEnvironment() {
+   case "${OS}" in
+     "ubuntu"|"debian")
+       DEP_INSTALLER=( 'python3' 'git' 'ansible' ) 
+       DEP_DOCKER=( 'podman-docker' )
+       INSTALLER_CMD="sudo -H -E apt-get -y install"
+       CHECK_CMD="dpkg -s"
+       ubuntuFixes
+       ;;
+     "redhat"|"centos")
+       DEP_INSTALLER=( 'python3' 'git' 'ansible' )
+       DEP_DOCKER=( 'podman-docker' )
+       PKG_MANAGER=$(/usr/bin/which dnf || /usr/bin/which yum)
+       INSTALLER_CMD="sudo -H -E ${PKG_MANAGER} -y install"
+       CHECK_CMD="rpm -q"
+       redhatFixes
+       ;;
+     "suse"|"opensuse")
+       INSTALLER_CMD="zipper"
+       DEP_DOCKER=( 'podman-docker' )
+       ;;
+   esac
+   
+}
+
+#===================================================
+#   Function: runScripts
+#---------------------------------------------------
+#  Private Function
+#
+#  Shoot Bifrost Script
+#===================================================
+runScripts() {
+
+   local FILE
+   for FILE in ${FILES[@]} ; do
+       if [ -n "$COMMAND" ] ; then
+	      echo "${LOG_HEADER} -> ${COMMAND} ${RUTA}/${FILE}"     
+          ${COMMAND} ${RUTA}/${FILE}
+
+       elif [ -x "${RUTA}/${FILE}" ] ; then
+          echo "${LOG_HEADER} -> ${RUTA}/${FILE}"
+	      ${RUTA}/${FILE}
+       else
+	 error "-x" "${RUTA}/${FILE}" 
+       fi
+   done
+}
+
+#===================================================
+#   Function: setupEnvironment
+#---------------------------------------------------
+#  Private Function
+#
+#  Download Bifrost Dependencies
+#===================================================
+setupEnvironment() {
+   
+   # Local Environment
+   #------------------
+   local RUTA_PROJECT="${WORKING_PATH}"
+
+   # Actions
+   #--------
+   local INDEX_DEP=0
+   local INDEX_CMD=0
+   while [[ "${INDEX_DEP}" < "${#DEPENDENCIES[@]}" ]] ; do
+
+	      # 1.- Get Command 
+		  if [ "${INDEX_CMD}" -lt "${#DEPENDENCIES_INSTALLER[@]}" ] ; then
+		     local COMMAND="${DEPENDENCIES_INSTALLER[${INDEX_CMD}]}"
+		     local INDEX_CMD=$(expr ${INDEX_CMD} + 1)
+		  fi
+          
+		  # 2.- Get CMD Result
+		  local FILES=( "${DEPENDENCIES[$INDEX_DEP]}" )
+		  
+		  # 3.- RUN Script	  
+		  local RUTA="${RUTA_PROJECT}"
+		  runScripts
+          #echo -e "${PRINT_NAME} ${COLOR[$SILVER]} ${PRINT_STATUS} ${COLOR[$NC]}"
+
+          # 4.- Update the loop		  
+		  local INDEX_DEP=$(expr ${INDEX_DEP} + 1)     
+   done
+}
+
+#===================================================
+#   Function: installDependencies
+#---------------------------------------------------
+#  Private Function
+#
+#  Chack Bifrost Installer Dependencies
+#===================================================
+installDependencies() {
+  PACKAGES=( ${DEP_INSTALLER[@]} ) 
+  echo "${LOG_HEADER} -> ${INSTALLER_CMD} ${PACKAGES[@]}"
+  ${INSTALLER_CMD} ${PACKAGES[@]}
+}
+
+#===================================================
+#   Function: prepareLocalMachine
+#---------------------------------------------------
+#  Private Function
+#
+#  Chack Bifrost Installer Dependencies
+#===================================================
+prepareLocalMachine() {
+  detectOS
+  setEnvironment
+  installDependencies
+  setupEnvironment
+}
+
+#========================================================
+#   Function: passwordlessDetection
+#--------------------------------------------------------
+#  -Generate User SSH key in localhost
+#  -Ensure localhost passwordless access
+#========================================================
+function passwordlessDetection() {
+
+    #------------------
+    # LOCAL ENVIRONMENT
+    #------------------
+    local HOST="${1}"
+    local USER="${2}"
+    local SSH_TIMEOUT="3"
+    if [ -n "${USER}" ] ; then local USER="${USER}@" ; fi
+
+    #------------------
+    # ACTIONS
+    #------------------
+    local PASSWORDLESS_DETECTED="$(ssh -oBatchMode='yes' -oConnectTimeout=${SSH_TIMEOUT} ${USER}${HOST} 'echo DONE' 2> /dev/null
+)"
+    if [ "${PASSWORDLESS_DETECTED}" == "DONE" ] ; then
+        echo "Passwordless already Enabled at ${USER}${HOST}"
+    else
+        ssh-copy-id -oConnectTimeout="${SSH_TIMEOUT}" "${USER}${HOST}" 2> "${OUT_TMP}"
+        local SUCCESS="$?"
+        local OUTPUT_COPY=$(cat ${OUT_TMP} | grep ERR)
+        echo "Passwordless was successfully Established at ${USER}${HOST}? [$SUCCESS] (OK=$OK, ERROR=$ERROR) ${OUTPUT_COPY}"
+    fi
+    OUT="$?"
+}
+
+#========================================================
+#   Function: sshUserKey
+#--------------------------------------------------------
+#  -Generate User SSH key in localhost
+#  -Ensure localhost passwordless access
+#========================================================
+function sshUserKey() {
+
+    # 1.- Create SSH folder
+    #-----------------------
+    if [ ! -e "${HOME}/.ssh" ] ; then
+       mkdir -p "${HOME}/.ssh"
+       chmod 700 "${HOME}/.ssh"
+    fi
+
+    # 2.- Detect SSH Keys
+    #-----------------------
+    local KEYS="$(ls ${HOME}/.ssh/*pub 2> /dev/null)"
+    echo -e ".... User SSH Keys detected: \n$KEYS"
+    if [ ! -n "${KEYS}" ] ; then
+       if [ -x "/bin/ssh-keygen" ] || [ -x "/sbin/ssh-keygen" ] ; then
+          echo "............................................................................"
+          echo " No SSH Key detected on this user... we proceed with interactive generation"
+          echo "............................................................................"
+          ssh-keygen
+       fi
+    fi
+
+    # 3.- Localhost Passwordless SSH Access
+    #-----------------------
+    local USER="$(whoami)"
+    passwordlessDetection "localhost" "${USER}"
+}
+
+#========================================================
+#   Function: trust_relationships
+#--------------------------------------------------------
+#  -Generate User SSH key in localhost
+#  -Ensure localhost passwordless access
+#========================================================
+function trust_relationships() {
+
+    #---------------------------
+    # LOCAL ENVIRONMENT
+    #---------------------------
+    local LIST_OF_NODES_FILE="${1}"
+    local NODE INVENTORY_LIST
+
+    #---------------------------
+    # ACTIONS
+    #---------------------------
+    if [ -r "${LIST_OF_NODES_FILE}" ] ; then
+        . "${LIST_OF_NODES_FILE}" 2> /dev/null
+    elif [ -r "/etc/core/inventory_ip" ] ; then
+	local INVENTORY_LIST=( $(ansible all -i /etc/core/inventory_ip --list-hosts| sed '1d') )
+    fi
+
+    if [ -n "${INVENTORY_LIST}" ] ; then
+       for NODE in "${INVENTORY_LIST[@]}" ; do
+           passwordlessDetection "${NODE}" "root"
+           OUT="$?"
+       done
+    else
+       echo -e "${COLOR[$YELLOW]} [WARN] - MISSING CONFIGURATION FILE: please try to SETUP Genesis before ${COLOR[$NC]}"
+       error "-r" "${LIST_OF_NODES_FILE}"
+    fi
+    unset NODE INVENTORY_LIST LIST_OF_NODES_FILE
+}
+
+
+#========================================================
+#   Function: runChecks
+#--------------------------------------------------------
+#  Run verifications
+#========================================================
+function runChecks() {
+   if [ -n "${CHECK_CMD}" ] && [ -n "${CHECK_NAME}" ] ; then
+       local INDEX_CMD=0
+	   local INDEX_NAME=0
+	       	   
+       while [[ "${INDEX_CMD}" < "${#CHECK_CMD[@]}" ]] ; do
+	      		  
+		  # 1.- Get Verification Name
+		  if [ "${INDEX_NAME}" -lt "${#CHECK_NAME[@]}" ] ; then
+		     local PRINT_NAME="${CHECK_NAME[${INDEX_NAME}]}"
+		     local INDEX_NAME=$(expr ${INDEX_NAME} + 1)
+		  fi
+          
+		  # 2.- Get CMD Result
+		  local PRINT_STATUS=$( timeout 3 ${CHECK_CMD[${INDEX_CMD}]} )
+		  
+		  # 3.- Print Results	  
+          echo -e "${PRINT_NAME} ${COLOR[$SILVER]} ${PRINT_STATUS} ${COLOR[$NC]}"
+
+          # 4.- Update the loop		  
+		  local INDEX_CMD=$(expr ${INDEX_CMD} + 1)
+		  
+       done	   
+   fi   
+}
+
+#========================================================
+#   Function: state_status
+#--------------------------------------------------------
+#  Verify state reached after a transition
+#========================================================
+function state_status() {
+
+    #---------------------------
+    # LOCAL ENVIRONMENT
+    #---------------------------
+	local STATE_NAME="$1"	
+        local RPM_NAME="$2"
+	case "${STATE_NAME}" in
+       "genesis_machine_ready") 
+	    	   
+	        local SSH_LOCALHOST="YES"
+	        local CHECK_NAME=( \
+			                   "...Script Working Folder:"
+                               "........Operating System: " \
+                               "ISOs loaded to /mnt/isos: " \
+                               ".........Firewall Status: " \
+                               "..........SELinux Status: " \
+		                       )
+	        local CHECK_CMD=( \
+			                   "pwd" \
+			                   "cat /etc/os-release" \
+							   "ls /mnt/isos/*" \
+							   "systemctl status firewalld" \
+							   "sestatus" \
+			                )
+	    ;;
+       "genesis_installed") 
+	        local CHECK_NAME=( \
+                               "Genesis Bifrost installed: " \
+		                       )
+	        local CHECK_CMD=( \
+			                   "if [ -r $WORKING_PATH/roles/openstack.bifrost ] ; then echo OK ; fi" \
+			                )
+	   ;;
+
+       "genesis_deployed") 
+	        local CHECK_NAME=( \
+                               "Service DHCP: " \
+                               "Service TFTP: " \
+                               "Service HTTP: " \
+							   "...PXE Files: " \
+							   "..DNS Active?:"
+		                       )
+	        local CHECK_CMD=( \
+			                   "systemctl status dmasq" \
+			                   "systemctl status tftp" \
+			                   "systemctl status http" \
+							   "ls /var/lib/tftpboot/" \
+							   "nslookup genesis" \
+			                )
+	   ;;	
+	   
+    esac
+	
+	
+    #---------------------------
+    # ACTIONS
+    #---------------------------
+	if [ -n "${CHECK_CMD}" ] && [ -n "${CHECK_NAME}" ] ; then
+       echo -e "--------------------------------------------" 
+       echo -e "     STATE [${STATE_NAME}] - STATUS" 	   
+       echo -e "--------------------------------------------"
+	   if [ -n "${SSH_LOCALHOST}" ] ; then sshUserKey ; fi
+       runChecks 	   
+       echo -e "--------------------------------------------" 
+       echo -e "     STATE [${STATE_NAME}] - STATUS" 	   
+       echo -e "--------------------------------------------" 
+	fi
+	unset CHECK_NAME CHECK_CMD SSH_LOCALHOST
+}
+
+########################################################################################
+# MODULE 3 => MENU OPTIONS CAPTURE: dynamic (list of files from a path) and static (list of strings)
+########################################################################################
+
+#========================================================
+#   Function: listaOpciones_Dinamica
+#--------------------------------------------------------
+#  List of files inside a folder is used as menu options
+#========================================================
+function listaOpciones_Dinamica() {
+
+	#------------------
+	# LOCAL ENVIRONMENT
+	#------------------
+	local INDICE="$1"
+	local RUTA="${RUTA_OPCIONES[${INDICE}]}"
+	local EXT="${EXT_OPCIONES[${INDICE}]}"
+	local ELIMINA="${SUPRIME_EXT[${INDICE}]}"
+    if [ -n "${MENU_SKIP_PATHS}" ] ; then local REMOVE_PATH="${MENU_SKIP_PATHS}" ; fi
+	
+	#-----------------
+	# ACTIONS
+	#-----------------
+    if [ -r "${RUTA}" ] ; then
+            local LIST_FILES=$(ls -1 -d "${RUTA}/"*${EXT} 2> /dev/null)
+            if [ -n "${LIST_FILES[@]}" ] ; then
+	        local INDICE="0"
+	        for ELEMENTO in $(ls -1 -d "${RUTA}/"*${EXT} 2> /dev/null) ; do
+
+		        # Nombre de la opcion  (with/without path-extension)
+		        if [ -n "${REMOVE_PATH}" ] ; then local ELEMENTO="${ELEMENTO##*/}" ; fi
+		        if [ -n "${ELIMINA}"     ] ; then local ELEMENTO="${ELEMENTO%%.*}" ; fi
+
+                # Variables Publicas
+		        ELEMENTOS_MENU[${INDICE}]="${ELEMENTO}"
+		        NUM_OPCIONES="${INDICE}"
+
+		        # Listando Opciones
+		        echo -e "${INDICE} .- ${ELEMENTO}"
+		        local INDICE=`expr "${INDICE}" + 1`
+	        done
+        else
+           error "-r" "${RUTA}/*${EXT}"
+        fi
+    else
+        error "-r" "${RUTA}"
+    fi
+}
+
+#========================================================
+#   Function: listaOpciones_Estatica
+#--------------------------------------------------------
+#  List of strings already provided in data model
+#========================================================
+function listaOpciones_Estatica() {
+
+	#------------------
+	# LOCAL ENVIRONMENT
+	#------------------
+	local INDICE="$1"
+
+	#-----------------
+	# ACTIONS
+	#-----------------
+	local INDICE="0"
+	for ELEMENTO in "${RUTA_OPCIONES[@]}" ; do
+        
+		if [ ! -n "${MENU_SKIP_PATHS}" ] || [ ! -d "${ELEMENTO}" ] ; then	
+        
+			# Variables Publicas
+			ELEMENTOS_MENU[${INDICE}]="${ELEMENTO}"
+			NUM_OPCIONES="${INDICE}"
+
+			# Listando Opciones
+			echo -e "${INDICE} .- ${ELEMENTO}"
+		fi
+		
+		local INDICE=`expr "${INDICE}" + 1`
+
+	done
+}
+
+#========================================================
+#   Function: capturaOpcionLista
+#--------------------------------------------------------
+#  Capture option value from list of available options
+#========================================================
+function capturaOpcionLista() {
+
+	# 1.- Espera Entrada
+	#--------------------
+	eval read -e INDICE_OPCION
+
+	# 2.- Evalua Entrada
+	#--------------------
+	# Se introdujo una opcion ----------------------------- COMPROBACION 1
+	if [ -n "${INDICE_OPCION}" ] ; then
+		VALOR=""
+		while [ ! -n "$VALOR" ] ; do
+
+			# La opcion es un numero  ------------- COMPROBACION 2
+			if [ "${INDICE_OPCION}" -eq "${INDICE_OPCION}" 2> /dev/null ]; then
+
+				# La opcion es numero valido -- COMPROBACION 3
+				if [ "${INDICE_OPCION}" -le "${NUM_OPCIONES}" ] ; then
+					VALOR="${ELEMENTOS_MENU[${INDICE_OPCION}]}"
+
+				# La opcion es numero valido -- COMPROBACION 3
+				else
+					echo -e "[${INDICE_OPCION}] - No valid Option [0-${NUM_OPCIONES}], please try again"
+					eval read -e INDICE_OPCION
+					if [ ! -n "${INDICE_OPCION}" ] ; then break ; fi
+				fi
+
+			# La opcion es un numero  ------------- COMPROBACION 2
+			else
+				echo -e "[${INDICE_OPCION}] - No numeric value introduced, please try again"
+				eval read -e INDICE_OPCION
+				if [ ! -n "${INDICE_OPCION}" ] ; then break ; fi
+			fi
+		done
+	fi
+}
+
+#========================================================
+#   Function: capturaValor
+#--------------------------------------------------------
+#  Capture Value in two different use cases
+#    Case 1.- List of Values
+#         1.1.- Display list of Strings as options
+#         1.2.- Display list of files from a folder
+#    Case 2.- Text input
+#========================================================
+function capturaValor() {
+
+	#------------------
+	# LOCAL ENVIRONMENT
+	#------------------
+	local INDICE="$1"
+	local RUTA_LISTA="${RUTA_OPCIONES[${INDICE}]}"
+
+	#-----------------
+	# ACTIONS
+	#-----------------
+
+	# 1.- List of Options
+	#--------------------
+	if [ -n "${RUTA_LISTA}" ] ; then
+
+	    # 1.1.- List of files from a folder as Options
+		if [ -r "${RUTA_LISTA}" ] ; then
+
+		    # 1.1.1.- Build list and Capture option
+		    listaOpciones_Dinamica "${INDICE}"
+		    capturaOpcionLista
+
+		    # 1.1.2.- Assign default value
+            if [ ! -n "${VALOR}" ] ; then
+                 local INDICE_OPCION="${VALOR_DEFECTO[${POSICION}]}"
+                 VALOR="${ELEMENTOS_MENU[${INDICE_OPCION}]}"
+		    fi
+
+        # 1.2.- List of Strings as Options
+		else
+			listaOpciones_Estatica "${INDICE}"
+			capturaOpcionLista
+		fi
+
+	# 2.- Plain Input
+	#--------------------
+	else
+		eval read -e VALOR
+	fi
+
+	# 3.- Default Value
+	#--------------------
+    if [ ! -n "${VALOR}" ] ; then
+		VALOR="${VALOR_DEFECTO[${POSICION}]}"
+    fi
+}
+
+
+########################################################################################
+# MODULE 5 - DEPLOY MENU
+########################################################################################
+
+#========================================================
+#   Function: reemplazoParametro
+#--------------------------------------------------------
+#   Replace text in configuration file
+#========================================================
+function reemplazaParametro() {
+
+	REEMPLAZA_LINEA="$1"
+	if [ -n "${REEMPLAZA_LINEA}" ] ; then
+		REPLN="${VAR}=\"${PREPO}${VALOR}\""
+		sed s/^${VAR}=.*$/$REPLN/ "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+	else
+		REPLN="${PREPO}${VALOR}"
+		sed s/${VAR}/$REPLN/g "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+	fi
+        OUT="$?"
+}
+
+#========================================================
+#   Function: deployMenu
+#--------------------------------------------------------
+#   Deploy menu according to properties in data model
+#========================================================
+function deployMenu() {
+
+    #------------------
+	# ENTORNO LOCAL
+	#------------------
+	local REEMPLAZA_LINEA="$1"
+	local POSICION="0"
+    local VAR VALOR PREPO
+
+	#------------------
+	# ACCIONES
+	#------------------
+
+	# 1.- Display Text of the Menu
+	#--------------------
+	if [ -n "${MENU_TEXT}" ] ; then
+	   echo -e "${MENU_TEXT}"
+	   unset MENU_TEXT
+	fi
+
+	# 2.- Capture sequence of parameters
+	#--------------------
+	while [ "${POSICION}" -lt "${#PARAMETRO[@]}" ] ; do
+
+		# 2.1.- Capture Variable and Value
+		#--------------------------------
+		VAR="${PARAMETRO[${POSICION}]}"
+		VALOR="${!VAR}"
+
+		# 2.2.- Request and Capture Value
+		#------------------------------------
+		if [ ! -n "${VALOR}" ] && [ -n "${SOLICITA_PARAMETRO[${POSICION}]}" ] ; then
+
+			# 2.2.1.- Capture Parameter
+			echo ""
+			echo -e "${SOLICITA_PARAMETRO[${POSICION}]}"
+			capturaValor "${POSICION}"
+
+			# 2.2.2.- Print resulting value
+			echo -e " Resulting Option: [${VALOR}]"
+
+            # 2.2.3.- Break Menu Display 
+			if [ -n "${MENU_BREAK_TEXT}" ] ; then
+			   if [ "${MENU_BREAK_TEXT}" == "${POSICION}" ] ; then unset RUTA_OPCIONES ; fi
+			fi
+		fi
+		
+		# 2.3.- Value Treatment
+		#-----------------------------
+		PREPO=""
+
+		# 2.3.1.- CNF for text Replacement
+		if [ -n "$VALOR" ] && [ -n "${CNF_REEMPLAZO}" ] ; then
+
+			#    2.3.1.1.- Replace / for \/ for the sed command
+			#            BEWARE: dump results to temporal file in order to avoid issues with bash of different systems
+			echo "${VALOR}" | awk 'BEGIN{FS="/"} {linea=$1;for(i=2;i<=NF;i++) {linea=linea "\\/" $i }} END{print linea}' > "${OUT_TMP}"
+			VALOR=`cat "${OUT_TMP}"`
+
+			#   2.3.1.2.- Add preposition
+			PREPO="${PREPOSICION[${POSICION}]}"
+
+            reemplazaParametro "${REEMPLAZA_LINEA}"
+		    mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"
+
+		# 2.3.2.- Capture List Value
+		elif [ -n "$VALOR" ] ; then
+            echo "${VAR}='${VALOR}'" > "${OUT_TMP}"
+            . "${OUT_TMP}"
+		fi
+
+		# 2.4.- Loop index update
+		#----------------------------
+		POSICION=`expr "${POSICION}" +  1`
+	done
+
+
+	# 3.- Restore loop Environment
+	#--------------------
+        OUT="$?"
+	unset VALOR VAL PREPO POSICION
+}
+
+########################################################################################
+# MODULE 6 - ACTIONS HELPERS
+########################################################################################
+
+#========================================================
+#   Function: replacePattern
+#--------------------------------------------------------
+#   Replace pattern in a text file
+#========================================================
+function replacePattern() {
+
+   #---------------------
+   # LOCAL ENVIRONMENT
+   #---------------------
+   local DEST_FILE="$1"
+   local REPLACE_PATTERN="$2"
+   local DETECTION_PATTERN="$3"
+
+   #---------------------
+   # ACTIONS
+   #---------------------
+   if [ -w "${DEST_FILE}" ] ; then
+      if [ -n "${REPLACE_PATTERN}" ] ; then
+         if [ -n "${DETECTION_PATTERN}" ] ; then
+           echo "-> Replacing pattern: sed -i s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| ${DEST_FILE}"
+           sed -i "s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| " "${DEST_FILE}"
+         fi
+      fi
+   else
+      error -w "${DEST_FILE}"
+   fi
+}
+
+#========================================================
+#   Function: updateInventory
+#--------------------------------------------------------
+#   iDAS ISOS generation
+#    - common.yaml... create from /mnt/isos/ contents
+#========================================================
+function updateInventory() {
+   	
+	if [ -n "${BAREMETAL_NODES}" ] ; then
+	 
+       local LINE_DESIRED="inventory=hosts/target,hosts/${BAREMETAL_NODES##*/}"
+	   local LINE_DETECTION='inventory='
+	   echo "replacePattern ${ANSIBLE_CONFIG} ${LINE_DESIRED} ${LINE_DETECTION}"
+       replacePattern "${ANSIBLE_CONFIG}" "${LINE_DESIRED}" "${LINE_DETECTION}"   
+
+	   echo "export BIFROST_INVENTORY_SOURCE=${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars.yml" 
+	   export BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars.yml"
+        	   
+	fi
+}
+
+
+
+#========================================================
+#   Function: vaultPass
+#--------------------------------------------------------
+#  -Create Vault File with encripted password
+#========================================================
+function vaultPass() {
+
+   #---------------------
+   # LOCAL ENVIRONMENT
+   #---------------------
+   local TMP_PATH="$1"
+   local PASSWORD
+   if [ ! -n "${TMP_PATH}" ] ; then local TMP_PATH="/tmp/" ; fi
+
+   #---------------------
+   # ACTIONS
+   #---------------------
+
+   # 1.- Removing Old Temp File
+   #----------------
+   if [ -w "${TMP_FILE}" ]  ; then
+        echo "Removing Temporal Files... rm -f ${TMP_FILE}"
+        rm -f "${TMP_FILE}" 2> /dev/null
+        OUT="$?"
+   fi
+
+   # 2.- Create New Temp File
+   #----------------
+   if [ -w "${TMP_PATH}" ]  ; then
+      if [ -x "/bin/mktemp" ] ||  [ -x "/sbin/mktemp" ] ; then
+         TMP_FILE=$(mktemp ${TMP_PATH}ansible.xsVtj.XXXX)
+         PASSWORD=$(python - <<END
+import hashlib, base64, hmac
+hash_code= hmac.HMAC(b"", b'${VAULT}', hashlib.sha512).digest()
+base64_bytes = base64.b64encode(hash_code)
+base64_string = base64_bytes.decode("ascii")
+print(base64_string)
+END
+)
+         echo "${PASSWORD}" > "${TMP_FILE}"
+         OUT="$?"
+      else
+         error "-x" "/bin/mktemp || /sbin/mktemp"
+      fi
+   else
+     error "-w" "${TMP_PATH}"
+   fi
+
+   # 3.- Clean Local Environment
+   #----------------
+   unset PASSWORD TMP_PATH
+}
+
+#========================================================
+#   Function: buildCommand
+#--------------------------------------------------------
+#  -Build Playbook Options
+#========================================================
+function buildCommand() {
+
+        # 0.- Logging
+        #----------------------
+        echo "........ INVENTORY=[${INVENTORY}]"
+        echo "........... TARGET=[${PTARGET}]"
+        echo "............. SLOT=[${SLOT}]"
+        echo "............ VAULT=[${VAULT}]"
+        echo "....... EXTRA_VARS=[${EXTRA_VARS}]"
+
+        # 1.- Build Playbook Options
+        #----------------------
+        OPTIONS="${DEBUG_ANSIBLE_FLAGS}"
+        if [ -n "${INVENTORY}"      ] ; then OPTIONS="-i ${INVENTORY}"              ; fi
+        if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"     ; fi
+        if [ -n "${EXTRA_VARS}"     ] ; then OPTIONS="${OPTIONS} -e ${EXTRA_VARS}"  ; fi
+        if [ -n "${GROUP_MACHINES}" ] ; then OPTIONS="${OPTIONS} -e 'service_testingGroups=${GROUP_MACHINES}'"  ; fi
+        if [ -n "${SLOT}"           ] ; then OPTIONS="${OPTIONS} -e 'selected_slot=${SLOT}'"  ; fi
+        if [ -n "${VAULT}"          ] ; then
+             vaultPass "/tmp/"
+             OPTIONS="${OPTIONS} --vault-password-file ${TMP_FILE}"
+        fi
+        OUT="$?"
+
+        # 2.- Verify playbook read permissions
+        #----------------------
+        if [ ! -r "${PLAYBOOK}" ] ; then
+             echo -e "${COLOR[$YELLOW]} [WARN] - GENESIS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH Genesis installation (option 1)"
+             error "-r" "${PLAYBOOK}"
+        fi
+}
+
+#===================================================
+#   Function: shootCommand
+#---------------------------------------------------
+#  Private Function
+#
+#  Shoot Playbook not depending on enviromental parameters
+#===================================================
+function shootCommand() {
+
+   #--------------------
+   #  LOCAL ENVIRONMENT
+   #--------------------
+   local LOG="${1}"
+   local LOG_PATH="${LOG%/*}"
+   local LOG_NAME="${LOG##*/}"
+   local TIMESTAMP=$(date -R)
+
+   #--------------------
+   #  ACTIONS
+   #--------------------
+
+   # 0.- Trace values
+   echo "......... PLAYBOOK=[${PLAYBOOK}]"
+   echo ".......... OPTIONS=[${OPTIONS}]"
+   echo ".............. LOG=[${LOG}]"
+
+   # 1.- Ansible Logging Options
+   export ANSIBLE_LOG_PATH
+   export ANSIBLE_ACTION_WARNINGS ANSIBLE_COMMAND_WARNINGS ANSIBLE_DEPRECATION_WARNINGS ANSIBLE_DEVEL_WARNING ANSIBLE_LOCALHOST_WARNING ANSIBLE_SYSTEM_WARNINGS
+   if [ -w "${LOG_PATH}" ] ; then export ANSIBLE_LOG_PATH="${LOG}"  ; fi
+   if [ -n "${DISABLE_WARNS}" ] ; then
+      export ANSIBLE_ACTION_WARNINGS=false
+      export ANSIBLE_COMMAND_WARNINGS=false
+      export ANSIBLE_DEPRECATION_WARNINGS=false
+      export ANSIBLE_DEVEL_WARNING=false
+      export ANSIBLE_LOCALHOST_WARNING=false
+      export ANSIBLE_SYSTEM_WARNINGS=false
+   fi
+
+
+   # 2.- Shoot Playbook
+   if [ -r "${PLAYBOOK}" ] ; then
+
+       if [ -x /usr/bin/ansible-playbook ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+             echo "[${TIMESTAMP}] : nohup /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} - > ${LOG}.nohup 2>&1 &"
+             nohup /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 &
+          else
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
+             /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
+          fi
+       elif [ -x /usr/sbin/ansible-playbook ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+             echo "[${TIMESTAMP}] : nohup /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > ${LOG}.nohup 2>&1 &"
+             nohup /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 &
+          else
+             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
+             /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
+          fi
+       elif [ -x /usr/bin/ansible-playbook-3 ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+             echo "[${TIMESTAMP}] : nohup /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  > ${LOG}.nohup 2>&1 &"
+             nohup /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 &
+          else
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
+             /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}
+          fi
+
+       elif [ -x /usr/sbin/ansible-playbook-3 ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+            echo "[${TIMESTAMP}] : nohup /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} --color=always > ${LOG}.nohup 2>&1 &"
+            nohup /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
+          else
+            echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
+            /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}
+          fi
+       elif [ -x /opt/stack/bifrost/bin/ansible-playbook ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+            echo "[${TIMESTAMP}] : nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > ${LOG}.nohup 2>&1 &"
+            nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 &
+          else
+            echo "[${TIMESTAMP}] : /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
+            /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
+          fi
+ 
+
+       else
+          echo "ANSIBLE INSTALLATION NOT FOUND: please try to REFRESH iDAS build installation (option 1)"
+          error "-x" "ansible-playbook/ansible-playbook-3"
+       fi
+       OUT="$?"
+
+   else
+     echo -e "${COLOR[$YELLOW]} [WARN] - IDAS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH iDAS build installation (option 1)"
+     error "-r" "${PLAYBOOK}"
+   fi
+}
+
+function setupCommand() {
+   local TIMESTAMP=$(date -R)
+   
+   if [ -n "${PROJECT_ANSIBLE_CFG}" ] ; then
+      echo  "-> export ANSIBLE_CONFIG=${PROJECT_ANSIBLE_CFG}"    
+      export ANSIBLE_CONFIG="${PROJECT_ANSIBLE_CFG}" 
+   fi
+   
+   if [ -n "${VIRTUAL_ENVIRONMENT}" ] ; then
+       echo "-> source ${VIRTUAL_ENVIRONMENT}"
+       source "${VIRTUAL_ENVIRONMENT}"
+   fi
+   
+   if [ -n "${IRONIC_CLOUD}" ] ; then
+       echo "-> export OS_CLOUD=${IRONIC_CLOUD}"
+       export OS_CLOUD="${IRONIC_CLOUD}"
+   fi 
+   
+}
+
+#========================================================
+#   Function: runPlaybook
+#--------------------------------------------------------
+#  -Run diferent playbooks with the options captured
+#========================================================
+function runPlaybook() {
+   local LOG="${1}"
+   buildCommand
+   setupCommand  
+   shootCommand "${LOG}"
+   if [ -n "${RUN_BACKGROUND}" ] ; then 
+       echo "tail -f ${LOG}.nohup & "
+       tail -f "${LOG}.nohup" &  
+   fi
+}
+
+########################################################################################
+# MODULE 7 - MENU ACTIONS
+########################################################################################
+
+#========================================================
+#   Function: 1_refresh
+#--------------------------------------------------------
+#  - Remove Genesis files from /mnt
+#  - Untar Genesis build in /mnt
+#  - Remove Genesis packages
+#  - Create Yum Repositories for Genesis installation
+#  - Install Genesis RPM packages
+#  - Deploy Genesis
+#========================================================
+function 1_refresh() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [IRONIC] - REFRESH     : Reinstall Genesis Node'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
+   if [ -n "${PXE_DHCP_IP}" ] ; then PXE[${DHCP_IP}]="${PXE_DHCP_IP}" ; fi
+   if [ -n "${PXE_DHCP_NIC}" ] ; then PXE[${DHCP_NIC}]="${PXE_DHCP_NIC}" ; fi
+   local PLAYBOOK="${WORKING_PATH}/playbooks/prepareAirgap.yml"
+   prepareLocalMachine                                     | tee -a "${REFRESH_LOG}"
+   if [ ! -n "${ONLINE}" ] ; then  runPlaybook "${REFRESH_LOG}" ; fi
+   state_status "genesis_installed"     "${PROJECT_RPM}"   | tee -a "${REFRESH_LOG}"
+   unset PXE_DHCP_IP PXE_DHCP_NIC
+   echo -e '......................................................................................................'
+   echo -e "   BEWARE !!!! ====> Don't forget INSTALL  (option 2) and SETUP (option 4) iDAS"
+   echo -e '......................................................................................................'
+}
+
+#========================================================
+#   Function: 2_create
+#--------------------------------------------------------
+#  - Install Ironic
+#========================================================
+function 2_create() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [IRONIC] - CREATE: Install Ironic in Local Machine'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   if [ -n "${LOG_FILE}"      ] ; then local INSTALL_LOG="${LOG_FILE}" ; fi
+   local PLAYBOOK="${WORKING_PATH}/playbooks/create.yml"
+   #DISABLE_WARNS="Yes"
+   runPlaybook "${INSTALL_LOG}"
+   unset LOG_FILE
+   
+   echo -e '......................................................................................................'
+   echo -e "   BEWARE !!!! ====> Don't forget SETUP (option 4) Genesis"
+   echo -e '......................................................................................................'
+}
+
+#========================================================
+#   Function: 3_init
+#--------------------------------------------------------
+#  - Load String Data Model
+#========================================================
+function 3_init() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [IRONIC] - INIT: load operating system images'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   if [ -n "${LOG_FILE}"      ] ; then local INIT_LOG="${LOG_FILE}" ; fi
+   local PLAYBOOK="${WORKING_PATH}/playbooks/init.yml"
+   runPlaybook "${INIT_LOG}"
+   unset LOG_FILE
+}
+
+#========================================================
+#   Function: 4_setup
+#--------------------------------------------------------
+#  - Shoot pxeConfig playbook
+#========================================================
+function 4_setup() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - SETUP: enroll inventory of machines to Ironic'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   if [ -n "${LOG_FILE}" ] ; then local SETUP_LOG="${LOG_FILE}" ; fi
+   local PLAYBOOK="${WORKING_PATH}/playbooks/setup.yml"
+   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
+   updateInventory
+   runPlaybook "${SETUP_LOG}"
+   unset LOG_FILE 
+}
+
+
+#========================================================
+#   Function: 5_ansible
+#--------------------------------------------------------
+#  - Prepare Ansible SSH Relationships
+#  - Shoot kickstart playbook
+#========================================================
+function 5_ansible() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - ANSIBLE     : Ansible Initial Setup '
+   echo -e '------------------------------------------------------------------------------------------------------'
+   trust_relationships "${NODE_LIST}"
+}
+
+#========================================================
+#   Function: 6_deploy
+#--------------------------------------------------------
+#  - Prepare Ansible SSH Relationships
+#  - Shoot kickstart playbook
+#========================================================
+function 6_deploy() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - DEPLOY: unattended installation of enrolled machines'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   local PLAYBOOK="/usr/share/idas_core/ansible/kickstart.yaml"
+   if [ -n "${TARGET}"   ] ; then local PTARGET="localhost,${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local KICKSTART_LOG="${LOG_FILE}"   ; fi
+   runPlaybook "${KICKSTART_LOG}"
+   unset PTARGET LOG_FILE
+}
+
+#========================================================
+#   Function: 7_provision
+#--------------------------------------------------------
+#  - Shoot install_iCAS playbook
+#========================================================
+function 7_provision() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - PROVISIONING: install computer enviroment on each baremetal node'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   local PLAYBOOK="/usr/share/idas_core/ansible/provision.yaml"
+   if [ -n "${TARGET}" ]   ; then local PTARGET="localhost,${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local PROVISION_LOG="${LOG_FILE}"   ; fi
+   runPlaybook "${PROVISION_LOG}"
+   unset PTARGET LOG_FILE
+}
+
+#========================================================
+#   Function: 12_passwordless
+#--------------------------------------------------------
+#  - Run install_ssh_trustmap playbook
+#========================================================
+function 12_passwordless() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - SSH: feed the service with a Relationships Map'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   local PLAYBOOK="/usr/share/idas_core/ansible/playbooks/install_ssh_trustmap.yaml"
+   if [ -n "${TARGET}"   ] ; then local PTARGET="localhost,${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local SSH_LOG="${LOG_FILE}"   ; fi
+   runPlaybook "${SSH_LOG}"
+   unset PTARGET LOG_FILE
+}
+
+#========================================================
+#   Function: 13_graphics
+#--------------------------------------------------------
+#  - Run install_graphics playbook
+#========================================================
+function 13_graphics() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - GRAPHICS    : Install propietary 3er party driver'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   local PLAYBOOK="/usr/share/idas_core/ansible/playbooks/install_graphics.yaml"
+   if [ -n "${TARGET}"   ] ; then local PTARGET="localhost,${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local DRIVER_LOG="${LOG_FILE}"      ; fi
+   runPlaybook "${DRIVER_LOG}"
+   unset PTARGET LOG_FILE
+}
+
+
+#========================================================
+#   Function: 14_network
+#--------------------------------------------------------
+#  - Run install_network playbook
+#========================================================
+function 14_network() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - NETWORK    : Install network configurations'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   local PLAYBOOK="/usr/share/idas_core/ansible/playbooks/install_network.yaml"
+   if [ -n "${TARGET}"   ] ; then local PTARGET="localhost,${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local NET_LOG="${LOG_FILE}"         ; fi
+   runPlaybook "${NET_LOG}"
+   unset PTARGET LOG_FILE
+}
+
+#========================================================
+#   Function: 15_ntp
+#--------------------------------------------------------
+#  - Run install_drivers playbook
+#========================================================
+function 15_ntp() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - NTP    : Deploy NTP configurations'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   local PLAYBOOK="/usr/share/idas_core/ansible/playbooks/install_ntp.yaml"
+   if [ -n "${TARGET}"   ] ; then local PTARGET="localhost,${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local NTP_LOG="${LOG_FILE}"         ; fi
+   runPlaybook "${NTP_LOG}"
+   unset PTARGET LOG_FILE
+}
+
+
+#========================================================
+#   Function: 20_gathering
+#--------------------------------------------------------
+#  - Run gathering String configuration files
+#========================================================
+function 22_gathering() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e '   [BAREMETAL] - GATHER STRING CONFIGURATIONS  : Fetch relevant configuration files from String'
+   echo -e '------------------------------------------------------------------------------------------------------'
+   local PLAYBOOK="/usr/share/idas_core/ansible/playbooks/gatheringStringConfigurations.yaml"
+   if [ -n "${TARGET}"   ] ; then local PTARGET="localhost,${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local GATHERING_LOG="${LOG_FILE}"   ; fi
+   if [ -n "${GATHERING_FOLDER}" ] ; then local EXTRA_VARS="gathering_folder=${GATHERING_FOLDER}"   ; fi
+   runPlaybook "${GATHERING_LOG}"
+   unset PTARGET LOG_FILE
+}
+
+#========================================================
+#   Function: runActions
+#--------------------------------------------------------
+#  Execute Menu actions
+#========================================================
+function runActions() {
+
+    local ACTION="$1"
+    case "${ACTION}" in
+        1|"${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}")                  1_refresh   ;;
+        2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}") 2_create    ;;
+        3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")   3_init      ;;
+        4|"${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (setup.yaml)${COLOR[$NC]}") 4_setup  ;;
+        5|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}")          5_ansible   ;;
+        6|"${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (deploy.yaml)${COLOR[$NC]}") 6_deploy ;;
+        7|"${COLOR[$BLUE]}[BAREMETAL] - PROVISIONING: node drivers and services installation (install.yaml)${COLOR[$NC]}") 7_provision ;;
+        12|"[BAREMETAL] - SSH         : Load Relationships Map")              12_passwordless ;;
+        13|"[BAREMETAL] - GRAPHICS    : Install propietary 3er party driver") 13_graphics     ;;
+        14|"[BAREMETAL] - NETWORK     : Install network configurations")      14_network      ;;
+        15|"[BAREMETAL] - NTP         : Deploy NTP configuration")            15_ntp          ;;
+	    22|"[BAREMETAL] - GATHER BAREMETAL CONFIGURATIONS  : Fetch relevant configuration files from Baremetal Nodes")  22_gathering ;;
+    esac
+}
+
+########################################################################################
+# MODULO 7 => MENU SYSTEM
+########################################################################################
+
+#========================================================
+#   Function: initParameters
+#--------------------------------------------------------
+#   Set all parameters to Run Direct Action
+#========================================================
+function initParameters() {
+
+   # => 1.- Set default values
+   if [ ! -n "${INVENTORY}" ] ; then INVENTORY="/etc/core/inventory"  ; fi
+   if [ ! -n "${SLOT}"      ] ; then SLOT="1"                         ; fi
+   if [ ! -n "${VAULT}"     ] ; then VAULT="root"                     ; fi
+   if [ ! -n "${LOG_FILE}"  ] ; then LOG_FILE="${HOME}/tests.log"     ; fi
+
+   # => 2.- Trim Parameters
+   INVENTORY=$(echo ${INVENTORY} | tr -d ' ' )
+   TARGET=$(echo ${TARGET} | tr -d ' ' )
+   SLOT=$(echo ${SLOT} | tr -d ' ' )
+   VAULT=$(echo ${VAULT} | tr -d ' ' )
+   LOG_FILE=$(echo ${LOG_FILE} | tr -d ' ' )
+   IDAS_BUILD=$(echo ${IDAS_BUILD} | tr -d ' ' )
+   PROJECT_NAME=$(echo ${PROJECT_NAME} | tr -d ' ' | tr [:lower:] [:upper:] )   
+
+   # => 3.- Avoid startMenu
+   unset MENU
+}
+
+
+#========================================================
+#   Function: startMenu:WARN
+#--------------------------------------------------------
+#   Run the menu system
+#========================================================
+function startMenu() {
+
+    # 0.- Trazado Inicial
+    #--------------------
+    echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]} WELCOME TO GENESIS PROVISIONING SYSTEM... DEPLOY AND MONITOR THE CONTROL PLANE OF A COMPUTING INFRASTRUTURE !!!!!! ${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}---------------------------------------------------------------------------------${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}  -> New Features Requests: Cesar Delgado (cesar.electronic.engineer@gmail.com ${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+
+    # 1.- Menu System
+    #--------------------
+    while [ -n "${MENU}" ] ; do
+
+         # 1.1.- Interactive Menu
+         defineMenu
+         deployMenu
+
+         # 1.2.- Actions (menu = 2 loops: display + parameters, it must be avoided runAction twice)
+         if [ -n "${RUN_ACTION}"     ] ; then runActions "${RUN_ACTION}" ; fi
+         if [ -n "${RETURNING_MENU}" ] ; then MENU="${RETURNING_MENU}"   ; fi
+
+         # 1.3.- Clean Loop Environment
+         unset  MENU_TEXT SOLICITA_PARAMETRO PARAMETRO VALOR_DEFECTO RUTA_OPCIONES EXT_OPCIONES RUN_ACTION RETURNING_MENU MENU_SKIP_PATHS MENU_BREAK_TEXT
+
+    done
+}
+
+########################################################################################
+# MAIN
+########################################################################################
+if [ -w "/dev/null" ] ; then
+
+    # ..... Move to home folder in order to avoid REFRESH issues
+    if [ -w "${HOME}" ] ; then
+         cd "${HOME}"
+    else
+         error -w "${HOME}"
+    fi
+
+    # ..... Load Context + Start Menu System
+    if [ -O "./" ] ; then
+
+		#=========================
+		# ENVIRONMENT
+		#=========================
+		OUT_TMP="/tmp/reemplazo.out"
+		MENU="0"
+
+		#=============================
+		# CAPTURE COMMAND FLAGS
+		#=============================
+		while getopts "hHAKPMGNRSLDi:t:s:v:l:g:b:p:" OPCION ; do
+			case "$OPCION" in
+				h|H)   ayuda ; exit 1 ;;
+				R)   RUN_ACTION="1"  ; unset MENU ;;
+				D)   RUN_ACTION="2"  ; unset MENU ;;
+				L)   RUN_ACTION="3"  ; unset MENU ;;
+				S)   RUN_ACTION="4"  ; unset MENU ;;
+				A)   RUN_ACTION="5"  ; unset MENU ;;
+				K)   RUN_ACTION="6"  ; unset MENU ;;
+				P)   RUN_ACTION="7"  ; unset MENU ;;
+				M)   RUN_ACTION="12" ; unset MENU ;;
+				G)   RUN_ACTION="13" ; unset MENU ;;
+				N)   RUN_ACTION="14" ; unset MENU ;;
+				T)   RUN_ACTION="15" ; unset MENU ;;
+                i)   if [ -n "$OPTARG" ] ; then INVENTORY="$OPTARG"  ; fi ;;
+                t)   if [ -n "$OPTARG" ] ; then TARGET="$OPTARG"     ; fi ;;
+                g)   if [ -n "$OPTARG" ] ; then CFGS_CORE="$OPTARG"  ; fi ;;
+                s)   if [ -n "$OPTARG" ] ; then SLOT="$OPTARG"       ; fi ;;
+                v)   if [ -n "$OPTARG" ] ; then VAULT="$OPTARG"      ; fi ;;
+                l)   if [ -n "$OPTARG" ] ; then LOG_FILE="$OPTARG"   ; fi ;;
+                b)   if [ -n "$OPTARG" ] ; then IDAS_BUILD="$OPTARG" ; fi ;;
+                p)   if [ -n "$OPTARG" ] ; then PROJECT_NAME="$OPTARG" ; fi ;;				
+				[?]) ayuda ;; # Unknown parameter
+			esac
+		done
+
+		#=============================
+		# ACTIONS
+		#=============================
+
+        # 1.- Localhost SSH User Key Handling
+		state_status "genesis_machine_ready"
+
+        # 2.- Direct Action
+        if [ -n "${RUN_ACTION}"     ] ; then
+            initParameters
+            runActions "${RUN_ACTION}"
+        fi
+
+        # 3.- Menu System
+        if [ -n "${MENU}" ] ; then startMenu ; fi
+
+        # 4.- Exit
+		exit "$OUT"
+	else
+		error -noOwner "./"
+        exit "$ERROR"
+	fi
+else
+	error -noWrite "/dev/null"
+    exit "$ERROR"
+fi
+#=======================================================================================================
+#  END genesisCli.sh
+#=======================================================================================================
