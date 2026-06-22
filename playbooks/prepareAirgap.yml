@@ -26,6 +26,15 @@
            - ipa
            - dib
        block:
+         - name: "STEP 0 - Create an ironic service group"
+           group:
+             name: "ironic"
+        
+         - name: "STEP 0 - Create an ironic service user"
+           user:
+             name: "ironic"
+             group: "ironic"
+      
          - name: "STEP 1 - Create Repos Folders"
            file:
               path: "{{ files_path | default('/tmp') }}/{{ folder| default('repo') }}"
@@ -99,6 +108,7 @@
 ######################################################
 - hosts: "target"
   become: true
+  ignore_errors: true
   gather_facts: yes
   connection: local
   environment:
@@ -157,7 +167,7 @@
          checksum_algorithm: "md5"
          distro: "cirros"
          release: "0.5.3"
-     download_image_sources: "{{ bifrost_download_images | default(default_download_image_sources) | default([]) }}"     
+     download_image_sources: "{{ bifrost_download_images | default(default_download_image_sources) | default([]) }}" 
      
   pre_tasks:
     - name: override ansible_python_interpreter to venv
@@ -169,9 +179,9 @@
      - name: "STEP 3 - Download OS Cloud Ready images"
        vars:
           create_ipa_image: false
-          download_ip_image: true
-          download_custom_deploy_image: true
-
+          #download_ipa_image: true
+          #download_custom_deploy_image: true
+    
        block:   
          - name: "STEP 3 - Download OS Cloud Ready images"
            include_tasks: "{{bifrost_ironic_install}}/tasks/download_deployment_image.yml"
@@ -183,8 +193,9 @@
               deploy_image_checksum_url: "{{ image_src.checksum | default('') }}"
               deploy_image_checksum_algorithm: "{{ image_src.checksum_algorithm | default('') }}"
               deploy_image_filename: "{{ image_src.image | basename }}"
-              deploy_image: "{{http_boot_folder}}/{{ image_src.image | basename }}"
               http_boot_folder: "{{ files_path }}/qcow"
+              deploy_image: "{{http_boot_folder}}/{{ image_src.image | basename }}"
+              
 
      - name: "STEP 4 - Build OS Bootable Images from local repository"
        ignore_errors: true      
