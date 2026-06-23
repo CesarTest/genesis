@@ -110,11 +110,7 @@
   become: true
   ignore_errors: true
   gather_facts: yes
-  connection: local
-  environment:
-    http_proxy: "{{ lookup('env','http_proxy') }}"
-    https_proxy: "{{ lookup('env','https_proxy') }}"
-    no_proxy: "{{ lookup('env', 'no_proxy') }}"    
+  connection: local  
   vars:
      bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) }}"
      files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}"
@@ -169,10 +165,6 @@
          release: "0.5.3"
      download_image_sources: "{{ bifrost_download_images | default(default_download_image_sources) | default([]) }}" 
      
-  pre_tasks:
-    - name: override ansible_python_interpreter to venv
-      set_fact:
-        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"      
   tasks:
 
      # ----> Download QCOW Images 
@@ -196,37 +188,10 @@
               http_boot_folder: "{{ files_path }}/qcow"
               deploy_image: "{{http_boot_folder}}/{{ image_src.image | basename }}"
               
-
-     - name: "STEP 4 - Build OS Bootable Images from local repository"
-       ignore_errors: true      
-       vars:
-          bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
-          #dib_offline: true
-          #build_ramdisk: false
-       block:  
-         - name: "STEP 4 - Build OS Bootable Images from local repository"         
-           ansible.builtin.include_role: 
-              name: "{{bifrost_ironic_init}}"
-           vars: 
-              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}.qcow2"
-              dib_imagetype: "qcow2"
-              dib_os_element: "{{os.distro}}"
-              dib_os_release: "{{os.release}}" 
-              dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
-              dib_elements: >
-                {{ dib_image_type|default('vm') }}
-                {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
-                enable-serial-console
-                {{ dib_init_element|default('simple-init') }}
-                {{ extra_dib_elements|default('') }}
-           
-           loop: "{{ download_image_sources | default([]) }}"
-           loop_control:
-              loop_var: "os"
-              
+             
               
       # ----> Download IPA Images
-     - name: "STEP 5 - Download IPA images"
+     - name: "STEP 4 - Download IPA images"
        vars:
           update_ipa: true
           ipa_image_sources:

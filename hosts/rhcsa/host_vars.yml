@@ -5,7 +5,7 @@
     ipa_ramdisk_url: "http://10.10.20.8080/ipa-debian-master.initramfs"
     driver_info:
        redfish_username: "root@pam"
-       redfish_address: "https://cdglab.duckdns.org:8000/"
+       redfish_address: "https://cdglab.duckdns.org:8000"
        redfish_password: "cesardgm"
        redfish_system_id: "/redfish/v1/Systems/102"
        #ansible_deploy_playbook: deploy_custom.yaml

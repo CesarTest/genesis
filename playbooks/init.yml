@@ -23,30 +23,32 @@
         ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
 
   tasks:
-    - name: "Build OS Images from local repository"
-      ignore_errors: true     
-      ansible.builtin.include_role: 
-         name: "{{bifrost_ironic_init}}"
-      vars: 
-         dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}.qcow2"
-         dib_imagetype: "qcow2"
-         dib_os_element: "{{os.distro}}"
-         dib_os_release: "{{os.release}}" 
-         dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
-         dib_elements: >
-           {{ dib_image_type|default('vm') }}
-           {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
-           enable-serial-console
-           {{ dib_init_element|default('simple-init') }}
-           {{ extra_dib_elements|default('') }}
-
-      loop:
-         #- distro: "centos"
-         #  release: "8"
-         - distro: "ubuntu"
-           release: "jammy"
-      loop_control:
-         loop_var: "os"
+     - name: "STEP 1 - Build OS Bootable Images from local repository"
+       ignore_errors: true      
+       vars:
+          bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
+          #dib_offline: true
+          #build_ramdisk: false
+       block:  
+         - name: "STEP 1 - Build OS Bootable Images from local repository"         
+           ansible.builtin.include_role: 
+              name: "{{bifrost_ironic_init}}"
+           vars: 
+              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}.qcow2"
+              dib_imagetype: "qcow2"
+              dib_os_element: "{{os.distro}}"
+              dib_os_release: "{{os.release}}" 
+              dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
+              dib_elements: >
+                {{ dib_image_type|default('vm') }}
+                {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
+                enable-serial-console
+                {{ dib_init_element|default('simple-init') }}
+                {{ extra_dib_elements|default('') }}
+           
+           loop: "{{ download_image_sources | default([]) }}"
+           loop_control:
+              loop_var: "os"
        
   environment:
     http_proxy: "{{ lookup('env','http_proxy') }}"
