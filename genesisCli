@@ -32,6 +32,7 @@
 
 # 1.- Constant Values
 #--------------------
+REEMPLAZA_LINEA_CNF="Yes"
 ERROR="1"
 OK="0"
 NC="0"
@@ -56,22 +57,23 @@ IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
 
 # 2.2.- Online Installation
 DHCP_NIC=0; DHCP_IP=1
-PXE=( "ens19" "10.10.10.10/24" )      
+PXE_DHCP_NIC="ens19"
+PXE_DHCP_IP="10.10.10.2/24"
+PXE=( "${PXE_DHCP_NIC}" "${PXE_DHCP_IP}" )      
 LOCALE="en_US.UTF-8"
 
 # 2.3.- Dependencies
-GENESIS_HOSTS_PATH="${WORKING_PATH}/hosts/rhcsa"
 PIP=0; SCRIPTS=1; INSTALLER=2
 DEPENDENCIES=( 'collections/requirements.yml' \
                'roles/requirements.yml' \
 	           'roles/openstack.bifrost/openstack.bifrost/scripts/env-setup.sh' \
-			   '/etc/hosts' \
+			   '#' \
 		     )
 
 DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                     'ansible-galaxy role install --force -r ' \
 						 '' \
-						 'sudo echo "192.168.1.133 cdglab.duckdns.org" >> ' \
+						 'echo "192.168.1.133 cdglab.duckdns.org" >> /etc/hosts' \
 						)
 
 ########################################################################################
@@ -122,12 +124,14 @@ function defineMenu() {
 			  MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
 	          PARAMETRO=(     "PXE_DHCP_NIC" "PXE_DHCP_IP" "REFRESH_LOG" )
               VALOR_DEFECTO=( "${PXE[$DHCP_NIC]}" "${PXE[$DHCP_IP]}" "${REFRESH_LOG}")
+			  CNF_REEMPLAZO=( "${WORKING_PATH}/genesisCli"  "${WORKING_PATH}/genesisCli" )		  
 	          SOLICITA_PARAMETRO=("-----> DHCP NIC [${VALOR_DEFECTO[0]}]:" \
 			              "-----> DHCP IP  [${VALOR_DEFECTO[1]}]:" \
 			              "-----> Log File [${VALOR_DEFECTO[2]}]:" \
                             )
               RETURNING_MENU="0"
               RUN_ACTION="1"
+			  echo "--------------------------------- ${CNF_REEMPLAZO[@]}"
               unset PXE_DHCP_NIC PXE_DHCP_IP REFRESH_LOG
               ;;
 
@@ -500,6 +504,16 @@ detectOS() {
 #===================================================
 ubuntuFixes() {
 
+  # 0.- Logging
+  #----------------------
+  PXE[$DHCP_NIC]=$(echo ${PXE[$DHCP_NIC]} | tr -d \/ )
+  PXE[$DHCP_IP]=$(echo ${PXE[$DHCP_IP]} | tr -d \/ )
+  echo "........ LOCALE=[${LOCALE}]"
+  echo "..PXE[DHCP_NIC]=[${PXE[$DHCP_NIC]}]"
+  echo "...PXE[DHCP_IP]=[${PXE[$DHCP_IP]}]"
+  
+  
+  
   # 1.- Fix Locales
   #----------------
   echo "${LOG_HEADER} -> sudo locale-gen ${LOCALE}"
@@ -536,7 +550,7 @@ redhatFixes() {
 	sudo yum install epel-release -y
     
 	echo "${LOG_HEADER} -> sudo yum update -y"
-        sudo yum update -y
+    sudo yum update -y
 
     echo "${LOG_HEADER} ->  sudo cat >> /etc/hosts <<EOF \n 192.168.1.133   cdglab.duckdns.org	cdglab \n EOF"
     sudo cat >> /etc/hosts <<EOF
@@ -606,15 +620,20 @@ runScripts() {
 
    local FILE
    for FILE in ${FILES[@]} ; do
-       if [ -n "$COMMAND" ] ; then
-	      echo "${LOG_HEADER} -> ${COMMAND} ${RUTA}/${FILE}"     
-          ${COMMAND} ${RUTA}/${FILE}
-
+       if [ -n "$COMMAND" ] ; then   
+	      local F=$(echo $FILE | wc -m)
+          if [ "${F}" -gt 2 ] ; then
+              echo "${LOG_HEADER} -> ${COMMAND} ${RUTA}/${FILE}"		  
+		      ${COMMAND} ${RUTA}/${FILE}
+		  else
+              echo "${LOG_HEADER} -> ${COMMAND}"		  
+		      sudo bash -c "${COMMAND}"
+          fi
        elif [ -x "${RUTA}/${FILE}" ] ; then
           echo "${LOG_HEADER} -> ${RUTA}/${FILE}"
 	      ${RUTA}/${FILE}
        else
-	 error "-x" "${RUTA}/${FILE}" 
+	      error "-x" "${RUTA}/${FILE}" 
        fi
    done
 }
@@ -1087,14 +1106,20 @@ function capturaValor() {
 function reemplazaParametro() {
 
 	REEMPLAZA_LINEA="$1"
-	if [ -n "${REEMPLAZA_LINEA}" ] ; then
-		REPLN="${VAR}=\"${PREPO}${VALOR}\""
-		sed s/^${VAR}=.*$/$REPLN/ "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+	if [ -w "${CNF_REEMPLAZO[${POSICION}]}" ] ; then
+	   if [ -n "${REEMPLAZA_LINEA}" ] ; then
+	   	 REPLN="${VAR}=\"${PREPO}${VALOR}\""
+	   	 echo "===> sed s|^${VAR}=.*$|$REPLN| ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
+	   	 sed "s|^${VAR}=.*$|$REPLN|" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+	   else
+	   	 REPLN="${PREPO}${VALOR}"
+	   	 echo "===> sed s|${VAR}|$REPLN|g ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
+	   	 sed "s|${VAR}|$REPLN|g" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+	   fi
 	else
-		REPLN="${PREPO}${VALOR}"
-		sed s/${VAR}/$REPLN/g "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+	   error "-w" "${CNF_REEMPLAZO[${POSICION}]}"
 	fi
-        OUT="$?"
+    OUT="$?"
 }
 
 #========================================================
@@ -1163,12 +1188,16 @@ function deployMenu() {
 
 			#   2.3.1.2.- Add preposition
 			PREPO="${PREPOSICION[${POSICION}]}"
-
-            reemplazaParametro "${REEMPLAZA_LINEA}"
-		    mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"
-
+            if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then 
+                reemplazaParametro "${REEMPLAZA_LINEA}"
+			    local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
+			    chmod "$PERMISSIONS" "${OUT_TMP}"
+		        mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"				
+            fi
+		fi 
+		
 		# 2.3.2.- Capture List Value
-		elif [ -n "$VALOR" ] ; then
+		if [ -n "$VALOR" ] ; then
             echo "${VAR}='${VALOR}'" > "${OUT_TMP}"
             . "${OUT_TMP}"
 		fi
@@ -1487,9 +1516,10 @@ function 1_refresh() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e '   [IRONIC] - REFRESH     : Reinstall Genesis Node'
    echo -e '------------------------------------------------------------------------------------------------------'
+   if [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$(echo "${REFRESH_LOG}" | tr -d \/ )   ; fi
+   if [ -n "${PXE_DHCP_IP}" ] ; then PXE[${DHCP_IP}]=$( echo "${PXE_DHCP_IP}" | tr -d \/ )    ; fi
+   if [ -n "${PXE_DHCP_NIC}" ] ; then PXE[${DHCP_NIC}]=$( echo "${PXE_DHCP_NIC}" | tr -d \/ ) ; fi
    if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
-   if [ -n "${PXE_DHCP_IP}" ] ; then PXE[${DHCP_IP}]="${PXE_DHCP_IP}" ; fi
-   if [ -n "${PXE_DHCP_NIC}" ] ; then PXE[${DHCP_NIC}]="${PXE_DHCP_NIC}" ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/prepareAirgap.yml"
    prepareLocalMachine                                     | tee -a "${REFRESH_LOG}"
    if [ ! -n "${ONLINE}" ] ; then  runPlaybook "${REFRESH_LOG}" ; fi
@@ -1769,7 +1799,7 @@ function startMenu() {
 
          # 1.1.- Interactive Menu
          defineMenu
-         deployMenu
+         deployMenu "${REEMPLAZA_LINEA_CNF}"
 
          # 1.2.- Actions (menu = 2 loops: display + parameters, it must be avoided runAction twice)
          if [ -n "${RUN_ACTION}"     ] ; then runActions "${RUN_ACTION}" ; fi
