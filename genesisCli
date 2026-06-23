@@ -58,7 +58,7 @@ IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
 # 2.2.- Online Installation
 DHCP_NIC=0; DHCP_IP=1
 PXE_DHCP_NIC="ens19"
-PXE_DHCP_IP="10.10.10.2/24"
+PXE_DHCP_IP="10.10.10.10/24"
 PXE=( "${PXE_DHCP_NIC}" "${PXE_DHCP_IP}" )      
 LOCALE="en_US.UTF-8"
 
@@ -66,15 +66,15 @@ LOCALE="en_US.UTF-8"
 PIP=0; SCRIPTS=1; INSTALLER=2
 DEPENDENCIES=( 'collections/requirements.yml' \
                'roles/requirements.yml' \
-	           'roles/openstack.bifrost/openstack.bifrost/scripts/env-setup.sh' \
-			   '#' \
-		     )
+	       'roles/openstack.bifrost/openstack.bifrost/scripts/env-setup.sh' \
+               '#' \
+              )
 
 DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
-	                     'ansible-galaxy role install --force -r ' \
-						 '' \
-						 'echo "192.168.1.133 cdglab.duckdns.org" >> /etc/hosts' \
-						)
+	                 'ansible-galaxy role install --force -r ' \
+                         '' \
+                         'echo "192.168.1.133 cdglab.duckdns.org" >> /etc/hosts' \
+                        )
 
 ########################################################################################
 # MODULE 1 => MENU DEFINITION
@@ -91,7 +91,7 @@ function defineMenu() {
 	#  LOCAL ENVIRONMENT
 	#---------------------
 	if [ ! -n "${MENU}" ] ; then MENU="0" ; fi
-    if [ -n "${PROJECT_ANSIBLE_CFG}" ] ; then export ANSIBLE_CONFIG="${PROJECT_ANSIBLE_CFG}" ; fi
+        if [ -n "${PROJECT_ANSIBLE_CFG}" ] ; then export ANSIBLE_CONFIG="${PROJECT_ANSIBLE_CFG}" ; fi
 
 	#---------------------
 	# MENU PROPERTIES
@@ -506,8 +506,6 @@ ubuntuFixes() {
 
   # 0.- Logging
   #----------------------
-  PXE[$DHCP_NIC]=$(echo ${PXE[$DHCP_NIC]} | tr -d \/ )
-  PXE[$DHCP_IP]=$(echo ${PXE[$DHCP_IP]} | tr -d \/ )
   echo "........ LOCALE=[${LOCALE}]"
   echo "..PXE[DHCP_NIC]=[${PXE[$DHCP_NIC]}]"
   echo "...PXE[DHCP_IP]=[${PXE[$DHCP_IP]}]"
@@ -657,22 +655,22 @@ setupEnvironment() {
    local INDEX_CMD=0
    while [[ "${INDEX_DEP}" < "${#DEPENDENCIES[@]}" ]] ; do
 
-	      # 1.- Get Command 
-		  if [ "${INDEX_CMD}" -lt "${#DEPENDENCIES_INSTALLER[@]}" ] ; then
-		     local COMMAND="${DEPENDENCIES_INSTALLER[${INDEX_CMD}]}"
-		     local INDEX_CMD=$(expr ${INDEX_CMD} + 1)
-		  fi
+	 # 1.- Get Command 
+	 if [ "${INDEX_CMD}" -lt "${#DEPENDENCIES_INSTALLER[@]}" ] ; then
+	     local COMMAND="${DEPENDENCIES_INSTALLER[${INDEX_CMD}]}"
+	     local INDEX_CMD=$(expr ${INDEX_CMD} + 1)
+	  fi
           
-		  # 2.- Get CMD Result
-		  local FILES=( "${DEPENDENCIES[$INDEX_DEP]}" )
+	  # 2.- Get CMD Result
+	  local FILES=( "${DEPENDENCIES[$INDEX_DEP]}" )
 		  
-		  # 3.- RUN Script	  
-		  local RUTA="${RUTA_PROJECT}"
-		  runScripts
+	  # 3.- RUN Script	  
+	  local RUTA="${RUTA_PROJECT}"
+	  runScripts
           #echo -e "${PRINT_NAME} ${COLOR[$SILVER]} ${PRINT_STATUS} ${COLOR[$NC]}"
 
           # 4.- Update the loop		  
-		  local INDEX_DEP=$(expr ${INDEX_DEP} + 1)     
+	  local INDEX_DEP=$(expr ${INDEX_DEP} + 1)     
    done
 }
 
@@ -930,12 +928,12 @@ function listaOpciones_Dinamica() {
 	local RUTA="${RUTA_OPCIONES[${INDICE}]}"
 	local EXT="${EXT_OPCIONES[${INDICE}]}"
 	local ELIMINA="${SUPRIME_EXT[${INDICE}]}"
-    if [ -n "${MENU_SKIP_PATHS}" ] ; then local REMOVE_PATH="${MENU_SKIP_PATHS}" ; fi
+        if [ -n "${MENU_SKIP_PATHS}" ] ; then local REMOVE_PATH="${MENU_SKIP_PATHS}" ; fi
 	
 	#-----------------
 	# ACTIONS
 	#-----------------
-    if [ -r "${RUTA}" ] ; then
+        if [ -r "${RUTA}" ] ; then
             local LIST_FILES=$(ls -1 -d "${RUTA}/"*${EXT} 2> /dev/null)
             if [ -n "${LIST_FILES[@]}" ] ; then
 	        local INDICE="0"
@@ -1062,7 +1060,7 @@ function capturaValor() {
 	if [ -n "${RUTA_LISTA}" ] ; then
 
 	    # 1.1.- List of files from a folder as Options
-		if [ -r "${RUTA_LISTA}" ] ; then
+	    if [ -r "${RUTA_LISTA}" ] ; then
 
 		    # 1.1.1.- Build list and Capture option
 		    listaOpciones_Dinamica "${INDICE}"
@@ -1072,13 +1070,13 @@ function capturaValor() {
             if [ ! -n "${VALOR}" ] ; then
                  local INDICE_OPCION="${VALOR_DEFECTO[${POSICION}]}"
                  VALOR="${ELEMENTOS_MENU[${INDICE_OPCION}]}"
-		    fi
+	    fi
 
-        # 1.2.- List of Strings as Options
-		else
-			listaOpciones_Estatica "${INDICE}"
-			capturaOpcionLista
-		fi
+             # 1.2.- List of Strings as Options
+	else
+		listaOpciones_Estatica "${INDICE}"
+		capturaOpcionLista
+	fi
 
 	# 2.- Plain Input
 	#--------------------
@@ -1088,9 +1086,9 @@ function capturaValor() {
 
 	# 3.- Default Value
 	#--------------------
-    if [ ! -n "${VALOR}" ] ; then
+        if [ ! -n "${VALOR}" ] ; then
 		VALOR="${VALOR_DEFECTO[${POSICION}]}"
-    fi
+        fi
 }
 
 
@@ -1134,7 +1132,7 @@ function deployMenu() {
 	#------------------
 	local REEMPLAZA_LINEA="$1"
 	local POSICION="0"
-    local VAR VALOR PREPO
+        local VAR VALOR PREPO
 
 	#------------------
 	# ACCIONES
@@ -1168,7 +1166,7 @@ function deployMenu() {
 			# 2.2.2.- Print resulting value
 			echo -e " Resulting Option: [${VALOR}]"
 
-            # 2.2.3.- Break Menu Display 
+                        # 2.2.3.- Break Menu Display 
 			if [ -n "${MENU_BREAK_TEXT}" ] ; then
 			   if [ "${MENU_BREAK_TEXT}" == "${POSICION}" ] ; then unset RUTA_OPCIONES ; fi
 			fi
@@ -1188,18 +1186,18 @@ function deployMenu() {
 
 			#   2.3.1.2.- Add preposition
 			PREPO="${PREPOSICION[${POSICION}]}"
-            if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then 
-                reemplazaParametro "${REEMPLAZA_LINEA}"
+                        if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then 
+                            reemplazaParametro "${REEMPLAZA_LINEA}"
 			    local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
 			    chmod "$PERMISSIONS" "${OUT_TMP}"
-		        mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"				
-            fi
+		            mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"				
+                         fi
 		fi 
 		
 		# 2.3.2.- Capture List Value
 		if [ -n "$VALOR" ] ; then
-            echo "${VAR}='${VALOR}'" > "${OUT_TMP}"
-            . "${OUT_TMP}"
+                    echo "${VAR}='${VALOR}'" > "${OUT_TMP}"
+                    . "${OUT_TMP}"
 		fi
 
 		# 2.4.- Loop index update
@@ -1257,10 +1255,10 @@ function updateInventory() {
    	
 	if [ -n "${BAREMETAL_NODES}" ] ; then
 	 
-       local LINE_DESIRED="inventory=hosts/target,hosts/${BAREMETAL_NODES##*/}"
+           local LINE_DESIRED="inventory=hosts/target,hosts/${BAREMETAL_NODES##*/}"
 	   local LINE_DETECTION='inventory='
 	   echo "replacePattern ${ANSIBLE_CONFIG} ${LINE_DESIRED} ${LINE_DETECTION}"
-       replacePattern "${ANSIBLE_CONFIG}" "${LINE_DESIRED}" "${LINE_DETECTION}"   
+           replacePattern "${ANSIBLE_CONFIG}" "${LINE_DESIRED}" "${LINE_DETECTION}"   
 
 	   echo "export BIFROST_INVENTORY_SOURCE=${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars.yml" 
 	   export BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars.yml"
@@ -1469,15 +1467,15 @@ function setupCommand() {
    if [ -n "${VIRTUAL_ENVIRONMENT}" ] ; then
        echo "-> source ${VIRTUAL_ENVIRONMENT}"
        source "${VIRTUAL_ENVIRONMENT}"
-	   echo "-> echo source ${VIRTUAL_ENVIRONMENT} > $HOME/env.sh"
-	   echo "source ${VIRTUAL_ENVIRONMENT}" > "$HOME/env.sh"
+       echo "-> echo source ${VIRTUAL_ENVIRONMENT} > $HOME/env.sh"
+       echo "source ${VIRTUAL_ENVIRONMENT}" > "$HOME/env.sh"
    fi
    
    if [ -n "${IRONIC_CLOUD}" ] ; then
        echo "-> export OS_CLOUD=${IRONIC_CLOUD}"
        export OS_CLOUD="${IRONIC_CLOUD}"
-	   echo "-> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"
-	   echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"
+       echo "-> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"
+       echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"
    fi 
   
 }
@@ -1516,9 +1514,9 @@ function 1_refresh() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e '   [IRONIC] - REFRESH     : Reinstall Genesis Node'
    echo -e '------------------------------------------------------------------------------------------------------'
-   if [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$(echo "${REFRESH_LOG}" | tr -d \/ )   ; fi
-   if [ -n "${PXE_DHCP_IP}" ] ; then PXE[${DHCP_IP}]=$( echo "${PXE_DHCP_IP}" | tr -d \/ )    ; fi
-   if [ -n "${PXE_DHCP_NIC}" ] ; then PXE[${DHCP_NIC}]=$( echo "${PXE_DHCP_NIC}" | tr -d \/ ) ; fi
+   if [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$( echo "${REFRESH_LOG}" | tr -d \/ | tr '\' '/' )  ; fi
+   if [ -n "${PXE_DHCP_IP}" ] ; then PXE[${DHCP_IP}]=$( echo "${PXE_DHCP_IP}" | tr -d \/  |  tr '\' '/')    ; fi
+   if [ -n "${PXE_DHCP_NIC}" ] ; then PXE[${DHCP_NIC}]=$( echo "${PXE_DHCP_NIC}" | tr -d \/ |  tr '\' '/' ) ; fi
    if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/prepareAirgap.yml"
    prepareLocalMachine                                     | tee -a "${REFRESH_LOG}"
