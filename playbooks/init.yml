@@ -8,7 +8,6 @@
 - name: "Load OS Images into Ironic"
   hosts: target
   become: yes
-  gather_facts: yes
   vars:
     bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
     bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) }}"
@@ -17,6 +16,7 @@
     bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
     #dib_offline: true
     build_ramdisk: false
+    
   pre_tasks:
     - name: override ansible_python_interpreter to venv
       set_fact:
@@ -27,6 +27,7 @@
        ignore_errors: true      
        vars:
           bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
+          ironic_tftp_master_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}/qcow"
           #dib_offline: true
           #build_ramdisk: false
        block:  
@@ -35,7 +36,7 @@
               name: "{{bifrost_ironic_init}}"
            vars: 
               dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}.qcow2"
-              dib_imagetype: "qcow2"
+              dib_imagetype: "{{os.imagetype | default('qcow') }}"
               dib_os_element: "{{os.distro}}"
               dib_os_release: "{{os.release}}" 
               dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"

@@ -11,7 +11,6 @@
 ######################################################
 - hosts: "target"
   become: true
-  gather_facts: yes
   connection: local
   tasks:
      # ----> Refresh Repo Folders
@@ -49,7 +48,6 @@
 ######################################################
 - hosts: "target"
   become: true
-  gather_facts: yes
   connection: local
   vars:
     # 1.- Components Selection
@@ -109,7 +107,6 @@
 - hosts: "target"
   become: true
   ignore_errors: true
-  gather_facts: yes
   connection: local  
   vars:
      bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) }}"
@@ -188,8 +185,6 @@
               http_boot_folder: "{{ files_path }}/qcow"
               deploy_image: "{{http_boot_folder}}/{{ image_src.image | basename }}"
               
-             
-              
       # ----> Download IPA Images
      - name: "STEP 4 - Download IPA images"
        vars:
@@ -209,7 +204,7 @@
               ramdisk_checksum_url: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs.sha256"
               ramdisk_checksum_algo: "sha256"             
        block:         
-         - name: "STEP 5 - Download IPA images"
+         - name: "STEP 4 - Download IPA images"
            include_tasks: "{{bifrost_ironic_install}}/tasks/download_ipa_image.yml"
            loop: "{{ ipa_image_sources | default([]) }}"
            loop_control:

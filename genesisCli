@@ -55,15 +55,15 @@ HOSTS_TARGET_FILE="${HOSTS_WORKING_PATH}/target/group_vars/target"
 BIFROST_WORKING_PATH="${WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
-#RUN_BACKGROUND="Yes"
+RUN_BACKGROUND="No"
 
 # 2.2.- Online Installation
 DHCP_NIC=0; DHCP_IP=1 ; DHCP_POOL_START=2 ; DHCP_POOL_END=3
-network_interface=$( cat "${HOSTS_TARGET_FILE}" | grep 'network_interface' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
-PXE_DHCP_IP="10.10.10.5/24"
+network_interface=$( cat "${HOSTS_TARGET_FILE}" | grep 'network_interface:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
+dhcp_address=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_address:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
 dhcp_pool_start=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_pool_start:' | head -1 | awk -F: '{print $NF}' | tr -d '"' | tr -d ' ' )
 dhcp_pool_end=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_pool_end:' | head -1 | awk -F: '{print $NF}' | tr -d '"' | tr -d ' ' )
-PXE=( "${network_interface}" "${PXE_DHCP_IP}" "${dhcp_pool_start}" "${dhcp_pool_end}" )      
+PXE=( "${network_interface}" "${dhcp_address}" "${dhcp_pool_start}" "${dhcp_pool_end}" )      
 LOCALE="en_US.UTF-8"
 
 # 2.3.- Dependencies
@@ -126,54 +126,58 @@ function defineMenu() {
 	          if [ ! -n "${REFRESH_LOG}"  ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
 		      MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
 			  MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
-	          PARAMETRO=(     "REFRESH_LOG" )
-              VALOR_DEFECTO=( "${REFRESH_LOG}")	  
-	          SOLICITA_PARAMETRO=("-----> Log File [${VALOR_DEFECTO[0]}]:" \
+	          PARAMETRO=(     "RUN_BACKGROUND" "REFRESH_LOG" )
+              VALOR_DEFECTO=( "${RUN_BACKGROUND}"  "${REFRESH_LOG}")	  
+	          SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File                  [${VALOR_DEFECTO[1]}]:" \
                                  )
               RETURNING_MENU="0"
               RUN_ACTION="1"
-              unset REFRESH_LOG
+              unset RUN_BACKGROUND REFRESH_LOG
               ;;
 
 
 	   2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}")
 	         if [ ! -n "${INSTALL_LOG}" ] ; then local INSTALL_LOG="${HOME}/deploy.log" ; fi
 		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}"
-	         PARAMETRO=(    "network_interface" "PXE_DHCP_IP" "dhcp_pool_start" "dhcp_pool_end" "INSTALL_LOG"   )
+	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "INSTALL_LOG"   )
              VALOR_DEFECTO=(  "${PXE[$DHCP_NIC]}" \
 			                  "${PXE[$DHCP_IP]}" \
 							  "${PXE[$DHCP_POOL_START]}" \
 							  "${PXE[$DHCP_POOL_END]}" \
+							  "${RUN_BACKGROUND}" \
 							  "${INSTALL_LOG}" \
 							  )
 	         CNF_REEMPLAZO=( "${HOSTS_TARGET_FILE}" \
-			                  "${WORKING_PATH}/genesisCli" \
+			                  "${HOSTS_TARGET_FILE}" \
 							  "${HOSTS_TARGET_FILE}" \
 							  "${HOSTS_TARGET_FILE}" \
 							  '' \
 							  )
-			 CNF_SEPARADOR_CAMPO=( ':' '=' ':' ':' '' )
+			 CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' ': ' '' )
 			 SOLICITA_PARAMETRO=("-----> DHCP NIC            [${VALOR_DEFECTO[0]}]:" \
 			                     "-----> DHCP IP             [${VALOR_DEFECTO[1]}]:" \
 			                     "-----> DHCP POOL START IP  [${VALOR_DEFECTO[2]}]:" \
 			                     "-----> DHCP POOL END IP    [${VALOR_DEFECTO[3]}]:" \
-								 "-----> Log File            [${VALOR_DEFECTO[4]}]:" \
+								 "-----> Run Ansible in Background [${VALOR_DEFECTO[4]}]:" \
+								 "-----> Log File            [${VALOR_DEFECTO[5]}]:" \
 			                     )
              RETURNING_MENU="0"
              RUN_ACTION="2"
-             unset network_interface PXE_DHCP_IP dhcp_pool_start  dhcp_pool_end INSTALL_LOG
+             unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND INSTALL_LOG
              ;;
 
 	   3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")
 	         if [ ! -n "${INSTALL_LOG}" ] ; then local INIT_LOG="${HOME}/init.log" ; fi
 		     MENU_TEXT="(3)___________ ${COLOR[$ORANGE]}[IRONIC]   -  INIT : load operating system installation images${COLOR[$NC]}"
-	         PARAMETRO=(     "INIT_LOG"    )
-             VALOR_DEFECTO=( "${INIT_LOG}" )
-	         SOLICITA_PARAMETRO=("-----> Log File    [${VALOR_DEFECTO[0]}]:" \
+	         PARAMETRO=(     "RUN_BACKGROUND" "INIT_LOG"    )
+             VALOR_DEFECTO=( "${RUN_BACKGROUND}" "${INIT_LOG}" )
+	         SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
+			                     "-----> Log File    [${VALOR_DEFECTO[1]}]:" \
                                 )
              RETURNING_MENU="0"
              RUN_ACTION="3"
-             unset INIT_LOG
+             unset RUN_BACKGROUND INIT_LOG
 		     ;;
 
 
@@ -360,10 +364,10 @@ function defineMenu() {
               ;;
 
        22|"[STRING] - GATHER STRING CONFIGURATIONS  : Fetch relevant configuration files from String")
-	          if [ ! -n "${GATHERING_FOLDER}" ]   ; then local GATHERING_FOLDER="${IDAS_CFGS_PATH}/gathering" ; fi
-	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="/etc/core/inventory_ip" ; fi
-	          if [ ! -n "${TARGET}"        ]      ; then local TARGET=""                                           ; fi
-	          if [ ! -n "${GATHERING_LOG}" ]      ; then local GATHERING_LOG="${HOME}/gathering.log"               ; fi
+	          if [ ! -n "${GATHERING_FOLDER}" ] ; then local GATHERING_FOLDER="${IDAS_CFGS_PATH}/gathering" ; fi
+	          if [ ! -n "${INVENTORY}"     ]    ; then local INVENTORY="/etc/core/inventory_ip" ; fi
+	          if [ ! -n "${TARGET}"        ]    ; then local TARGET=""                                           ; fi
+	          if [ ! -n "${GATHERING_LOG}" ]    ; then local GATHERING_LOG="${HOME}/gathering.log"               ; fi
 		      MENU_TEXT="(22)___________ [STRING] - GATHER STRING CONFIGURATIONS  : Fetch relevant configuration files from String"
 	          PARAMETRO=(     "INVENTORY"   "TARGET" "GATHERING_FOLDER"  "GATHERING_LOG" )
               VALOR_DEFECTO=( "${INVENTORY}"  "${TARGET}" "${GATHERING_FOLDER}" "${GATHERING_LOG}" )
@@ -537,10 +541,6 @@ ubuntuFixes() {
 
   echo "export LC_ALL=C.UTF-8"
   export LC_ALL="C.UTF-8"
-
-  # 2.- Set Fix IP to Network Interface
-  #----------------------------
-
   
 }
 
@@ -1372,6 +1372,7 @@ function buildCommand() {
         echo "........ INVENTORY=[${INVENTORY}]"
         echo "........... TARGET=[${PTARGET}]"
         echo "............. SLOT=[${SLOT}]"
+	    echo ".......FLUSH_CACHE=[${FLUSH_CACHE}]"	
         echo "............ VAULT=[${VAULT}]"
         echo "....... EXTRA_VARS=[${EXTRA_VARS}]"
 
@@ -1381,6 +1382,7 @@ function buildCommand() {
 		if [ -n "${DEBUG_ANSIBLE_FLAGS}" ] ; then OPTIONS="${DEBUG_ANSIBLE_FLAGS} " ; fi
         if [ -n "${INVENTORY}"      ] ; then OPTIONS="${OPTIONS} -i ${INVENTORY}"   ; fi
         if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"     ; fi
+		if [ -n "${FLUSH_CACHE}"    ] ; then OPTIONS="${OPTIONS} --flush-cache"     ; fi
         if [ -n "${EXTRA_VARS}"     ] ; then OPTIONS="${OPTIONS} -e ${EXTRA_VARS}"  ; fi
         if [ -n "${GROUP_MACHINES}" ] ; then OPTIONS="${OPTIONS} -e 'service_testingGroups=${GROUP_MACHINES}'"  ; fi
         if [ -n "${SLOT}"           ] ; then OPTIONS="${OPTIONS} -e 'selected_slot=${SLOT}'"  ; fi
@@ -1388,6 +1390,7 @@ function buildCommand() {
              vaultPass "/tmp/"
              OPTIONS="${OPTIONS} --vault-password-file ${TMP_FILE}"
         fi
+		
         OUT="$?"
 
         # 2.- Verify playbook read permissions
@@ -1536,6 +1539,16 @@ function runPlaybook() {
    fi
 }
 
+detectBackgroundExecution() {
+   case "${RUN_BACKGROUND}" in
+      "S|s|Si|si|Y|y|Yes|yes" ) echo '---> Run Playbook in Background'
+	     ;;
+	  *) unset RUN_BACKGROUND 
+	    ;;
+   esac
+}
+
+
 ########################################################################################
 # MODULE 7 - MENU ACTIONS
 ########################################################################################
@@ -1554,9 +1567,10 @@ function 1_refresh() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e '   [IRONIC] - REFRESH     : Reinstall Genesis Node'
    echo -e '------------------------------------------------------------------------------------------------------'
-   if  [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$( echo "${REFRESH_LOG}" | tr -d \/ | tr '\' '/' )  ; fi
-    if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
+   if [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$( echo "${REFRESH_LOG}" | tr -d \/ | tr '\' '/' )  ; fi
+   if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/prepareAirgap.yml"
+   detectBackgroundExecution
    prepareLocalMachine                                     | tee -a "${REFRESH_LOG}"
    if [ ! -n "${ONLINE}" ] ; then  runPlaybook "${REFRESH_LOG}" ; fi
    state_status "genesis_installed"     "${PROJECT_RPM}"   | tee -a "${REFRESH_LOG}"
@@ -1579,12 +1593,14 @@ function 2_create() {
    echo -e ". $HOME/env.sh "
    echo -e "baremetal node list"
    if [ -n "${LOG_FILE}"     ] ; then local INSTALL_LOG="${LOG_FILE}" ; fi
-   if [ -n "${PXE_DHCP_IP}"  ] ; then PXE[${DHCP_IP}]=$( echo "${PXE_DHCP_IP}" | tr -d \/  |  tr '\' '/' 2&> /dev/null )    ; fi
    if [ -n "${network_interface}" ] ; then PXE[${DHCP_NIC}]="${network_interface}"      ; fi
+   if [ -n "${dhcp_address}"  ] ; then PXE[${DHCP_IP}]=$( echo "$dhcp_address" | tr -d \/  |  tr '\' '/' )    ; fi
    if [ -n "${dhcp_pool_start}"   ] ; then PXE[${DHCP_POOL_START}]="${dhcp_pool_start}" ; fi
    if [ -n "${dhcp_pool_end}"     ] ; then PXE[${DHCP_POOL_END}]="${dhcp_pool_end}"     ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/create.yml"
+   local FLUSH_CACHE="yes"
    #DISABLE_WARNS="Yes"
+   detectBackgroundExecution
    enableIronicNetworkInterface
    runPlaybook "${INSTALL_LOG}"
    unset LOG_FILE  
@@ -1610,6 +1626,7 @@ function 3_init() {
    echo -e "baremetal node list"
    if [ -n "${LOG_FILE}"      ] ; then local INIT_LOG="${LOG_FILE}" ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/init.yml"
+   detectBackgroundExecution
    runPlaybook "${INIT_LOG}"
    unset LOG_FILE
 }
