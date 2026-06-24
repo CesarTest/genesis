@@ -51,15 +51,19 @@ VIRTUAL_ENVIRONMENT="/opt/stack/bifrost/bin/activate"
 WORKING_PATH=$(dirname "$(readlink -f "$0")")
 PROJECT_ANSIBLE_CFG="${WORKING_PATH}/ansible.cfg"
 HOSTS_WORKING_PATH="${WORKING_PATH}/hosts"
+HOSTS_TARGET_FILE="${HOSTS_WORKING_PATH}/target/group_vars/target"
 BIFROST_WORKING_PATH="${WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
+IRONIC_CLOUD="bifrost"
 #RUN_BACKGROUND="Yes"
 
 # 2.2.- Online Installation
-DHCP_NIC=0; DHCP_IP=1
-PXE_DHCP_NIC="ens19"
-PXE_DHCP_IP="10.10.10.10/24"
-PXE=( "${PXE_DHCP_NIC}" "${PXE_DHCP_IP}" )      
+DHCP_NIC=0; DHCP_IP=1 ; DHCP_POOL_START=2 ; DHCP_POOL_END=3
+network_interface=$( cat "${HOSTS_TARGET_FILE}" | grep 'network_interface' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
+PXE_DHCP_IP="10.10.10.5/24"
+dhcp_pool_start=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_pool_start:' | head -1 | awk -F: '{print $NF}' | tr -d '"' | tr -d ' ' )
+dhcp_pool_end=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_pool_end:' | head -1 | awk -F: '{print $NF}' | tr -d '"' | tr -d ' ' )
+PXE=( "${network_interface}" "${PXE_DHCP_IP}" "${dhcp_pool_start}" "${dhcp_pool_end}" )      
 LOCALE="en_US.UTF-8"
 
 # 2.3.- Dependencies
@@ -122,30 +126,42 @@ function defineMenu() {
 	          if [ ! -n "${REFRESH_LOG}"  ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
 		      MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
 			  MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
-	          PARAMETRO=(     "PXE_DHCP_NIC" "PXE_DHCP_IP" "REFRESH_LOG" )
-              VALOR_DEFECTO=( "${PXE[$DHCP_NIC]}" "${PXE[$DHCP_IP]}" "${REFRESH_LOG}")
-			  CNF_REEMPLAZO=( "${WORKING_PATH}/genesisCli"  "${WORKING_PATH}/genesisCli" )		  
-	          SOLICITA_PARAMETRO=("-----> DHCP NIC [${VALOR_DEFECTO[0]}]:" \
-			              "-----> DHCP IP  [${VALOR_DEFECTO[1]}]:" \
-			              "-----> Log File [${VALOR_DEFECTO[2]}]:" \
-                            )
+	          PARAMETRO=(     "REFRESH_LOG" )
+              VALOR_DEFECTO=( "${REFRESH_LOG}")	  
+	          SOLICITA_PARAMETRO=("-----> Log File [${VALOR_DEFECTO[0]}]:" \
+                                 )
               RETURNING_MENU="0"
               RUN_ACTION="1"
-			  echo "--------------------------------- ${CNF_REEMPLAZO[@]}"
-              unset PXE_DHCP_NIC PXE_DHCP_IP REFRESH_LOG
+              unset REFRESH_LOG
               ;;
 
 
 	   2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}")
 	         if [ ! -n "${INSTALL_LOG}" ] ; then local INSTALL_LOG="${HOME}/deploy.log" ; fi
-		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[Genesis]   - DEPLOY      : Genesis installation (create.yml)${COLOR[$NC]}"
-	         PARAMETRO=(     "INSTALL_LOG"   )
-             VALOR_DEFECTO=( "${INSTALL_LOG}" )
-	         SOLICITA_PARAMETRO=("-----> Log File    [${VALOR_DEFECTO[0]}]:" \
-			 )
+		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}"
+	         PARAMETRO=(    "network_interface" "PXE_DHCP_IP" "dhcp_pool_start" "dhcp_pool_end" "INSTALL_LOG"   )
+             VALOR_DEFECTO=(  "${PXE[$DHCP_NIC]}" \
+			                  "${PXE[$DHCP_IP]}" \
+							  "${PXE[$DHCP_POOL_START]}" \
+							  "${PXE[$DHCP_POOL_END]}" \
+							  "${INSTALL_LOG}" \
+							  )
+	         CNF_REEMPLAZO=( "${HOSTS_TARGET_FILE}" \
+			                  "${WORKING_PATH}/genesisCli" \
+							  "${HOSTS_TARGET_FILE}" \
+							  "${HOSTS_TARGET_FILE}" \
+							  '' \
+							  )
+			 CNF_SEPARADOR_CAMPO=( ':' '=' ':' ':' '' )
+			 SOLICITA_PARAMETRO=("-----> DHCP NIC            [${VALOR_DEFECTO[0]}]:" \
+			                     "-----> DHCP IP             [${VALOR_DEFECTO[1]}]:" \
+			                     "-----> DHCP POOL START IP  [${VALOR_DEFECTO[2]}]:" \
+			                     "-----> DHCP POOL END IP    [${VALOR_DEFECTO[3]}]:" \
+								 "-----> Log File            [${VALOR_DEFECTO[4]}]:" \
+			                     )
              RETURNING_MENU="0"
              RUN_ACTION="2"
-             unset PXE_DHCP_POOL INSTALL_LOG
+             unset network_interface PXE_DHCP_IP dhcp_pool_start  dhcp_pool_end INSTALL_LOG
              ;;
 
 	   3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")
@@ -507,10 +523,6 @@ ubuntuFixes() {
   # 0.- Logging
   #----------------------
   echo "........ LOCALE=[${LOCALE}]"
-  echo "..PXE[DHCP_NIC]=[${PXE[$DHCP_NIC]}]"
-  echo "...PXE[DHCP_IP]=[${PXE[$DHCP_IP]}]"
-  
-  
   
   # 1.- Fix Locales
   #----------------
@@ -528,14 +540,7 @@ ubuntuFixes() {
 
   # 2.- Set Fix IP to Network Interface
   #----------------------------
-  echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false"
-  sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false
 
-  echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=[${PXE[$DHCP_IP]}]"
-  sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=["${PXE[$DHCP_IP]}"]
-
-  echo "${LOG_HEADER} -> sudo netplan apply"
-  sudo netplan apply
   
 }
 
@@ -564,15 +569,7 @@ EOF
 	
 	echo "${LOG_HEADER} -> echo systemctl restart sshd.service" 
     sudo systemctl restart sshd.service
-	
-	# 2.- Set Fix IP to Network Interface
-    #----------------------------
-	if [ -n "${DETECT_CONEXION}" ] ; then 
-	  echo "${LOG_HEADER} ->  nmcli con add con-name pxe ifname ${PXE[$DHCP_NIC]} type ethernet ipv4.methodmanual ipv4.addresses=${PXE[$DHCP_IP]}"
-      nmcli con add con-name "pxe" ifname "${PXE[$DHCP_NIC]}" type "ethernet" ipv4.method="manual" ipv4.addresses="${PXE[$DHCP_IP]}"
-	  echo "${LOG_HEADER} -> nmcli con up pxe"
-	  nmcli con up "pxe"
-    fi	  
+  
 }
 
 #===================================================
@@ -699,6 +696,46 @@ prepareLocalMachine() {
   setEnvironment
   installDependencies
   setupEnvironment
+}
+
+#===================================================
+#   Function: enableIronicNetworkInterface
+#---------------------------------------------------
+#  Private Function
+#
+#  Before Installing Ironic, enable DHCP interface
+#===================================================
+enableIronicNetworkInterface() {
+
+   # 0.- Logging
+   #----------------------
+   echo "..PXE[DHCP_NIC]=[${PXE[$DHCP_NIC]}]"
+   echo "...PXE[DHCP_IP]=[${PXE[$DHCP_IP]}]"
+
+   # 2.- Enable Network Interface
+   #----------------------
+   detectOS
+   case "${OS}" in
+     "ubuntu"|"debian")
+        echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false"
+        sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false
+        
+        echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=[${PXE[$DHCP_IP]}]"
+        sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=["${PXE[$DHCP_IP]}"]
+        
+        echo "${LOG_HEADER} -> sudo netplan apply"
+        sudo netplan apply
+		;;
+    *) 
+	    if [ -n "${DETECT_CONEXION}" ] ; then 
+    	  echo "${LOG_HEADER} ->  nmcli con add con-name pxe ifname ${PXE[$DHCP_NIC]} type ethernet ipv4.methodmanual ipv4.addresses=${PXE[$DHCP_IP]}"
+          nmcli con add con-name "pxe" ifname "${PXE[$DHCP_NIC]}" type "ethernet" ipv4.method="manual" ipv4.addresses="${PXE[$DHCP_IP]}"
+    	  echo "${LOG_HEADER} -> nmcli con up pxe"
+    	  nmcli con up "pxe"
+        fi	
+		;;
+	esac
+	  
 }
 
 #========================================================
@@ -928,7 +965,7 @@ function listaOpciones_Dinamica() {
 	local RUTA="${RUTA_OPCIONES[${INDICE}]}"
 	local EXT="${EXT_OPCIONES[${INDICE}]}"
 	local ELIMINA="${SUPRIME_EXT[${INDICE}]}"
-        if [ -n "${MENU_SKIP_PATHS}" ] ; then local REMOVE_PATH="${MENU_SKIP_PATHS}" ; fi
+    if [ -n "${MENU_SKIP_PATHS}" ] ; then local REMOVE_PATH="${MENU_SKIP_PATHS}" ; fi
 	
 	#-----------------
 	# ACTIONS
@@ -1103,12 +1140,14 @@ function capturaValor() {
 #========================================================
 function reemplazaParametro() {
 
-	REEMPLAZA_LINEA="$1"
+	local REEMPLAZA_LINEA="$1"
+	local SEPARADOR_CAMPO='='
+	if [ -n "${CNF_SEPARADOR_CAMPO[${POSICION}]}" ] ; then local SEPARADOR_CAMPO="${CNF_SEPARADOR_CAMPO[${POSICION}]}" ; fi 
 	if [ -w "${CNF_REEMPLAZO[${POSICION}]}" ] ; then
 	   if [ -n "${REEMPLAZA_LINEA}" ] ; then
-	   	 REPLN="${VAR}=\"${PREPO}${VALOR}\""
-	   	 echo "===> sed s|^${VAR}=.*$|$REPLN| ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
-	   	 sed "s|^${VAR}=.*$|$REPLN|" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+	   	 REPLN="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
+	   	 echo "===> sed s|^${VAR}${SEPARADOR_CAMPO}.*$|$REPLN| ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
+	   	 sed "s|^${VAR}${SEPARADOR_CAMPO}.*$|$REPLN|" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
 	   else
 	   	 REPLN="${PREPO}${VALOR}"
 	   	 echo "===> sed s|${VAR}|$REPLN|g ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
@@ -1132,7 +1171,7 @@ function deployMenu() {
 	#------------------
 	local REEMPLAZA_LINEA="$1"
 	local POSICION="0"
-        local VAR VALOR PREPO
+    local VAR VALOR PREPO
 
 	#------------------
 	# ACCIONES
@@ -1177,7 +1216,7 @@ function deployMenu() {
 		PREPO=""
 
 		# 2.3.1.- CNF for text Replacement
-		if [ -n "$VALOR" ] && [ -n "${CNF_REEMPLAZO}" ] ; then
+		if [ -n "$VALOR" ] && [ -n "${CNF_REEMPLAZO[$POSICION]}" ] ; then
 
 			#    2.3.1.1.- Replace / for \/ for the sed command
 			#            BEWARE: dump results to temporal file in order to avoid issues with bash of different systems
@@ -1186,12 +1225,12 @@ function deployMenu() {
 
 			#   2.3.1.2.- Add preposition
 			PREPO="${PREPOSICION[${POSICION}]}"
-                        if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then 
-                            reemplazaParametro "${REEMPLAZA_LINEA}"
-			    local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
-			    chmod "$PERMISSIONS" "${OUT_TMP}"
-		            mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"				
-                         fi
+               if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then 
+                 reemplazaParametro "${REEMPLAZA_LINEA}"
+			     local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
+			     chmod "$PERMISSIONS" "${OUT_TMP}"
+		         mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"				
+               fi
 		fi 
 		
 		# 2.3.2.- Capture List Value
@@ -1338,8 +1377,9 @@ function buildCommand() {
 
         # 1.- Build Playbook Options
         #----------------------
-        OPTIONS="${DEBUG_ANSIBLE_FLAGS}"
-        if [ -n "${INVENTORY}"      ] ; then OPTIONS="-i ${INVENTORY}"              ; fi
+        OPTIONS=''
+		if [ -n "${DEBUG_ANSIBLE_FLAGS}" ] ; then OPTIONS="${DEBUG_ANSIBLE_FLAGS} " ; fi
+        if [ -n "${INVENTORY}"      ] ; then OPTIONS="${OPTIONS} -i ${INVENTORY}"   ; fi
         if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"     ; fi
         if [ -n "${EXTRA_VARS}"     ] ; then OPTIONS="${OPTIONS} -e ${EXTRA_VARS}"  ; fi
         if [ -n "${GROUP_MACHINES}" ] ; then OPTIONS="${OPTIONS} -e 'service_testingGroups=${GROUP_MACHINES}'"  ; fi
@@ -1514,10 +1554,8 @@ function 1_refresh() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e '   [IRONIC] - REFRESH     : Reinstall Genesis Node'
    echo -e '------------------------------------------------------------------------------------------------------'
-   if [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$( echo "${REFRESH_LOG}" | tr -d \/ | tr '\' '/' )  ; fi
-   if [ -n "${PXE_DHCP_IP}" ] ; then PXE[${DHCP_IP}]=$( echo "${PXE_DHCP_IP}" | tr -d \/  |  tr '\' '/')    ; fi
-   if [ -n "${PXE_DHCP_NIC}" ] ; then PXE[${DHCP_NIC}]=$( echo "${PXE_DHCP_NIC}" | tr -d \/ |  tr '\' '/' ) ; fi
-   if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
+   if  [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$( echo "${REFRESH_LOG}" | tr -d \/ | tr '\' '/' )  ; fi
+    if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/prepareAirgap.yml"
    prepareLocalMachine                                     | tee -a "${REFRESH_LOG}"
    if [ ! -n "${ONLINE}" ] ; then  runPlaybook "${REFRESH_LOG}" ; fi
@@ -1537,9 +1575,17 @@ function 2_create() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e '   [IRONIC] - CREATE: Install Ironic in Local Machine'
    echo -e '------------------------------------------------------------------------------------------------------'
-   if [ -n "${LOG_FILE}"      ] ; then local INSTALL_LOG="${LOG_FILE}" ; fi
+   echo -e "----> To run Ironic commands: "
+   echo -e ". $HOME/env.sh "
+   echo -e "baremetal node list"
+   if [ -n "${LOG_FILE}"     ] ; then local INSTALL_LOG="${LOG_FILE}" ; fi
+   if [ -n "${PXE_DHCP_IP}"  ] ; then PXE[${DHCP_IP}]=$( echo "${PXE_DHCP_IP}" | tr -d \/  |  tr '\' '/' 2&> /dev/null )    ; fi
+   if [ -n "${network_interface}" ] ; then PXE[${DHCP_NIC}]="${network_interface}"      ; fi
+   if [ -n "${dhcp_pool_start}"   ] ; then PXE[${DHCP_POOL_START}]="${dhcp_pool_start}" ; fi
+   if [ -n "${dhcp_pool_end}"     ] ; then PXE[${DHCP_POOL_END}]="${dhcp_pool_end}"     ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/create.yml"
    #DISABLE_WARNS="Yes"
+   enableIronicNetworkInterface
    runPlaybook "${INSTALL_LOG}"
    unset LOG_FILE  
    echo -e "----> To run Ironic commands: "
