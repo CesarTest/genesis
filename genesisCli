@@ -46,7 +46,7 @@ COLOR=( '\033[0m' \
 # 2.- Default Values
 #--------------------
 # 2.1.- Environment Definition
-DEBUG_ANSIBLE_FLAGS='-v '
+DEBUG_ANSIBLE_FLAGS='-vvv '
 VIRTUAL_ENVIRONMENT="/opt/stack/bifrost/bin/activate"
 WORKING_PATH=$(dirname "$(readlink -f "$0")")
 PROJECT_ANSIBLE_CFG="${WORKING_PATH}/ansible.cfg"
@@ -55,6 +55,7 @@ HOSTS_TARGET_FILE="${HOSTS_WORKING_PATH}/target/group_vars/target"
 BIFROST_WORKING_PATH="${WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
+BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars/ironic.yml"
 RUN_BACKGROUND="no"
 
 # 2.2.- Online Installation
@@ -128,9 +129,8 @@ function defineMenu() {
 	          if [ ! -n "${REFRESH_LOG}"    ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
 			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
 		      MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
-			  MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
 	          PARAMETRO=(     "RUN_BACKGROUND" "REFRESH_LOG" )
-              VALOR_DEFECTO=( "${RUN_BACKGROUND}"  "${REFRESH_LOG}")	  
+              VALOR_DEFECTO=( "No"  "${REFRESH_LOG}")	  
 	          SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Log File                  [${VALOR_DEFECTO[1]}]:" \
                                  )
@@ -141,7 +141,7 @@ function defineMenu() {
 
 
 	   2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}")
-	         if [ ! -n "${INSTALL_LOG}" ] ; then local CREATE_LOG="${HOME}/create.log" ; fi
+	         if [ ! -n "${INSTALL_LOG}"    ] ; then local CREATE_LOG="${HOME}/create.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			 
 		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}"
 	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "INSTALL_LOG"   )
@@ -149,7 +149,7 @@ function defineMenu() {
 			                  "${PXE[$DHCP_IP]}" \
 							  "${PXE[$DHCP_POOL_START]}" \
 							  "${PXE[$DHCP_POOL_END]}" \
-							  "${RUN_BACKGROUND}" \
+							  "No" \
 							  "${CREATE_LOG}" \
 							  )
 	         CNF_REEMPLAZO=( "${HOSTS_TARGET_FILE}" \
@@ -172,11 +172,11 @@ function defineMenu() {
              ;;
 
 	   3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")
-	         if [ ! -n "${INSTALL_LOG}"    ] ; then local INIT_LOG="${HOME}/init.log" ; fi
+	         if [ ! -n "${INIT_LOG}"    ] ; then local INIT_LOG="${HOME}/init.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi
 		     MENU_TEXT="(3)___________ ${COLOR[$ORANGE]}[IRONIC]   -  INIT : load operating system installation images${COLOR[$NC]}"
 	         PARAMETRO=(     "RUN_BACKGROUND" "INIT_LOG"    )
-             VALOR_DEFECTO=( "${RUN_BACKGROUND}" "${INIT_LOG}" )
+             VALOR_DEFECTO=( "No" "${INIT_LOG}" )
 	         SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
 			                     "-----> Log File    [${VALOR_DEFECTO[1]}]:" \
                                 )
@@ -733,9 +733,11 @@ addGenesisToHosts()  {
    if [ ! -n "${GENESIS_NAME}" ] ; then 
        local GENESIS_NAME=$(cat $HOSTS_TARGET_FILE | grep 'genesis_hostvars_name:' | head -1 | awk -F: {'print $NF}' | tr -d '"' )
    fi
-   if [ ! -n "${GENESIS_NAME}" ] ; then local GENESIS_NAME="genesis.maas.lab" ; fi
-   local ADDR=$( echo "${PXE[$DHCP_IP]}" | awk -F/ '{print $1}' )
+   if [ ! -n "${GENESIS_NAME}" ] ; then local GENESIS_NAME="genesis.maas.lab" ; fi  
+   local ADDR=$( echo "${PXE[$DHCP_IP]}" | awk -F/ '{print $1}' | tr -d ' ' )
    local NAME=$( echo "${GENESIS_NAME}" | tr -d ' ' )
+   echo "...... GENESIS_NAME=[${NAME}]"
+   echo "... GENESIS_ADDRESS=[${ADDR}]"
    echo "--> sudo sed -i /${NAME}/d /etc/hosts"
    sudo bash -c "sed -i /${NAME}/d /etc/hosts"
    echo "--> sudo bash -c echo ${ADDR} ${NAME} >> /etc/hosts"
@@ -760,7 +762,7 @@ enableIronicNetworkInterface() {
    #----------------------
    echo "..PXE[DHCP_NIC]=[${PXE[$DHCP_NIC]}]"
    echo "...PXE[DHCP_IP]=[${PXE[$DHCP_IP]}]"
-   echo "... GENESIS_NAME=[${GENESIS_NAME}]"
+
 
    # 1.- Enable Network Interface
    #----------------------
@@ -1315,13 +1317,13 @@ function updateInventory() {
    	
 	if [ -n "${BAREMETAL_NODES}" ] ; then
 	 
-           local LINE_DESIRED="inventory=hosts/target,hosts/${BAREMETAL_NODES##*/}"
+       local LINE_DESIRED="inventory=hosts/target,hosts/${BAREMETAL_NODES##*/}"
 	   local LINE_DETECTION='inventory='
 	   echo "replacePattern ${ANSIBLE_CONFIG} ${LINE_DESIRED} ${LINE_DETECTION}"
            replacePattern "${ANSIBLE_CONFIG}" "${LINE_DESIRED}" "${LINE_DETECTION}"   
 
-	   echo "export BIFROST_INVENTORY_SOURCE=${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars.yml" 
-	   export BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars.yml"
+	   echo "export BIFROST_INVENTORY_SOURCE=${BIFROST_INVENTORY_SOURCE}" 
+	   export BIFROST_INVENTORY_SOURCE="${BIFROST_INVENTORY_SOURCE}"
         	   
 	fi
 }

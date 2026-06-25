@@ -10,7 +10,7 @@
   become: yes
   vars:
     bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
-    bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) }}"
+    bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"
     bifrost_repo: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}/dib"
     bifrost_roles: "{{bifrost_path}}/openstack.bifrost/playbooks/roles"
     bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
@@ -26,7 +26,6 @@
      - name: "STEP 1 - Build OS Bootable Images from local repository"
        ignore_errors: true      
        vars:
-          bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
           ironic_tftp_master_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}/qcow"
           #dib_offline: true
           #build_ramdisk: false
@@ -47,7 +46,7 @@
                 {{ dib_init_element|default('simple-init') }}
                 {{ extra_dib_elements|default('') }}
            
-           loop: "{{ download_image_sources | default([]) }}"
+           loop: "{{ bifrost_download_images | default([]) }}"
            loop_control:
               loop_var: "os"
        

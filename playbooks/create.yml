@@ -12,11 +12,14 @@
      {{ bifrost_playbooks_path 
       | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
       | realpath  }}
-    create_image_via_dib: false  
+    bifrost_repo_path: "{{ bifrost_airgap_path | default(bifrost_shoot_path + 'repo') | realpath }}"  
+    create_image_via_dib: true
+    ironic_tftp_master_path: "{{ bifrost_repo_path }}/qcow"    
 
 - hosts: target
   become: true
   tasks:
+ 
      - name: "OVER CLOUD: adjust config file if VMs instead Baremetal Node"
        ansible.builtin.lineinfile:
          path: /etc/ironic/ironic.conf

@@ -48,6 +48,7 @@
 ######################################################
 - hosts: "target"
   become: true
+  ignore_errors: true
   connection: local
   vars:
     # 1.- Components Selection
@@ -90,6 +91,9 @@
     ipa_builder_git_folder: "{{git_root}}/{{ipa_builder_git_url | basename }}"
     prometheus_exporter_git_url: https://opendev.org/openstack/ironic-prometheus-exporter
     prometheus_exporter_git_folder: "{{git_root}}/{{prometheus_exporter_git_url | basename }}"
+    reqs_git_url: "https://opendev.org/openstack/requirements"
+    reqs_git_folder: "{{git_root}}/{{reqs_git_url | basename }}"
+    
     
   environment:
     PIP_DEST:  "{{files_path}}/pip" 
@@ -109,8 +113,16 @@
   ignore_errors: true
   connection: local  
   vars:
-     bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) }}"
+     bifrost_shoot_path: >-
+      {{ bifrost_playbooks_path 
+       | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
+       | realpath  }}  
+     bifrost_path: "{{ bifrost_workpath | default( bifrost_shoot_path + '/..' )  | realpath }}"
      files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}"
+     bifrost_repo_path: "{{ bifrost_airgap_path | default(bifrost_shoot_path + 'repo') | realpath }}"  
+     create_image_via_dib: true
+     ironic_tftp_master_path: "{{ bifrost_repo_path }}/qcow"    
+
      bifrost_roles: "{{bifrost_path}}/openstack.bifrost/playbooks/roles"
      bifrost_ironic_install: "{{bifrost_roles}}/bifrost-ironic-install"
      bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
