@@ -1567,7 +1567,7 @@ function setupCommand() {
        echo "[$TIMESTAMP] -> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"
        echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"
    fi 
-  
+   export BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars/ironic.yml"  
 }
 
 #========================================================
