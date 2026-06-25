@@ -55,7 +55,7 @@ HOSTS_TARGET_FILE="${HOSTS_WORKING_PATH}/target/group_vars/target"
 BIFROST_WORKING_PATH="${WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
-RUN_BACKGROUND="No"
+RUN_BACKGROUND="no"
 
 # 2.2.- Online Installation
 DHCP_NIC=0; DHCP_IP=1 ; DHCP_POOL_START=2 ; DHCP_POOL_END=3
@@ -70,13 +70,15 @@ LOCALE="en_US.UTF-8"
 PIP=0; SCRIPTS=1; INSTALLER=2
 DEPENDENCIES=( 'collections/requirements.yml' \
                'roles/requirements.yml' \
-	       'roles/openstack.bifrost/openstack.bifrost/scripts/env-setup.sh' \
+	           'roles/openstack.bifrost/openstack.bifrost/scripts/env-setup.sh' \
                '#' \
+			   '#' \
               )
 
 DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
-	                 'ansible-galaxy role install --force -r ' \
+	                     'ansible-galaxy role install --force -r ' \
                          '' \
+						 'sed -i "/cdglab.duckdns.org/d" /etc/hosts' \
                          'echo "192.168.1.133 cdglab.duckdns.org" >> /etc/hosts' \
                         )
 
@@ -102,7 +104,7 @@ function defineMenu() {
 	#---------------------
 	case "${MENU}" in
 	    0|"MAIN        : back to main menu")
-		      MENU_TEXT="INSTRUCTIONS: \n A.- Baremetal Nodes Installation Cycle: SETUP -> DEPLOY -> PROVISION \n B.- Genesis Node  Installation Cycle: REFRESH -> CREATE -> INIT \n C.- Troubleshooting: Baremetal Nodes {ANSIBLE,SSH,GRAPHICS,NETWORK,NTP}, Genesis Node {LOAD,DEPLOY} \n ___________\n STATE TRANSITIONS MENU \n___________"
+		      MENU_TEXT="INSTRUCTIONS: \n A.- Baremetal Nodes Installation Cycle: SETUP -> DEPLOY -> PROVISION \n B.- Genesis Node  Installation Cycle: REFRESH -> CREATE -> INIT \n C.- To Run Ironic Commands: . $HOME/env.sh ; baremetal node list \n ___________\n STATE TRANSITIONS MENU \n___________"
 		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
                               "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}" \
                               "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}" \
@@ -123,7 +125,8 @@ function defineMenu() {
               ;;
 
        1|"${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}")
-	          if [ ! -n "${REFRESH_LOG}"  ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
+	          if [ ! -n "${REFRESH_LOG}"    ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
+			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
 		      MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
 			  MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
 	          PARAMETRO=(     "RUN_BACKGROUND" "REFRESH_LOG" )
@@ -138,7 +141,8 @@ function defineMenu() {
 
 
 	   2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}")
-	         if [ ! -n "${INSTALL_LOG}" ] ; then local INSTALL_LOG="${HOME}/deploy.log" ; fi
+	         if [ ! -n "${INSTALL_LOG}" ] ; then local CREATE_LOG="${HOME}/create.log" ; fi
+			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			 
 		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}"
 	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "INSTALL_LOG"   )
              VALOR_DEFECTO=(  "${PXE[$DHCP_NIC]}" \
@@ -146,7 +150,7 @@ function defineMenu() {
 							  "${PXE[$DHCP_POOL_START]}" \
 							  "${PXE[$DHCP_POOL_END]}" \
 							  "${RUN_BACKGROUND}" \
-							  "${INSTALL_LOG}" \
+							  "${CREATE_LOG}" \
 							  )
 	         CNF_REEMPLAZO=( "${HOSTS_TARGET_FILE}" \
 			                  "${HOSTS_TARGET_FILE}" \
@@ -164,11 +168,12 @@ function defineMenu() {
 			                     )
              RETURNING_MENU="0"
              RUN_ACTION="2"
-             unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND INSTALL_LOG
+             unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND CREATE_LOG
              ;;
 
 	   3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")
-	         if [ ! -n "${INSTALL_LOG}" ] ; then local INIT_LOG="${HOME}/init.log" ; fi
+	         if [ ! -n "${INSTALL_LOG}"    ] ; then local INIT_LOG="${HOME}/init.log" ; fi
+			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi
 		     MENU_TEXT="(3)___________ ${COLOR[$ORANGE]}[IRONIC]   -  INIT : load operating system installation images${COLOR[$NC]}"
 	         PARAMETRO=(     "RUN_BACKGROUND" "INIT_LOG"    )
              VALOR_DEFECTO=( "${RUN_BACKGROUND}" "${INIT_LOG}" )
@@ -188,8 +193,8 @@ function defineMenu() {
              RUTA_OPCIONES=( "${HOSTS_WORKING_PATH}" )
 	         PARAMETRO=(     "BAREMETAL_NODES"    "SETUP_LOG"   )
              VALOR_DEFECTO=( "0"  "${SETUP_LOG}" )
-	         SOLICITA_PARAMETRO=("-----> Baremetal Nodes Data Model   [${VALOR_DEFECTO[0]}]:" \
-	                             "-----> Log File                     [${VALOR_DEFECTO[1]}]:" \
+	         SOLICITA_PARAMETRO=("-----> Baremetal Nodes Descripion [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File                   [${VALOR_DEFECTO[1]}]:" \
                                     )
              MENU_SKIP_PATHS="1"
 			 RETURNING_MENU="0"
@@ -210,19 +215,17 @@ function defineMenu() {
              ;;
 
        6|"${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (deploy.yaml)${COLOR[$NC]}")
-	         if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${IDAS_DEFAULT_INVENTORY}" ; fi
 	         if [ ! -n "${TARGET}" ]    ; then local TARGET=''                       ; fi
-	         if [ ! -n "${KICKSTART_LOG}" ] ; then local KICKSTART_LOG="${HOME}/kickstart.log"  ; fi
-	         MENU_TEXT="(2)___________ ${COLOR[$SEA]}[STRING] - KICKSTART   : unattended installation (kickstart.yaml)${COLOR[$NC]}"
-	         PARAMETRO=(     "INVENTORY"      "TARGET"    "KICKSTART_LOG" )
-             VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}" "${KICKSTART_LOG}"   )
-	         SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
-	                             "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
-	                             "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+	         if [ ! -n "${KICKSTART_LOG}" ] ; then local DEPLOY_LOG="${HOME}/deploy.log"  ; fi
+	         MENU_TEXT="(2)___________ ${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (deploy.yaml)${COLOR[$NC]}}"
+	         PARAMETRO=(  "TARGET"    "DEPLOY_LOG" )
+             VALOR_DEFECTO=(  "${TARGET}" "${DEPLOY_LOG}"   )
+	         SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
                                     )
              RETURNING_MENU="0"
              RUN_ACTION="6"
-             unset INVENTORY TARGET KICKSTART_LOG
+             unset TARGET DEPLOY_LOG
 	         ;;
 
 
@@ -461,6 +464,34 @@ function error() {
 	OUT="${ERROR}"
 }
 
+#========================================================
+#   Function: replacePattern
+#--------------------------------------------------------
+#   Replace pattern in a text file
+#========================================================
+function replacePattern() {
+
+   #---------------------
+   # LOCAL ENVIRONMENT
+   #---------------------
+   local DEST_FILE="$1"
+   local REPLACE_PATTERN="$2"
+   local DETECTION_PATTERN="$3"
+
+   #---------------------
+   # ACTIONS
+   #---------------------
+   if [ -w "${DEST_FILE}" ] ; then
+      if [ -n "${REPLACE_PATTERN}" ] ; then
+         if [ -n "${DETECTION_PATTERN}" ] ; then
+           echo "-> Replacing pattern: sed -i s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| ${DEST_FILE}"
+           sed -i "s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| " "${DEST_FILE}"
+         fi
+      fi
+   else
+      error -w "${DEST_FILE}"
+   fi
+}
 
 #===================================================
 #   Function: detectOS 
@@ -698,6 +729,20 @@ prepareLocalMachine() {
   setupEnvironment
 }
 
+addGenesisToHosts()  {
+   if [ ! -n "${GENESIS_NAME}" ] ; then 
+       local GENESIS_NAME=$(cat $HOSTS_TARGET_FILE | grep 'genesis_hostvars_name:' | head -1 | awk -F: {'print $NF}' | tr -d '"' )
+   fi
+   if [ ! -n "${GENESIS_NAME}" ] ; then local GENESIS_NAME="genesis.maas.lab" ; fi
+   local ADDR=$( echo "${PXE[$DHCP_IP]}" | awk -F/ '{print $1}' )
+   local NAME=$( echo "${GENESIS_NAME}" | tr -d ' ' )
+   echo "--> sudo sed -i /${NAME}/d /etc/hosts"
+   sudo bash -c "sed -i /${NAME}/d /etc/hosts"
+   echo "--> sudo bash -c echo ${ADDR} ${NAME} >> /etc/hosts"
+   sudo bash -c "echo ${ADDR} ${NAME} >> /etc/hosts"
+}
+
+
 #===================================================
 #   Function: enableIronicNetworkInterface
 #---------------------------------------------------
@@ -707,16 +752,22 @@ prepareLocalMachine() {
 #===================================================
 enableIronicNetworkInterface() {
 
+   #---------------------
+   # Actions
+   #---------------------
+
    # 0.- Logging
    #----------------------
    echo "..PXE[DHCP_NIC]=[${PXE[$DHCP_NIC]}]"
    echo "...PXE[DHCP_IP]=[${PXE[$DHCP_IP]}]"
+   echo "... GENESIS_NAME=[${GENESIS_NAME}]"
 
-   # 2.- Enable Network Interface
+   # 1.- Enable Network Interface
    #----------------------
    detectOS
    case "${OS}" in
      "ubuntu"|"debian")
+	    
         echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false"
         sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false
         
@@ -735,7 +786,6 @@ enableIronicNetworkInterface() {
         fi	
 		;;
 	esac
-	  
 }
 
 #========================================================
@@ -1256,35 +1306,6 @@ function deployMenu() {
 ########################################################################################
 
 #========================================================
-#   Function: replacePattern
-#--------------------------------------------------------
-#   Replace pattern in a text file
-#========================================================
-function replacePattern() {
-
-   #---------------------
-   # LOCAL ENVIRONMENT
-   #---------------------
-   local DEST_FILE="$1"
-   local REPLACE_PATTERN="$2"
-   local DETECTION_PATTERN="$3"
-
-   #---------------------
-   # ACTIONS
-   #---------------------
-   if [ -w "${DEST_FILE}" ] ; then
-      if [ -n "${REPLACE_PATTERN}" ] ; then
-         if [ -n "${DETECTION_PATTERN}" ] ; then
-           echo "-> Replacing pattern: sed -i s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| ${DEST_FILE}"
-           sed -i "s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| " "${DEST_FILE}"
-         fi
-      fi
-   else
-      error -w "${DEST_FILE}"
-   fi
-}
-
-#========================================================
 #   Function: updateInventory
 #--------------------------------------------------------
 #   iDAS ISOS generation
@@ -1499,25 +1520,49 @@ function shootCommand() {
    fi
 }
 
+#===================================================
+#   Function: detectBackgroundExecution
+#---------------------------------------------------
+#  Private Function
+#
+#  Detect Background execution
+#===================================================
+detectBackgroundExecution() {
+   local INPUT=$( echo "${RUN_BACKGROUND}" | tr '[:upper:]' '[:lower:]' )
+   case "${INPUT}" in
+       "s"|"si"|"y"|"yes" ) echo '---> Run Playbook in Background'
+	   ;;
+	  *) unset RUN_BACKGROUND 
+	    ;;
+   esac
+}
+
+#===================================================
+#   Function: setupCommand
+#---------------------------------------------------
+#  Private Function
+#
+#  Detect Background execution
+#===================================================
 function setupCommand() {
    local TIMESTAMP=$(date -R)
-   
+   detectBackgroundExecution
    if [ -n "${PROJECT_ANSIBLE_CFG}" ] ; then
-      echo  "-> export ANSIBLE_CONFIG=${PROJECT_ANSIBLE_CFG}"    
+      echo  "[$TIMESTAMP] -> export ANSIBLE_CONFIG=${PROJECT_ANSIBLE_CFG}"    
       export ANSIBLE_CONFIG="${PROJECT_ANSIBLE_CFG}"
    fi
    
    if [ -n "${VIRTUAL_ENVIRONMENT}" ] ; then
-       echo "-> source ${VIRTUAL_ENVIRONMENT}"
+       echo "[$TIMESTAMP] -> source ${VIRTUAL_ENVIRONMENT}"
        source "${VIRTUAL_ENVIRONMENT}"
        echo "-> echo source ${VIRTUAL_ENVIRONMENT} > $HOME/env.sh"
        echo "source ${VIRTUAL_ENVIRONMENT}" > "$HOME/env.sh"
    fi
    
    if [ -n "${IRONIC_CLOUD}" ] ; then
-       echo "-> export OS_CLOUD=${IRONIC_CLOUD}"
+       echo "[$TIMESTAMP] -> export OS_CLOUD=${IRONIC_CLOUD}"
        export OS_CLOUD="${IRONIC_CLOUD}"
-       echo "-> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"
+       echo "[$TIMESTAMP] -> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"
        echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"
    fi 
   
@@ -1539,14 +1584,6 @@ function runPlaybook() {
    fi
 }
 
-detectBackgroundExecution() {
-   case "${RUN_BACKGROUND}" in
-      "S|s|Si|si|Y|y|Yes|yes" ) echo '---> Run Playbook in Background'
-	     ;;
-	  *) unset RUN_BACKGROUND 
-	    ;;
-   esac
-}
 
 
 ########################################################################################
@@ -1567,14 +1604,12 @@ function 1_refresh() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e '   [IRONIC] - REFRESH     : Reinstall Genesis Node'
    echo -e '------------------------------------------------------------------------------------------------------'
-   if [ -n "${REFRESH_LOG}" ] ; then local REFRESH_LOG=$( echo "${REFRESH_LOG}" | tr -d \/ | tr '\' '/' )  ; fi
    if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/prepareAirgap.yml"
-   detectBackgroundExecution
    prepareLocalMachine                                     | tee -a "${REFRESH_LOG}"
    if [ ! -n "${ONLINE}" ] ; then  runPlaybook "${REFRESH_LOG}" ; fi
    state_status "genesis_installed"     "${PROJECT_RPM}"   | tee -a "${REFRESH_LOG}"
-   unset PXE_DHCP_IP PXE_DHCP_NIC
+   unset PXE_DHCP_IP PXE_DHCP_NIC CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
    echo -e '......................................................................................................'
    echo -e "   BEWARE !!!! ====> Don't forget INSTALL  (option 2) and SETUP (option 4) iDAS"
    echo -e '......................................................................................................'
@@ -1600,10 +1635,9 @@ function 2_create() {
    local PLAYBOOK="${WORKING_PATH}/playbooks/create.yml"
    local FLUSH_CACHE="yes"
    #DISABLE_WARNS="Yes"
-   detectBackgroundExecution
    enableIronicNetworkInterface
    runPlaybook "${INSTALL_LOG}"
-   unset LOG_FILE  
+   unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
    echo -e "----> To run Ironic commands: "
    echo -e ". $HOME/env.sh "
    echo -e "baremetal node list"
@@ -1626,9 +1660,8 @@ function 3_init() {
    echo -e "baremetal node list"
    if [ -n "${LOG_FILE}"      ] ; then local INIT_LOG="${LOG_FILE}" ; fi
    local PLAYBOOK="${WORKING_PATH}/playbooks/init.yml"
-   detectBackgroundExecution
    runPlaybook "${INIT_LOG}"
-   unset LOG_FILE
+   unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
 }
 
 #========================================================
@@ -1647,8 +1680,11 @@ function 4_setup() {
    local PLAYBOOK="${WORKING_PATH}/playbooks/setup.yml"
    local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
    updateInventory
+   addGenesisToHosts
    runPlaybook "${SETUP_LOG}"
-   unset LOG_FILE 
+   echo "-> baremetal node list"
+   baremetal node list
+   unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
 }
 
 
