@@ -52,7 +52,7 @@
            baremetal node set {{node_uuid}} --instance-info image_source="{{node_image_source}}" 
            baremetal node set {{node_uuid}} --instance-info image_os_hash_value="{{node_image_os_hash_value }}" 
            baremetal node set {{node_uuid}} --instance-info image_os_hash_algo="{{node_image_os_hash_algo }}"  
-           baremetal node set {{node_uuid}} --instance-info image_checksum="{{node_image_checksum}}" 
+           #baremetal node set {{node_uuid}} --instance-info image_checksum="{{node_image_checksum}}" 
          
          iso_command: |
            baremetal node set {{node_name}} --instance-info boot_iso="{{node_boot_iso}}"
