@@ -1,0 +1,28 @@
+---
+test-ironic.maas.lab:
+   ipa_kernel_url: "http://10.10.10.5:8080/ipa.kernel"
+   ipa_ramdisk_url: "http://10.10.10.5:8080/ipa.initramfs"
+   uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
+   driver_info:
+     redfish_username: "root@pam"
+     redfish_address: "https://cdglab.duckdns.org:8000"
+     redfish_password: "cesardgm"
+     redfish_system_id: "/redfish/v1/Systems/102"
+   nics:
+     -
+       mac: "BC:24:11:28:C3:E2"
+     -
+       mac: "BC:24:11:7A:BD:68"
+   instance_info:
+     deploy_interface: "anaconda"
+     boot_iso: "http://10.10.10.5:8080/rhel90.iso"
+     ks_template: "csa"
+     boot-interface: "ipxe"
+   driver: "redfish"
+   ipv4_address: "10.10.10.20"
+   properties:
+     cpu_arch: "x86_64"
+     ram: "2048"
+     disk_size: "30"
+     cpus: "8"
+   name: "ironic-test"

@@ -55,7 +55,8 @@ HOSTS_TARGET_FILE="${HOSTS_WORKING_PATH}/target/group_vars/target"
 BIFROST_WORKING_PATH="${WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
-BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars/ironic.yml"
+IRONIC_NODES_FILE="host_vars/baremetal.yml"
+BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
 RUN_BACKGROUND="no"
 
 # 2.2.- Online Installation
@@ -1567,7 +1568,9 @@ function setupCommand() {
        echo "[$TIMESTAMP] -> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"
        echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"
    fi 
-   export BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/host_vars/ironic.yml"  
+   
+   echo "[$TIMESTAMP] -> export BIFROST_INVENTORY_SOURCE=${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
+   export BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/${IRONIC_NODES_FILE}" 
 }
 
 #========================================================

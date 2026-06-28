@@ -28,13 +28,13 @@
        vars:
           ironic_tftp_master_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}/qcow"
           #dib_offline: true
-          #build_ramdisk: false
+          #build_ramdisk: true
        block:  
          - name: "STEP 1 - Build OS Bootable Images from local repository"         
            ansible.builtin.include_role: 
               name: "{{bifrost_ironic_init}}"
            vars: 
-              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}.qcow2"
+              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}"
               dib_imagetype: "{{os.imagetype | default('qcow') }}"
               dib_os_element: "{{os.distro}}"
               dib_os_release: "{{os.release}}" 
@@ -45,7 +45,6 @@
                 enable-serial-console
                 {{ dib_init_element|default('simple-init') }}
                 {{ extra_dib_elements|default('') }}
-           
            loop: "{{ bifrost_download_images | default([]) }}"
            loop_control:
               loop_var: "os"

@@ -12,7 +12,61 @@
       | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
       | realpath  }}
       
-      
+- name: "Set Instance Info"
+  hosts: localhost
+  connection: local
+  vars:
+    work_path: "{{ playbook_dir }}/../hosts"
+    bifrost_default_inventory_source: "{{ work_path | realpath }}/baremetal.yml"
+    bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
+    
+  tasks:
+    - name: "Load Bifrost Inventory Source |{{bifrost_inventory_source}}|"
+      ansible.builtin.include_vars: 
+         file: "{{ bifrost_inventory_source }}"
+         name: "baremetal_nodes_enrolled"       
+     
+    - name: Add Instance Info
+      shell:
+         cmd: "{{command | default('ls')}}"
+      vars:
+         node_uuid: "{{ node.value.uuid | default(' ') }}" 
+         node_name: "{{ node.value.name | default(' ') }}"         
+         node_image_source: "{{ node.value.instance_info.image_source | default('') }}"
+         node_image_os_hash_value: "{{ node.value.instance_info.image_os_hash_value | default(node.value.instance_info.image_checksum) | default('') }}"
+         node_image_os_hash_algo: "{{ node.value.instance_info.image_os_hash_algo | default('sha256') }}"
+         node_image_checksum: "{{ node.value.instance_info.image_checksum | default(node_image_os_hash_value) | default('') }}"
+         node_boot_iso: "{{ node.value.instance_info.boot_iso |  default('') }}"
+         node_ks_template: "{{ node.value.instance_info.ks_template |  default('default.ks') }}" 
+         node_boot_interface: "{{ node.value.instance_info.boot_interface |  default('ipxe') }}"
+         node_deploy_interface: "{{ node.value.instance_info.deploy_interface |  default('direct') }}"
+         node_command_iso_type: "{{ ( node_boot_iso | length ) > 1 }}"
+         allocation_command: |
+           . /opt/stack/bifrost/bin/activate 
+           export OS_CLOUD=bifrost
+           baremetal allocation delete {{node_name}} 
+           baremetal allocation create --name {{node_name}} --resource-class baremetal --wait
+           baremetal node set {{node_uuid}} --boot-interface {{node_boot_interface}}
+           baremetal node set {{node_uuid}} --deploy-interface {{node_deploy_interface}}        
+         instance_command: |
+           baremetal node set {{node_uuid}} --instance-info image_source="{{node_image_source}}" 
+           baremetal node set {{node_uuid}} --instance-info image_os_hash_value="{{node_image_os_hash_value }}" 
+           baremetal node set {{node_uuid}} --instance-info image_os_hash_algo="{{node_image_os_hash_algo }}"  
+           baremetal node set {{node_uuid}} --instance-info image_checksum="{{node_image_checksum}}" 
+         
+         iso_command: |
+           baremetal node set {{node_name}} --instance-info boot_iso="{{node_boot_iso}}"
+           baremetal node set {{node_name}} --instance-info ks_template="{{node_ks_template}}"           
+         shoot_command: "{{ (node_command_iso_type | bool) |  ternary(iso_command,instance_command) }}"
+         status_command: |       
+           baremetal node validate {{node_name}}
+         command: |
+           {{ allocation_command }}
+           {{ shoot_command }}
+           {{ status_command }}
+      loop:  "{{ baremetal_nodes_enrolled | dict2items | default([]) }}"
+      loop_control:
+        loop_var: node       
   #---------------------------------------------------------------
   # -> Environment do not work for import_playbook => You must set at shooting bash script command
   # -> Keeping the syntax, just in case  
