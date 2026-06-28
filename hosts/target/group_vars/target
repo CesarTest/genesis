@@ -155,7 +155,7 @@ bifrost_download_images:
     checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
     checksum_algorithm: "sha256"
     distro: "centos"
-    release: "9-stream"
+    release: "9"
 	deploy_interface: "direct"
 	boot_interface: "ipxe"
 #  - image: "https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
