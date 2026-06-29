@@ -17,7 +17,7 @@
 ... Actually, Genesis should run in a dedicated machine instead of container.
 
 ## PoC (Proof of Concept) Scheme
-![PoC](./doc/pco.jpg)
+![PoC](./doc/poc.jpg)
 
 ## Ironic and Ansible usage in Genesis Node
 ![Ironic](./doc/ironic.jpg)
