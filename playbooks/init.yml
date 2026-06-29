@@ -8,6 +8,7 @@
 - name: "Load OS Images into Ironic"
   hosts: target
   become: yes
+  gather_facts: yes
   vars:
     bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
     bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"
@@ -18,9 +19,29 @@
     build_ramdisk: false
     
   pre_tasks:
+  
+    - name: install pip (and venv) to system
+      package:
+        name: "{{ packages | select | list }}"
+      vars:
+        packages:
+          - python3-pip
+          - "{{ (ansible_facts['os_family'] == 'Debian') | ternary('python3-venv', '') }}"
+
+    - name: create venv
+      command: python3 -m venv {{ bifrost_venv_dir }}
+      args:
+        creates: "{{ bifrost_venv_dir }}/bin/python3"
+
+    # NOTE(ebbex): (in case it's missing, which it shouldn't normally be)
+    - name: install setuptools in venv
+      command: "{{ bifrost_venv_dir }}/bin/pip3 install setuptools"
+      args:
+        creates: "{{ bifrost_venv_dir }}/lib/python*/site-packages/setuptools"
+
     - name: override ansible_python_interpreter to venv
       set_fact:
-        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
+        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"  
 
   tasks:
      - name: "STEP 1 - Build OS Bootable Images from local repository"

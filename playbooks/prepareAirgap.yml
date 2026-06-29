@@ -195,7 +195,7 @@
      - name: "STEP 4 - Download IPA images"
        vars:
           update_ipa: true
-          ipa_image_sources:
+          default_ipa_image_sources:
             - kernel: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel"
               kernel_checksum_url: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel.sha256"
               kernel_checksum_algo: "sha256"
@@ -208,7 +208,9 @@
               kernel_checksum_algo: "sha256"
               ramdisk: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs"
               ramdisk_checksum_url: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs.sha256"
-              ramdisk_checksum_algo: "sha256"             
+              ramdisk_checksum_algo: "sha256" 
+          ipa_image_sources: "{{ bifrost_ipa_image_sources | default(default_ipa_image_sources) | default([]) }}" 
+                  
        block:         
          - name: "STEP 4 - Download IPA images"
            include_tasks: "{{bifrost_ironic_install}}/tasks/download_ipa_image.yml"

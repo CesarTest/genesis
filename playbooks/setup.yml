@@ -1,10 +1,46 @@
 ---
-# genesis playbooks/create.yml
+# genesis playbooks/setup.yml
 #  - Enroll inventory to Ironic
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System 
 # SPDX-License-Identifier: Apache-2.0
-- ansible.builtin.import_playbook: "{{bifrost_shoot_path | trim}}/enroll-dynamic.yaml"
+- name: "STEP 1 - Remove Nodes"
+  hosts: localhost
+  connection: local
+  ignore_errors: yes
+  vars:
+    work_path: "{{ playbook_dir }}/../hosts"
+    bifrost_default_inventory_source: "{{ work_path | realpath }}/baremetal.yml"
+    bifrost_repo_path: "{{ playbook_dir }}/../repo"
+    bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
+    
+  tasks:
+
+    - name: "Load Nodes to Enroll from |{{ bifrost_inventory_source }}|"
+      ansible.builtin.include_vars: 
+         file: "{{ bifrost_inventory_source }}"
+         name: "baremetal_nodes_enrolled"       
+ 
+    - name: "STEP 1 - Remove Nodes"
+      shell:
+         cmd: "{{command | default('ls')}}"
+      vars:
+         node_uuid: "{{ node.value.uuid | default(' ') }}" 
+         node_name: "{{ node.value.name | default(' ') }}"         
+         command: |
+           . /opt/stack/bifrost/bin/activate 
+           export OS_CLOUD=bifrost
+           baremetal allocation delete {{node_name}} 
+           baremetal node set --retired {{node_uuid}}
+           baremetal node maintenance set {{node_uuid}}
+           baremetal node delete {{node_uuid}}           
+      loop:  "{{ baremetal_nodes_enrolled | dict2items | default([]) }}"
+      loop_control:
+        loop_var: node 
+  
+
+- name: "STEP 2 - Enroll Nodes"
+  ansible.builtin.import_playbook: "{{bifrost_shoot_path | trim}}/enroll-dynamic.yaml"
   become: true
   vars: 
     bifrost_shoot_path: >-
@@ -12,7 +48,7 @@
       | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
       | realpath  }}
       
-- name: "Set Instance Info"
+- name: "STEP 3 - Set Instance Information"
   hosts: localhost
   connection: local
   vars:
@@ -22,12 +58,13 @@
     bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
     
   tasks:
-    - name: "Load Bifrost Inventory Source |{{bifrost_inventory_source}}|"
+    
+    - name: "Load Nodes Enrolled from |{{ bifrost_inventory_source }}|"
       ansible.builtin.include_vars: 
          file: "{{ bifrost_inventory_source }}"
          name: "baremetal_nodes_enrolled"       
      
-    - name: Add Instance Info
+    - name: "STEP 3 - Set Instance Information"
       shell:
          cmd: "{{command | default('ls')}}"
       vars:
@@ -44,7 +81,7 @@
          allocation_command: |
            . /opt/stack/bifrost/bin/activate 
            export OS_CLOUD=bifrost
-           baremetal allocation delete {{node_name}} 
+           baremetal allocation delete {{node_name}}     
            baremetal allocation create --name {{node_name}} --resource-class baremetal --wait
            baremetal node set {{node_uuid}} --boot-interface {{node_boot_interface}}
            baremetal node set {{node_uuid}} --deploy-interface {{node_deploy_interface}}        

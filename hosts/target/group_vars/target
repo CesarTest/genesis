@@ -123,6 +123,13 @@ ipa_ramdisk_upstream_checksum_algo: "{{ ipa_initramfs_algorithm | default('sha25
 # 3.- Operating System Images
 #----------------------------
 bifrost_download_images:
+  - image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+    checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
+    checksum_algorithm: "sha256"
+    distro: "centos"
+    release: "9"
+    deploy_interface: "direct"
+    boot_interface: "ipxe"
 #  - image: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
 #    checksum: "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS"
 #    checksum_algorithm: "sha256"
@@ -151,13 +158,6 @@ bifrost_download_images:
 #  - image: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
 #    checksum: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/CHECKSUM"
 #    checksum_algorithm: "sha256"
-  - image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
-    checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
-    checksum_algorithm: "sha256"
-    distro: "centos"
-    release: "9"
-	deploy_interface: "direct"
-	boot_interface: "ipxe"
 #  - image: "https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
 #    checksum: "https://cloud.centos.org/centos/10-stream/x86_64/images/CHECKSUM"
 #    checksum_algorithm: "sha256"
