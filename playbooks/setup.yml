@@ -4,6 +4,10 @@
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System 
 # SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------
+#  CLEAN IRONIC 
+#---------------------------------
 - name: "STEP 1 - Remove Nodes"
   hosts: localhost
   connection: local
@@ -39,6 +43,9 @@
         loop_var: node 
   
 
+#---------------------------------
+#  ENROLL NODES
+#---------------------------------
 - name: "STEP 2 - Enroll Nodes"
   ansible.builtin.import_playbook: "{{bifrost_shoot_path | trim}}/enroll-dynamic.yaml"
   become: true
@@ -47,7 +54,11 @@
      {{ bifrost_playbooks_path 
       | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
       | realpath  }}
-      
+
+
+#---------------------------------
+#  SET INSTANCE INFORMATION 
+#---------------------------------
 - name: "STEP 3 - Set Instance Information"
   hosts: localhost
   connection: local
@@ -103,8 +114,40 @@
            {{ status_command }}
       loop:  "{{ baremetal_nodes_enrolled | dict2items | default([]) }}"
       loop_control:
-        loop_var: node       
-  #---------------------------------------------------------------
+        loop_var: node
+
+#---------------------------------
+#  IPA INSTALLATION MANIFESTO 
+#---------------------------------
+- name: "STEP 4 - IPA Installation Manifesto (kickstart, cloud-init, ignition)"
+  hosts: localhost
+  connection: local
+  vars:
+    work_path: "{{ playbook_dir }}/../hosts"
+    bifrost_default_inventory_source: "{{ work_path | realpath }}/baremetal.yml"
+    bifrost_repo_path: "{{ playbook_dir }}/../repo"
+    bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
+    
+  tasks:
+    
+    - name: "Load Nodes Enrolled from |{{ bifrost_inventory_source }}|"
+      ansible.builtin.include_vars: 
+         file: "{{ bifrost_inventory_source }}"
+         name: "baremetal_nodes_enrolled"    
+
+ #   - name: 
+         
+
+#- name: "STEP 4 - Create configuration drive files and deploy machines from inventory"
+#  hosts: baremetal
+#  become: no
+#  connection: local
+#  roles:
+#    - role: bifrost-configdrives-dynamic
+#      when:
+#        - provision_state == "available"
+#        - maintenance | bool   
+
   # -> Environment do not work for import_playbook => You must set at shooting bash script command
   # -> Keeping the syntax, just in case  
   #---------------------------------------------------------------  

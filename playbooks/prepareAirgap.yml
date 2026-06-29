@@ -100,7 +100,7 @@
     PIP_OPTS: " --download"
   roles:
     - name: "STEP 2 - Download OpenStack Components from GIT"
-      role: "{{bifrost_roles}}/bifrost-prep-for-install"
+      role: "bifrost-prep-for-install"
       when: not (skip_install | default(false) | bool)
     #- role: "{{bifrost_roles}}/bifrost-pip-install"
     #  when: not (skip_install | default(false) | bool)

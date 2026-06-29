@@ -15,20 +15,19 @@
   vars:
     default_repo_path: "{{ playbook_dir  }}/../repo"
     bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
+    
   tasks:
-
-    - name: "STEP 1: Copy Downloaded Files to Ironic Folder"
-      file: 
-        path: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
-        state: "directory"
-        recurse: yes
-        owner: ironic
-        group: ironic 
+    - name: casa
+      file: "{{ironic_tftp_master_path | default('/var/lib/ironic/master') }}"
+      state: "directory"
+      recursive: yes
+      owner: ironic
+      group: ironic 
       
     - name: "STEP 1: Copy Downloaded Files to Ironic Folder"
       ansible.builtin.copy:
-        src: "{{bifrost_repo_path | realpath}}/qcow/"
-        dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}/"
+        src: "{{bifrost_repo_path | realpath}}/"
+        dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/master') }}/"
 
 #---------------------------------
 # INSTALL STANDALONE IRONIC
@@ -50,20 +49,20 @@
   become: true
   tasks:
  
-    - name: "OVER CLOUD: adjust config file if VMs instead Baremetal Node"
-      ansible.builtin.lineinfile:
-        path: /etc/ironic/ironic.conf
-        regexp: "{{replace.regexp}}"
-        line: "{{replace.line}}"
-      loop:
-        - regexp: '^automated_clean'
-          line: 'automated_clean = false'
-        - regexp: '^enabled_deploy_interfaces '
-          line: 'enabled_deploy_interfaces = ramdisk,bootc,direct,anaconda'
-      loop_control:
-        loop_var: "replace"  
+     - name: "OVER CLOUD: adjust config file if VMs instead Baremetal Node"
+       ansible.builtin.lineinfile:
+         path: /etc/ironic/ironic.conf
+         regexp: "{{replace.regexp}}"
+         line: "{{replace.line}}"
+       loop:
+         - regexp: '^automated_clean'
+           line: 'automated_clean = false'
+         - regexp: '^enabled_deploy_interfaces '
+           line: 'enabled_deploy_interfaces = ramdisk,bootc,direct,anaconda'
+       loop_control:
+         loop_var: "replace"  
          
-    - name: "OVERCLOUD: restart service"
-      service: 
-        name: ironic
-        state: restarted 
+     - name: "OVERCLOUD: restart service"
+       service: 
+         name: ironic
+         state: restarted 
