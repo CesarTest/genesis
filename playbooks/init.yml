@@ -5,14 +5,44 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System 
 # SPDX-License-Identifier: Apache-2.0
 # 	
-- name: "Load OS Images into Ironic"
+
+#---------------------------------
+# COPY DOWNLOADED OS IMAGES
+#---------------------------------
+- hosts: target
+  become: true
+  ignore_errors: yes
+  vars:
+    default_repo_path: "{{ playbook_dir  }}/../repo"
+    bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
+  tasks:
+
+    - name: "STEP 0: Detect Ironic Destination Folder"
+      file: 
+        path: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
+        state: "directory"
+        recurse: yes
+        owner: ironic
+        group: ironic 
+      
+    - name: "STEP 1: Copy Downloaded Files to Ironic Destination Folder"
+      ansible.builtin.copy:
+        src: "{{bifrost_repo_path | realpath}}/qcow/"
+        dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}/"
+
+#---------------------------------------
+# CREATE IMAGE  
+#---------------------------------------
+- name: "STEP 2: Build OS Bootable Images from local repository"
   hosts: target
   become: yes
   gather_facts: yes
   vars:
     bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
     bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"
-    bifrost_repo: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}/dib"
+    default_repo_path: "{{ playbook_dir  }}/../repo"
+    bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
+    bifrost_repo: "{{ bifrost_repo_path }}/dib"
     bifrost_roles: "{{bifrost_path}}/openstack.bifrost/playbooks/roles"
     bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
     #dib_offline: true
@@ -20,38 +50,19 @@
     
   pre_tasks:
   
-    - name: install pip (and venv) to system
-      package:
-        name: "{{ packages | select | list }}"
-      vars:
-        packages:
-          - python3-pip
-          - "{{ (ansible_facts['os_family'] == 'Debian') | ternary('python3-venv', '') }}"
-
-    - name: create venv
-      command: python3 -m venv {{ bifrost_venv_dir }}
-      args:
-        creates: "{{ bifrost_venv_dir }}/bin/python3"
-
-    # NOTE(ebbex): (in case it's missing, which it shouldn't normally be)
-    - name: install setuptools in venv
-      command: "{{ bifrost_venv_dir }}/bin/pip3 install setuptools"
-      args:
-        creates: "{{ bifrost_venv_dir }}/lib/python*/site-packages/setuptools"
-
     - name: override ansible_python_interpreter to venv
       set_fact:
         ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"  
 
   tasks:
-     - name: "STEP 1 - Build OS Bootable Images from local repository"
+     - name: "STEP 2 - Build OS Bootable Images from local repository"
        ignore_errors: true      
-       vars:
-          ironic_tftp_master_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}/qcow"
+       #vars:
+          #ironic_tftp_master_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}/qcow"
           #dib_offline: true
           #build_ramdisk: true
        block:  
-         - name: "STEP 1 - Build OS Bootable Images from local repository"         
+         - name: "STEP 2 - Build OS Bootable Images from local repository"         
            ansible.builtin.include_role: 
               name: "{{bifrost_ironic_init}}"
            vars: 
@@ -75,4 +86,27 @@
     https_proxy: "{{ lookup('env','https_proxy') }}"
     no_proxy: "{{ lookup('env', 'no_proxy') }}"
     
- 
+#---------------------------------------
+# LOAD TO IRONIC
+#---------------------------------------
+- hosts: target
+  become: true
+  ignore_errors: yes
+  vars:
+    default_repo_path: "{{ playbook_dir  }}/../repo"
+    bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
+    bifrost_repo: "{{ bifrost_repo_path }}/dib"
+  tasks:
+
+    - name: "STEP 3: Detect Ironic Destination Folder"
+      file: 
+        path: "{{http_boot_folder | default('/var/lib/ironic/httpboot') }}"
+        state: "directory"
+        recurse: yes
+        owner: ironic
+        group: ironic        
+      
+    - name: "STEP 3: Copy Bootable OS Images to Ironic Destination Folder"
+      ansible.builtin.copy:
+        src: "{{bifrost_repo}}/"
+        dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/httpboot') }}/"

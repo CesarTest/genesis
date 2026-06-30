@@ -7,23 +7,29 @@
 
 ## Installation
 - 1) Clone Project
-- 2) Follow genesisCli menu guidelines
+- 2) Use genesisCli menu to run steps of the Genesis Node Lifecycle 
 
 ## Scenarios
 - **Genesis with Internet**... download OpenStack components and linux distros images and save it locally.
 - **Genesis Airgap**... tarball Genesis project with local repository to deploy in isolated environments.
-... Genesis Airgap not tested, eventually tools such [Hauler](https://ranchergovernment.com/blog/simplifying-the-airgap-experience-with-rancher-government-hauler) should be included. 
+... Genesis Airgap not tested, eventually tools such [Hauler](https://ranchergovernment.com/blog/simplifying-the-airgap-experience-with-rancher-government-hauler) should be included. Prefered CentOS/RHEL over Ubuntu since airgap repos easier to create from ISO.
 - **Ansible Execution Environment** Compilation... layout is there for packaging Genesis into a Container in the future. 
 ... Actually, Genesis should run in a dedicated machine instead of container.
 
-## PoC (Proof of Concept) Scheme
-![PoC](./doc/poc.jpg)
+## Genesis Node Life Cycle
+![Genesis](./doc/genesis.jpg)
 
 ## Ironic and Ansible usage in Genesis Node
 ![Ironic](./doc/ironic.jpg)
 
-## Genesis Node Life Cycle
-![Genesis](./doc/genesis.jpg)
+## PoC (Proof of Concept) Scheme
+![PoC](./doc/poc.jpg)
+
+## OpenStack Modules supported by standalone Ironic, but not used by installer yet.
+- **Horizon plugin**... User Interface.
+- **Keystone**... Authentication, Authorization, Accounting.
+- **Prometheus**... Stadistics.
+- **IPA Hardware Inspector**... to build hardware profiles through machine inspection.
 
 # Author
 Cesar Delgado

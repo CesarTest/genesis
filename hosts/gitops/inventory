@@ -1,1 +1,18 @@
-test1.example.com
+---
+all:
+
+ #--------------------------------------------------------------------
+ #  HOST_VARS: HARDWARE PROFILE THROUGH IRONIC API
+ #--------------------------------------------------------------------
+ hosts:  
+   test-ironic.maas.lab:
+     ansible_user: cesar 
+     ansible_become_pass: cesar
+
+ #--------------------------------------------------------------------
+ #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION
+ #--------------------------------------------------------------------
+ children:
+   webservers:
+     hosts:
+       test-ironic.maas.lab 

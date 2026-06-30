@@ -7,41 +7,18 @@
 # 	
 
 #---------------------------------
-# COPY DOWNLOADED OS IMAGES
-#---------------------------------
-- hosts: target
-  become: true
-  ignore_errors: yes
-  vars:
-    default_repo_path: "{{ playbook_dir  }}/../repo"
-    bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
-  tasks:
-
-    - name: "STEP 1: Copy Downloaded Files to Ironic Folder"
-      file: 
-        path: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
-        state: "directory"
-        recurse: yes
-        owner: ironic
-        group: ironic 
-      
-    - name: "STEP 1: Copy Downloaded Files to Ironic Folder"
-      ansible.builtin.copy:
-        src: "{{bifrost_repo_path | realpath}}/qcow/"
-        dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}/"
-
-#---------------------------------
 # INSTALL STANDALONE IRONIC
 #---------------------------------
-- ansible.builtin.import_playbook: "{{bifrost_shoot_path|trim}}/install.yaml"
+- name: "STEP 1: Install Standalone Ironic in Genesis Node"
+  ansible.builtin.import_playbook: "{{bifrost_shoot_path|trim}}/install.yaml"
   #become: true
   vars:
     bifrost_shoot_path: >-
      {{ bifrost_playbooks_path 
       | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
       | realpath  }}
+    install_dib: true
     create_image_via_dib: false
-
 
 #---------------------------------
 # SETUP STANDALONE IRONIC
@@ -50,7 +27,7 @@
   become: true
   tasks:
  
-    - name: "OVER CLOUD: adjust config file if VMs instead Baremetal Node"
+    - name: "STEP 2 - SETUP IRONIC: adjust |/etc/ironic/ironic.conf|"
       ansible.builtin.lineinfile:
         path: /etc/ironic/ironic.conf
         regexp: "{{replace.regexp}}"
@@ -63,7 +40,7 @@
       loop_control:
         loop_var: "replace"  
          
-    - name: "OVERCLOUD: restart service"
+    - name: "STEP 3 - RESTART IRONIC: apply changes"
       service: 
         name: ironic
         state: restarted 

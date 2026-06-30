@@ -65,7 +65,9 @@
   vars:
     work_path: "{{ playbook_dir }}/../hosts"
     bifrost_default_inventory_source: "{{ work_path | realpath }}/baremetal.yml"
-    bifrost_repo_path: "{{ playbook_dir }}/../repo"
+    default_repo_path: "{{ playbook_dir  }}/../repo"
+    bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
+    bifrost_repo: "{{ bifrost_repo_path }}/dib"
     bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
     
   tasks:
@@ -83,7 +85,7 @@
          node_name: "{{ node.value.name | default(' ') }}"         
          node_image_source: "{{ node.value.instance_info.image_source | default('') }}"
          node_image_source_name: "{{node_image_source | basename | default('')}}"
-         node_image_source_localpath: "{{bifrost_repo_path|realpath}}/dib/{{node_image_source_name}}"
+         node_image_source_localpath: "{{bifrost_repo}}/{{node_image_source_name}}"
          node_boot_iso: "{{ node.value.instance_info.boot_iso |  default('') }}"
          node_ks_template: "{{ node.value.instance_info.ks_template |  default('default.ks') }}" 
          node_boot_interface: "{{ node.value.instance_info.boot_interface |  default('ipxe') }}"
@@ -148,24 +150,24 @@
 #        - provision_state == "available"
 #        - maintenance | bool   
 
-  # -> Environment do not work for import_playbook => You must set at shooting bash script command
-  # -> Keeping the syntax, just in case  
-  #---------------------------------------------------------------  
-  #  bifrost_inventory_path: >-
-  #    {{ ( bifrost_inventory_source | dirname )
-  #    | default(inventory_path, True)       
-  #    | realpath  }}     
-  #  bifrost_dynamic_inventory_path: >-
-  #    {{ ( bifrost_dynamic_inventory | dirname )
-  #    | default(playbook_dir + '/../openstack.bifrost/bifrost/, True)       
-  #    | realpath  }} 
-  #environment:
-  #  ANSIBLE_INVENTORY: >-
-  #   {{ bifrost_dynamic_inventory 
-  #    | default( bifrost_dynamic_inventory_path + '/inventory.py', True) }}  
-  #  BIFROST_INVENTORY_SOURCE: "{{ bifrost_inventory_source | default( bifrost_inventory_path + '/group_vars.yml' )}}"
-  #  OS_CLOUD: "{{ bifrost_cloud | default('bifrost') }}"
-  #---------------------------------------------------------------
-  # -> EnvironmentDo not work for import_playbook => You must set at shooting bash script command
-  # -> Keeping the syntax, just in case  
+ # -> Environment variables do not work for import_playbook => You must set at shooting bash script command
+ # -> Keeping the syntax, just in case  
+ #---------------------------------------------------------------  
+ #  bifrost_inventory_path: >-
+ #    {{ ( bifrost_inventory_source | dirname )
+ #    | default(inventory_path, True)       
+ #    | realpath  }}     
+ #  bifrost_dynamic_inventory_path: >-
+ #    {{ ( bifrost_dynamic_inventory | dirname )
+ #    | default(playbook_dir + '/../openstack.bifrost/bifrost/, True)       
+ #    | realpath  }} 
+ #environment:
+ #  ANSIBLE_INVENTORY: >-
+ #   {{ bifrost_dynamic_inventory 
+ #    | default( bifrost_dynamic_inventory_path + '/inventory.py', True) }}  
+ #  BIFROST_INVENTORY_SOURCE: "{{ bifrost_inventory_source | default( bifrost_inventory_path + '/group_vars.yml' )}}"
+ #  OS_CLOUD: "{{ bifrost_cloud | default('bifrost') }}"
+ #---------------------------------------------------------------
+ # -> EnvironmentDo not work for import_playbook => You must set at shooting bash script command
+ # -> Keeping the syntax, just in case  
   #--------------------------------------------------------------- 
