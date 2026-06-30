@@ -2,17 +2,32 @@
 all:
 
  #--------------------------------------------------------------------
- #  HOST_VARS: HARDWARE PROFILE THROUGH IRONIC API
+ #  HOST_VARS: HARDWARE PROFILE DECLARED IN IRONIC API FORMAT
  #--------------------------------------------------------------------
  hosts:  
-   test-ironic.maas.lab:
+   servera199.maas.lab:
+     ansible_user: cesar 
+     ansible_become_pass: cesar
+
+   serverb199.maas.lab:
+     ansible_user: cesar 
+     ansible_become_pass: cesar
+
+   workstation199.maas.lab:
      ansible_user: cesar 
      ansible_become_pass: cesar
 
  #--------------------------------------------------------------------
- #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION
+ #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
  #--------------------------------------------------------------------
  children:
-   webservers:
+   repository:
      hosts:
-       test-ironic.maas.lab 
+       workstation199.maas.lab 
+   servers:
+     hosts:
+       servera199.maas.lab 	   
+       serverb199.maas.lab
+   documents:
+     hosts:
+       training.maas.lab
