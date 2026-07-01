@@ -8,16 +8,24 @@
 #---------------------------------
 #  CLEAN IRONIC 
 #---------------------------------
+#  baremetal node set --retired {{node_uuid}}
+- name: "Gather facts on localhost"
+  hosts: localhost
+  become: no
+  gather_facts: yes
+  
 - name: "STEP 1 - Remove Nodes"
   hosts: localhost
   connection: local
   ignore_errors: yes
+  become: no
+  gather_facts: no  
   vars:
     work_path: "{{ playbook_dir }}/../hosts"
     bifrost_default_inventory_source: "{{ work_path | realpath }}/baremetal.yml"
     bifrost_repo_path: "{{ playbook_dir }}/../repo"
     bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
-    
+    ironic_http_path: "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
   tasks:
 
     - name: "Load Nodes to Enroll from |{{ bifrost_inventory_source }}|"
@@ -30,19 +38,36 @@
          cmd: "{{command | default('ls')}}"
       vars:
          node_uuid: "{{ node.value.uuid | default(' ') }}" 
-         node_name: "{{ node.value.name | default(' ') }}"         
+         node_name: "{{ node.value.name | default(' ') }}"   
+                
          command: |
            . /opt/stack/bifrost/bin/activate 
            export OS_CLOUD=bifrost
            baremetal allocation delete {{node_name}} 
            baremetal node maintenance set {{node_uuid}}
-           baremetal node set --retired {{node_uuid}}
-           baremetal node delete {{node_uuid}}           
+           baremetal node delete {{node_uuid}}                        
       loop:  "{{ baremetal_nodes_enrolled | dict2items | default([]) }}"
       loop_control:
-        loop_var: node 
-  
+        loop_var: node   
 
+
+#    - name: "STEP 1 - Remove Nodes"
+#      become: yes
+#      shell:
+#         cmd: "{{command | default('ls')}}"
+#      vars:
+#         node_uuid: "{{ node.value.uuid | default(' ') }}" 
+#         node_name: "{{ node.value.name | default(' ') }}"   
+#                
+#         command: |
+#           LINKS=$(ls -lR  {{ironic_http_path}}/ | grep '^l' | awk '{A=NF-2; print $A}' | uniq)
+#           for L in ${LINKS} ; do unlink {{ironic_http_path}}/$L ; done
+#           sudo rm -rf {{ironic_http_path}}/{{node_uuid}}
+#                      
+#      loop:  "{{ baremetal_nodes_enrolled | dict2items | default([]) }}"
+#      loop_control:
+#        loop_var: node         
+#      
 #---------------------------------
 #  ENROLL NODES
 #---------------------------------
@@ -87,33 +112,36 @@
          node_image_source_name: "{{node_image_source | basename | default('')}}"
          node_image_source_localpath: "{{bifrost_repo}}/{{node_image_source_name}}"
          node_boot_iso: "{{ node.value.instance_info.boot_iso |  default('') }}"
-         node_ks_template: "{{ node.value.instance_info.ks_template |  default('default.ks') }}" 
+         node_ks_template: "{{ node.value.instance_info.ks_template |  default('') }}" 
          node_boot_interface: "{{ node.value.instance_info.boot_interface |  default('ipxe') }}"
          node_deploy_interface: "{{ node.value.instance_info.deploy_interface |  default('direct') }}"
-         node_command_iso_type: "{{ ( node_boot_iso | length ) > 1 }}"
-         allocation_command: |
+         node_kernel: "{{ node.value.instance_info.kernel |  default('') }}"
+         node_ramdisk: "{{ node.value.instance_info.ramdisk |  default('') }}"
+         command: |
            . /opt/stack/bifrost/bin/activate 
            export OS_CLOUD=bifrost
            baremetal allocation delete {{node_name}}     
            baremetal allocation create --name {{node_name}} --resource-class baremetal --wait
            baremetal node set {{node_uuid}} --boot-interface {{node_boot_interface}}
-           baremetal node set {{node_uuid}} --deploy-interface {{node_deploy_interface}}        
-         instance_command: |
-           HASH=$( sha256sum {{node_image_source_localpath}} )
-           baremetal node set {{node_uuid}} --instance-info image_source="{{node_image_source}}" 
-           baremetal node set {{node_uuid}} --instance-info image_os_hash_value="${HASH%% *}" 
-           baremetal node set {{node_uuid}} --instance-info image_os_hash_algo="sha256"  
-         
-         iso_command: |
-           baremetal node set {{node_name}} --instance-info boot_iso="{{node_boot_iso}}"
-           baremetal node set {{node_name}} --instance-info ks_template="{{node_ks_template}}"           
-         shoot_command: "{{ (node_command_iso_type | bool) |  ternary(iso_command,instance_command) }}"
-         status_command: |       
-           baremetal node validate {{node_name}}
-         command: |
-           {{ allocation_command }}
-           {{ shoot_command }}
-           {{ status_command }}
+           baremetal node set {{node_uuid}} --deploy-interface {{node_deploy_interface}}  
+           if [ -n '{{node_image_source}}' ] ; then
+             HASH=$( sha256sum {{node_image_source_localpath}} )
+             baremetal node set {{node_uuid}} --instance-info image_source="{{node_image_source}}" 
+             baremetal node set {{node_uuid}} --instance-info image_os_hash_value="${HASH%% *}" 
+             baremetal node set {{node_uuid}} --instance-info image_os_hash_algo="sha256"  
+           fi 
+           if [ -n '{{node_ks_template}}' ] ; then 
+              baremetal node set {{node_uuid}} --instance-info ks_template="{{node_ks_template}}"  
+           fi
+           if [ -n '{{node_boot_iso}}' ] ; then 
+              baremetal node set {{node_name}} --instance-info boot_iso="{{node_boot_iso}}"  
+           fi 
+           if [ -n '{{node_kernel}}' ] ; then 
+              baremetal node set {{node_name}} --instance-info kernel="{{node_kernel}}"  
+           fi 
+           if [ -n '{{node_ramdisk}}' ] ; then 
+              baremetal node set {{node_name}} --instance-info ramdisk="{{node_ramdisk}}"  
+           fi           
       loop:  "{{ baremetal_nodes_enrolled | dict2items | default([]) }}"
       loop_control:
         loop_var: node
@@ -121,22 +149,22 @@
 #---------------------------------
 #  IPA INSTALLATION MANIFESTO 
 #---------------------------------
-- name: "STEP 4 - IPA Installation Manifesto (kickstart, cloud-init, ignition)"
-  hosts: localhost
-  connection: local
-  vars:
-    work_path: "{{ playbook_dir }}/../hosts"
-    bifrost_default_inventory_source: "{{ work_path | realpath }}/baremetal.yml"
-    bifrost_repo_path: "{{ playbook_dir }}/../repo"
-    bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
-    
-  tasks:
-    
-    - name: "Load Nodes Enrolled from |{{ bifrost_inventory_source }}|"
-      ansible.builtin.include_vars: 
-         file: "{{ bifrost_inventory_source }}"
-         name: "baremetal_nodes_enrolled"    
-
+#- name: "STEP 4 - IPA Installation Manifesto (kickstart, cloud-init, ignition)"
+#  hosts: localhost
+#  connection: local
+#  vars:
+#    work_path: "{{ playbook_dir }}/../hosts"
+#    bifrost_default_inventory_source: "{{ work_path | realpath }}/baremetal.yml"
+#    bifrost_repo_path: "{{ playbook_dir }}/../repo"
+#    bifrost_inventory_source: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or bifrost_default_inventory_source }}"
+#    
+#  tasks:
+#    
+#    - name: "Load Nodes Enrolled from |{{ bifrost_inventory_source }}|"
+#      ansible.builtin.include_vars: 
+#         file: "{{ bifrost_inventory_source }}"
+#         name: "baremetal_nodes_enrolled"    
+#
  #   - name: 
          
 

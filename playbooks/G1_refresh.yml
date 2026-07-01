@@ -22,6 +22,7 @@
            - git
            - pip
            - qcow
+           - iso
            - ipa
            - dib
        block:
@@ -188,9 +189,10 @@
               deploy_image_checksum_url: "{{ image_src.checksum | default('') }}"
               deploy_image_checksum_algorithm: "{{ image_src.checksum_algorithm | default('') }}"
               deploy_image_filename: "{{ image_src.image | basename }}"
-              http_boot_folder: "{{ files_path }}/qcow"
+              http_boot_folder: "{{ files_path }}/{{image_src.local_folder|default('qcow')}}"
               deploy_image: "{{http_boot_folder}}/{{ image_src.image | basename }}"
-              
+           
+ 
       # ----> Download IPA Images
      - name: "STEP 4 - Download IPA images"
        vars:

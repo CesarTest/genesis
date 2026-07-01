@@ -56,7 +56,9 @@ BIFROST_WORKING_PATH="${WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
 IRONIC_NODES_FILE="host_vars/baremetal.yml"
+BAREMETAL_NODES=$(cat ${PROJECT_ANSIBLE_CFG} | grep 'inventory=' | awk -F/ '{print $NF}' )
 BIFROST_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
+ANSIBLE_INVENTORY_SOURCE="${HOSTS_WORKING_PATH}/${BAREMETAL_NODES}/inventory"
 RUN_BACKGROUND="no"
 
 # 2.2.- Online Installation
@@ -108,13 +110,13 @@ function defineMenu() {
 	    0|"MAIN        : back to main menu")
 		      MENU_TEXT="INSTRUCTIONS: \n A.- Baremetal Nodes Installation Cycle: SETUP -> DEPLOY -> PROVISION \n B.- Genesis Node  Installation Cycle: REFRESH -> CREATE -> INIT \n C.- To Run Ironic Commands: . $HOME/env.sh ; baremetal node list \n ___________\n STATE TRANSITIONS MENU \n___________"
 		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
-                              "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}" \
-                              "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}" \
-                              "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}" \
-                              "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (setup.yaml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1_refresh.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2_create.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3_init.yml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4_setup.yml)${COLOR[$NC]}" \
                               "${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}" \
-                              "${COLOR[$SEA]}[BAREMETAL] - DEPLOY   : unattended installation (deploy.yaml)${COLOR[$NC]}" \
-                              "${COLOR[$BLUE]}[BAREMETAL] - PROVISIONING: node drivers and services installation (install.yaml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5_deploy.yml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: node drivers and services installation (B6_provision.yml)${COLOR[$NC]}" \
                               "${COLOR[$NC]}[BAREMETAL] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}" \
                               "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
                               "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}" \
@@ -126,10 +128,10 @@ function defineMenu() {
 	          unset MENU
               ;;
 
-       1|"${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}")
+       1|"${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1_refresh.yml)${COLOR[$NC]}")
 	          if [ ! -n "${REFRESH_LOG}"    ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
 			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
-		      MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine${COLOR[$NC]}"
+		      MENU_TEXT="(1)___________ ${COLOR[$ORANGE]}[$LABEL]   - REFRESH     : Reinstall Genesis Machine (G1_refresh.yml)${COLOR[$NC]}"
 	          PARAMETRO=(     "RUN_BACKGROUND" "REFRESH_LOG" )
               VALOR_DEFECTO=( "No"  "${REFRESH_LOG}")	  
 	          SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
@@ -141,10 +143,10 @@ function defineMenu() {
               ;;
 
 
-	   2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}")
+	   2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2_create.yml)${COLOR[$NC]}")
 	         if [ ! -n "${INSTALL_LOG}"    ] ; then local CREATE_LOG="${HOME}/create.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			 
-		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}"
+		     MENU_TEXT="(2)___________ ${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2_create.yml)${COLOR[$NC]}"
 	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "INSTALL_LOG"   )
              VALOR_DEFECTO=(  "${PXE[$DHCP_NIC]}" \
 			                  "${PXE[$DHCP_IP]}" \
@@ -172,7 +174,7 @@ function defineMenu() {
              unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND CREATE_LOG
              ;;
 
-	   3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")
+	   3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3_init.yml)${COLOR[$NC]}")
 	         if [ ! -n "${INIT_LOG}"    ] ; then local INIT_LOG="${HOME}/init.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi
 		     MENU_TEXT="(3)___________ ${COLOR[$ORANGE]}[IRONIC]   -  INIT : load operating system installation images${COLOR[$NC]}"
@@ -187,9 +189,9 @@ function defineMenu() {
 		     ;;
 
 
-	   4|"${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (setup.yaml)${COLOR[$NC]}")
+	   4|"${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4_setup.yml)${COLOR[$NC]}")
 	         if [ ! -n "${SETUP_LOG}" ] ; then local SETUP_LOG="${HOME}/setup.log"  ; fi
-	         MENU_TEXT="(4)___________ ${COLOR[$ORANGE]}[$LABEL]   - SETUP       : Enroll Baremetal Nodes to Ironic (setup.yaml)${COLOR[$NC]}"
+	         MENU_TEXT="(4)___________ ${COLOR[$ORANGE]}[$LABEL]   - SETUP       : Enroll Baremetal Nodes to Ironic (B4_setup.yml)${COLOR[$NC]}"
 			 
              RUTA_OPCIONES=( "${HOSTS_WORKING_PATH}" )
 	         PARAMETRO=(     "BAREMETAL_NODES"    "SETUP_LOG"   )
@@ -215,10 +217,10 @@ function defineMenu() {
              unset NODE_LIST
              ;;
 
-       6|"${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (deploy.yaml)${COLOR[$NC]}")
+       6|"${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5_deploy.yml)${COLOR[$NC]}")
 	         if [ ! -n "${TARGET}" ]    ; then local TARGET=''                       ; fi
 	         if [ ! -n "${KICKSTART_LOG}" ] ; then local DEPLOY_LOG="${HOME}/deploy.log"  ; fi
-	         MENU_TEXT="(2)___________ ${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (deploy.yaml)${COLOR[$NC]}}"
+	         MENU_TEXT="(6)___________ ${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5_deploy.yml)${COLOR[$NC]}"
 	         PARAMETRO=(  "TARGET"    "DEPLOY_LOG" )
              VALOR_DEFECTO=(  "${TARGET}" "${DEPLOY_LOG}"   )
 	         SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
@@ -230,11 +232,11 @@ function defineMenu() {
 	         ;;
 
 
-	     7|"${COLOR[$BLUE]}[BAREMETAL] - PROVISIONING: node drivers and services installation (install.yaml)${COLOR[$NC]}")
+	     7|"${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: node drivers and services installation (B6_provision.yml)${COLOR[$NC]}")
 	          if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${IDAS_DEFAULT_INVENTORY}" ; fi
 	          if [ ! -n "${TARGET}" ]    ; then local TARGET=''                    ; fi
 	          if [ ! -n "${PROVISION_LOG}" ] ; then local PROVISION_LOG="${HOME}/provision.log"  ; fi
-	          MENU_TEXT="(7)___________ ${COLOR[$BLUE]}[STRING] - PROVISIONING: subsystem basic installation (install_iCAS.yaml)${COLOR[$NC]}"
+	          MENU_TEXT="(7)___________ ${COLOR[$SEA]}[STRING] - PROVISIONING: subsystem basic installation (install_iCAS.yaml)${COLOR[$NC]}"
 	          PARAMETRO=(     "INVENTORY"      "TARGET"     "PROVISION_LOG")
               VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${PROVISION_LOG}" )
 	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
@@ -876,8 +878,8 @@ function trust_relationships() {
     #---------------------------
     if [ -r "${LIST_OF_NODES_FILE}" ] ; then
         . "${LIST_OF_NODES_FILE}" 2> /dev/null
-    elif [ -r "/etc/core/inventory_ip" ] ; then
-	local INVENTORY_LIST=( $(ansible all -i /etc/core/inventory_ip --list-hosts| sed '1d') )
+    elif [ -r "${ANSIBLE_INVENTORY_SOURCE}" ] ; then
+	    local INVENTORY_LIST=( $(source ${VIRTUAL_ENVIRONMENT} ; ansible all -i ${ANSIBLE_INVENTORY_SOURCE} --list-hosts| sed '1d') )
     fi
 
     if [ -n "${INVENTORY_LIST}" ] ; then
@@ -887,7 +889,7 @@ function trust_relationships() {
        done
     else
        echo -e "${COLOR[$YELLOW]} [WARN] - MISSING CONFIGURATION FILE: please try to SETUP Genesis before ${COLOR[$NC]}"
-       error "-r" "${LIST_OF_NODES_FILE}"
+       error "-r" "[${LIST_OF_NODES_FILE}] or [${ANSIBLE_INVENTORY_SOURCE}]"
     fi
     unset NODE INVENTORY_LIST LIST_OF_NODES_FILE
 }
@@ -1610,7 +1612,7 @@ function 1_refresh() {
    echo -e '   [IRONIC] - REFRESH     : Reinstall Genesis Node'
    echo -e '------------------------------------------------------------------------------------------------------'
    if [ -n "${LOG_FILE}"    ] ; then local REFRESH_LOG="${LOG_FILE}"  ; fi
-   local PLAYBOOK="${WORKING_PATH}/playbooks/prepareAirgap.yml"
+   local PLAYBOOK="${WORKING_PATH}/playbooks/G1_refresh.yml"
    prepareLocalMachine                                     | tee -a "${REFRESH_LOG}"
    if [ ! -n "${ONLINE}" ] ; then  runPlaybook "${REFRESH_LOG}" ; fi
    state_status "genesis_installed"     "${PROJECT_RPM}"   | tee -a "${REFRESH_LOG}"
@@ -1637,7 +1639,7 @@ function 2_create() {
    if [ -n "${dhcp_address}"  ] ; then PXE[${DHCP_IP}]=$( echo "$dhcp_address" | tr -d \/  |  tr '\' '/' )    ; fi
    if [ -n "${dhcp_pool_start}"   ] ; then PXE[${DHCP_POOL_START}]="${dhcp_pool_start}" ; fi
    if [ -n "${dhcp_pool_end}"     ] ; then PXE[${DHCP_POOL_END}]="${dhcp_pool_end}"     ; fi
-   local PLAYBOOK="${WORKING_PATH}/playbooks/create.yml"
+   local PLAYBOOK="${WORKING_PATH}/playbooks/G2_create.yml"
    local FLUSH_CACHE="yes"
    #DISABLE_WARNS="Yes"
    enableIronicNetworkInterface
@@ -1664,7 +1666,7 @@ function 3_init() {
    echo -e ". $HOME/env.sh "
    echo -e "baremetal node list"
    if [ -n "${LOG_FILE}"      ] ; then local INIT_LOG="${LOG_FILE}" ; fi
-   local PLAYBOOK="${WORKING_PATH}/playbooks/init.yml"
+   local PLAYBOOK="${WORKING_PATH}/playbooks/G3_init.yml"
    runPlaybook "${INIT_LOG}"
    unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
 }
@@ -1682,7 +1684,7 @@ function 4_setup() {
    echo -e ". $HOME/env.sh "
    echo -e "baremetal node list"
    if [ -n "${LOG_FILE}" ] ; then local SETUP_LOG="${LOG_FILE}" ; fi
-   local PLAYBOOK="${WORKING_PATH}/playbooks/setup.yml"
+   local PLAYBOOK="${WORKING_PATH}/playbooks/B4_setup.yml"
    local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
    updateInventory
    addGenesisToHosts
@@ -1719,10 +1721,11 @@ function 6_deploy() {
    echo -e "----> To run Ironic commands: "
    echo -e ". $HOME/env.sh "
    echo -e "baremetal node list"   
-   local PLAYBOOK="/usr/share/idas_core/ansible/kickstart.yaml"
-   if [ -n "${TARGET}"   ] ; then local PTARGET="localhost,${TARGET}" ; fi
-   if [ -n "${LOG_FILE}" ] ; then local KICKSTART_LOG="${LOG_FILE}"   ; fi
-   runPlaybook "${KICKSTART_LOG}"
+   local PLAYBOOK="${WORKING_PATH}/playbooks/B5_deploy.yml"
+   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
+   if [ -n "${TARGET}"   ] ; then local PTARGET="${TARGET}" ; fi
+   if [ -n "${LOG_FILE}" ] ; then local DEPLOY_LOG="${LOG_FILE}"   ; fi
+   runPlaybook "${DEPLOY_LOG}"
    unset PTARGET LOG_FILE
 }
 
@@ -1834,13 +1837,13 @@ function runActions() {
 
     local ACTION="$1"
     case "${ACTION}" in
-        1|"${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine${COLOR[$NC]}")                  1_refresh   ;;
-        2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (create.yml)${COLOR[$NC]}") 2_create    ;;
-        3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (init.yaml)${COLOR[$NC]}")   3_init      ;;
-        4|"${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (setup.yaml)${COLOR[$NC]}") 4_setup  ;;
+        1|"${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1_refresh.yml)${COLOR[$NC]}")                  1_refresh   ;;
+        2|"${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2_create.yml)${COLOR[$NC]}") 2_create    ;;
+        3|"${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3_init.yml)${COLOR[$NC]}")   3_init      ;;
+        4|"${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4_setup.yml)${COLOR[$NC]}") 4_setup  ;;
         5|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}")          5_ansible   ;;
-        6|"${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (deploy.yaml)${COLOR[$NC]}") 6_deploy ;;
-        7|"${COLOR[$BLUE]}[BAREMETAL] - PROVISIONING: node drivers and services installation (install.yaml)${COLOR[$NC]}") 7_provision ;;
+        6|"${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5_deploy.yml)${COLOR[$NC]}") 6_deploy ;;
+        7|"${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: node drivers and services installation (B6_provision.yml)${COLOR[$NC]}") 7_provision ;;
         12|"[BAREMETAL] - SSH         : Load Relationships Map")              12_passwordless ;;
         13|"[BAREMETAL] - GRAPHICS    : Install propietary 3er party driver") 13_graphics     ;;
         14|"[BAREMETAL] - NETWORK     : Install network configurations")      14_network      ;;

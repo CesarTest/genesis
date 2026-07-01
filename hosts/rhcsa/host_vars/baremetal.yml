@@ -3,8 +3,8 @@
 # HTTP: QCOW Images with baked-in Cloud-Init Install Manifesto
 #--------------------------
 servera199.maas.lab:
-   ipa_kernel_url: "http://10.10.10.5:8080/ipa.kernel"
-   ipa_ramdisk_url: "http://10.10.10.5:8080/ipa.initramfs"
+   #ipa_kernel_url: "http://10.10.10.5:8080/ipa.kernel"
+   #ipa_ramdisk_url: "http://10.10.10.5:8080/ipa.initramfs"
    uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
    driver_info:
      redfish_username: "root@pam"
@@ -19,7 +19,8 @@ servera199.maas.lab:
    instance_info:
      deploy_interface: "direct"
      image_source: "http://10.10.10.5:8080/centos-9.qcow"
-     #image_os_hash_value: "a7711ee4b875ec7d84a2cc6fe48d7f7827879b082e4331092138d735ef2fa5cc"
+     image_os_hash_value: "d91d01212125e00370e3917df2bf32a86738fbc89fa008effebd398d764b1b03"
+     image_os_hash_algo: "sha256"
      boot-interface: "ipxe"
    driver: "redfish"
    ipv4_address: "10.10.10.150"
@@ -36,7 +37,7 @@ servera199.maas.lab:
 serverb199.maas.lab:
    ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
    ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
-   uuid: "7499a718-f165-41c3-ae39-3515dae87a7d"
+   uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
    driver_info:
      redfish_username: "root@pam"
      redfish_address: "https://cdglab.duckdns.org:8000"
@@ -49,7 +50,10 @@ serverb199.maas.lab:
        mac: "BC:24:11:E5:66:0C"
    instance_info:
      deploy_interface: "anaconda"
-     ks_template: "http://genesis.maas.lab:8080/ks_centos9.ks"
+     ks_template: "http://genesis.maas.lab:8080/serverb199/ks_template"  
+     image_source: "http://genesis.maas.lab:8080/test"
+     kernel: "http://genesis.maas.lab:8080/centos9/vmlinuz"
+     ramdisk: http://genesis.maas.lab:8080/centos9/initrd.img"   
      boot-interface: "ipxe"
    driver: "redfish"
    ipv4_address: "10.10.10.151"

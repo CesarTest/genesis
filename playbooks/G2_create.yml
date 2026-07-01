@@ -11,14 +11,14 @@
 #---------------------------------
 - name: "STEP 1: Install Standalone Ironic in Genesis Node"
   ansible.builtin.import_playbook: "{{bifrost_shoot_path|trim}}/install.yaml"
-  #become: true
+  ignore_errors: yes
   vars:
     bifrost_shoot_path: >-
      {{ bifrost_playbooks_path 
       | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
       | realpath  }}
-    install_dib: true
-    create_image_via_dib: false
+    #install_dib: true
+    #create_image_via_dib: false
 
 #---------------------------------
 # SETUP STANDALONE IRONIC
