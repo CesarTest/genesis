@@ -12,9 +12,9 @@
 ## Scenarios
 - **Genesis with Internet**... download OpenStack components and linux distros images and save it locally.
 - **Genesis Airgap**... tarball Genesis project with local repository to deploy in isolated environments.
-... Genesis Airgap not tested, eventually tools such [Hauler](https://ranchergovernment.com/blog/simplifying-the-airgap-experience-with-rancher-government-hauler) should be included. Prefered CentOS/RHEL over Ubuntu since airgap repos easier to create from ISO.
-- **Ansible Execution Environment** Compilation... layout is there for packaging Genesis into a Container in the future. 
-... Actually, Genesis should run in a dedicated machine instead of container.
+... Genesis Airgap not tested, eventually tools such [Hauler](https://ranchergovernment.com/blog/simplifying-the-airgap-experience-with-rancher-government-hauler) or [Zarf](https://zarf.dev/) should be included. Prefered CentOS/RHEL over Ubuntu since airgap repos easier to create from ISO.
+- **Ansible Execution Environment** Compilation... layout is there for packaging Genesis into a Container in the future. Eventually integrate [Kolla-Ansible](https://docs.openstack.org/kolla-ansible/latest/reference/deployment-and-bootstrapping/bifrost.html) tooling for that.
+
 
 ## Genesis Node Life Cycle
 ![Genesis](./doc/genesis.jpg)
