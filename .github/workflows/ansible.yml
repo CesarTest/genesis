@@ -15,7 +15,7 @@ name: ansible
 on:
   pull_request:
     branches:
-      - main
+      - dev
   push:
     branches:
       - '*'
@@ -41,7 +41,9 @@ jobs:
         ANSIBLE_GALAXY_SERVER_LIST: ${{ vars.ANSIBLE_GALAXY_SERVER_LIST }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: Cache content
         id: cache-action
         uses: actions/cache@v4
@@ -54,7 +56,22 @@ jobs:
           requirements: requirements.txt
         if: success() || failure()
       - name: Run ansible linter
-        run: ansible-lint
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            changed_files="$(git diff --name-only --diff-filter=ACMRT HEAD^1 HEAD^2 -- \
+              'collections/**/*.yml' 'collections/**/*.yaml' \
+              'hosts/**/*.yml' 'hosts/**/*.yaml' \
+              'playbooks/**/*.yml' 'playbooks/**/*.yaml' \
+              'roles/**/*.yml' 'roles/**/*.yaml')"
+            if [ -z "$changed_files" ]; then
+              echo "No changed Ansible YAML files; skipping ansible-lint."
+              exit 0
+            fi
+            printf '%s\n' "$changed_files"
+            ansible-lint $changed_files
+          else
+            ansible-lint
+          fi
         if: success() || failure()
       - name: Run python linter
         uses: astral-sh/ruff-action@v3
