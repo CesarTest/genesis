@@ -766,7 +766,7 @@ installEnvironment() {
 #  Bifrost Scripts path detection depends on linux distro
 #  - This work around seems to fix the issue
 #===================================================
-bifrostScriptsWorkaround) {
+bifrostScriptsWorkaround() {
  
  if [ -x "${BIFROST_WORKING_PATH}/scripts/env-setup.sh" ] ; then
     echo "${LOG_HEADER} -> cd ${BIFROST_WORKING_PATH} "
