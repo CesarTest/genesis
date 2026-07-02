@@ -24,6 +24,7 @@ verbosity: 0
 # Exclude paths from linting
 exclude_paths:
   - collections/ansible_collections
+  - roles/openstack.bifrost
   - .ansible
 
 # Ansible Lint does not automatically load rules that have the 'opt-in' tag.
