@@ -3,7 +3,8 @@
 - **PoC (Proof of Concept)**: adopt Telco Cloud Anuket  [standards](https://cntt.readthedocs.io/en/stable-kali/common/chapter00.html) and [tooling](https://ec.europa.eu/newsroom/repository/document/2025-9/TelcoCloudReferenceArchitecture_v7_L8XM9LekTSnxgxb9NgJkBBifw_113237.pdf) for Software Factories management.
 
 ## Supported Platforms
-- Ubuntu 24.04 Noble fresh installation... under development.
+- Ubuntu 26.04 Resolute Raccoon fresh installation
+- OpenStack > 2026.1... for registry based image deployments
 
 ## Installation
 - 1) Clone Project

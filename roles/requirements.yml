@@ -15,4 +15,4 @@
 roles:
   - name: "openstack.bifrost" 
     src: "https://github.com/openstack/bifrost" 
-    version: "stable/2025.2"
+#    version: "stable/2026.1"

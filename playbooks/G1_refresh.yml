@@ -19,12 +19,12 @@
           bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) }}"
           files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}"       
           repos: 
-           - git
+           - openstack
            - pip
            - qcow
            - iso
-           - ipa
            - dib
+           - dib/files
        block:
          - name: "STEP 0 - Create an ironic service group"
            group:
@@ -40,6 +40,9 @@
               path: "{{ files_path | default('/tmp') }}/{{ folder| default('repo') }}"
               state: "directory"
               recurse: true
+              owner: "{{ansible_user | default('ironic') }}"
+              group: "{{ansible_user | default('ironic') }}"
+              mode: "775"
            loop: "{{ repos | default([]) }}"
            loop_control:
              loop_var: "folder"
@@ -65,36 +68,14 @@
     enable_keystone: true
     enable_prometheus_exporter: true
     staging_drivers_include: true
- 
-     # 2.- Paths
+    enable_networking_generic_switch_driver: true
+    
+    # 2.- Paths
     bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"
     files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}"
     bifrost_roles: "{{bifrost_path}}/openstack.bifrost/playbooks/roles"
-    git_root: "{{files_path}}/git"
-    dib_git_url: https://opendev.org/openstack/diskimage-builder
-    dib_git_folder: "{{git_root}}/{{dib_git_url | basename }}"
-    ironicclient_git_url: https://opendev.org/openstack/python-ironicclient
-    ironicclient_git_folder: "{{git_root}}/{{ironicclient_git_url | basename }}"
-    openstacksdk_git_url: https://opendev.org/openstack/openstacksdk
-    openstacksdk_git_folder: "{{git_root}}/openstacksdk"
-    ironic_git_url: https://opendev.org/openstack/ironic
-    ironic_git_folder: "{{git_root}}/{{ironic_git_url | basename }}"
-    staging_drivers_git_url: https://opendev.org/x/ironic-staging-drivers
-    staging_drivers_git_folder: "{{git_root}}/{{staging_drivers_git_url | basename }}"
-    staging_drivers_git_branch: "0.11.0"
-    ironicinspector_git_url: https://opendev.org/openstack/ironic-inspector
-    ironicinspector_git_folder: "{{git_root}}/{{ironicinspector_git_url | basename }}"
-    ironicinspectorclient_git_url: https://opendev.org/openstack/python-ironic-inspector-client
-    ironicinspectorclient_git_folder: "{{git_root}}/{{ironicinspectorclient_git_url | basename }}"
-    ipa_git_url: https://opendev.org/openstack/ironic-python-agent
-    ipa_git_folder: "{{git_root}}/{{ipa_git_url | basename }}"
-    ipa_builder_git_url: https://opendev.org/openstack/ironic-python-agent-builder
-    ipa_builder_git_folder: "{{git_root}}/{{ipa_builder_git_url | basename }}"
-    prometheus_exporter_git_url: https://opendev.org/openstack/ironic-prometheus-exporter
-    prometheus_exporter_git_folder: "{{git_root}}/{{prometheus_exporter_git_url | basename }}"
-    reqs_git_url: "https://opendev.org/openstack/requirements"
-    reqs_git_folder: "{{git_root}}/{{reqs_git_url | basename }}"
-    
+    git_root: "{{files_path}}/openstack"
+    git_url_root: https://opendev.org 
     
   environment:
     PIP_DEST:  "{{files_path}}/pip" 
@@ -102,9 +83,7 @@
   roles:
     - name: "STEP 2 - Download OpenStack Components from GIT"
       role: "bifrost-prep-for-install"
-      when: not (skip_install | default(false) | bool)
-    #- role: "{{bifrost_roles}}/bifrost-pip-install"
-    #  when: not (skip_install | default(false) | bool)
+      when: not (skip_install | default(false) | bool)    
 
 ######################################################
 #  IPA AND OS IMAGES RESPOSITORIES
@@ -196,20 +175,33 @@
       # ----> Download IPA Images
      - name: "STEP 4 - Download IPA images"
        vars:
-          update_ipa: true
+          tarballs_base_url: "https://tarballs.opendev.org"
+          ipa_download_url_username:
+          ipa_download_url_password:
+          ipa_download_force_basic_auth:
+          ipa_download_unredirected_headers:
+          ipa_kernel_download_url_username: "{{ ipa_download_url_username }}"
+          ipa_kernel_download_url_password: "{{ ipa_download_url_password }}"
+          ipa_kernel_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+          ipa_kernel_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+          ipa_ramdisk_download_url_username: "{{ ipa_download_url_username }}"
+          ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
+          ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+          ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"       
+         
           default_ipa_image_sources:
-            - kernel: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel"
-              kernel_checksum_url: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel.sha256"
+            - kernel: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel"
+              kernel_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel.sha256"
               kernel_checksum_algo: "sha256"
-              ramdisk: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs"
-              ramdisk_checksum_url: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs.sha256"
+              ramdisk: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs"
+              ramdisk_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs.sha256"
               ramdisk_checksum_algo: "sha256"  
             
-            - kernel: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel"
-              kernel_checksum_url: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel.sha256"
+            - kernel: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel"
+              kernel_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel.sha256"
               kernel_checksum_algo: "sha256"
-              ramdisk: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs"
-              ramdisk_checksum_url: "https://tarballs.opendev.org/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs.sha256"
+              ramdisk: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs"
+              ramdisk_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs.sha256"
               ramdisk_checksum_algo: "sha256" 
           ipa_image_sources: "{{ bifrost_ipa_image_sources | default(default_ipa_image_sources) | default([]) }}" 
                   
@@ -222,10 +214,23 @@
            vars:
               ipa_kernel_upstream_url: "{{ ipa_src.kernel | default('') }}"
               ipa_kernel_upstream_checksum_url: "{{ ipa_src.kernel_checksum_url | default('') }}"
-              ipa_kernel_upstream_checksum_algo: "{{ ipa_src.kernel_checksum_algo | default('') }}"
+              ipa_kernel_upstream_checksum_algo: "{{ ipa_src.kernel_checksum_algo | default('') }}"          
               ipa_ramdisk_upstream_url: "{{ ipa_src.ramdisk | default('') }}"
               ipa_ramdisk_upstream_checksum_url: "{{ ipa_src.ramdisk_checksum_url | default('') }}"
-              ipa_ramdisk_upstream_checksum_algo: "{{ ipa_src.ramdisk_checksum_algo | default('') }}"          
-              ipa_kernel: "{{ files_path }}/ipa/{{ ipa_kernel_upstream_url | basename }}"
-              ipa_ramdisk: "{{ files_path }}/ipa/{{ ipa_ramdisk_upstream_url | basename }}"
-           when: update_ipa | bool             
+              ipa_kernel: "{{ files_path }}/dib/files/{{ ipa_kernel_upstream_url | basename }}"
+              ipa_ramdisk: "{{ files_path }}/dib/files/{{ ipa_ramdisk_upstream_url | basename }}"            
+
+       block:  
+         - name: "STEP 5 - Download ORAS tarball"
+           vars:
+              oras_download_url: "{{oras_upstream_root}}/{{oras_tarball_path}}"
+           get_url:
+              url: "{{ oras_download_url }}"
+              dest: "{{ files_path }}/openstack/{{oras_tarball_name}}"
+              checksum: "sha256:{{ oras_checksum }}"
+              mode: '0644'
+
+       
+         - name: "STEP 6 - Owner"
+           shell:
+             cmd: "chown -R {{ansible_user | default('ironic') }}:ironic  {{ files_path }}"

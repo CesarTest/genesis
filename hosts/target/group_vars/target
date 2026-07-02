@@ -1,7 +1,7 @@
 ---
 # The ironic API URL for bifrost operations.  Defaults to localhost.
 # ironic_url: "http://localhost:6385/"
-git_branch: "stable/2025.2"
+#git_branch: "stable/2025.2"
 bifrost_root_path: "{{ ( inventory_dir + '/../../' ) | realpath }}"
 bifrost_airgap_path: "{{ bifrost_root_path }}/repo"
 
@@ -10,10 +10,10 @@ bifrost_airgap_path: "{{ bifrost_root_path }}/repo"
 genesis_hostvars_name: "genesis.maas.lab"
 network_interface: "ens19"
 enable_dhcp: true
-dhcp_address: "10.10.10.5/24"
 dhcp_provider: "dnsmasq"
-dhcp_pool_start: "10.10.10.110"
-dhcp_pool_end: "10.10.10.200"
+dhcp_address: "10.10.10.20/24"
+dhcp_pool_start: "10.10.10.201"
+dhcp_pool_end: "10.10.10.220"
 dhcp_lease_time: 12h
 dhcp_static_mask: 255.255.255.0
 
@@ -47,8 +47,8 @@ mysql_password:
 # in each role should be sufficient for proper operation.
 # ipa_kernel: "{{http_boot_folder}}/ipa.kernel"
 # ipa_ramdisk: "{{http_boot_folder}}/ipa.initramfs"
-# ipa_kernel_url: "http://{{ hostvars[inventory_hostname]['ansible_' + network_interface]['ipv4']['address'] }}:{{file_url_port}}/ipa.kernel"
-# ipa_ramdisk_url: "http://{{ hostvars[inventory_hostname]['ansible_' + network_interface]['ipv4']['address'] }}:{{file_url_port}}/ipa.initramfs"
+# ipa_kernel_url: "http://{{ hostvars[inventory_hostname]['ansible_' + ens19]['ipv4']['address'] }}:{{file_url_port}}/ipa.kernel"
+# ipa_ramdisk_url: "http://{{ hostvars[inventory_hostname]['ansible_' + ens19]['ipv4']['address'] }}:{{file_url_port}}/ipa.initramfs"
 
 # The http_boot_folder defines the root folder for the webserver.
 # If this setting is changed, it must be applied to both the baremetal
@@ -71,6 +71,11 @@ dib_image_type: vm
 # Create IPA image instead of downloading an pre-made IPA image.
 create_ipa_image: false
 
+# Registry
+install_dib: true
+enable_registry: true
+enable_oci_registry_upload: true
+
 # Dnsmasq default route for clients. If not defined, dnsmasq will push to
 # clients as default route the same IP of the dnsmasq server.
 # Default: undefined
@@ -82,43 +87,31 @@ create_ipa_image: false
 # dnsmasq_dns_servers: 8.8.8.8,8.8.4.4
 
 ######################################################
-# AIRGA DEFINITION
+# AIRGAP DEFINITION
 ######################################################
 
 # 1.- Local Paths
 #------------------
 local_repo_url: "file://{{bifrost_airgap_path}}"
-local_git_url: "{{local_repo_url}}/git"
-local_ipa_url: "{{local_repo_url}}/ipa"
-local_qcow_url: "{{local_repo_url}}/qcow"
-local_k8s_url: "{{local_repo_url}}/k8s"
+git_url_root: "{{local_repo_url}}"
+tarballs_base_url: "{{local_repo_url}}"
+oras_url_root: "{{git_url_root}}"   
+oras_upstream_root: "https://github.com/oras-project/oras/releases/download"
 
-# 2.- OpenStack Components
-#-------------------------
-dib_git_url: "{{local_git_url}}/diskimage-builder"
-ironicclient_git_url: "{{local_git_url}}/python-ironicclient"
-openstacksdk_git_url: "{{local_git_url}}/openstacksdk"
-ironic_git_url: "{{local_git_url}}/ironic"
-staging_drivers_git_url: "{{local_git_url}}/ironic-staging-drivers"
-ironicinspector_git_url: "{{local_git_url}}/ironic-inspector"
-ironicinspectorclient_git_url: "{{local_git_url}}/python-ironic-inspector-client"
-ipa_git_url: "{{local_git_url}}/ironic-python-agent"
-ipa_builder_git_url: "{{local_git_url}}/ironic-python-agent-builder"
-prometheus_exporter_git_url: "{{local_git_url}}/ironic-prometheus-exporter"
-reqs_git_url: "{{local_git_url}}/requirements"
-
-# 3.- IPA Images
-#----------------
-ipa_kernel_name: "ipa-centos9-master.kernel"
-ipa_kernel_algorithm: "sha256"
-ipa_initramfs_name: "ipa-centos9-master.initramfs"
-ipa_initramfs_algorithm: "sha256"
-ipa_kernel_upstream_url: "{{local_ipa_url | default('') }}/{{ipa_kernel_name }}"
-ipa_kernel_upstream_checksum_url: "{{local_ipa_url | default('') }}/{{ipa_kernel_name}}.{{ipa_kernel_algorithm}}"
-ipa_kernel_upstream_checksum_algo: "{{ipa_kernel_algorithm | default('sha256')}}"
-ipa_ramdisk_upstream_url: "{{ local_ipa_url | default('') }}/{{ipa_initramfs_name }}"
-ipa_ramdisk_upstream_checksum_url: "{{ local_ipa_url | default('') }}/{{ipa_initramfs_name }}.{{ipa_initramfs_algorithm}}"
-ipa_ramdisk_upstream_checksum_algo: "{{ ipa_initramfs_algorithm | default('sha256') }}"          
+# 2.- Registry
+#----------------------------
+oras_arch_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+oras_arch: "{{ oras_arch_map[ansible_architecture] }}"           
+oras_version: "1.3.0"
+oras_checksums:
+  linux_amd64: "6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64"
+  linux_arm64: "7649738b48fde10542bcc8b0e9b460ba83936c75fb5be01ee6d4443764a14352"
+oras_tarball_name: "oras_{{ oras_version }}_linux_{{ oras_arch }}.tar.gz"
+oras_tarball_path: "v{{ oras_version }}/{{oras_tarball_name}}" 
+oras_download_url: "{{oras_url_root}}/{{oras_tarball_name}}"
+oras_checksum: "{{ oras_checksums['linux_' + oras_arch] }}"
 
 # 3.- Operating System Images
 #----------------------------
@@ -127,52 +120,6 @@ bifrost_download_images:
     checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
     checksum_algorithm: "sha256"
     distro: "centos"
-    release: "9-stream"
+    release: "9"
     deploy_interface: "direct"
     boot_interface: "ipxe"
-#   - image: "https://mirrors.centos.org/mirrorlist?path=/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso&redirect=1&protocol=https"
-#    checksum: "https://mirrors.centos.org/mirrorlist?path=/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso.SHA256SUM&redirect=1&protocol=https"
-#    checksum_algorithm: "sha256"
-#    local_folder: 'iso'
-#    distro: "centos"
-#    release: "9-stream"
-#    deploy_interface: "anaconda"
-#    boot_interface: "ipxe"	
-#  - image: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
-#    checksum: "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS"
-#    checksum_algorithm: "sha256"
-#    distro: "ubuntu"
-#    release: "focal"  
-#  - image: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-#    checksum: "https://cloud-images.ubuntu.com/jammy/current/SHA256SUMS"
-#    checksum_algorithm: "sha256"
-#    distro: "ubuntu"
-#    release: "jammy"                
-#  - image: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-#    checksum: "https://cloud-images.ubuntu.com/noble/current/SHA256SUMS"
-#    checksum_algorithm: "sha256"
-#    distro: "ubuntu"
-#    release: "noble"               
-#  - image: "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2"
-#    checksum: "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/CHECKSUM"
-#    checksum_algorithm: "sha256"
-#    distro: "rocky"
-#    release: "8" 
-#  - image: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
-#    checksum: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/CHECKSUM"
-#    checksum_algorithm: "sha256"
-#    distro: "rocky"
-#    release: "9"              
-#  - image: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
-#    checksum: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/CHECKSUM"
-#    checksum_algorithm: "sha256"
-#  - image: "https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
-#    checksum: "https://cloud.centos.org/centos/10-stream/x86_64/images/CHECKSUM"
-#    checksum_algorithm: "sha256"
-#    distro: "centos"
-#    release: "10-stream"
-#  - image: "{{ cirros_deploy_image_upstream_url | default('https://download.cirros-cloud.net/0.5.3/cirros-0.5.3-x86_64-disk.img') }}"
-#    checksum: "https://download.cirros-cloud.net/0.5.3/MD5SUMS"
-#    checksum_algorithm: "md5"
-#    distro: "cirros"
-#    release: "0.5.3"

@@ -5,7 +5,7 @@ all:
  #  HOST_VARS: HARDWARE PROFILE THROUGH IRONIC API
  #--------------------------------------------------------------------
  hosts:  
-   test-ironic.maas.lab:
+   gitlab.maas.lab:
      ansible_user: cesar 
      ansible_become_pass: cesar
 
@@ -13,6 +13,6 @@ all:
  #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION
  #--------------------------------------------------------------------
  children:
-   webservers:
+   gitops:
      hosts:
-       test-ironic.maas.lab 
+       gitlab.maas.lab 
