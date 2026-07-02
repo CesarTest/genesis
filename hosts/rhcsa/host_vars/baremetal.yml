@@ -33,7 +33,7 @@ servera199.maas.lab:
 
 #--------------------------
 # HTTP: ISO Images with external Install Manifesto (kickstart, ignition)
-#--------------------------   
+#--------------------------
 serverb199.maas.lab:
    ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
    ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
@@ -50,10 +50,10 @@ serverb199.maas.lab:
        mac: "BC:24:11:E5:66:0C"
    instance_info:
      deploy_interface: "anaconda"
-     ks_template: "http://genesis.maas.lab:8080/serverb199/ks_template"  
+     ks_template: "http://genesis.maas.lab:8080/serverb199/ks_template"
      image_source: "http://genesis.maas.lab:8080/test"
      kernel: "http://genesis.maas.lab:8080/centos9/vmlinuz"
-     ramdisk: http://genesis.maas.lab:8080/centos9/initrd.img"   
+     ramdisk: http://genesis.maas.lab:8080/centos9/initrd.img"
      boot-interface: "ipxe"
    driver: "redfish"
    ipv4_address: "10.10.10.151"
@@ -62,11 +62,11 @@ serverb199.maas.lab:
      ram: "2048"
      disk_size: "32"
      cpus: "4"
-   name: "serverb199"   
+   name: "serverb199"
 
 #--------------------------
 # OCI: QCOW Images with baked-in Cloud-Init Install Manifesto
-#-------------------------- 
+#--------------------------
 workstation199.maas.lab:
    ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
    ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
@@ -92,11 +92,11 @@ workstation199.maas.lab:
      ram: "2048"
      disk_size: "32"
      cpus: "4"
-   name: "workstation199"   
-   
+   name: "workstation199"
+
 #--------------------------
 # OCI: ISO Images with external Install Manifesto (kickstart, ignition)
-#--------------------------      
+#--------------------------
 training.maas.lab:
    ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
    ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
@@ -122,4 +122,4 @@ training.maas.lab:
      ram: "2048"
      disk_size: "32"
      cpus: "4"
-   name: "training"   
+   name: "training"

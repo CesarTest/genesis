@@ -2,9 +2,9 @@
 # genesis playbooks/init.yml
 #   - Load OS images
 #
-# SPDX-FileCopyrightText: © 2026 Genesis System 
+# SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-# 	
+#
 
 #---------------------------------
 # COPY DOWNLOADED OS IMAGES
@@ -15,30 +15,30 @@
   vars:
     default_repo_path: "{{ playbook_dir  }}/../repo"
     bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
-    bifrost_dest_folder: 
+    bifrost_dest_folder:
       - "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
       - "{{http_boot_folder | default('/var/lib/ironic/httpboot') }}"
       - "{{bifrost_iso_folder | default('/var/lib/ironic/isos') }}"
   tasks:
 
     - name: "STEP 0: Detect Ironic Destination Folder"
-      file: 
+      file:
         path: "{{ dest_folder }}"
         state: "directory"
         recurse: yes
         owner: ironic
-        group: ironic 
+        group: ironic
       loop: "{{bifrost_dest_folder | default([]) }}"
       loop_control:
         loop_var: "dest_folder"
-      
+
     - name: "STEP 1: Copy Downloaded Files to Ironic Destination Folder"
       ansible.builtin.copy:
         src: "{{bifrost_repo_path | realpath}}/qcow/"
         dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}/"
 
 #---------------------------------------
-# CREATE IMAGE  
+# CREATE IMAGE
 #---------------------------------------
 - name: "STEP 2: Build OS Bootable Images from local repository"
   hosts: target
@@ -54,14 +54,14 @@
     bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
     #dib_offline: true
     build_ramdisk: false
-    
+
   pre_tasks:
-  
+
     - name: override ansible_python_interpreter to venv
       set_fact:
-        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"  
+        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
 
-  roles: 
+  roles:
     - role: bifrost-create-dib-image
       dib_imagename: "{{bifrost_repo}}/ubuntu"
       dib_imagetype: "qcow2"
@@ -75,14 +75,14 @@
 
 
 #  tasks:
-#  
+#
 #     - name: "STEP 2 - Build OS Bootable Images from local repository"
-#       ignore_errors: true      
-#       block:  
-#         - name: "STEP 2 - Build OS Bootable Images from local repository"         
-#           ansible.builtin.include_role: 
+#       ignore_errors: true
+#       block:
+#         - name: "STEP 2 - Build OS Bootable Images from local repository"
+#           ansible.builtin.include_role:
 #              name: "{{bifrost_ironic_init}}"
-#           vars: 
+#           vars:
 #              #dib_env_vars:
 #              #  http_proxy: "{{ lookup('env', 'http_proxy') }}"
 #              #  https_proxy: "{{ lookup('env', 'https_proxy') }}"
@@ -93,13 +93,13 @@
 #              #  LC_ALL: C
 #              #  LC_MESSAGES: C
 #              dib_image_name: "{{ os.image | basename | splitext | list }}"
-#              dib_image_extension: "{{ dib_image_name[1] | default('') }}" 
+#              dib_image_extension: "{{ dib_image_name[1] | default('') }}"
 #              dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2'] }}"
 #              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}"
 #              dib_imagetype: "{{os.imagetype | default('qcow') }}"
 #              dib_os_element: "{{os.distro}}"
-#              dib_os_release: "{{os.release}}" 
-#              #dib_init_element: "{{os.manifesto | default('simple-init') }}" 
+#              dib_os_release: "{{os.release}}"
+#              #dib_init_element: "{{os.manifesto | default('simple-init') }}"
 #              dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
 #              dib_elements: >
 #                {{ dib_image_type|default('vm') }}
@@ -107,18 +107,18 @@
 #                enable-serial-console
 #                {{ dib_init_element|default('simple-init') }}
 #                {{ extra_dib_elements|default('') }}
-#           when: 
+#           when:
 #              - dib_cloud_image_detection | bool
 #           loop: "{{ bifrost_download_images | default([]) }}"
 #           loop_control:
 #              loop_var: "os"
-       
-       
+
+
   environment:
     http_proxy: "{{ lookup('env','http_proxy') }}"
     https_proxy: "{{ lookup('env','https_proxy') }}"
     no_proxy: "{{ lookup('env', 'no_proxy') }}"
-    
+
 #---------------------------------------
 # LOAD CREATED IMAGES TO IRONIC
 #---------------------------------------
@@ -130,12 +130,12 @@
     bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
     bifrost_repo: "{{ bifrost_repo_path }}/dib"
   tasks:
-      
+
     - name: "STEP 3: Copy Bootable OS Images to Ironic Destination Folder"
       ansible.builtin.copy:
         src: "{{bifrost_repo}}/"
         dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/httpboot') }}/"
-        
+
 #---------------------------------------
 # CREATE ISO REPOSITORIES
 #---------------------------------------

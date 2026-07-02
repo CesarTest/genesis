@@ -1,10 +1,10 @@
 ---
 # genesis playbooks/create.yml
-#  - Deploy Ironic 
+#  - Deploy Ironic
 #
-# SPDX-FileCopyrightText: © 2026 Genesis System 
+# SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-# 	
+#
 
 #---------------------------------
 # INSTALL STANDALONE IRONIC
@@ -14,8 +14,8 @@
   ignore_errors: yes
   vars:
     bifrost_shoot_path: >-
-     {{ bifrost_playbooks_path 
-      | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)       
+     {{ bifrost_playbooks_path
+      | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)
       | realpath  }}
     create_image_via_dib: false
 
@@ -25,7 +25,7 @@
 - hosts: target
   become: true
   tasks:
- 
+
     - name: "STEP 2 - SETUP IRONIC: adjust |/etc/ironic/ironic.conf|"
       ansible.builtin.lineinfile:
         path: /etc/ironic/ironic.conf
@@ -37,9 +37,9 @@
         - regexp: '^enabled_deploy_interfaces '
           line: 'enabled_deploy_interfaces = ramdisk,bootc,direct,anaconda'
       loop_control:
-        loop_var: "replace"  
-         
+        loop_var: "replace"
+
     - name: "STEP 3 - RESTART IRONIC: apply changes"
-      service: 
+      service:
         name: ironic
-        state: restarted 
+        state: restarted

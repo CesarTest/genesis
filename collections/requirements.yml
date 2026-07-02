@@ -15,4 +15,4 @@
 collections:
   - name: community.general
   - name: fedora.linux_system_roles
-  - name: robertdebock.roles 
+  - name: robertdebock.roles

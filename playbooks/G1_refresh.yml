@@ -1,8 +1,8 @@
 ---
 # genesis playbooks/prepareAirgap.yml
-#   - Download Bifrost Dependencies 
+#   - Download Bifrost Dependencies
 #
-# SPDX-FileCopyrightText: © 2026 Genesis System 
+# SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -17,8 +17,8 @@
      - name: "STEP 1 - Create Repos Folders"
        vars:
           bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) }}"
-          files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}"       
-          repos: 
+          files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}"
+          repos:
            - openstack
            - pip
            - qcow
@@ -29,12 +29,12 @@
          - name: "STEP 0 - Create an ironic service group"
            group:
              name: "ironic"
-        
+
          - name: "STEP 0 - Create an ironic service user"
            user:
              name: "ironic"
              group: "ironic"
-      
+
          - name: "STEP 1 - Create Repos Folders"
            file:
               path: "{{ files_path | default('/tmp') }}/{{ folder| default('repo') }}"
@@ -69,21 +69,21 @@
     enable_prometheus_exporter: true
     staging_drivers_include: true
     enable_networking_generic_switch_driver: true
-    
+
     # 2.- Paths
     bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"
     files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) }}"
     bifrost_roles: "{{bifrost_path}}/openstack.bifrost/playbooks/roles"
     git_root: "{{files_path}}/openstack"
-    git_url_root: https://opendev.org 
-    
+    git_url_root: https://opendev.org
+
   environment:
-    PIP_DEST:  "{{files_path}}/pip" 
+    PIP_DEST:  "{{files_path}}/pip"
     PIP_OPTS: " --download"
   roles:
     - name: "STEP 2 - Download OpenStack Components from GIT"
       role: "bifrost-prep-for-install"
-      when: not (skip_install | default(false) | bool)    
+      when: not (skip_install | default(false) | bool)
 
 ######################################################
 #  IPA AND OS IMAGES RESPOSITORIES
@@ -91,43 +91,43 @@
 - hosts: "target"
   become: true
   ignore_errors: true
-  connection: local  
-  vars: 
+  connection: local
+  vars:
      bifrost_path: "{{ bifrost_workpath  | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"
      files_path: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) | realpath }}"
-     bifrost_repo_path: "{{ bifrost_airgap_path | default(bifrost_shoot_path + 'repo') | realpath }}"  
+     bifrost_repo_path: "{{ bifrost_airgap_path | default(bifrost_shoot_path + 'repo') | realpath }}"
      create_image_via_dib: true
-     ironic_tftp_master_path: "{{ bifrost_repo_path }}/qcow"    
+     ironic_tftp_master_path: "{{ bifrost_repo_path }}/qcow"
      bifrost_roles: "{{bifrost_path}}/openstack.bifrost/playbooks/roles"
      bifrost_ironic_install: "{{bifrost_roles}}/bifrost-ironic-install"
      bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
-     bifrost_repo: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) | realpath }}/dib"    
+     bifrost_repo: "{{ bifrost_airgap_path | default( bifrost_path + '/files' ) | realpath }}/dib"
      default_download_image_sources:
        - image: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
          checksum: "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS"
          checksum_algorithm: "sha256"
          distro: "ubuntu"
-         release: "focal"  
+         release: "focal"
        - image: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
          checksum: "https://cloud-images.ubuntu.com/jammy/current/SHA256SUMS"
          checksum_algorithm: "sha256"
          distro: "ubuntu"
-         release: "jammy"                
+         release: "jammy"
        - image: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
          checksum: "https://cloud-images.ubuntu.com/noble/current/SHA256SUMS"
          checksum_algorithm: "sha256"
          distro: "ubuntu"
-         release: "noble"               
+         release: "noble"
        - image: "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2"
          checksum: "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/CHECKSUM"
          checksum_algorithm: "sha256"
          distro: "rocky"
-         release: "8" 
+         release: "8"
        - image: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
          checksum: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/CHECKSUM"
          checksum_algorithm: "sha256"
          distro: "rocky"
-         release: "9"              
+         release: "9"
        - image: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
          checksum: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/CHECKSUM"
          checksum_algorithm: "sha256"
@@ -146,18 +146,18 @@
          checksum_algorithm: "md5"
          distro: "cirros"
          release: "0.5.3"
-     download_image_sources: "{{ bifrost_download_images | default(default_download_image_sources) | default([]) }}" 
-     
+     download_image_sources: "{{ bifrost_download_images | default(default_download_image_sources) | default([]) }}"
+
   tasks:
 
-     # ----> Download QCOW Images 
+     # ----> Download QCOW Images
      - name: "STEP 3 - Download OS Cloud Ready images"
        vars:
           create_ipa_image: false
           #download_ipa_image: true
           #download_custom_deploy_image: true
-    
-       block:   
+
+       block:
          - name: "STEP 3 - Download OS Cloud Ready images"
            include_tasks: "{{bifrost_ironic_install}}/tasks/download_deployment_image.yml"
            loop: "{{ download_image_sources | default([]) }}"
@@ -170,8 +170,8 @@
               deploy_image_filename: "{{ image_src.image | basename }}"
               http_boot_folder: "{{ files_path }}/{{image_src.local_folder|default('qcow')}}"
               deploy_image: "{{http_boot_folder}}/{{ image_src.image | basename }}"
-           
- 
+
+
       # ----> Download IPA Images
      - name: "STEP 4 - Download IPA images"
        vars:
@@ -187,25 +187,25 @@
           ipa_ramdisk_download_url_username: "{{ ipa_download_url_username }}"
           ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
           ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
-          ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"       
-         
+          ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+
           default_ipa_image_sources:
             - kernel: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel"
               kernel_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel.sha256"
               kernel_checksum_algo: "sha256"
               ramdisk: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs"
               ramdisk_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs.sha256"
-              ramdisk_checksum_algo: "sha256"  
-            
+              ramdisk_checksum_algo: "sha256"
+
             - kernel: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel"
               kernel_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel.sha256"
               kernel_checksum_algo: "sha256"
               ramdisk: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs"
               ramdisk_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs.sha256"
-              ramdisk_checksum_algo: "sha256" 
-          ipa_image_sources: "{{ bifrost_ipa_image_sources | default(default_ipa_image_sources) | default([]) }}" 
-                  
-       block:         
+              ramdisk_checksum_algo: "sha256"
+          ipa_image_sources: "{{ bifrost_ipa_image_sources | default(default_ipa_image_sources) | default([]) }}"
+
+       block:
          - name: "STEP 4 - Download IPA images"
            include_tasks: "{{bifrost_ironic_install}}/tasks/download_ipa_image.yml"
            loop: "{{ ipa_image_sources | default([]) }}"
@@ -214,13 +214,13 @@
            vars:
               ipa_kernel_upstream_url: "{{ ipa_src.kernel | default('') }}"
               ipa_kernel_upstream_checksum_url: "{{ ipa_src.kernel_checksum_url | default('') }}"
-              ipa_kernel_upstream_checksum_algo: "{{ ipa_src.kernel_checksum_algo | default('') }}"          
+              ipa_kernel_upstream_checksum_algo: "{{ ipa_src.kernel_checksum_algo | default('') }}"
               ipa_ramdisk_upstream_url: "{{ ipa_src.ramdisk | default('') }}"
               ipa_ramdisk_upstream_checksum_url: "{{ ipa_src.ramdisk_checksum_url | default('') }}"
               ipa_kernel: "{{ files_path }}/dib/files/{{ ipa_kernel_upstream_url | basename }}"
-              ipa_ramdisk: "{{ files_path }}/dib/files/{{ ipa_ramdisk_upstream_url | basename }}"            
+              ipa_ramdisk: "{{ files_path }}/dib/files/{{ ipa_ramdisk_upstream_url | basename }}"
 
-       block:  
+       block:
          - name: "STEP 5 - Download ORAS tarball"
            vars:
               oras_download_url: "{{oras_upstream_root}}/{{oras_tarball_path}}"
@@ -230,7 +230,7 @@
               checksum: "sha256:{{ oras_checksum }}"
               mode: '0644'
 
-       
+
          - name: "STEP 6 - Owner"
            shell:
              cmd: "chown -R {{ansible_user | default('ironic') }}:ironic  {{ files_path }}"
