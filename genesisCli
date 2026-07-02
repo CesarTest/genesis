@@ -32,6 +32,7 @@
 
 # 1.- Constant Values
 #--------------------
+LOCALE="en_US.UTF-8"
 REEMPLAZA_LINEA_CNF="Yes"
 ERROR="1"
 OK="0"
@@ -68,20 +69,18 @@ dhcp_address=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_address:' | head -1 | aw
 dhcp_pool_start=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_pool_start:' | head -1 | awk -F: '{print $NF}' | tr -d '"' | tr -d ' ' )
 dhcp_pool_end=$( cat "${HOSTS_TARGET_FILE}" | grep 'dhcp_pool_end:' | head -1 | awk -F: '{print $NF}' | tr -d '"' | tr -d ' ' )
 PXE=( "${network_interface}" "${dhcp_address}" "${dhcp_pool_start}" "${dhcp_pool_end}" )      
-LOCALE="en_US.UTF-8"
+
 
 # 2.3.- Dependencies
 PIP=0; SCRIPTS=1; INSTALLER=2
 DEPENDENCIES=( 'collections/requirements.yml' \
                'roles/requirements.yml' \
-	           'roles/openstack.bifrost/openstack.bifrost/scripts/env-setup.sh' \
                '#' \
 			   '#' \
               )
 
 DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                     'ansible-galaxy role install --force -r ' \
-                         '' \
 						 'sed -i "/cdglab.duckdns.org/d" /etc/hosts' \
                          'echo "192.168.1.133 cdglab.duckdns.org" >> /etc/hosts' \
                         )
@@ -589,11 +588,6 @@ redhatFixes() {
 	echo "${LOG_HEADER} -> sudo yum update -y"
     sudo yum update -y
 
-    echo "${LOG_HEADER} ->  sudo cat >> /etc/hosts <<EOF \n 192.168.1.133   cdglab.duckdns.org	cdglab \n EOF"
-    sudo cat >> /etc/hosts <<EOF
-192.168.1.133   cdglab.duckdns.org	cdglab
-EOF
-
 	# Change SSH Configuration
 	echo "${LOG_HEADER} ->  sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
 	sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
@@ -603,7 +597,49 @@ EOF
 	
 	echo "${LOG_HEADER} -> echo systemctl restart sshd.service" 
     sudo systemctl restart sshd.service
+	
+	# 2.- locale
+	#-------------------	
+	echo "${LOG_HEADER} -> sudo localectl set-locale LANG=${LOCALE}"	
+	sudo localectl set-locale LANG="${LOCALE}"
+	
+	echo "${LOG_HEADER} -> localedef -v -c -i ${LOCALE%%.*} -f ${LOCALE##*.} ${LOCALE}"
+	sudo localedef -v -c -i "${LOCALE%%.*}" -f "${LOCALE##*.}" "${LOCALE}"
+	
+	echo "export LC_ALL=C.UTF-8"
+    export LC_ALL="C.UTF-8"
   
+}
+
+#===================================================
+#   Function: firewallZone
+#---------------------------------------------------
+#  Private Function
+#
+#  Create Bifrost Firewall Zone
+#===================================================
+firewallZone() {
+
+    if systemctl is-active --quiet firewalld ; then
+       if [ -x "/bin/firewall-cmd" ] ; then
+	     echo "${LOG_HEADER} -> sudo /bin/firewall-cmd --permanent --new-zone=bifrost"
+         sudo /bin/firewall-cmd --permanent --new-zone=bifrost
+	     echo "${LOG_HEADER} -> sudo /bin/firewall-cmd --permanent --zone=bifrost --add-service=ssh"		 
+         sudo /bin/firewall-cmd --permanent --zone=bifrost --add-service=ssh
+	     echo "${LOG_HEADER} -> sudo /bin/firewall-cmd --reload"			 
+         sudo /bin/firewall-cmd --reload
+       elif [ -x "/sbin/firewall-cmd" ] ; then
+	     echo "${LOG_HEADER} -> sudo /sbin/firewall-cmd --permanent --new-zone=bifrost"
+         sudo /sbin/firewall-cmd --permanent --new-zone=bifrost
+	     echo "${LOG_HEADER} -> sudo /sbin/firewall-cmd --permanent --zone=bifrost --add-service=ssh"		 
+         sudo /sbin/firewall-cmd --permanent --zone=bifrost --add-service=ssh
+	     echo "${LOG_HEADER} -> sudo /sbin/firewall-cmd --reload"			 
+         sudo /sbin/firewall-cmd --reload	 
+	   fi 
+    else  
+	   echo "FIREWALL NOT ACTIVE IN THIS MACHINE -> Nothing to do"
+	   systemctl status firewalld
+    fi	
 }
 
 #===================================================
@@ -623,7 +659,7 @@ setEnvironment() {
        ubuntuFixes
        ;;
      "redhat"|"centos")
-       DEP_INSTALLER=( 'python3' 'git' 'ansible' )
+       DEP_INSTALLER=( 'python3' 'git' 'ansible' 'glibc-locale-source' 'glibc-langpack-en' )
        DEP_DOCKER=( 'podman-docker' )
        PKG_MANAGER=$(/usr/bin/which dnf || /usr/bin/which yum)
        INSTALLER_CMD="sudo -H -E ${PKG_MANAGER} -y install"
@@ -667,14 +703,29 @@ runScripts() {
    done
 }
 
+
 #===================================================
-#   Function: setupEnvironment
+#   Function: installDependencies
+#---------------------------------------------------
+#  Private Function
+#
+#  Chack Bifrost Installer Dependencies
+#===================================================
+installDependencies() {
+  PACKAGES=( ${DEP_INSTALLER[@]} ) 
+  echo "${LOG_HEADER} -> ${INSTALLER_CMD} ${PACKAGES[@]}"
+  ${INSTALLER_CMD} ${PACKAGES[@]}
+}
+
+
+#===================================================
+#   Function: installEnvironment
 #---------------------------------------------------
 #  Private Function
 #
 #  Download Bifrost Dependencies
 #===================================================
-setupEnvironment() {
+installEnvironment() {
    
    # Local Environment
    #------------------
@@ -703,19 +754,33 @@ setupEnvironment() {
           # 4.- Update the loop		  
 	  local INDEX_DEP=$(expr ${INDEX_DEP} + 1)     
    done
+  
 }
 
+
 #===================================================
-#   Function: installDependencies
+#   Function: bifrostScriptsWorkaround
 #---------------------------------------------------
 #  Private Function
 #
-#  Chack Bifrost Installer Dependencies
+#  Bifrost Scripts path detection depends on linux distro
+#  - This work around seems to fix the issue
 #===================================================
-installDependencies() {
-  PACKAGES=( ${DEP_INSTALLER[@]} ) 
-  echo "${LOG_HEADER} -> ${INSTALLER_CMD} ${PACKAGES[@]}"
-  ${INSTALLER_CMD} ${PACKAGES[@]}
+bifrostScriptsWorkaround) {
+ 
+ if [ -x "${BIFROST_WORKING_PATH}/scripts/env-setup.sh" ] ; then
+    echo "${LOG_HEADER} -> cd ${BIFROST_WORKING_PATH} "
+    cd "${BIFROST_WORKING_PATH}"
+	
+	echo "${LOG_HEADER} -> ./scripts/env-setup.sh"
+    ./scripts/env-setup.sh
+	
+	echo "${LOG_HEADER} -> cd -"
+    cd -
+	
+  else
+    error -x "${BIFROST_WORKING_PATH}/scripts/env-setup.sh"
+  fi
 }
 
 #===================================================
@@ -729,9 +794,20 @@ prepareLocalMachine() {
   detectOS
   setEnvironment
   installDependencies
-  setupEnvironment
+  firewallZone
+  installEnvironment
+  bifrostScriptsWorkaround
 }
 
+
+#===================================================
+#   Function: addGenesisToHosts
+#---------------------------------------------------
+#  Private Function
+#
+#  Add Genesis IP address to /etc/hosts 
+#     in order to use names in YAML group_vars profiles
+#===================================================
 addGenesisToHosts()  {
    if [ ! -n "${GENESIS_NAME}" ] ; then 
        local GENESIS_NAME=$(cat $HOSTS_TARGET_FILE | grep 'genesis_hostvars_name:' | head -1 | awk -F: {'print $NF}' | tr -d '"' )
