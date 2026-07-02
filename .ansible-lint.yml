@@ -13,7 +13,7 @@
 profile: production # null, min, basic, moderate, safety, shared, production
 
 # Produce clean output for parsing; default is false
-parseable: true
+#parseable: true
 
 # Remove summary of results and produce simpler output; default is false
 quiet: true
