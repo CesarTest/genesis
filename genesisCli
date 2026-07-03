@@ -57,7 +57,8 @@ IRONIC_CLOUD="bifrost"
 IRONIC_NODES_FILE="host_vars/baremetal.yml"
 IRONIC_BAREMETAL_NODES=$(cat ${GENESIS_PROJECT_ANSIBLE_CFG} | grep 'inventory=' | awk -F/ '{print $NF}' )
 GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
-GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
+GENESIS_BAREMETAL_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
+GENESIS_TARGET_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/target/inventory"
 
 # 2.2.- Installation OPTIONS
 DEBUG_ANSIBLE_FLAGS='-vvv '
@@ -65,7 +66,7 @@ RUN_BACKGROUND="no"
 BAREMETAL_ROOT_PASSWORD="cesar" # Automatic ssh-copy-id
 
 # 2.3.- Genesis Playbooks
-REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY= "4" ; PROVISION="5"  
+REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
 SSH_MAP="6" ; GRAPHICS="7" ; NETWORK="8" ; NTP="9"   ; GATHER="10"
 GENESIS_PLAYBOOKS=( \
 	 "${GENESIS_WORKING_PATH}/playbooks/G1_refresh.yml" \
@@ -91,7 +92,7 @@ GENESIS_PLAYBOOKS_HEADER=( \
         "${COLOR[$NC]}[BAREMETAL] - GRAPHICS    : Install propietary 3er party driver${COLOR[$NC]}" \
         "${COLOR[$NC]}[BAREMETAL] - NETWORK     : Install network configurations${COLOR[$NC]}" \
         "${COLOR[$NC]}[BAREMETAL] - NTP         : Deploy NTP configuration${COLOR[$NC]}" \
-        "${COLOR[$NC]}[BAREMETAL] - GATHER STRING CONFIGURATIONS  : Fetch relevant configuration files from String${COLOR[$NC]}" \
+        "${COLOR[$NC]}[BAREMETAL] - GATHER BAREMETAL CONFIGURATIONS  : Fetch relevant configuration files from String${COLOR[$NC]}" \
 )
 
 
@@ -159,21 +160,21 @@ function defineMenu() {
               ;;
 
        1|"${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}")
-	          if [ ! -n "${REFRESH_LOG}"    ] ; then local REFRESH_LOG="${HOME}/refresh.log"; fi
+	          if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/refresh.log"; fi
 			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
 		      MENU_TEXT="(1)___________ ${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}"
 	          PARAMETRO=(     "RUN_BACKGROUND" "REFRESH_LOG" )
-              VALOR_DEFECTO=( "No"  "${REFRESH_LOG}")	  
+              VALOR_DEFECTO=( "No"  "${LOG_FILE}")	  
 	          SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Log File                  [${VALOR_DEFECTO[1]}]:" \
                                  )
               RETURNING_MENU="0"
               RUN_ACTION="1"
-              unset RUN_BACKGROUND REFRESH_LOG
+              unset RUN_BACKGROUND LOG_FILE
               ;;
 
 	   2|"${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}")
-	         if [ ! -n "${INSTALL_LOG}"    ] ; then local CREATE_LOG="${HOME}/create.log" ; fi
+	         if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/create.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			 
 		     MENU_TEXT="(2)___________ ${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}"
 	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "INSTALL_LOG"   )
@@ -182,7 +183,7 @@ function defineMenu() {
 							  "${PXE[$DHCP_POOL_START]}" \
 							  "${PXE[$DHCP_POOL_END]}" \
 							  "No" \
-							  "${CREATE_LOG}" \
+							  "${LOG_FILE}" \
 							  )
 	         CNF_REEMPLAZO=( "${GENESIS_HOSTS_TARGET_FILE}" \
 			                  "${GENESIS_HOSTS_TARGET_FILE}" \
@@ -200,55 +201,55 @@ function defineMenu() {
 			                     )
              RETURNING_MENU="0"
              RUN_ACTION="2"
-             unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND CREATE_LOG
+             unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND LOG_FILE
              ;;
 
 	   3|"${GENESIS_PLAYBOOKS_HEADER[${INIT}]}")
-	         if [ ! -n "${INIT_LOG}"    ] ; then local INIT_LOG="${HOME}/init.log" ; fi
+	         if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/init.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi
 		     MENU_TEXT="(3)___________ ${GENESIS_PLAYBOOKS_HEADER[${INIT}]}"
-	         PARAMETRO=(     "RUN_BACKGROUND" "INIT_LOG"    )
-             VALOR_DEFECTO=( "No" "${INIT_LOG}" )
+	         PARAMETRO=(     "RUN_BACKGROUND" "LOG_FILE"    )
+             VALOR_DEFECTO=( "No" "${LOG_FILE}" )
 	         SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
 			                     "-----> Log File    [${VALOR_DEFECTO[1]}]:" \
                                 )
              RETURNING_MENU="0"
              RUN_ACTION="3"
-             unset RUN_BACKGROUND INIT_LOG
+             unset RUN_BACKGROUND LOG_FILE
 		     ;;
 
 	   4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")
-	         if [ ! -n "${SETUP_LOG}" ] ; then local SETUP_LOG="${HOME}/setup.log"  ; fi
+	         if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/setup.log"  ; fi
 	         MENU_TEXT="(4)___________ ${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}"
 			 
              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
-	         PARAMETRO=(     "IRONIC_BAREMETAL_NODES"    "SETUP_LOG"   )
-             VALOR_DEFECTO=( "0"  "${SETUP_LOG}" )
+	         PARAMETRO=(     "IRONIC_BAREMETAL_NODES"    "LOG_FILE"   )
+             VALOR_DEFECTO=( "0"  "${LOG_FILE}" )
 	         SOLICITA_PARAMETRO=("-----> Baremetal Nodes Descripion [${VALOR_DEFECTO[0]}]:" \
 	                             "-----> Log File                   [${VALOR_DEFECTO[1]}]:" \
                                     )
              MENU_SKIP_PATHS="1"
 			 RETURNING_MENU="0"
              RUN_ACTION="4"
-             unset IRONIC_BAREMETAL_NODES SETUP_LOG
+             unset IRONIC_BAREMETAL_NODES LOG_FILE
 		     ;;
 
        5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")
 	         if [ ! -n "${TARGET}" ]    ; then local TARGET=''                       ; fi
-	         if [ ! -n "${DEPLOY_LOG}" ] ; then local DEPLOY_LOG="${HOME}/deploy.log"  ; fi
+	         if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/deploy.log"  ; fi
 	         MENU_TEXT="(5)___________ ${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}"
-	         PARAMETRO=(  "TARGET"    "DEPLOY_LOG" )
-             VALOR_DEFECTO=(  "${TARGET}" "${DEPLOY_LOG}"   )
+	         PARAMETRO=(  "TARGET"    "LOG_FILE" )
+             VALOR_DEFECTO=(  "${TARGET}" "${LOG_FILE}"   )
 	         SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
 	                             "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
                                     )
              RETURNING_MENU="0"
              RUN_ACTION="6"
-             unset TARGET DEPLOY_LOG
+             unset TARGET LOG_FILE
 	         ;;
 
        6|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}")
-		     MENU_TEXT="(6)___________ [STRING] - ANSIBLE     : Ansible Initial Setup"
+		     MENU_TEXT="(6)___________ [BAREMETAL] - ANSIBLE     : Ansible Initial Setup"
 	         #PARAMETRO=(     "NODE_LIST" )
 	         #EXT_OPCIONES=( ".list"      )
              #VALOR_DEFECTO=( "0"         )
@@ -261,25 +262,23 @@ function defineMenu() {
 
 
 	     7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}")
-	          if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
 	          if [ ! -n "${TARGET}" ]    ; then local TARGET=''                    ; fi
-	          if [ ! -n "${PROVISION_LOG}" ] ; then local PROVISION_LOG="${HOME}/provision.log"  ; fi
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/provision.log"  ; fi
 	          MENU_TEXT="(7)___________ ${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}"
-	          PARAMETRO=(     "INVENTORY"      "TARGET"     "PROVISION_LOG")
-              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${PROVISION_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
+	          PARAMETRO=(     "TARGET"     "LOG_FILE")
+              VALOR_DEFECTO=(  "${TARGET}"  "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
                              )
               RETURNING_MENU="0"
               RUN_ACTION="7"
-              unset INVENTORY TARGET PROVISION_LOG
+              unset INVENTORY TARGET LOG_FILE
 		  ;;
 
-	    9|"${COLOR[$NC]}[STRING] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}")
+	    9|"${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}")
 		      MENU_TEXT="TROUBLESHOOTING TOOLS: ___________"
 		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
-                              "${COLOR[$NC]}[STRING] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
                               "${GENESIS_PLAYBOOKS_HEADER[${SSH_MAP}]}" \
                               "${GENESIS_PLAYBOOKS_HEADER[${GRAPHICS}]}" \
                               "${GENESIS_PLAYBOOKS_HEADER[${NETWORK}]}" \
@@ -287,21 +286,21 @@ function defineMenu() {
                               "Exit" \
 		                   )
 	          PARAMETRO=(     "MENU" )
-              VALOR_DEFECTO=( "${COLOR[$NC]}[STRING] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}"    )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}"    )
 	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
 	          unset MENU
               ;;
 
 
-       10|"${COLOR[$NC]}[STRING] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}")
+       10|"${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}")
 		      MENU_TEXT="SOFT-CONFIGURATIONS TOOLS: ___________"
 		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
-                              "${COLOR[$NC]}[STRING] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}" \
                               "${GENESIS_PLAYBOOKS_HEADER[${GATHER}]}" \
                               "Exit" \
 		                   )
 	          PARAMETRO=(     "MENU" )
-              VALOR_DEFECTO=( "${COLOR[$NC]}[STRING] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}"    )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}"    )
 	          SOLICITA_PARAMETRO=( "======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
 	          unset MENU
               ;;
@@ -781,6 +780,7 @@ installEnvironment() {
    #--------
    local INDEX_DEP=0
    local INDEX_CMD=0
+   setupCommand
    while [[ "${INDEX_DEP}" < "${#DEPENDENCIES[@]}" ]] ; do
 
 	 # 1.- Get Command 
@@ -954,14 +954,16 @@ function passwordlessDetection() {
         echo -e "[genesisCli.passwordlessDetection] - ${COLOR[$SEA]}Passwordless already Enabled at ${USER}${HOST}${COLOR[$NC]}"
 	elif [[ "${PASSWORDLESS_OKD}" == "DONE" ]] ; then
 	    echo -e "[genesisCli.passwordlessDetection] - ${COLOR[$SEA]}Passwordless already Enabled at [su - okd] core@${HOST}${COLOR[$NC]}"
-    elif [ -x "/bin/ssh-copy-id" ] || [ -x "/sbin/ssh-ssh-copy-id" ] ; then
+    elif [ -x "/bin/ssh-copy-id" ] || [ -x "/sbin/ssh-copy-id" ] ; then
 
         echo "rm -f ${HOME}/.ssh/known_hosts"		
 		rm -f "${HOME}/.ssh/known_hosts"
 		   
 	    if [ -n "${USER_PASSWORD}" ] ; then
+		   echo "[genesisCli.passwordlessDetection] -  sshpass -p ${USER_PASSWORD} ssh-copy-id -oConnectTimeout=${SSH_TIMEOUT} -oStrictHostKeyChecking='no' ${USER}${HOST} 2> ${OUT_TMP}" 
            sshpass -p "${USER_PASSWORD}" ssh-copy-id -oConnectTimeout="${SSH_TIMEOUT}" -oStrictHostKeyChecking='no' "${USER}${HOST}" 2> "${OUT_TMP}"
 		else
+		   echo "[genesisCli.passwordlessDetection] - ssh-copy-id -oConnectTimeout=${SSH_TIMEOUT} -oStrictHostKeyChecking='no' ${USER}${HOST} 2> ${OUT_TMP}"
 		   ssh-copy-id -oConnectTimeout="${SSH_TIMEOUT}" -oStrictHostKeyChecking='no' "${USER}${HOST}" 2> "${OUT_TMP}"
 		fi 
         local SUCCESS="$?"
@@ -984,12 +986,6 @@ function passwordlessDetection() {
 #  -Ensure localhost passwordless access
 #========================================================
 function sshUserKey() {
-
-	#---------------------
-	#  LOCAL ENVIRONMENT
-	#---------------------
-     if [ ! -n "${BAREMETAL_ROOT_PASSWORD}" ] ; then local BAREMETAL_ROOT_PASSWORD="root" ; fi
-     if [ ! -n "${genesis_ROOT_PASSWORD}"   ] ; then local genesis_ROOT_PASSWORD="${BAREMETAL_ROOT_PASSWORD}" ; fi
 
 	#---------------------
 	#  ACTIONS
@@ -1023,7 +1019,7 @@ function sshUserKey() {
     # 3.- Localhost Passwordless SSH Access
     #-----------------------
     local USER="$(whoami)"
-    passwordlessDetection "localhost" "${USER}@" "${genesis_ROOT_PASSWORD}"
+    passwordlessDetection "localhost" "${USER}@" "${GENESIS_ROOT_PASSWORD}"
 }
 
 #========================================================
@@ -1040,8 +1036,6 @@ function trust_relationships() {
     if [ ! -n "${BAREMETAL_ROOT_PASSWORD}" ] ; then local BAREMETAL_ROOT_PASSWORD="root" ; fi	
     local LIST_OF_NODES_FILE="${1}"
     local NODE INVENTORY_LIST
-	local OKD_CLUSTER_NAME=$(cat "${genesis_STRING_CFGS}/sites.yaml" | grep cluster_name | awk '{print $2}' 2> /dev/null)
-	local OKD_CLUSTER_NAME=$(echo ${OKD_CLUSTER_NAME} | tr -d ' ' | tr -d '"')
     if [ -n "${USER}" ] ; then local USER="${USER}@" 
 	else                       local USER="root@"  
 	fi    
@@ -1053,7 +1047,7 @@ function trust_relationships() {
 	# 1.- Load list of IP nodes
     if [ -r "${LIST_OF_NODES_FILE}" ] ; then
         . "${LIST_OF_NODES_FILE}" 2> /dev/null
-    elif [ -r "${genesis_DEFAULT_INVENTORY}" ] ; then
+    elif [ -r "${GENESIS_BAREMETAL_INVENTORY_SOURCE}" ] ; then
 	    local INVENTORY_LIST=( $(runAdHoc ' ' '--list-hosts' | sed '1d') )
     fi
 	
@@ -1066,9 +1060,9 @@ function trust_relationships() {
        done
     else
        echo -e "[genesisCli.trust_relationships] - ${COLOR[$YELLOW]} [WARN] - MISSING CONFIGURATION FILE: please try to SETUP iDAS before ${COLOR[$NC]}"
-       error "-r" "[genesisCli.trust_relationships] - ${genesis_DEFAULT_INVENTORY}"
+       error "-r" "[genesisCli.trust_relationships] - ${GENESIS_BAREMETAL_INVENTORY_SOURCE}"
     fi	
-    unset NODE INVENTORY_LIST LIST_OF_NODES_FILE OKD_CLUSTER_NAME
+    unset NODE INVENTORY_LIST LIST_OF_NODES_FILE
 }
 
 
@@ -1904,6 +1898,7 @@ function runAdHoc() {
    local LOG="${3}"
    if [ ! -n "${LOG}" ] ; then local LOG="/dev/null" ; fi  
    buildCommand
+   setupCommand
    shootCommand "${LOG}"
    unset INVENTORY PTARGET SLOT VAULT EXTRA_VARS ADHOC_MODULE ADHOC_CALL
 }
@@ -1924,7 +1919,7 @@ function 0_call() {
    #--------------------	
     local CALL="${1}"   
     local PLAYBOOK="${GENESIS_PLAYBOOKS[${CALL}]}"
-    if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi	
+    #if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi	
     if [ -n "${LOG_FILE}" ] ; then local CALL_LOG="${LOG_FILE}"   ; fi
     
    #--------------------
@@ -1970,7 +1965,10 @@ function 1_refresh() {
    prepareLocalMachine
    
    # 2.- Call
-   if [ ! -n "${ONLINE}" ] ; then  0_call "${REFRESH}" ; fi  
+   if [ ! -n "${ONLINE}" ] ; then
+      #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"   
+      0_call "${REFRESH}" 
+   fi  
    state_status "genesis_installed"     "${PROJECT_RPM}"   | tee -a "${CALL_LOG}"
    
    # 3.- Clean environment
@@ -1994,7 +1992,7 @@ function 2_create() {
    local FLUSH_CACHE="yes"
    if [ -n "${LOG_FILE}"     ] ; then local INSTALL_LOG="${LOG_FILE}" ; fi
    if [ -n "${network_interface}" ] ; then PXE[${DHCP_NIC}]="${network_interface}"      ; fi
-   if [ -n "${dhcp_address}"  ] ; then PXE[${DHCP_IP}]=$( echo "$dhcp_address" | tr -d \/  |  tr '\' '/' )    ; fi
+   if [ -n "${dhcp_address}" ] ; then PXE[${DHCP_IP}]=$( echo "$dhcp_address" | tr -d \/  |  tr '\' '/' )    ; fi
    if [ -n "${dhcp_pool_start}"   ] ; then PXE[${DHCP_POOL_START}]="${dhcp_pool_start}" ; fi
    if [ -n "${dhcp_pool_end}"     ] ; then PXE[${DHCP_POOL_END}]="${dhcp_pool_end}"     ; fi
    #DISABLE_WARNS="Yes"
@@ -2005,7 +2003,8 @@ function 2_create() {
    # 1.- Load Configurations
    enableIronicNetworkInterface
    
-   # 2.- Call 
+   # 2.- Call
+   #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
    0_call "${CREATE}"
       
    # 3.- Clean Environemnt
@@ -2083,8 +2082,7 @@ function 22_gathering() {
 #========================================================
 function runActions() {
 
-    local ACTION="$1"
-    readProject 
+    local ACTION="$1" 
     case "${ACTION}" in
         1|"${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}") 1_refresh ;;
         2|"${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}")  2_create  ;;

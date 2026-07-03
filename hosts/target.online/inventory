@@ -1,8 +1,11 @@
-target:
-  hosts: 
-    localhost
-
-  vars:
-    ansible_user: cesar 
-    ansible_become_pass: cesar
-    ansible_connection: local
+---
+all:
+  children:
+   target:
+     hosts: 
+       localhost
+   
+     vars:
+       ansible_user: cesar 
+       ansible_become_pass: cesar
+       ansible_connection: local

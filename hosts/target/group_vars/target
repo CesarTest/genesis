@@ -92,6 +92,14 @@ enable_oci_registry_upload: true
 
 # 1.- Local Paths
 #------------------
+airgap_repos:
+ - openstack
+ - pip
+ - qcow
+ - iso
+ - dib
+ - dib/files
+
 local_repo_url: "file://{{bifrost_airgap_path}}"
 git_url_root: "{{local_repo_url}}"
 tarballs_base_url: "{{local_repo_url}}"

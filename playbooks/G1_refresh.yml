@@ -175,7 +175,14 @@
       # ----> Download IPA Images
      - name: "STEP 4 - Download IPA images"
        vars:
-          tarballs_base_url: "https://tarballs.opendev.org"
+          ipa_local_repo: "{{ airgap_repos[5] | default('dib/files') }}"
+          update_ipa: true
+          ipa_upstream_release: "master"
+          tarballs_base_url: "https://tarballs.opendev.org/openstack/ironic-python-agent"
+          ipa_download_headers: {}
+          download_ipa: true
+          update_ipa: true
+          ipa_add_ssh_key: false
           ipa_download_url_username:
           ipa_download_url_password:
           ipa_download_force_basic_auth:
@@ -188,20 +195,19 @@
           ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
           ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
           ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
-
           default_ipa_image_sources:
-            - kernel: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel"
-              kernel_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.kernel.sha256"
+            - kernel: "{{tarballs_base_url}}/dib/files/ipa-debian-master.kernel"
+              kernel_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-debian-master.kernel.sha256"
               kernel_checksum_algo: "sha256"
-              ramdisk: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs"
-              ramdisk_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-debian-master.initramfs.sha256"
+              ramdisk: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs"
+              ramdisk_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs.sha256"
               ramdisk_checksum_algo: "sha256"
-
-            - kernel: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel"
-              kernel_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.kernel.sha256"
+     
+            - kernel: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel"
+              kernel_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel.sha256"
               kernel_checksum_algo: "sha256"
-              ramdisk: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs"
-              ramdisk_checksum_url: "{{tarballs_base_url}}/openstack/ironic-python-agent/dib/files/ipa-centos9-master.initramfs.sha256"
+              ramdisk: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs"
+              ramdisk_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs.sha256"
               ramdisk_checksum_algo: "sha256"
           ipa_image_sources: "{{ bifrost_ipa_image_sources | default(default_ipa_image_sources) | default([]) }}"
 
@@ -217,10 +223,10 @@
               ipa_kernel_upstream_checksum_algo: "{{ ipa_src.kernel_checksum_algo | default('') }}"
               ipa_ramdisk_upstream_url: "{{ ipa_src.ramdisk | default('') }}"
               ipa_ramdisk_upstream_checksum_url: "{{ ipa_src.ramdisk_checksum_url | default('') }}"
+              ipa_ramdisk_upstream_checksum_algo: "{{ ipa_src.ramdisk_checksum_algo | default('') }}"
               ipa_kernel: "{{ files_path }}/dib/files/{{ ipa_kernel_upstream_url | basename }}"
               ipa_ramdisk: "{{ files_path }}/dib/files/{{ ipa_ramdisk_upstream_url | basename }}"
 
-       block:
          - name: "STEP 5 - Download ORAS tarball"
            vars:
               oras_download_url: "{{oras_upstream_root}}/{{oras_tarball_path}}"
