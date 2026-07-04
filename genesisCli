@@ -619,7 +619,7 @@ ubuntuFixes() {
 
   echo "export LC_ALL=C.UTF-8"
   export LC_ALL="C.UTF-8"
-  
+    
 }
 
 redhatFixes() {
@@ -736,6 +736,22 @@ runOSfixes() {
        ;;
    esac
    
+}
+
+prepareImageCreation() {
+   case "${OS}" in
+     "ubuntu"|"debian")
+       echo "${LOG_HEADER} -> sudo systemctl disable --now apparmor"
+       sudo systemctl disable --now apparmor 
+       ;;
+     "redhat"|"centos")
+       echo "${LOG_HEADER} -> SELinux"
+       ;;
+   esac
+   
+   local USER=$(whoami)
+   echo "${LOG_HEADER} -> sudo chown -R $USER:ironic ${GENESIS_WORKING_PATH}/repo"
+   sudo chown -R $USER:ironic ${GENESIS_WORKING_PATH}/repo
 }
 
 #===================================================
@@ -2031,11 +2047,24 @@ function 2_create() {
    echo -e '......................................................................................................'
 }
 
+
+#========================================================
+#   Function: 3_init
+#--------------------------------------------------------
+#  - Create OS Image
+#  - Load OS Image to Ironic
+#========================================================
+function 3_init() {
+   
+   prepareImageCreation
+   0_call "${INIT}" 
+   unset LOG_FILE 
+}
+
 #========================================================
 #   Function: 4_setup
 #--------------------------------------------------------
-#  - Shoot pxeConfig playbook
-#  - Restore custom String kickstart files
+#  - Enroll Nodes to Ironic
 #========================================================
 function 4_setup() {
    local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
@@ -2101,8 +2130,8 @@ function runActions() {
     case "${ACTION}" in
         1|"${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}") 1_refresh ;;
         2|"${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}")  2_create  ;;
-        3|"${GENESIS_PLAYBOOKS_HEADER[${INIT}]}")    0_call "${INIT}"  ;;
-        4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")   4_setup            ;;
+        3|"${GENESIS_PLAYBOOKS_HEADER[${INIT}]}")    3_init    ;;
+        4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")   4_setup   ;;
         5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")  0_call "${DEPLOY}" ;;
         6|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}") 6_ansible ;;		
         7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}") 0_call "${PROVISION}" ;;
