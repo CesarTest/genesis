@@ -163,7 +163,7 @@ function defineMenu() {
 	          if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/refresh.log"; fi
 			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
 		      MENU_TEXT="(1)___________ ${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}"
-	          PARAMETRO=(     "RUN_BACKGROUND" "REFRESH_LOG" )
+	          PARAMETRO=(     "RUN_BACKGROUND" "LOG_FILE" )
               VALOR_DEFECTO=( "No"  "${LOG_FILE}")	  
 	          SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Log File                  [${VALOR_DEFECTO[1]}]:" \
@@ -177,7 +177,7 @@ function defineMenu() {
 	         if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/create.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			 
 		     MENU_TEXT="(2)___________ ${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}"
-	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "INSTALL_LOG"   )
+	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "LOG_FILE"   )
              VALOR_DEFECTO=(  "${PXE[$DHCP_NIC]}" \
 			                  "${PXE[$DHCP_IP]}" \
 							  "${PXE[$DHCP_POOL_START]}" \
@@ -701,7 +701,6 @@ setEnvironment() {
        DEP_DOCKER=( 'podman-docker' )
        INSTALLER_CMD="sudo -H -E apt-get -y install"
        CHECK_CMD="dpkg -s"
-       ubuntuFixes
        ;;
      "redhat"|"centos")
        DEP_INSTALLER=( 'python3' 'git' 'ansible' 'glibc-locale-source' 'glibc-langpack-en' )
@@ -709,11 +708,31 @@ setEnvironment() {
        PKG_MANAGER=$(/usr/bin/which dnf || /usr/bin/which yum)
        INSTALLER_CMD="sudo -H -E ${PKG_MANAGER} -y install"
        CHECK_CMD="rpm -q"
-       redhatFixes
        ;;
      "suse"|"opensuse")
        INSTALLER_CMD="zipper"
        DEP_DOCKER=( 'podman-docker' )
+       ;;
+   esac
+   
+}
+
+#===================================================
+#   Function: setEnvironment
+#---------------------------------------------------
+#  Private Function
+#
+#  Set environment
+#===================================================
+runOSfixes() {
+   case "${OS}" in
+     "ubuntu"|"debian")
+       ubuntuFixes
+       ;;
+     "redhat"|"centos")
+       redhatFixes
+       ;;
+     "suse"|"opensuse")
        ;;
    esac
    
@@ -757,7 +776,7 @@ runScripts() {
 #  Chack Bifrost Installer Dependencies
 #===================================================
 installDependencies() {
-  PACKAGES=( ${DEP_INSTALLER[@]} ) 
+  if [ ! -n "${PACKAGES}" ] ; then local  PACKAGES=( ${DEP_INSTALLER[@]} ) ; fi
   echo "${LOG_HEADER} -> ${INSTALLER_CMD} ${PACKAGES[@]}"
   ${INSTALLER_CMD} ${PACKAGES[@]}
 }
@@ -837,8 +856,8 @@ bifrostScriptsWorkaround() {
 #  Chack Bifrost Installer Dependencies
 #===================================================
 prepareLocalMachine() {
-  detectOS
-  setEnvironment
+  local  PACKAGES=( ${DEP_INSTALLER[@]} )
+  runOSfixes
   installDependencies
   firewallZone
   installEnvironment
@@ -1920,6 +1939,7 @@ function 0_call() {
     local CALL="${1}"   
     local PLAYBOOK="${GENESIS_PLAYBOOKS[${CALL}]}"
     #if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi	
+	local CALL_LOG="${HOME}/${CALL}.log"
     if [ -n "${LOG_FILE}" ] ; then local CALL_LOG="${LOG_FILE}"   ; fi
     
    #--------------------
@@ -1952,12 +1972,7 @@ function 0_call() {
 #  - Check Status "iDAS-1: Installed"
 #========================================================
 function 1_refresh() {
-    
-   #--------------------
-   #  LOCAL ENVIRONMENT
-   #--------------------
-   if [ -n "${LOG_FILE}"    ] ; then local CALL_LOG="${LOG_FILE}" ; fi
-   
+      
    #--------------------
    #  ACTIONS
    #--------------------
@@ -1969,7 +1984,6 @@ function 1_refresh() {
       #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"   
       0_call "${REFRESH}" 
    fi  
-   state_status "genesis_installed"     "${PROJECT_RPM}"   | tee -a "${CALL_LOG}"
    
    # 3.- Clean environment
    unset PXE_DHCP_IP PXE_DHCP_NIC CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
@@ -1990,7 +2004,6 @@ function 2_create() {
    #  LOCAL ENVIRONMENT
    #--------------------
    local FLUSH_CACHE="yes"
-   if [ -n "${LOG_FILE}"     ] ; then local INSTALL_LOG="${LOG_FILE}" ; fi
    if [ -n "${network_interface}" ] ; then PXE[${DHCP_NIC}]="${network_interface}"      ; fi
    if [ -n "${dhcp_address}" ] ; then PXE[${DHCP_IP}]=$( echo "$dhcp_address" | tr -d \/  |  tr '\' '/' )    ; fi
    if [ -n "${dhcp_pool_start}"   ] ; then PXE[${DHCP_POOL_START}]="${dhcp_pool_start}" ; fi
@@ -2002,6 +2015,7 @@ function 2_create() {
    #--------------------  
    # 1.- Load Configurations
    enableIronicNetworkInterface
+   addGenesisToHosts
    
    # 2.- Call
    #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
@@ -2023,9 +2037,8 @@ function 2_create() {
 #========================================================
 function 4_setup() {
    local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
-   if [ -n "${LOG_FILE}"      ] ; then local CALL_LOG="${LOG_FILE}" ; fi   
    0_call "${SETUP}" 
-   unset IRONIC_BAREMETAL_NODES SETUP_LOG
+   unset IRONIC_BAREMETAL_NODES LOG_FILE
 }
 
 #========================================================
@@ -2050,9 +2063,9 @@ function 8_plugins() {
     local PLUGIN="${1}"
 	
 	# 1.- Install RPM
-	if [ ! -r "${GENESIS_PLAYBOOKS[${PLUGIN}]}" ] ; then 
-	   echo "yum install ${GENESIS_PLUGINS_RPM[${PLUGIN}]} -y"
-	   yum install ${GENESIS_PLUGINS_RPM[${PLUGIN}]} -y
+	if [ ! -r "${GENESIS_PLAYBOOKS[${PLUGIN}]}" ] ; then
+       local  PACKAGES=( ${GENESIS_PLUGINS_RPM[${PLUGIN}]} )	
+       installDependencies
 	fi
 	
 	# 2.- Shoot Plugin
@@ -2061,7 +2074,7 @@ function 8_plugins() {
 	fi
 	
 	# 3.- Clean Environment 
-	unset LDAP_TYPE LDAP_GROUP_MACHINES LDAP_DATA TAGS VAULT INVENTORY TARGET CALL_LOG GROUP_MACHINES
+	unset LDAP_TYPE LDAP_GROUP_MACHINES LDAP_DATA TAGS VAULT INVENTORY TARGET LOG_FILE GROUP_MACHINES
 }
 
 #========================================================
@@ -2111,7 +2124,7 @@ function runActions() {
 #   Set all parameters to Run Direct Action
 #========================================================
 function initParameters() {
-
+  
    local ACTION="$1"
    
    # => 1.- Set common default values
@@ -2140,7 +2153,7 @@ function initParameters() {
        fi	 
 	 ;;	
      12|"${GENESIS_PLAYBOOKS_HEADER[${LDAP}]}") 
-       if [ ! -n "${VAULT}" ] ; then VAULT="goteras"  ; fi	 
+       if [ ! -n "${VAULT}" ] ; then VAULT="trufa"  ; fi	 
        if [ ! -n "${LDAP_DATA}" ] ; then LDAP_DATA="pv3"  ; fi	    
        if [ ! -n "${LDAP_TYPE}" ] ; then LDAP_TYPE="idm"  ; fi
        if [ ! -n "${LDAP_GROUP_MACHINES}" ] ; then LDAP_GROUP_MACHINES="iss_group"  ; fi
@@ -2257,6 +2270,10 @@ if [ -w "/dev/null" ] ; then
 		#=============================
 		# ACTIONS
 		#=============================
+        
+		# 0.- Set Script Environemt 
+        detectOS
+        setEnvironment
 
         # 1.- Direct Action
         if [ -n "${RUN_ACTION}"     ] ; then
