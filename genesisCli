@@ -875,11 +875,12 @@ prepareLocalMachine() {
 #===================================================
 addGenesisToHosts()  {
 
+   echo "Entra "
    # 1.- Add Genesis to Hosts
-   if [ ! -n "${GENESIS_NAME}" ] ; then 
-       local GENESIS_NAME=$(cat $HOSTS_TARGET_FILE | grep 'genesis_hostvars_name:' | head -1 | awk -F: {'print $NF}' | tr -d '"' )
+   local GENESIS_NAME="genesis.maas.lab"
+   if [ -r "$GENESIS_HOSTS_TARGET_FILE" ; then
+       local GENESIS_NAME=$(cat $GENESIS_HOSTS_TARGET_FILE | grep 'genesis_hostvars_name:' | head -1 | awk -F: '{print $NF}' | tr -d '"' )
    fi
-   if [ ! -n "${GENESIS_NAME}" ] ; then local GENESIS_NAME="genesis.maas.lab" ; fi  
    local ADDR=$( echo "${PXE[$DHCP_IP]}" | awk -F/ '{print $1}' | tr -d ' ' )
    local NAME=$( echo "${GENESIS_NAME}" | tr -d ' ' )
    echo "...... GENESIS_NAME=[${NAME}]"
@@ -927,8 +928,9 @@ enableIronicNetworkInterface() {
         echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=[${PXE[$DHCP_IP]}]"
         sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=["${PXE[$DHCP_IP]}"]
         
-        echo "${LOG_HEADER} -> sudo netplan apply"
-        sudo netplan apply
+        echo "${LOG_HEADER} -> sudo timeout 3s bash -c netplan apply"
+        sudo timeout 3s bash -c "netplan apply"
+
 		;;
     *) 
 	    if [ -n "${DETECT_CONEXION}" ] ; then 

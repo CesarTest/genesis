@@ -79,57 +79,44 @@
       set_fact:
         ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
 
-  roles:
-    - role: bifrost-create-dib-image
-      dib_imagename: "{{ deploy_image | default ( bifrost_repo + '/ubuntu.qcow2' )  }}"
-      dib_imagetype: "qcow2"
-      dib_elements: >
-        {{ dib_image_type|default('vm') }}
-        {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
-        enable-serial-console
-        {{ dib_init_element|default('simple-init') }}
-        {{ extra_dib_elements|default('') }}
-      when: create_image_via_dib | bool
+  tasks:
 
-
-#  tasks:
-#
-#     - name: "STEP 2 - Build OS Bootable Images from local repository"
-#       ignore_errors: true
-#       block:
-#         - name: "STEP 2 - Build OS Bootable Images from local repository"
-#           ansible.builtin.include_role:
-#              name: "{{bifrost_ironic_init}}"
-#           vars:
-#              #dib_env_vars:
-#              #  http_proxy: "{{ lookup('env', 'http_proxy') }}"
-#              #  https_proxy: "{{ lookup('env', 'https_proxy') }}"
-#              #  DIB_IMAGE_CACHE: "{{bifrost_repo_path}}/qcow"
-#              #  DIB_INSTALLTYPE_simple_init: repo
-#              #  DIB_INSTALLTYPE_pip_and_virtualenv: package
-#              #  LANG: C
-#              #  LC_ALL: C
-#              #  LC_MESSAGES: C
-#              dib_image_name: "{{ os.image | basename | splitext | list }}"
-#              dib_image_extension: "{{ dib_image_name[1] | default('') }}"
-#              dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2'] }}"
-#              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}"
-#              dib_imagetype: "{{os.imagetype | default('qcow') }}"
-#              dib_os_element: "{{os.distro}}"
-#              dib_os_release: "{{os.release}}"
-#              #dib_init_element: "{{os.manifesto | default('simple-init') }}"
-#              dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
-#              dib_elements: >
-#                {{ dib_image_type|default('vm') }}
-#                {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
-#                enable-serial-console
-#                {{ dib_init_element|default('simple-init') }}
-#                {{ extra_dib_elements|default('') }}
-#           when:
-#              - dib_cloud_image_detection | bool
-#           loop: "{{ bifrost_download_images | default([]) }}"
-#           loop_control:
-#              loop_var: "os"
+     - name: "STEP 2 - Build OS Bootable Images from local repository"
+       ignore_errors: true
+       block:
+         - name: "STEP 2 - Build OS Bootable Images from local repository"
+           ansible.builtin.include_role:
+              name: "{{bifrost_ironic_init}}"
+           vars:
+              #dib_env_vars:
+              #  http_proxy: "{{ lookup('env', 'http_proxy') }}"
+              #  https_proxy: "{{ lookup('env', 'https_proxy') }}"
+              #  DIB_IMAGE_CACHE: "{{bifrost_repo_path}}/qcow"
+              #  DIB_INSTALLTYPE_simple_init: repo
+              #  DIB_INSTALLTYPE_pip_and_virtualenv: package
+              #  LANG: C
+              #  LC_ALL: C
+              #  LC_MESSAGES: C
+              dib_image_name: "{{ os.image | basename | splitext | list }}"
+              dib_image_extension: "{{ dib_image_name[1] | default('') }}"
+              dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2'] }}"
+              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}"
+              dib_imagetype: "{{os.imagetype | default('qcow') }}"
+              dib_os_element: "{{os.distro}}"
+              dib_os_release: "{{os.release}}"
+              #dib_init_element: "{{os.manifesto | default('simple-init') }}"
+              dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
+              dib_elements: >
+                {{ dib_image_type|default('vm') }}
+                {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
+                enable-serial-console
+                {{ dib_init_element|default('simple-init') }}
+                {{ extra_dib_elements|default('') }}
+           when:
+              - dib_cloud_image_detection | bool
+           loop: "{{ bifrost_download_images | default([]) }}"
+           loop_control:
+              loop_var: "os"
 
 
   environment:
