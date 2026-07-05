@@ -15,9 +15,9 @@ servera199.maas.lab:
      -
        mac: "BC:24:11:7A:BD:68"
    instance_info:
-     image_source: "oci://genesis.maas.lab:5500/bifrost/images:ubuntu-noble.qcow2-1783256907"
+     image_source: "oci://10.10.10.5:5500/bifrost/images:ubuntu-noble.qcow2-1783256907"
    driver: "redfish"
-   ipv4_address: "10.10.10.5"
+   ipv4_address: "10.10.10.150"
    properties:
      cpu_arch: "x86_64"
      ram: "2048"
@@ -41,9 +41,9 @@ serverb199.maas.lab:
      -
        mac: "BC:24:11:E5:66:0C"
    instance_info:
-     image_source: "oci://genesis.maas.lab:5500/bifrost/images:centos-9.qcow2-1783256907"
+     image_source: "oci://10.10.10.5:5500/bifrost/images:centos-9.qcow2-1783256907"
    driver: "redfish"
-   #ipv4_address: "10.10.10.151"
+   ipv4_address: "10.10.10.151"
    properties:
      cpu_arch: "x86_64"
      ram: "2048"

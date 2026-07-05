@@ -54,8 +54,8 @@ GENESIS_HOSTS_TARGET_FILE="${GENESIS_HOSTS_WORKING_PATH}/target/group_vars/targe
 GENESIS_BIFROST_WORKING_PATH="${GENESIS_WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${GENESIS_BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
-IRONIC_NODES_FILE="host_vars/baremetal.yml"
-IRONIC_BAREMETAL_NODES=$(cat ${GENESIS_PROJECT_ANSIBLE_CFG} | grep 'inventory=' | awk -F/ '{print $NF}' )
+IRONIC_NODES_FILE='host_vars/baremetal.yml'
+IRONIC_BAREMETAL_NODES=$(cat ${GENESIS_PROJECT_ANSIBLE_CFG} | grep 'inventory=' | awk -F/ '{print $NF}' | tr -d '"' | tr -d ' ' )
 GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
 GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
 GENESIS_TARGET_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/target/inventory"
@@ -145,8 +145,8 @@ function defineMenu() {
                               "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2_create.yml)${COLOR[$NC]}" \
                               "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3_init.yml)${COLOR[$NC]}" \
                               "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4_setup.yml)${COLOR[$NC]}" \
-                              "${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}" \
                               "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5_deploy.yml)${COLOR[$NC]}" \
+                              "${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}" \
                               "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: node drivers and services installation (B6_provision.yml)${COLOR[$NC]}" \
                               "${COLOR[$NC]}[BAREMETAL] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}" \
                               "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
@@ -244,7 +244,7 @@ function defineMenu() {
 	                             "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
                                     )
              RETURNING_MENU="0"
-             RUN_ACTION="6"
+             RUN_ACTION="5"
              unset TARGET LOG_FILE
 	         ;;
 
@@ -895,6 +895,7 @@ function updateInventory() {
 	   local CNF_REEMPLAZO=( "${GENESIS_PROJECT_ANSIBLE_CFG}" )
 	   local VAR='inventory'
 	   local VALOR="hosts/target,hosts/${IRONIC_BAREMETAL_NODES##*/}"
+	   local SIN_COMILLA="Si"
 	   
 	   # 1.- Replace Pattern
 	   echo "${LOG_HEADER} - reemplazaParametro Si"
@@ -1475,11 +1476,13 @@ function reemplazaParametro() {
 	if [ -n "${CNF_SEPARADOR_CAMPO[${POSICION}]}" ] ; then local SEPARADOR_CAMPO="${CNF_SEPARADOR_CAMPO[${POSICION}]}" ; fi 
 	if [ -w "${CNF_REEMPLAZO[${POSICION}]}" ] ; then
 	   if [ -n "${REEMPLAZA_LINEA}" ] ; then
-	   	 REPLN="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
+	     if [ ! -n "${SIN_COMILLA}" ] ; then local REPLN="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
+		 else                                local REPLN="${VAR}${SEPARADOR_CAMPO}${PREPO}${VALOR}" 
+		 fi
 	   	 echo "===> sed s|^${VAR}${SEPARADOR_CAMPO}.*$|$REPLN| ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
 	   	 sed "s|^${VAR}${SEPARADOR_CAMPO}.*$|$REPLN|" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
 	   else
-	   	 REPLN="${PREPO}${VALOR}"
+	   	 local REPLN="${PREPO}${VALOR}"
 	   	 echo "===> sed s|${VAR}|$REPLN|g ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
 	   	 sed "s|${VAR}|$REPLN|g" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
 	   fi
@@ -2006,8 +2009,8 @@ function 0_call() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e "    [$PROJECT_NAME] -  ${GENESIS_PLAYBOOKS_HEADER[${CALL}]} - #${PLAYBOOK}#"
    echo -e '------------------------------------------------------------------------------------------------------'
-   echo -e "----> To run Ironic commands: "
-   echo -e ". $HOME/env.sh "
+   echo -e "${COLOR[$SEA]}----> To run Ironic commands:${COLOR[$NC]}"
+   echo -e "${COLOR[$SEA]}. $HOME/env.sh${COLOR[$NC]}"
    echo -e "baremetal node list"
    # 2.- Run Playbook
    runPlaybook "${CALL_LOG}"
@@ -2113,6 +2116,19 @@ function 4_setup() {
 }
 
 #========================================================
+#   Function: 5_deploy
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 5_deploy() {
+   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
+   0_call "${DEPLOY}" 
+   unset TARGET LOG_FILE
+}
+
+
+
+#========================================================
 #   Function: 6_ansible
 #--------------------------------------------------------
 #  - Prepare Ansible SSH Relationships
@@ -2172,7 +2188,7 @@ function runActions() {
         2|"${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}")  2_create  ;;
         3|"${GENESIS_PLAYBOOKS_HEADER[${INIT}]}")    3_init    ;;
         4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")   4_setup   ;;
-        5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")  0_call "${DEPLOY}" ;;
+        5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")  5_deploy  ;;
         6|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}") 6_ansible ;;		
         7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}") 0_call "${PROVISION}" ;;
         12|"${GENESIS_PLAYBOOKS_HEADER[${LDAP}]}")     8_plugins "${LDAP}"   ;;

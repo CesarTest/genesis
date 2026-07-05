@@ -1,7 +1,7 @@
 ---
 # The ironic API URL for bifrost operations.  Defaults to localhost.
 # ironic_url: "http://localhost:6385/"
-#git_branch: "stable/2025.2"
+git_branch: "stable/2026.1"
 bifrost_root_path: "{{ ( inventory_dir + '/../../' ) | realpath }}"
 bifrost_airgap_path: "{{ bifrost_root_path }}/repo"
 
