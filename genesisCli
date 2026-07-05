@@ -57,7 +57,7 @@ IRONIC_CLOUD="bifrost"
 IRONIC_NODES_FILE="host_vars/baremetal.yml"
 IRONIC_BAREMETAL_NODES=$(cat ${GENESIS_PROJECT_ANSIBLE_CFG} | grep 'inventory=' | awk -F/ '{print $NF}' )
 GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
-GENESIS_BAREMETAL_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
+GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
 GENESIS_TARGET_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/target/inventory"
 
 # 2.2.- Installation OPTIONS
@@ -880,6 +880,44 @@ prepareLocalMachine() {
   bifrostScriptsWorkaround
 }
 
+#========================================================
+#   Function: updateInventory
+#--------------------------------------------------------
+#   iDAS ISOS generation
+#    - common.yaml... create from /mnt/isos/ contents
+#========================================================
+function updateInventory() {
+   	
+	if [ -n "${IRONIC_BAREMETAL_NODES}" ] ; then
+	
+	   # Local Environment
+	   local POSICION=0
+	   local CNF_REEMPLAZO=( "${GENESIS_PROJECT_ANSIBLE_CFG}" )
+	   local VAR='inventory'
+	   local VALOR="hosts/target,hosts/${IRONIC_BAREMETAL_NODES##*/}"
+	   
+	   # 1.- Replace Pattern
+	   echo "${LOG_HEADER} - reemplazaParametro Si"
+       reemplazaParametro "Si"
+       local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
+	   echo "${LOG_HEADER} - chmod $PERMISSIONS ${OUT_TMP}"
+       chmod "$PERMISSIONS" "${OUT_TMP}"
+	   echo "${LOG_HEADER} - mv ${OUT_TMP} ${CNF_REEMPLAZO[${POSICION}]}"
+	   mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"	
+ 
+       # 2.- Update environment Variables
+       GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES##*/}/${IRONIC_NODES_FILE}"
+       GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES##*/}/inventory"
+       echo "${LOG_HEADER} -..... GENESIS_BIFROST_INVENTORY_SOURCE=[${GENESIS_BIFROST_INVENTORY_SOURCE}]"
+       echo "${LOG_HEADER} -... GENESIS_ANSIBLE_INVENTORY_SOURCE=[${GENESIS_ANSIBLE_INVENTORY_SOURCE}]"	
+       setupCommand
+	   
+	   # 3 Clean environment
+	   unset PERMISSIONS POSICION CNF_REEMPLAZO PARAMETRO inventory
+ 	  	     	   
+	fi
+}
+
 
 #===================================================
 #   Function: addGenesisToHosts
@@ -899,8 +937,8 @@ addGenesisToHosts()  {
    fi
    local ADDR=$( echo "${PXE[$DHCP_IP]}" | awk -F/ '{print $1}' | tr -d ' ' )
    local NAME=$( echo "${GENESIS_NAME}" | tr -d ' ' )
-   echo "...... GENESIS_NAME=[${NAME}]"
-   echo "... GENESIS_ADDRESS=[${ADDR}]"
+   echo "${LOG_HEADER} -...... GENESIS_NAME=[${NAME}]"
+   echo "${LOG_HEADER} -... GENESIS_ADDRESS=[${ADDR}]"
    echo "${LOG_HEADER} -> sudo sed -i /${NAME}/d /etc/hosts"
    sudo bash -c "sed -i /${NAME}/d /etc/hosts"
    echo "${LOG_HEADER} -> sudo bash -c echo ${ADDR} ${NAME} >> /etc/hosts"
@@ -1084,7 +1122,7 @@ function trust_relationships() {
 	# 1.- Load list of IP nodes
     if [ -r "${LIST_OF_NODES_FILE}" ] ; then
         . "${LIST_OF_NODES_FILE}" 2> /dev/null
-    elif [ -r "${GENESIS_BAREMETAL_INVENTORY_SOURCE}" ] ; then
+    elif [ -r "${GENESIS_ANSIBLE_INVENTORY_SOURCE}" ] ; then
 	    local INVENTORY_LIST=( $(runAdHoc ' ' '--list-hosts' | sed '1d') )
     fi
 	
@@ -1097,7 +1135,7 @@ function trust_relationships() {
        done
     else
        echo -e "[genesisCli.trust_relationships] - ${COLOR[$YELLOW]} [WARN] - MISSING CONFIGURATION FILE: please try to SETUP iDAS before ${COLOR[$NC]}"
-       error "-r" "[genesisCli.trust_relationships] - ${GENESIS_BAREMETAL_INVENTORY_SOURCE}"
+       error "-r" "[genesisCli.trust_relationships] - ${GENESIS_ANSIBLE_INVENTORY_SOURCE}"
     fi	
     unset NODE INVENTORY_LIST LIST_OF_NODES_FILE
 }
@@ -1255,6 +1293,7 @@ function listaOpciones_Dinamica() {
 	# LOCAL ENVIRONMENT
 	#------------------
 	local INDICE="$1"
+	local REMOVE_PATH="$2"
 	local RUTA="${RUTA_OPCIONES[${INDICE}]}"
 	local EXT="${EXT_OPCIONES[${INDICE}]}"
 	local ELIMINA="${SUPRIME_EXT[${INDICE}]}"
@@ -1392,7 +1431,7 @@ function capturaValor() {
 		if [ -r "${RUTA_LISTA}" ] ; then
 
 		    # 1.1.1.- Build list and Capture option
-		    listaOpciones_Dinamica "${INDICE}"
+		    listaOpciones_Dinamica "${INDICE}" "${MENU_SKIP_PATHS}"
 		    capturaOpcionLista
 
 		    # 1.1.2.- Assign default value
@@ -1821,8 +1860,8 @@ function setupCommand() {
        echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"
    fi 
    
-   echo "[$TIMESTAMP] -> export BIFROST_INVENTORY_SOURCE=${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
-   export BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/${IRONIC_NODES_FILE}" 
+   echo "[$TIMESTAMP] -> export BIFROST_INVENTORY_SOURCE=${GENESIS_BIFROST_INVENTORY_SOURCE}"
+   export BIFROST_INVENTORY_SOURCE="${GENESIS_BIFROST_INVENTORY_SOURCE}" 
 }
 
 #===================================================
@@ -2067,7 +2106,8 @@ function 3_init() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 4_setup() {
-   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
+   updateInventory
+   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
    0_call "${SETUP}" 
    unset IRONIC_BAREMETAL_NODES LOG_FILE
 }

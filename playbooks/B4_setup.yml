@@ -127,8 +127,10 @@
            if [ -n '{{node_image_source}}' ] ; then
              HASH=$( sha256sum {{node_image_source_localpath}} )
              baremetal node set {{node_uuid}} --instance-info image_source="{{node_image_source}}"
-             baremetal node set {{node_uuid}} --instance-info image_os_hash_value="${HASH%% *}"
-             baremetal node set {{node_uuid}} --instance-info image_os_hash_algo="sha256"
+             if [ -n "${HASH}" } ; then
+               baremetal node set {{node_uuid}} --instance-info image_os_hash_value="${HASH%% *}"
+               baremetal node set {{node_uuid}} --instance-info image_os_hash_algo="sha256"
+             fi
            fi
            if [ -n '{{node_ks_template}}' ] ; then
               baremetal node set {{node_uuid}} --instance-info ks_template="{{node_ks_template}}"

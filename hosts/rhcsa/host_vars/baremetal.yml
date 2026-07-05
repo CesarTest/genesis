@@ -1,10 +1,8 @@
 ---
 #--------------------------
-# HTTP: QCOW Images with baked-in Cloud-Init Install Manifesto
+# OCI: QCOW Images with baked-in Cloud-Init Install Manifesto
 #--------------------------
 servera199.maas.lab:
-   #ipa_kernel_url: "http://10.10.10.5:8080/ipa.kernel"
-   #ipa_ramdisk_url: "http://10.10.10.5:8080/ipa.initramfs"
    uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
    driver_info:
      redfish_username: "root@pam"
@@ -17,13 +15,9 @@ servera199.maas.lab:
      -
        mac: "BC:24:11:7A:BD:68"
    instance_info:
-     deploy_interface: "direct"
-     image_source: "http://10.10.10.5:8080/centos-9.qcow"
-     image_os_hash_value: "d91d01212125e00370e3917df2bf32a86738fbc89fa008effebd398d764b1b03"
-     image_os_hash_algo: "sha256"
-     boot-interface: "ipxe"
+     image_source: "oci://genesis.maas.lab:5500/bifrost/images:ubuntu-noble.qcow2-1783256907"
    driver: "redfish"
-   ipv4_address: "10.10.10.150"
+   ipv4_address: "10.10.10.5"
    properties:
      cpu_arch: "x86_64"
      ram: "2048"
@@ -32,11 +26,9 @@ servera199.maas.lab:
    name: "servera199"
 
 #--------------------------
-# HTTP: ISO Images with external Install Manifesto (kickstart, ignition)
+# OCI: ISO Images with external Install Manifesto (kickstart, ignition)
 #--------------------------
 serverb199.maas.lab:
-   ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
-   ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
    uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
    driver_info:
      redfish_username: "root@pam"
@@ -49,14 +41,9 @@ serverb199.maas.lab:
      -
        mac: "BC:24:11:E5:66:0C"
    instance_info:
-     deploy_interface: "anaconda"
-     ks_template: "http://genesis.maas.lab:8080/serverb199/ks_template"
-     image_source: "http://genesis.maas.lab:8080/test"
-     kernel: "http://genesis.maas.lab:8080/centos9/vmlinuz"
-     ramdisk: http://genesis.maas.lab:8080/centos9/initrd.img"
-     boot-interface: "ipxe"
+     image_source: "oci://genesis.maas.lab:5500/bifrost/images:centos-9.qcow2-1783256907"
    driver: "redfish"
-   ipv4_address: "10.10.10.151"
+   #ipv4_address: "10.10.10.151"
    properties:
      cpu_arch: "x86_64"
      ram: "2048"
@@ -65,61 +52,61 @@ serverb199.maas.lab:
    name: "serverb199"
 
 #--------------------------
-# OCI: QCOW Images with baked-in Cloud-Init Install Manifesto
+# HTTP: QCOW Images with baked-in Cloud-Init Install Manifesto
 #--------------------------
-workstation199.maas.lab:
-   ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
-   ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
-   uuid: "0f86778e-c7f2-4712-8cc8-3a5000ad7e69"
-   driver_info:
-     redfish_username: "root@pam"
-     redfish_address: "https://cdglab.duckdns.org:8000"
-     redfish_password: "cesardgm"
-     redfish_system_id: "/redfish/v1/Systems/104"
-   nics:
-     -
-       mac: "BC:24:11:3F:E9:A7"
-     -
-       mac: "BC:24:11:3F:D5:14"
-   instance_info:
-     deploy_interface: "direct"
-     image_source: "oci://genesis.maas.lab:8080/centos-9.qcow"
-     boot-interface: "ipxe"
-   driver: "redfish"
-   ipv4_address: "10.10.10.152"
-   properties:
-     cpu_arch: "x86_64"
-     ram: "2048"
-     disk_size: "32"
-     cpus: "4"
-   name: "workstation199"
-
-#--------------------------
-# OCI: ISO Images with external Install Manifesto (kickstart, ignition)
-#--------------------------
-training.maas.lab:
-   ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
-   ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
-   uuid: "9d2258ba-cc95-48c1-a109-d2517e7791a8"
-   driver_info:
-     redfish_username: "root@pam"
-     redfish_address: "https://cdglab.duckdns.org:8000"
-     redfish_password: "cesardgm"
-     redfish_system_id: "/redfish/v1/Systems/105"
-   nics:
-     -
-       mac: "BC:24:11:92:FB:3E"
-     -
-       mac: "BC:24:11:D0:FB:F6"
-   instance_info:
-     deploy_interface: "direct"
-     image_source: "oci://genesis.maas.lab:8080/centos-9.qcow"
-     boot-interface: "ipxe"
-   driver: "redfish"
-   ipv4_address: "10.10.10.153"
-   properties:
-     cpu_arch: "x86_64"
-     ram: "2048"
-     disk_size: "32"
-     cpus: "4"
-   name: "training"
+#workstation199.maas.lab:
+#   ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
+#   ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
+#   uuid: "0f86778e-c7f2-4712-8cc8-3a5000ad7e69"
+#   driver_info:
+#     redfish_username: "root@pam"
+#     redfish_address: "https://cdglab.duckdns.org:8000"
+#     redfish_password: "cesardgm"
+#     redfish_system_id: "/redfish/v1/Systems/104"
+#   nics:
+#     -
+#       mac: "BC:24:11:3F:E9:A7"
+#     -
+#       mac: "BC:24:11:3F:D5:14"
+#   instance_info:
+#     deploy_interface: "direct"
+#     image_source: "oci://genesis.maas.lab:8080/centos-9.qcow"
+#     boot-interface: "ipxe"
+#   driver: "redfish"
+#   ipv4_address: "10.10.10.152"
+#   properties:
+#     cpu_arch: "x86_64"
+#     ram: "2048"
+#     disk_size: "32"
+#     cpus: "4"
+#   name: "workstation199"
+#
+##--------------------------
+## HTTP: ISO Images with external Install Manifesto (kickstart, ignition)
+##--------------------------
+#training.maas.lab:
+#   ipa_kernel_url: "http://genesis.maas.lab:8080/ipa.kernel"
+#   ipa_ramdisk_url: "http://genesis.maas.lab:8080/ipa.initramfs"
+#   uuid: "9d2258ba-cc95-48c1-a109-d2517e7791a8"
+#   driver_info:
+#     redfish_username: "root@pam"
+#     redfish_address: "https://cdglab.duckdns.org:8000"
+#     redfish_password: "cesardgm"
+#     redfish_system_id: "/redfish/v1/Systems/105"
+#   nics:
+#     -
+#       mac: "BC:24:11:92:FB:3E"
+#     -
+#       mac: "BC:24:11:D0:FB:F6"
+#   instance_info:
+#     deploy_interface: "direct"
+#     image_source: "oci://genesis.maas.lab:8080/centos-9.qcow"
+#     boot-interface: "ipxe"
+#   driver: "redfish"
+#   ipv4_address: "10.10.10.153"
+#   properties:
+#     cpu_arch: "x86_64"
+#     ram: "2048"
+#     disk_size: "32"
+#     cpus: "4"
+#   name: "training"
