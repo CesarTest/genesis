@@ -32,9 +32,9 @@
       loop_control:
         loop_var: "dest_folder"
 
-    - name: "STEP 1: Copy Downloaded Files to Ironic Destination Folder"
+    - name: "STEP 1: Copy Downloaded Files to Ironic Images Master Path"
       ansible.builtin.copy:
-        src: "{{bifrost_repo_path | realpath}}/qcow/"
+        src: "{{bifrost_repo_path | realpath}}/{{airgap_repos[2] | default('qcow') }}/"
         dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}/"
         owner: ironic
         group: ironic
@@ -52,31 +52,11 @@
     default_repo_path: "{{ playbook_dir  }}/../repo"
     bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
     bifrost_repo: "{{ bifrost_repo_path }}/{{airgap_repos[4] | default('dib') }}"
-    bifrost_roles: "{{bifrost_path}}/openstack.bifrost/playbooks/roles"
-    bifrost_ironic_init: "{{bifrost_roles}}/bifrost-create-dib-image"
+    bifrost_ironic_init: "bifrost-create-dib-image"
     #dib_offline: true
-    build_ramdisk: false
+    
 
   pre_tasks:
-    - name: install pip (and venv) to system
-      package:
-        name: "{{ packages | select | list }}"
-      vars:
-        packages:
-          - python3-pip
-          - "{{ (ansible_facts['os_family'] == 'Debian') | ternary('python3-venv', '') }}"
-
-    - name: create venv
-      command: python3 -m venv {{ bifrost_venv_dir }}
-      args:
-        creates: "{{ bifrost_venv_dir }}/bin/python3"
-
-    # NOTE(ebbex): (in case it's missing, which it shouldn't normally be)
-    - name: install setuptools in venv
-      command: "{{ bifrost_venv_dir }}/bin/pip3 install setuptools"
-      args:
-        creates: "{{ bifrost_venv_dir }}/lib/python*/site-packages/setuptools"
-
     - name: override ansible_python_interpreter to venv
       set_fact:
         ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
@@ -91,6 +71,8 @@
            ansible.builtin.include_role:
               name: "{{bifrost_ironic_init}}"
            vars:
+              enable_oci_registry_upload: false
+              build_ramdisk: false
               dib_image_name: "{{ os.image | basename | splitext | list }}"
               dib_image_extension: "{{ dib_image_name[1] | default('') }}"
               dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2'] }}"
@@ -111,8 +93,35 @@
            loop: "{{ bifrost_download_images | default([]) }}"
            loop_control:
               loop_var: "os"
-
-
+      
+         - name: "STEP 3 - Build RamDisk of Images from local repository"
+           ansible.builtin.include_role:
+              name: "{{bifrost_ironic_init}}"
+           vars:
+              enable_oci_registry_upload: false
+              build_ramdisk: "{{ bifrost_build_ramdisk | default(true) | bool }}"
+              dib_image_name: "{{ os.image | basename | splitext | list }}"
+              dib_image_extension: "{{ dib_image_name[1] | default('') }}"
+              dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2'] }}"
+              dib_imagename: "{{bifrost_repo}}/{{os.distro}}-{{os.release}}"
+              dib_imagetype: "{{os.imagetype | default('qcow2') }}"
+              dib_os_element: "{{os.distro}}"
+              dib_os_release: "{{os.release}}"
+              #dib_init_element: "{{os.manifesto | default('simple-init') }}"
+              dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
+              dib_elements: >
+                {{ dib_image_type|default('vm') }}
+                {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
+                enable-serial-console
+                {{ dib_init_element|default('simple-init') }}
+                {{ extra_dib_elements|default('') }}
+           when:
+              - dib_cloud_image_detection | bool
+              - build_ramdisk | bool
+           loop: "{{ bifrost_download_images | default([]) }}"
+           loop_control:
+              loop_var: "os"
+      
   environment:
     http_proxy: "{{ lookup('env','http_proxy') }}"
     https_proxy: "{{ lookup('env','https_proxy') }}"
@@ -125,16 +134,58 @@
   become: true
   ignore_errors: yes
   vars:
+    bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+    bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"
     default_repo_path: "{{ playbook_dir  }}/../repo"
     bifrost_repo_path: "{{ bifrost_airgap_path | default( default_repo_path ) | realpath }}"
-    bifrost_repo: "{{ bifrost_repo_path }}/dib"
+    bifrost_repo: "{{ bifrost_repo_path }}/{{airgap_repos[4] | default('dib') }}"
+    bifrost_ironic_init: "bifrost-create-dib-image"
+    bifrost_registry_ip: "{{dhcp_address | default('127.0.0.1') | ipaddr('address') }}"
+  pre_tasks:
+    - name: override ansible_python_interpreter to venv
+      set_fact:
+        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"    
+
   tasks:
 
-    - name: "STEP 3: Copy Bootable OS Images to Ironic Destination Folder"
+    - name: "STEP 4: Copy Bootable OS Images to Ironic Destination Folder"
       ansible.builtin.copy:
         src: "{{bifrost_repo}}/"
         dest: "{{ironic_tftp_master_path | default('/var/lib/ironic/httpboot') }}/"
+        owner: ironic
+        group: ironic
+        
+    - name: "STEP 5 - Upload to ORAS Registry"
+      ansible.builtin.include_role:
+         name: "{{bifrost_ironic_init}}"
+      vars:
+         dib_image_name: "{{ os.image | basename | splitext | list }}"
+         internal_ip: "{{ genesis_hostvars_name | default(bifrost_registry_ip) | default('127.0.0.1') }}"
+         dib_image_extension: "{{ dib_image_name[1] | default('') }}"
+         dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2'] }}"
+         dib_imagename: "{{ironic_tftp_master_path | default('/var/lib/ironic/httpboot') }}/{{os.distro}}-{{os.release}}"
+         dib_imagetype: "{{os.imagetype | default('qcow2') }}"
+         dib_os_element: "{{os.distro}}"
+         dib_os_release: "{{os.release}}"
+         #dib_init_element: "{{os.manifesto | default('simple-init') }}"
+         dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
+         dib_elements: >
+           {{ dib_image_type|default('vm') }}
+           {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
+           enable-serial-console
+           {{ dib_init_element|default('simple-init') }}
+           {{ extra_dib_elements|default('') }}
+      when:
+         - dib_cloud_image_detection | bool
+      loop: "{{ bifrost_download_images | default([]) }}"
+      loop_control:
+         loop_var: "os"
 
+  environment:
+    http_proxy: "{{ lookup('env','http_proxy') }}"
+    https_proxy: "{{ lookup('env','https_proxy') }}"
+    no_proxy: "{{ lookup('env', 'no_proxy') }}"
+    
 #---------------------------------------
 # CREATE ISO REPOSITORIES
 #---------------------------------------
