@@ -69,7 +69,7 @@
     enable_prometheus_exporter: true
     staging_drivers_include: true
     enable_networking_generic_switch_driver: true
-    staging_drivers_git_branch: "main"
+    staging_drivers_git_branch: "master"
     
     # 2.- Paths
     bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/openstack.bifrost' ) | realpath }}"

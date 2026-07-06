@@ -5,8 +5,9 @@
 servera199.maas.lab:
    uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
    driver_info:
+     redfish_verify_ca: false
      redfish_username: "root@pam"
-     redfish_address: "https://cdglab.duckdns.org:8000"
+     redfish_address: "https://10.10.10.1:8000"
      redfish_password: "cesardgm"
      redfish_system_id: "/redfish/v1/Systems/102"
    nics:
@@ -15,7 +16,7 @@ servera199.maas.lab:
      -
        mac: "BC:24:11:7A:BD:68"
    instance_info:
-     image_source: "oci://10.10.10.5:5500/bifrost/images:ubuntu-noble.qcow2-1783256907"
+     image_source: "oci://10.10.10.5:5500/bifrost/images:centos-9.qcow2-1783316498"
    driver: "redfish"
    ipv4_address: "10.10.10.150"
    properties:
@@ -31,8 +32,9 @@ servera199.maas.lab:
 serverb199.maas.lab:
    uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
    driver_info:
+     redfish_verify_ca: false
      redfish_username: "root@pam"
-     redfish_address: "https://cdglab.duckdns.org:8000"
+     redfish_address: "https://10.10.10.1:8000"
      redfish_password: "cesardgm"
      redfish_system_id: "/redfish/v1/Systems/103"
    nics:
@@ -41,7 +43,7 @@ serverb199.maas.lab:
      -
        mac: "BC:24:11:E5:66:0C"
    instance_info:
-     image_source: "oci://10.10.10.5:5500/bifrost/images:centos-9.qcow2-1783256907"
+     image_source: "oci://10.10.10.5:5500/bifrost/images:ubuntu-noble.qcow2-1783316498"
    driver: "redfish"
    ipv4_address: "10.10.10.151"
    properties:

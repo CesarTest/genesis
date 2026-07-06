@@ -115,7 +115,7 @@ DEPENDENCIES=( 'collections/requirements.yml' \
 DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                     'ansible-galaxy role install --force -r ' \
 						 'sed -i "/cdglab.duckdns.org/d" /etc/hosts' \
-                         'echo "192.168.1.133 cdglab.duckdns.org" >> /etc/hosts' \
+                         'echo "10.10.10.1 cdglab.duckdns.org" >> /etc/hosts' \
                         )
 
 ########################################################################################
@@ -1238,7 +1238,7 @@ function state_status() {
 	   ;;
 
       ${INIT}|"genesis_init") 
-	        local STATE_FULL_NAME="Genesis-${INIT}: Genesis Init"
+	        local STATE_FULL_NAME="G-${INIT}: Genesis Init"
 	        local CHECK_NAME=( \
                                "Images Repo: "   \
                                "ORAS Registry: "   \
@@ -1248,9 +1248,35 @@ function state_status() {
 			                   'oras version'  \
 			                )
 	   ;;
-      ${SETUP}|"genesis_ready") 
-	        local STATE_FULL_NAME="B-${SETUP}: Baremetal Nodes Ready to Deploy"	  
+	   
+      ${SETUP}|"baremetal_setup") 
+	        local STATE_FULL_NAME="B-${SETUP}: Baremetal Nodes Ready to Deploy"
+			unset INVENTORY PLAYBOOK
+			local ATARGET='localhost'
+	        local CHECK_NAME=( \
+                               "Ironic List State of Nodes: "   \
+		                       )							   
+	        local CHECK_CMD=( \
+			                   'baremetal node list'  \
+			                )
+	   ;;	   
+	   
+      ${DEPLOY}|"baremetal_deploy") 
+	        local STATE_FULL_NAME="B-${DEPLOY}: Baremetal Nodes run OS unattended installation"
+			unset INVENTORY PLAYBOOK
+			local ATARGET='localhost'
+	        local CHECK_NAME=( \
+                               "Ironic List State of Nodes: "   \
+		                       )							   
+	        local CHECK_CMD=( \
+			                   'baremetal node list'  \
+			                )
+	   ;;	   
+      6|"baremetal_ansible") 
+	        local STATE_FULL_NAME="Ansible Pre-Ready: Baremetal Nodes ready to provision Software profile"	  
 	        local CHECK_ANSIBLE=1
+			unset INVENTORY PLAYBOOK
+			unset INVENTORY
 	        local CHECK_NAME=( \
                                "Ansible Ping: " \
 		                       )
@@ -1271,6 +1297,7 @@ function state_status() {
        echo -e "     STATE [${STATE_FULL_NAME}] - STATUS" 	   
        echo -e "--------------------------------------------"
 	   if [ -n "${SSH_LOCALHOST}" ] ; then sshUserKey ; fi
+	   setupCommand
        runChecks 	   
        echo -e "--------------------------------------------" 
        echo -e "     STATE [${STATE_FULL_NAME}] - STATUS" 	   
@@ -1713,7 +1740,9 @@ function buildCommand() {
         if [ -n "${INVENTORY}"      ] ; then OPTIONS="${OPTIONS} -i ${INVENTORY}"   ; fi
         if [ -n "${ADHOC_MODULE}"   ]  && [ ! "${ADHOC_MODULE}" == ' ' ] ; then 
 		     OPTIONS="${OPTIONS} -m ${ADHOC_MODULE}"  
-		     if [ -n "${ADHOC_CALL}" ] && [ ! "${ADHOC_CALL}" == ' ' ] ; then OPTIONS="${OPTIONS} -a ${ADHOC_CALL}"    ; fi 	 
+		     if [ -n "${ADHOC_CALL}" ] && [ ! "${ADHOC_CALL}" == ' ' ] ; then 
+			    OPTIONS="${OPTIONS} -a '${ADHOC_CALL}'" 
+			 fi 	 
 		elif [ -n "${ADHOC_CALL}" ] ; then 
 		     OPTIONS="${OPTIONS} --list-hosts"		 
 	    fi		
@@ -1754,7 +1783,8 @@ function shootPlaybook() {
       if [ -x /opt/stack/bifrost/bin/ansible-playbook ] ; then
           if [ -n "${RUN_BACKGROUND}" ] ; then
             echo "[${TIMESTAMP}] : nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > ${LOG}.nohup &"
-            nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 ; unset PLAYBOOK ; state_status "${CALL}" &
+            nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 &
+			unset PLAYBOOK 
           else
             echo "[${TIMESTAMP}] : /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
             /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
@@ -1764,17 +1794,19 @@ function shootPlaybook() {
        elif [ -x /usr/bin/ansible-playbook ] ; then
           if [ -n "${RUN_BACKGROUND}" ] ; then
              echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} &"
-             nohup /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} 2>&1 ; unset PLAYBOOK ; state_status "${CALL}"  &
+             nohup /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
+	         unset PLAYBOOK
           else
              echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
              /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
-			 unset PLAYBOOK
+			 unset PLAYBOOK 
 			 state_status "${CALL}"
           fi
        elif [ -x /usr/sbin/ansible-playbook ] ; then
           if [ -n "${RUN_BACKGROUND}" ] ; then
              echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} &"
-             nohup /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} ; unset PLAYBOOK ; state_status "${CALL}" 2>&1 &
+             nohup /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 & 
+			 unset PLAYBOOK
           else
              echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
              /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} 
@@ -1785,7 +1817,8 @@ function shootPlaybook() {
        elif [ -x /usr/bin/ansible-playbook-3 ] ; then
           if [ -n "${RUN_BACKGROUND}" ] ; then
              echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} &"
-             nohup /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} 2>&1 ; unset PLAYBOOK ; state_status "${CALL}" &
+             nohup /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
+			 unset PLAYBOOK
           else
              echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
              /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} 
@@ -1796,7 +1829,8 @@ function shootPlaybook() {
        elif [ -x /usr/sbin/ansible-playbook-3 ] ; then
           if [ -n "${RUN_BACKGROUND}" ] ; then
             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} &"
-            nohup /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} 2>&1 ; unset PLAYBOOK ; state_status "${CALL}"  &
+            nohup /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
+			unset PLAYBOOK 
           else
             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
             /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}
@@ -1877,24 +1911,26 @@ function setupCommand() {
 function shootAdhoc() {
 
    # 0.- Trace Entry
+   if [ ! -n "${ATARGET}" ] ; then  local ATARGET="all" ; fi
    if [[ ! "${LOG}" == "/dev/null" ]] ; then
-      echo "[${TIMESTAMP}] :  ansible all ${OPTIONS}"
+      echo "[${TIMESTAMP}] :  ansible  ${OPTIONS} ${ATARGET}"
    fi
    
    # 1.- Shoot Ad-Hoc Command
    if   [ -x /opt/stack/bifrost/bin/ansible ] ; then
-        /opt/stack/bifrost/bin/ansible all ${OPTIONS}    
+        echo $OPTIONS
+        /opt/stack/bifrost/bin/ansible  ${OPTIONS} ${ATARGET}
    elif [ -x /usr/bin/ansible    ] ; then
-        /usr/bin/ansible all ${OPTIONS} 
+        /usr/bin/ansible ${ATARGET} ${OPTIONS} 
    elif [ -x /usr/sbin/ansible   ] ; then
-         /usr/sbin/ansible all ${OPTIONS} 		 
+         /usr/sbin/ansible ${ATARGET} ${OPTIONS} 		 
    elif [ -x /usr/bin/ansible-3  ] ; then
-        /usr/bin/ansible-3 all ${OPTIONS} 
+        /usr/bin/ansible-3 ${ATARGET} ${OPTIONS} 
    elif [ -x /usr/sbin/ansible-3 ] ; then
-       /usr/sbin/ansible-3 all ${OPTIONS} 
+       /usr/sbin/ansible-3 ${ATARGET} ${OPTIONS} 
    else
-     echo -e "${COLOR[$YELLOW]} [WARN] - GENESIS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH iDAS build installation (option 1)"
-     error "-r" "${PLAYBOOK}"
+     echo -e "${COLOR[$YELLOW]} [WARN] - GENESIS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH Genesis Node (option 1)"
+     error "-x" "ansible ${ATARGET} ${OPTIONS}"
    fi	
    
    unset OPTIONS
@@ -2007,11 +2043,11 @@ function 0_call() {
    #--------------------	
    # 1.- Trace Entry
    echo -e '------------------------------------------------------------------------------------------------------'
-   echo -e "    [$PROJECT_NAME] -  ${GENESIS_PLAYBOOKS_HEADER[${CALL}]} - #${PLAYBOOK}#"
+   echo -e "    [${IRONIC_BAREMETAL_NODES}] -  ${GENESIS_PLAYBOOKS_HEADER[${CALL}]} - #${PLAYBOOK}#"
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e "${COLOR[$SEA]}----> To run Ironic commands:${COLOR[$NC]}"
    echo -e "${COLOR[$SEA]}. $HOME/env.sh${COLOR[$NC]}"
-   echo -e "baremetal node list"
+   echo -e "${COLOR[$SEA]}baremetal node list{COLOR[$NC]}"
    # 2.- Run Playbook
    runPlaybook "${CALL_LOG}"
 
@@ -2135,10 +2171,11 @@ function 5_deploy() {
 #========================================================
 function 6_ansible() {
    echo -e '------------------------------------------------------------------------------------------------------'
-   echo -e "   [${PROJECT_NAME}] - [BAREMETAL] - ANSIBLE     : Ansible Initial Setup "
+   echo -e "   [${IRONIC_BAREMETAL_NODES}] - [BAREMETAL] - ANSIBLE     : Ansible Initial Setup "
    echo -e '------------------------------------------------------------------------------------------------------'
    if [ -n "${LOG_FILE}"    ] ; then local CALL_LOG="${LOG_FILE}" ; fi
    trust_relationships "${NODE_LIST}"
+   state_status "6"
 }
 
 #========================================================
