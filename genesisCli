@@ -115,7 +115,6 @@ DEPENDENCIES=( 'collections/requirements.yml' \
 DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                     'ansible-galaxy role install --force -r ' \
 						 'sed -i "/cdglab.duckdns.org/d" /etc/hosts' \
-                         'echo "10.10.10.1 cdglab.duckdns.org" >> /etc/hosts' \
                         )
 
 ########################################################################################
@@ -1255,9 +1254,11 @@ function state_status() {
 			local ATARGET='localhost'
 	        local CHECK_NAME=( \
                                "Ironic List State of Nodes: "   \
+                               "Ironic Deployment Ports: "   \							   
 		                       )							   
 	        local CHECK_CMD=( \
 			                   'baremetal node list'  \
+			                   'baremetal port list'  \							   
 			                )
 	   ;;	   
 	   
@@ -2047,7 +2048,7 @@ function 0_call() {
    echo -e '------------------------------------------------------------------------------------------------------'
    echo -e "${COLOR[$SEA]}----> To run Ironic commands:${COLOR[$NC]}"
    echo -e "${COLOR[$SEA]}. $HOME/env.sh${COLOR[$NC]}"
-   echo -e "${COLOR[$SEA]}baremetal node list{COLOR[$NC]}"
+   echo -e "${COLOR[$SEA]}baremetal node list${COLOR[$NC]}"
    # 2.- Run Playbook
    runPlaybook "${CALL_LOG}"
 

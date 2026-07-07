@@ -13,17 +13,18 @@ servera199.maas.lab:
    nics:
      -
        mac: "BC:24:11:28:C3:E2"
-     -
-       mac: "BC:24:11:7A:BD:68"
+     #-
+     #  mac: "BC:24:11:7A:BD:68"
    instance_info:
-     image_source: "oci://10.10.10.5:5500/bifrost/images:centos-9.qcow2-1783316498"
+     image_source: "oci://10.10.10.5:5500/bifrost/images:centos-9.qcow2-1783418094"
    driver: "redfish"
    ipv4_address: "10.10.10.150"
    properties:
      cpu_arch: "x86_64"
      ram: "2048"
-     disk_size: "32"
+     disk_size: "30"
      cpus: "4"
+     capabilities: "boot_mode:bios"
    name: "servera199"
 
 #--------------------------
@@ -40,17 +41,20 @@ serverb199.maas.lab:
    nics:
      -
        mac: "BC:24:11:70:D8:B0"
-     -
-       mac: "BC:24:11:E5:66:0C"
+     #-
+     #  mac: "BC:24:11:E5:66:0C"
    instance_info:
-     image_source: "oci://10.10.10.5:5500/bifrost/images:ubuntu-noble.qcow2-1783316498"
+     image_source: "http://10.10.10.5:8080/centos-9.qcow2"
+     image_os_hash_value: "8711528e35896c3845b7c9203ca8353b2eaa99b8ee4bb18610c552c45361d11f"
+     image_os_hash_algo: "sha256sum"
    driver: "redfish"
    ipv4_address: "10.10.10.151"
    properties:
      cpu_arch: "x86_64"
      ram: "2048"
-     disk_size: "32"
+     disk_size: "30"
      cpus: "4"
+     capabilities: "boot_mode:bios"
    name: "serverb199"
 
 #--------------------------
