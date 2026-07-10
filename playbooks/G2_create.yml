@@ -37,8 +37,22 @@
         - regexp: '^enabled_deploy_interfaces '
           line: 'enabled_deploy_interfaces = ramdisk,bootc,direct,anaconda'
       loop_control:
-        loop_var: "replace"
-
+        loop_var: "replace"  
+        
+    #- name: "STEP 2 - SETUP IRONIC: add lines to |/etc/ironic/ironic.conf|"
+    #  ansible.builtin.lineinfile:
+    #    path: /etc/ironic/ironic.conf
+    #    regexp: "{{replace.regexp}}"
+    #    insertafter: "{{replace.regexp}}"
+    #    line:        "{{replace.line}}"
+    #  loop:
+    #    - regexp: '[DEFAULT]'
+    #      line: 'configdrive_format = iso9660'
+    #    - regexp: '[agent]'
+    #      line: 'require_agent_token = False'
+    #  loop_control:
+    #    loop_var: "replace"        
+    
     - name: "STEP 3 - RESTART IRONIC: apply changes"
       service:
         name: ironic

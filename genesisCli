@@ -11,7 +11,14 @@
 # Date: 17-September-2022
 # Update: 02-Jul-2026
 ########################################################################################
-
+#hostname: dpg-d97thn6trd3s739nra10-a
+#port: 5432
+#database: libros_418l
+#username: postgre
+#password: yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP
+#Internal Database URL: postgresql://postgre:yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP@dpg-d97thn6trd3s739nra10-a/libros_418l
+#External Database URl: postgresql://postgre:yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP@dpg-d97thn6trd3s739nra10-a.frankfurt-postgres.render.com/libros_418l
+#psql command: PGPASSWORD=yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP psql -h dpg-d97thn6trd3s739nra10-a.frankfurt-postgres.render.com -U postgre libros_418l
 
 #----------------------------
 # ECHO COLORS TABLE

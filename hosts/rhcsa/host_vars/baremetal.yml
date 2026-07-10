@@ -7,7 +7,7 @@ servera199.maas.lab:
    driver_info:
      redfish_verify_ca: false
      redfish_username: "root@pam"
-     redfish_address: "https://10.10.10.1:8000"
+     redfish_address: "https://10.10.41.1:8000"
      redfish_password: "cesardgm"
      redfish_system_id: "/redfish/v1/Systems/102"
    nics:
@@ -16,13 +16,13 @@ servera199.maas.lab:
      #-
      #  mac: "BC:24:11:7A:BD:68"
    instance_info:
-     image_source: "oci://10.10.10.5:5500/bifrost/images:centos-9.qcow2-1783418094"
+     image_source: "oci://10.10.41.5:5500/bifrost/images:centos-9.qcow2-1783488632"
    driver: "redfish"
    ipv4_address: "10.10.10.150"
    properties:
      cpu_arch: "x86_64"
-     ram: "2048"
-     disk_size: "30"
+     ram: "4096"
+     disk_size: "32"
      cpus: "4"
      capabilities: "boot_mode:bios"
    name: "servera199"
@@ -35,7 +35,7 @@ serverb199.maas.lab:
    driver_info:
      redfish_verify_ca: false
      redfish_username: "root@pam"
-     redfish_address: "https://10.10.10.1:8000"
+     redfish_address: "https://10.10.41.1:8000"
      redfish_password: "cesardgm"
      redfish_system_id: "/redfish/v1/Systems/103"
    nics:
@@ -44,15 +44,15 @@ serverb199.maas.lab:
      #-
      #  mac: "BC:24:11:E5:66:0C"
    instance_info:
-     image_source: "http://10.10.10.5:8080/centos-9.qcow2"
-     image_os_hash_value: "8711528e35896c3845b7c9203ca8353b2eaa99b8ee4bb18610c552c45361d11f"
+     image_source: "http://10.10.41.5:8080/centos-9.qcow2"
+     image_os_hash_value: "a027e2c49f9324bc2dea2f274a4b2bbee99409daff95fb020344c641c544e8ae"
      image_os_hash_algo: "sha256sum"
    driver: "redfish"
    ipv4_address: "10.10.10.151"
    properties:
      cpu_arch: "x86_64"
-     ram: "2048"
-     disk_size: "30"
+     ram: "4096"
+     disk_size: "32"
      cpus: "4"
      capabilities: "boot_mode:bios"
    name: "serverb199"
