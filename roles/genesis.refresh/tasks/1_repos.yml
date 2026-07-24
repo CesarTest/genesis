@@ -1,0 +1,20 @@
+- name: "STEP 0 - Create an ironic service group"
+  group:
+    name: "ironic"
+
+- name: "STEP 0 - Create an ironic service user"
+  user:
+    name: "ironic"
+    group: "ironic"
+
+- name: "STEP 1 - Create Repos Folders"
+  file:
+     path: "{{ genesis_files_path | default('/tmp') }}/{{ folder| default('repo') }}"
+     state: "directory"
+     recurse: true
+     owner: "{{ansible_user | default('ironic') }}"
+     group: "{{ansible_user | default('ironic') }}"
+     mode: "775"
+  loop: "{{ genesis_create_repos | default([]) }}"
+  loop_control:
+    loop_var: "folder"

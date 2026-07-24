@@ -1,0 +1,22 @@
+---
+# vars file for genesis.refresh
+git_url_root: https://opendev.org
+tarballs_base_url: "https://tarballs.opendev.org/openstack/ironic-python-agent"
+git_root: "{{genesis_files_path}}/openstack"
+oras_download_url: "{{oras_upstream_root}}/{{oras_tarball_path}}"
+
+
+copy_from_local_path: false
+ironicclient_source_install: true
+openstacksdk_source_install: true
+ironicinspector_source_install: true
+ironicinspectorclient_source_install: true
+sushy_source_install: true
+staging_drivers_source_install: true
+prometheus_exporter_source_install: true
+enable_inspector: true
+enable_keystone: true
+enable_prometheus_exporter: true
+staging_drivers_include: true
+enable_networking_generic_switch_driver: true
+staging_drivers_git_branch: "master"

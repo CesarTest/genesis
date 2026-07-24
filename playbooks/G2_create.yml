@@ -24,35 +24,47 @@
 #---------------------------------
 - hosts: target
   become: true
+  vars:
+    genesis_registry_username: "{{ bifrost_registry_username | default('bifrost-registry') }}"
   tasks:
 
-    - name: "STEP 2 - SETUP IRONIC: adjust |/etc/ironic/ironic.conf|"
+    - name: "STEP-2: Check current linger status |{{ genesis_registry_username }}|"
+      ansible.builtin.stat:
+        path: "/var/lib/systemd/linger/{{ genesis_registry_username }}"
+      register: linger_status
+    
+    - name: "STEP-2: Enable systemd lingering for the user |{{ genesis_registry_username }}|"
+      ansible.builtin.command:
+        cmd: "loginctl enable-linger {{ genesis_registry_username }}"
+      when: not linger_status.stat.exists
+
+    - name: "STEP 3 - SETUP IRONIC: adjust Configurations Files"
       ansible.builtin.lineinfile:
-        path: /etc/ironic/ironic.conf
-        regexp: "{{replace.regexp}}"
-        line: "{{replace.line}}"
+        path:        "{{ replace.file   | default(ommit)  }}"
+        regexp:      "{{ replace.regexp | default(ommit)  }}"
+        line:        "{{ replace.line   | default(ommit)  }}"
+        insertafter: "{{ replace.insertafter | default(ommit) }}" 
       loop:
-        - regexp: '^automated_clean'
+        - file: "/etc/systemd/system/bifrost-registry.service"
+          regexp: "^User="
+          line: "User=root"
+        - file: "/etc/ironic/ironic.conf"
+          regexp: '^automated_clean'
           line: 'automated_clean = false'
-        - regexp: '^enabled_deploy_interfaces '
+        - file: "/etc/ironic/ironic.conf"
+          regexp: '^enabled_deploy_interfaces '
           line: 'enabled_deploy_interfaces = ramdisk,bootc,direct,anaconda'
+    #    - file: "/etc/ironic/ironic.conf"  
+    #      regexp: '[DEFAULT]'
+    #      insertafter: '[DEFAULT]'
+    #      line: 'configdrive_format = iso9660'
+    #    - file: "/etc/ironic/ironic.conf"    
+    #      regexp: '[agent]'
+    #      insertafter: '[agent]'    
+    #      line: 'require_agent_token = False'         
       loop_control:
         loop_var: "replace"  
-        
-    #- name: "STEP 2 - SETUP IRONIC: add lines to |/etc/ironic/ironic.conf|"
-    #  ansible.builtin.lineinfile:
-    #    path: /etc/ironic/ironic.conf
-    #    regexp: "{{replace.regexp}}"
-    #    insertafter: "{{replace.regexp}}"
-    #    line:        "{{replace.line}}"
-    #  loop:
-    #    - regexp: '[DEFAULT]'
-    #      line: 'configdrive_format = iso9660'
-    #    - regexp: '[agent]'
-    #      line: 'require_agent_token = False'
-    #  loop_control:
-    #    loop_var: "replace"        
-    
+          
     - name: "STEP 3 - RESTART IRONIC: apply changes"
       service:
         name: ironic

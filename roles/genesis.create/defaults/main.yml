@@ -1,0 +1,143 @@
+---
+# genesis.create defaults
+#   - Adjust Bifrost Variables to Download dependencies 
+#       for Airgap environments
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  PATHS
+######################################################
+genesis_bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/genesis.bifrost' ) | realpath }}"
+genesis_files_path: "{{ bifrost_airgap_path | default( genesis_bifrost_path + '/files' ) }}"
+genesis_bifrost_repo_path: "{{ bifrost_airgap_path | default(bifrost_shoot_path + 'repo') | realpath }}"
+genesis_bifrost_roles: "{{genesis_bifrost_path}}/genesis.bifrost/playbooks/roles"
+git_root: "{{genesis_files_path}}/openstack"
+git_url_root: https://opendev.org
+
+######################################################
+#  REPOSITORIES FOLDERS
+######################################################
+genesis_default_repos:
+ - openstack
+ - pip
+ - qcow
+ - iso
+ - dib
+ - dib/files
+genesis_create_repos: "{{ genesis_repos | default(genesis_default_repos) }}" 
+
+######################################################
+#  DOWNLOAD OPENSTACK COMPONENTS FROM GIT
+######################################################
+copy_from_local_path: false
+ironicclient_source_install: true
+openstacksdk_source_install: true
+ironicinspector_source_install: true
+ironicinspectorclient_source_install: true
+sushy_source_install: true
+staging_drivers_source_install: true
+prometheus_exporter_source_install: true
+enable_inspector: true
+enable_keystone: true
+enable_prometheus_exporter: true
+staging_drivers_include: true
+enable_networking_generic_switch_driver: true
+staging_drivers_git_branch: "master"
+
+######################################################
+#  OS IMAGES RESPOSITORIES
+######################################################
+create_image_via_dib: true
+ironic_tftp_master_path: "{{ genesis_bifrost_repo_path }}/qcow"
+genesis_bifrost_roles: "{{genesis_bifrost_path}}/openstack.bifrost/playbooks/roles"
+bifrost_ironic_install: "{{genesis_bifrost_roles}}/bifrost-ironic-install"
+bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+bifrost_repo: "{{ bifrost_airgap_path | default( genesis_bifrost_path + '/files' ) | realpath }}/dib"
+default_download_image_sources:
+  - image: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img"
+    checksum: "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    distro: "ubuntu"
+    release: "focal"
+  - image: "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+    checksum: "https://cloud-images.ubuntu.com/jammy/current/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    distro: "ubuntu"
+    release: "jammy"
+  - image: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+    checksum: "https://cloud-images.ubuntu.com/noble/current/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    distro: "ubuntu"
+    release: "noble"
+  - image: "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2"
+    checksum: "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/CHECKSUM"
+    checksum_algorithm: "sha256"
+    distro: "rocky"
+    release: "8"
+  - image: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
+    checksum: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/CHECKSUM"
+    checksum_algorithm: "sha256"
+    distro: "rocky"
+    release: "9"
+  - image: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
+    checksum: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/CHECKSUM"
+    checksum_algorithm: "sha256"
+  - image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+    checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
+    checksum_algorithm: "sha256"
+    distro: "centos"
+    release: "9-stream"
+  - image: "https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    checksum: "https://cloud.centos.org/centos/10-stream/x86_64/images/CHECKSUM"
+    checksum_algorithm: "sha256"
+    distro: "centos"
+    release: "10-stream"
+  - image: "{{ cirros_deploy_image_upstream_url | default('https://download.cirros-cloud.net/0.5.3/cirros-0.5.3-x86_64-disk.img') }}"
+    checksum: "https://download.cirros-cloud.net/0.5.3/MD5SUMS"
+    checksum_algorithm: "md5"
+    distro: "cirros"
+    release: "0.5.3"
+download_image_sources: "{{ bifrost_download_images | default(default_download_image_sources) | default([]) }}"
+
+
+######################################################
+#  IPA IMAGES RESPOSITORIES
+######################################################
+ipa_local_repo: "{{ airgap_repos[5] | default('dib/files') }}"
+update_ipa: true
+ipa_upstream_release: "master"
+tarballs_base_url: "https://tarballs.opendev.org/openstack/ironic-python-agent"
+ipa_download_headers: {}
+download_ipa: true
+update_ipa: true
+ipa_add_ssh_key: false
+ipa_download_url_username:
+ipa_download_url_password:
+ipa_download_force_basic_auth:
+ipa_download_unredirected_headers:
+ipa_kernel_download_url_username: "{{ ipa_download_url_username }}"
+ipa_kernel_download_url_password: "{{ ipa_download_url_password }}"
+ipa_kernel_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_kernel_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+ipa_ramdisk_download_url_username: "{{ ipa_download_url_username }}"
+ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
+ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+default_ipa_image_sources:
+  - kernel: "{{tarballs_base_url}}/dib/files/ipa-debian-master.kernel"
+    kernel_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-debian-master.kernel.sha256"
+    kernel_checksum_algo: "sha256"
+    ramdisk: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs"
+    ramdisk_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs.sha256"
+    ramdisk_checksum_algo: "sha256"
+
+  - kernel: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel"
+    kernel_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel.sha256"
+    kernel_checksum_algo: "sha256"
+    ramdisk: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs"
+    ramdisk_checksum_url: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs.sha256"
+    ramdisk_checksum_algo: "sha256"
+ipa_image_sources: "{{ bifrost_ipa_image_sources | default(default_ipa_image_sources) | default([]) }}"

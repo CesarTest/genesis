@@ -4,6 +4,7 @@
 git_branch: "stable/2026.1"
 bifrost_root_path: "{{ ( inventory_dir + '/../../' ) | realpath }}"
 bifrost_airgap_path: "{{ bifrost_root_path }}/repo"
+bifrost_skip_image_creation: true
 
 # The network interface that bifrost will be operating on.  Defaults
 # to virbr0 in roles, can be overridden here.
@@ -11,9 +12,9 @@ genesis_hostvars_name: "genesis.maas.lab"
 network_interface: "ens19"
 enable_dhcp: true
 dhcp_provider: "dnsmasq"
-dhcp_address: "10.10.41.5/24"
-dhcp_pool_start: "10.10.41.201"
-dhcp_pool_end: "10.10.41.220"
+dhcp_address: "10.10.10.5/24"
+dhcp_pool_start: "10.10.10.201"
+dhcp_pool_end: "10.10.10.220"
 dhcp_lease_time: 12h
 dhcp_static_mask: 255.255.255.0
 

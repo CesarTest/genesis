@@ -1,0 +1,24 @@
+---
+# tasks file for genesis.refresh
+- name: "------------------> REFRESH GENESIS NODE <------------------" 
+  block:
+    - name: "REFRESH"
+      ansible.builtin.include_tasks: "{{ genesis_refresh_stage | default ('1_repos.yml') }}"
+      loop:
+         - "1_repos.yml"
+         - "2_git.yml"
+         - "3_os.yml"
+         - "4_ipa.yml"
+         - "5_ora.yml"
+      loop_control:
+        loop_var: "genesis_refresh_stage"
+    
+    - name: "STEP 6 - Owner"
+      shell:
+        cmd: "chown -R {{ansible_user | default('ironic') }}:ironic  {{ genesis_files_path }}"
+        
+  rescue:
+    - name: "------------------> REFRESH GENESIS NODE - Error"
+      debug:
+        msg:
+        - "Possible errors:"

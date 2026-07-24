@@ -16,7 +16,9 @@ servera199.maas.lab:
      #-
      #  mac: "BC:24:11:7A:BD:68"
    instance_info:
-     image_source: "oci://10.10.41.5:5500/bifrost/images:centos-9.qcow2-1783488632"
+     boot_mode: uefi
+     sercure_boot: false   
+     image_source: "oci://10.10.41.5:5500/bifrost/images:centos-9.qcow2-1783669028"
    driver: "redfish"
    ipv4_address: "10.10.10.150"
    properties:
@@ -24,7 +26,7 @@ servera199.maas.lab:
      ram: "4096"
      disk_size: "32"
      cpus: "4"
-     capabilities: "boot_mode:bios"
+     capabilities: "boot_mode:uefi,secure_boot:false"
    name: "servera199"
 
 #--------------------------
@@ -44,9 +46,17 @@ serverb199.maas.lab:
      #-
      #  mac: "BC:24:11:E5:66:0C"
    instance_info:
+     boot_mode: uefi
+     sercure_boot: false
      image_source: "http://10.10.41.5:8080/centos-9.qcow2"
-     image_os_hash_value: "a027e2c49f9324bc2dea2f274a4b2bbee99409daff95fb020344c641c544e8ae"
-     image_os_hash_algo: "sha256sum"
+     image_os_hash_value: "7a282d59866229cd3b21ced9d4df6f81bc83b8fc76700c220a53168d13f87d70"
+     image_os_hash_algo: "sha256"
+     configdrive: 
+        meta_data: 
+          public_keys: 
+            "0": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
+          hostname: "serverb199.maas.lab"
+          
    driver: "redfish"
    ipv4_address: "10.10.10.151"
    properties:
@@ -54,7 +64,7 @@ serverb199.maas.lab:
      ram: "4096"
      disk_size: "32"
      cpus: "4"
-     capabilities: "boot_mode:bios"
+     capabilities: "boot_mode:uefi,secure_boot:false"
    name: "serverb199"
 
 #--------------------------
