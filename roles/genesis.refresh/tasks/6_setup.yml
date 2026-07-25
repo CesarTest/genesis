@@ -1,0 +1,3 @@
+- name: "STEP 6 - Owner"
+  shell:
+    cmd: "chown -R {{ansible_user | default('ironic') }}:ironic  {{ genesis_files_path }}"

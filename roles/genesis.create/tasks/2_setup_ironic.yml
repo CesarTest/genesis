@@ -1,0 +1,44 @@
+---
+# genesis.create 2_setup_ironic
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Setup Keystone Client
+#---------------------------------------     
+- name: "STEP 2 - SETUP KEYSTONE CLIENT: Create Bifrost Cloud"
+  ansible.builtin.include_role: 
+    name: bifrost-keystone-client-config
+  vars: 
+    user: "{{ ansible_env.SUDO_USER | default(ansible_user_id) }}"
+    clouds:
+      bifrost:
+        config_username: "{{ ironic.keystone.default_username }}"
+        config_password: "{{ ironic.keystone.default_password }}"
+        config_project_name: "baremetal"
+        config_region_name: "{{ keystone.bootstrap.region_name }}"
+        config_auth_url: "{{ keystone.bootstrap.public_url }}"
+      bifrost-admin:
+        config_username: "{{ keystone.bootstrap.username }}"
+        config_password: "{{ keystone.bootstrap.password }}"
+        config_project_name: "{{ keystone.bootstrap.project_name }}"
+        config_region_name: "{{ keystone.bootstrap.region_name }}"
+        config_auth_url: "{{ keystone.bootstrap.public_url }}"
+        config_system_scope: true
+
+#---------------------------------------
+# 2. Setup Ironic
+#---------------------------------------            
+- name: "STEP 2 - SETUP IRONIC: adjust Configurations Files"
+  ansible.builtin.lineinfile:
+    path:        "{{ replace.file   | default(ommit)  }}"
+    regexp:      "{{ replace.regexp | default(ommit)  }}"
+    line:        "{{ replace.line   | default(ommit)  }}"
+    insertafter: "{{ replace.insertafter | default(ommit) }}" 
+  loop: "{{ genesis_create_setup_ironic | default([]) }}"
+  loop_control:
+    loop_var: "replace"
+  notify:
+    - Restart Ironic  

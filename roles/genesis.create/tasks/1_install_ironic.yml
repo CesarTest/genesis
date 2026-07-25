@@ -1,0 +1,19 @@
+---
+# genesis.create 1_install_ironic
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Install Ironic
+#---------------------------------------   
+- ignore_errors: yes
+  ansible.builtin.include_role: 
+    name: "{{ genesis_install_ironic_role.name }}"
+  when: 
+    - genesis_install_ironic_role.name is defined
+    - "{{ genesis_install_ironic_role.condition | default(true) | bool }}"
+  loop: "{{ genesis_ironic_install_roles | default([]) }}"
+  loop_control:
+    loop_var: "genesis_install_ironic_role"  

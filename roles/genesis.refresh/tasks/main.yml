@@ -10,12 +10,9 @@
          - "3_os.yml"
          - "4_ipa.yml"
          - "5_ora.yml"
+         - "6_setup.yml"        
       loop_control:
         loop_var: "genesis_refresh_stage"
-    
-    - name: "STEP 6 - Owner"
-      shell:
-        cmd: "chown -R {{ansible_user | default('ironic') }}:ironic  {{ genesis_files_path }}"
         
   rescue:
     - name: "------------------> REFRESH GENESIS NODE - Error"

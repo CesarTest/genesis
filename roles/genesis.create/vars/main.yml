@@ -1,2 +1,14 @@
 ---
-# vars file for genesis.create
+# genesis.create vars
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  ENSURE TO INSTALL FROM LOCAL REPOS
+#######################################################
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+git_url_root:      "{{ genesis_local_repo_url }}"
+tarballs_base_url: "{{ genesis_local_repo_url }}"
+oras_url_root:     "{{ git_url_root }}" 

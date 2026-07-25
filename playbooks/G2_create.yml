@@ -5,67 +5,41 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-
-#---------------------------------
-# INSTALL STANDALONE IRONIC
-#---------------------------------
-- name: "STEP 1: Install Standalone Ironic in Genesis Node"
-  ansible.builtin.import_playbook: "{{bifrost_shoot_path|trim}}/install.yaml"
-  ignore_errors: yes
-  vars:
-    bifrost_shoot_path: >-
-     {{ bifrost_playbooks_path
-      | default(playbook_dir + '/../roles/openstack.bifrost/openstack.bifrost/playbooks', True)
-      | realpath  }}
-    create_image_via_dib: false
-
-#---------------------------------
-# SETUP STANDALONE IRONIC
-#---------------------------------
 - hosts: target
-  become: true
+  become: yes
+  gather_facts: yes
   vars:
-    genesis_registry_username: "{{ bifrost_registry_username | default('bifrost-registry') }}"
-  tasks:
+    bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+    genesis_repo_path: "{{ playbook_dir }}/../repo"    
+  pre_tasks:
+    - name: install pip (and venv) to system
+      package:
+        name: "{{ packages | select | list }}"
+      vars:
+        packages:
+          - python3-pip
+          - "{{ (ansible_facts['os_family'] == 'Debian') | ternary('python3-venv', '') }}"
 
-    - name: "STEP-2: Check current linger status |{{ genesis_registry_username }}|"
-      ansible.builtin.stat:
-        path: "/var/lib/systemd/linger/{{ genesis_registry_username }}"
-      register: linger_status
-    
-    - name: "STEP-2: Enable systemd lingering for the user |{{ genesis_registry_username }}|"
-      ansible.builtin.command:
-        cmd: "loginctl enable-linger {{ genesis_registry_username }}"
-      when: not linger_status.stat.exists
+    - name: create venv
+      command: python3 -m venv {{ bifrost_venv_dir }}
+      args:
+        creates: "{{ bifrost_venv_dir }}/bin/python3"
 
-    - name: "STEP 3 - SETUP IRONIC: adjust Configurations Files"
-      ansible.builtin.lineinfile:
-        path:        "{{ replace.file   | default(ommit)  }}"
-        regexp:      "{{ replace.regexp | default(ommit)  }}"
-        line:        "{{ replace.line   | default(ommit)  }}"
-        insertafter: "{{ replace.insertafter | default(ommit) }}" 
-      loop:
-        - file: "/etc/systemd/system/bifrost-registry.service"
-          regexp: "^User="
-          line: "User=root"
-        - file: "/etc/ironic/ironic.conf"
-          regexp: '^automated_clean'
-          line: 'automated_clean = false'
-        - file: "/etc/ironic/ironic.conf"
-          regexp: '^enabled_deploy_interfaces '
-          line: 'enabled_deploy_interfaces = ramdisk,bootc,direct,anaconda'
-    #    - file: "/etc/ironic/ironic.conf"  
-    #      regexp: '[DEFAULT]'
-    #      insertafter: '[DEFAULT]'
-    #      line: 'configdrive_format = iso9660'
-    #    - file: "/etc/ironic/ironic.conf"    
-    #      regexp: '[agent]'
-    #      insertafter: '[agent]'    
-    #      line: 'require_agent_token = False'         
-      loop_control:
-        loop_var: "replace"  
-          
-    - name: "STEP 3 - RESTART IRONIC: apply changes"
-      service:
-        name: ironic
-        state: restarted
+    # NOTE(ebbex): (in case it's missing, which it shouldn't normally be)
+    - name: install setuptools in venv
+      command: "{{ bifrost_venv_dir }}/bin/pip3 install setuptools"
+      args:
+        creates: "{{ bifrost_venv_dir }}/lib/python*/site-packages/setuptools"
+
+    - name: override ansible_python_interpreter to venv
+      set_fact:
+        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
+
+  roles:
+    - role: "genesis.create"
+      when: not (skip_install | default(false) | bool)   
+ 
+  environment:
+    http_proxy: "{{ lookup('env','http_proxy') }}"
+    https_proxy: "{{ lookup('env','https_proxy') }}"
+    no_proxy: "{{ lookup('env', 'no_proxy') }}"
