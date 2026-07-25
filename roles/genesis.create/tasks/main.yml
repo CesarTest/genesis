@@ -4,18 +4,14 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "------------------> CREATE GENESIS NODE <------------------" 
+- name: "------------------> G2- CREATE GENESIS NODE <------------------" 
+  ignore_errors: yes 
   block:
-    - name: "REFRESH"
+    - name: "G2-CREATE"
       ansible.builtin.include_tasks: "{{ genesis_create_stage | default ('1_install_ironic.yml') }}"
       loop:
          - "1_install_ironic.yml"
          - "2_setup_ironic.yml"     
       loop_control:
         loop_var: "genesis_create_stage"
-        
-  rescue:
-    - name: "------------------> CREATE GENESIS NODE - Error"
-      debug:
-        msg:
-        - "Possible errors:"
+       

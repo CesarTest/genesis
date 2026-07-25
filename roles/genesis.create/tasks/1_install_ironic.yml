@@ -8,8 +8,7 @@
 #---------------------------------------
 # 1. Install Ironic
 #---------------------------------------   
-- ignore_errors: yes
-  ansible.builtin.include_role: 
+- ansible.builtin.include_role: 
     name: "{{ genesis_install_ironic_role.name }}"
   when: 
     - genesis_install_ironic_role.name is defined

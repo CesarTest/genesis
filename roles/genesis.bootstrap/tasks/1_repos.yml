@@ -1,3 +1,10 @@
+---
+# genesis.bootstrap 1_repos.yml
+#   - Create local repositories folders
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
 - name: "STEP 0 - Create an ironic service group"
   group:
     name: "ironic"

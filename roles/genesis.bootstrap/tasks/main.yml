@@ -1,21 +1,26 @@
 ---
-# tasks file for genesis.refresh
-- name: "------------------> REFRESH GENESIS NODE <------------------" 
+# genesis.bootstrap main.yml
+#   - Bootstrap Genesis Node for Airgap Ironic Install
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "------------------> G1- REFRESH GENESIS NODE <------------------" 
   block:
-    - name: "REFRESH"
+    - name: "G1 - REFRESH"
       ansible.builtin.include_tasks: "{{ genesis_refresh_stage | default ('1_repos.yml') }}"
       loop:
          - "1_repos.yml"
          - "2_git.yml"
          - "3_os.yml"
          - "4_ipa.yml"
-         - "5_ora.yml"
+         - "5_oras.yml"
          - "6_setup.yml"        
       loop_control:
         loop_var: "genesis_refresh_stage"
         
   rescue:
-    - name: "------------------> REFRESH GENESIS NODE - Error"
+    - name: "------------------> G1- REFRESH GENESIS NODE - Error"
       debug:
         msg:
         - "Possible errors:"

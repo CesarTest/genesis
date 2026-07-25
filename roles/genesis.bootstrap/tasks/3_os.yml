@@ -1,0 +1,19 @@
+---
+# genesis.bootstrap 3_os.yml
+#   - Download OS Images from Internet
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "STEP 3 - Download OS Cloud Ready images"
+  include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_deployment_image.yml"
+  loop: "{{ download_image_sources | default([]) }}"
+  loop_control:
+     loop_var: "image_src"
+  vars:
+     deploy_image_upstream_url: "{{ image_src.image    | default('') }}"
+     deploy_image_checksum_url: "{{ image_src.checksum | default('') }}"
+     deploy_image_checksum_algorithm: "{{ image_src.checksum_algorithm | default('') }}"
+     deploy_image_filename: "{{ image_src.image | basename }}"
+     http_boot_folder: "{{ genesis_repo_path | realpath }}/{{ image_src.local_folder | default('qcow') }}"
+     deploy_image: "{{ http_boot_folder }}/{{ image_src.image | basename }}"

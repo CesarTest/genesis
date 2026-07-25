@@ -1,6 +1,0 @@
----
-roles:
-  - name: genesis.bifrost
-collections:
-  - name: fedora.linux_system_roles
-  - name: robertdebock.roles

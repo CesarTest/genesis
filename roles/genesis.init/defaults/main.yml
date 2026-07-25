@@ -1,0 +1,67 @@
+---
+# genesis.init defaults
+#   - Load OS images
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  PATHS
+######################################################
+# 1.- Repos Paths
+genesis_repo_path:     "{{ role_path }}/../../repo"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+# 2.- Bifrost Role Paths
+genesis_bifrost_role_name: "genesis.bifrost"
+genesis_bifrost_path:       "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_ironic_init: "{{ genesis_bifrost_roles | realpath }}/bifrost-create-dib-image"
+genesis_bifrost_dest_folder:
+  - "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
+  - "{{http_boot_folder | default('/var/lib/ironic/httpboot') }}"
+  - "{{bifrost_iso_folder | default('/var/lib/ironic/isos') }}"
+
+######################################################
+#  REPOSITORIES FOLDERS
+######################################################
+genesis_default_repos:
+ - openstack
+ - pip
+ - qcow
+ - iso
+ - dib
+ - dib/files
+genesis_init_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+genesis_repo_dib_path: "{{genesis_repo_path}}/{{ genesis_init_repos[4] }}"
+
+######################################################
+#  OS IMAGES RESPOSITORIES
+######################################################
+create_image_via_dib: true
+ironic_tftp_master_path: "{{ genesis_bifrost_repo_path }}/{{ genesis_create_repos[2] | default('qcow') }}"
+bifrost_ironic_install: "{{genesis_bifrost_roles}}/bifrost-ironic-install"
+bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+bifrost_repo: "{{ bifrost_airgap_path | default( genesis_bifrost_path + '/files' ) | realpath }}/dib"
+genesis_default_download_image_sources:
+  - image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+    checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
+    checksum_algorithm: "sha256"
+    distro: "centos"
+    release: "9"
+    imagetype: "qcow2"
+    deploy_interface: "direct"
+    boot_interface: "ipxe"
+  - image: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+    checksum: "https://cloud-images.ubuntu.com/noble/current/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    distro: "ubuntu"
+    release: "noble"
+    imagetype: "qcow2"
+    deploy_interface: "direct"
+    boot_interface: "ipxe"
+download_image_sources: "{{ genesis_download_images | default(genesis_default_download_image_sources) | default([]) }}"
+
+

@@ -1,0 +1,70 @@
+---
+# genesis.init 2_build
+#   - Load OS images
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Build OS Image
+#---------------------------------------   
+- name: "STEP 2 - Build OS Bootable Images from local repository"
+  ansible.builtin.include_role:
+     name: "{{ genesis_bifrost_ironic_init }}"
+  vars:
+     enable_oci_registry_upload: false
+     build_ramdisk: false
+     dib_image_name: "{{ os.image | basename | splitext | list }}"
+     dib_image_extension: "{{ dib_image_name[1] | default('') }}"
+     dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2', '.img'] }}"
+     dib_imagename:  "{{ genesis_repo_dib_path }}/{{ os.distro }}-{{ os.release }}"
+     dib_imagetype:  "{{ os.imagetype | default('qcow2') }}"
+     dib_os_element: "{{ os.distro }}"
+     dib_os_release: "{{ os.release }}"
+     #dib_init_element: "{{os.manifesto | default('simple-init') }}"
+     dib_local_image_url: "{{ deploy_image_sources[dib_os_element]['image'] | default(omit) }}"
+     dib_elements: >
+       {{ dib_image_type|default('vm') }}
+       {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
+       enable-serial-console
+       {{ dib_init_element|default('simple-init') }}
+       {{ extra_dib_elements|default('') }}
+  when:
+     #- not genesis_skip_image_creation | bool
+     - dib_cloud_image_detection | bool
+  loop: "{{ download_image_sources | default([]) }}"
+  loop_control:
+     loop_var: "os"
+  
+#---------------------------------------
+# 1. Build Kernel & RamDisk
+#---------------------------------------   
+- name: "STEP 2 - Build RamDisk of Images from local repository"
+  ansible.builtin.include_role:
+     name: "{{ genesis_bifrost_ironic_init }}"
+  vars:
+     enable_oci_registry_upload: false
+     build_ramdisk: "{{ bifrost_build_ramdisk | default(true) | bool }}"
+     dib_image_name: "{{ os.image | basename | splitext | list }}"
+     dib_image_extension: "{{ dib_image_name[1] | default('') }}"
+     dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2', '.img'] }}"
+     dib_imagename: "{{ bifrost_repo }}/{{ os.distro }}-{{ os.release }}"
+     dib_imagetype: "{{os.imagetype | default('qcow2') }}"
+     dib_os_element: "{{os.distro}}"
+     dib_os_release: "{{os.release}}"
+     #dib_init_element: "{{os.manifesto | default('simple-init') }}"
+     dib_local_image_url: "{{deploy_image_sources[dib_os_element]['image']| default(omit) }}"
+     dib_elements: >
+       {{ dib_image_type|default('vm') }}
+       {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
+       enable-serial-console
+       {{ dib_init_element|default('simple-init') }}
+       {{ extra_dib_elements|default('') }}
+  when:
+     #- not genesis_skip_image_creation | bool
+     - dib_cloud_image_detection | bool
+     - build_ramdisk | bool
+  loop: "{{ download_image_sources | default([]) }}"
+  loop_control:
+     loop_var: "os"

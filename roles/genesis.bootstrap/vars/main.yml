@@ -1,13 +1,18 @@
 ---
-# vars file for genesis.refresh
+# genesis.bootstrap vars
+#   - Adjust Bifrost Variables to Download dependencies 
+#       for Airgap environments
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
 
 ######################################################
 #  PATHS TO ENSURE INTERNET DOWNLOAD
 ######################################################
 git_url_root: https://opendev.org
 tarballs_base_url: "https://tarballs.opendev.org/openstack/ironic-python-agent"
-git_root: "{{genesis_files_path}}/openstack"
-oras_download_url: "{{oras_upstream_root}}/{{oras_tarball_path}}"
+git_root: "{{ genesis_repo_path | realpath }}/openstack"
+oras_download_url: "{{ oras_upstream_root }}/{{ oras_tarball_path }}"
 
 ######################################################
 #  DOWNLOAD ALL OPENSTACK COMPONENTS FROM GIT

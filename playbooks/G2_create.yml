@@ -11,6 +11,10 @@
   vars:
     bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
     genesis_repo_path: "{{ playbook_dir }}/../repo"    
+  
+  #---------------------------------------
+  # 1. Pre-Tasks: Prepare Bifrost Python Virtual Environment 
+  #---------------------------------------    
   pre_tasks:
     - name: install pip (and venv) to system
       package:
@@ -35,9 +39,18 @@
       set_fact:
         ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
 
+  #---------------------------------------
+  # 2. Tasks: Spawn & Init Genesis Node
+  #---------------------------------------    
   roles:
     - role: "genesis.create"
-      when: not (skip_install | default(false) | bool)   
+      when: 
+        - not (skip_install | default(false) | bool)
+        - (genesis_stage is not defined)  or  (genesis_stage=='G2') 
+    - role: "genesis.init"
+      when: 
+        - not (skip_install | default(false) | bool)
+        - (genesis_stage is not defined)  or  (genesis_stage=='G3')          
  
   environment:
     http_proxy: "{{ lookup('env','http_proxy') }}"

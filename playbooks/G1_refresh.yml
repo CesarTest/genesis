@@ -9,11 +9,10 @@
   become: true
   connection: local
   vars:
-    genesis_bifrost_path: "{{ bifrost_workpath | default( playbook_dir + '/../roles/genesis.bifrost' ) | realpath }}"
-    genesis_files_path: "{{ bifrost_airgap_path | default( genesis_bifrost_path + '/files' ) }}"
-  environment:
-    PIP_DEST:  "{{genesis_files_path}}/pip"
-    PIP_OPTS: " --download"
+    bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+    genesis_repo_path: "{{ playbook_dir }}/../repo"      
   roles:
-    - role: "genesis.refresh"
-      when: not (skip_install | default(false) | bool)
+    - role: "genesis.bootstrap"
+      when: 
+      - not (skip_install | default(false) | bool)
+      - (genesis_stage is not defined)  or  (genesis_stage=='G1') 

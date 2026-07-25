@@ -1,8 +1,8 @@
 ---
 galaxy_info:
   author: cesar-delgado
-  role_name: genesis.create
-  description: Ironic Bifrost Deployment on Target Node
+  role_name: genesis.bootstrap
+  description: Prepare Genesis Node for Ironic Standalon Deployment
   license: Apache-2.0
   company: none
   min_ansible_version: "2.10"

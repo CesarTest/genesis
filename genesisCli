@@ -2087,7 +2087,8 @@ function 1_refresh() {
    
    # 2.- Call
    if [ ! -n "${ONLINE}" ] ; then
-      #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"   
+      #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}" 
+      local EXTRA_VARS="genesis_stage='G1'"	  
       0_call "${REFRESH}" 
    fi  
    
@@ -2109,6 +2110,7 @@ function 2_create() {
    #--------------------
    #  LOCAL ENVIRONMENT
    #--------------------
+   local EXTRA_VARS="genesis_stage='G2'"
    local FLUSH_CACHE="yes"
    if [ -n "${network_interface}" ] ; then PXE[${DHCP_NIC}]="${network_interface}"      ; fi
    if [ -n "${dhcp_address}" ] ; then PXE[${DHCP_IP}]=$( echo "$dhcp_address" | tr -d \/  |  tr '\' '/' )    ; fi
@@ -2143,7 +2145,8 @@ function 2_create() {
 #  - Load OS Image to Ironic
 #========================================================
 function 3_init() {
-   
+
+   local EXTRA_VARS="genesis_stage='G3'"   
    prepareImageCreation
    0_call "${INIT}" 
    unset LOG_FILE 
@@ -2156,7 +2159,8 @@ function 3_init() {
 #========================================================
 function 4_setup() {
    updateInventory
-   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
+   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"
+   local EXTRA_VARS="genesis_stage='B1'"   
    0_call "${SETUP}" 
    unset IRONIC_BAREMETAL_NODES LOG_FILE
 }
@@ -2168,10 +2172,10 @@ function 4_setup() {
 #========================================================
 function 5_deploy() {
    local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
+   local EXTRA_VARS="genesis_stage='B2'"      
    0_call "${DEPLOY}" 
    unset TARGET LOG_FILE
 }
-
 
 
 #========================================================

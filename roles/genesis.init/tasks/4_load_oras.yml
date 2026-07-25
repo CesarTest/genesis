@@ -1,0 +1,37 @@
+---
+# genesis.init 4_load_oras.yml
+#   - Load OS images to ORAS Registry
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "STEP 4 - Upload to ORAS Registry"
+  ansible.builtin.include_role:
+     name: "{{ genesis_bifrost_ironic_init }}"
+  vars:
+     qcow_image_name: "{{ os.image | basename  }}"
+     dib_image_name: "{{ qcow_image_name | splitext | list }}"
+     dib_dib_imagename: "{{ironic_tftp_master_path | default('/var/lib/ironic/httpboot') }}/{{os.distro}}-{{os.release}}"
+     qcow_dib_imagename: "{{ironic_tftp_master_path | default('/var/lib/ironic/httpboot') }}/{{os.qcow_image_name}}"         
+     dib_imagename: "{{ genesis_skip_image_creation | ternary (qcow_dib_imagename, dib_dib_imagename, dib_dib_imagename) }}"
+     internal_ip: "{{ genesis_hostvars_name | default(bifrost_registry_ip) | default('127.0.0.1') }}"
+     dib_image_extension: "{{ dib_image_name[1] | default('') }}"
+     dib_cloud_image_detection: "{{ dib_image_extension in ['.qcow','.qcow2', '.img'] }}"
+     dib_imagename: "{{ ironic_tftp_master_path | default('/var/lib/ironic/httpboot') }}/{{ os.distro }}-{{ os.release }}"
+     dib_imagetype: "{{ os.imagetype | default('qcow2') }}"
+     dib_os_element: "{{ os.distro }}"
+     dib_os_release: "{{ os.release }}"
+     #dib_init_element: "{{os.manifesto | default('simple-init') }}"
+     dib_local_image_url: "{{ deploy_image_sources[dib_os_element]['image'] | default(omit) }}"
+     dib_elements: >
+       {{ dib_image_type|default('vm') }}
+       {% if default_boot_mode != "bios" %}block-device-efi{% endif %}
+       enable-serial-console
+       {{ dib_init_element|default('simple-init') }}
+       {{ extra_dib_elements|default('') }}
+  when:
+     - dib_cloud_image_detection | bool
+  loop: "{{ download_image_sources | default([]) }}"
+  loop_control:
+     loop_var: "os"
