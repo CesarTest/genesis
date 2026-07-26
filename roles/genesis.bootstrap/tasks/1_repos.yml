@@ -16,7 +16,7 @@
 
 - name: "STEP 1 - Create Repos Folders"
   file:
-     path: "{{ genesis_files_path | default('/tmp') }}/{{ folder| default('repo') }}"
+     path: "{{ genesis_repo_path | default('/tmp') }}/{{ folder| default('repo') }}"
      state: "directory"
      recurse: true
      owner: "{{ansible_user | default('ironic') }}"
