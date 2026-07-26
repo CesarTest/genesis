@@ -11,16 +11,6 @@
 # Date: 17-September-2022
 # Update: 02-Jul-2026
 ########################################################################################
-#hostname: dpg-d97thn6trd3s739nra10-a
-#port: 5432
-#database: libros_418l
-#username: postgre
-#password: yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP
-#Internal Database URL: postgresql://postgre:yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP@dpg-d97thn6trd3s739nra10-a/libros_418l
-#External Database URl: postgresql://postgre:yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP@dpg-d97thn6trd3s739nra10-a.frankfurt-postgres.render.com/libros_418l
-#psql command: PGPASSWORD=yPXhShbTSZBzW9EdNnHm4aw7iOxq4aWP psql -h dpg-d97thn6trd3s739nra10-a.frankfurt-postgres.render.com -U postgre libros_418l
-
-# 7e0936e4f05e4207af9ddc848508f4fb
 
 #----------------------------
 # ECHO COLORS TABLE
@@ -78,12 +68,12 @@ BAREMETAL_ROOT_PASSWORD="cesar" # Automatic ssh-copy-id
 REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
 SSH_MAP="6" ; GRAPHICS="7" ; NETWORK="8" ; NTP="9"   ; GATHER="10"
 GENESIS_PLAYBOOKS=( \
-	 "${GENESIS_WORKING_PATH}/playbooks/G1_refresh.yml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/G2_create.yml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/G3_init.yml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/B4_setup.yml" \
-     "${GENESIS_WORKING_PATH}/playbooks/B5_deploy.yml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/B6_provision.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
+     "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
 	 "${GENESIS_WORKING_PATH}/playbooks/install_ssh_trustmap" \
 	 "${GENESIS_WORKING_PATH}/playbooks/install_graphics.yaml" \
 	 "${GENESIS_WORKING_PATH}/playbooks/install_network.yaml" \
@@ -2193,6 +2183,17 @@ function 6_ansible() {
 }
 
 #========================================================
+#   Function: 7_provision
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 7_provision() {
+   local EXTRA_VARS="genesis_stage='B6'"      
+   0_call "${PROVISION}" 
+   unset TARGET LOG_FILE
+}
+
+#========================================================
 #   Function: 8_plugins
 #--------------------------------------------------------
 #  - Shoot Plugins
@@ -2241,7 +2242,7 @@ function runActions() {
         4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")   4_setup   ;;
         5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")  5_deploy  ;;
         6|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}") 6_ansible ;;		
-        7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}") 0_call "${PROVISION}" ;;
+        7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}") 7_provision ;;
         12|"${GENESIS_PLAYBOOKS_HEADER[${LDAP}]}")     8_plugins "${LDAP}"   ;;
         13|"${GENESIS_PLAYBOOKS_HEADER[${TESTING}]}")  8_plugins "${TESTING}" ;;
         14|"${GENESIS_PLAYBOOKS_HEADER[${SSH_MAP}]}")  0_call "${SSH_MAP}"   ;;
@@ -2437,5 +2438,5 @@ else
     exit "$ERROR"
 fi
 #=======================================================================================================
-#  END IDAS.SH
+#  END GENESISCLI.SH
 #=======================================================================================================

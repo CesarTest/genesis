@@ -1,6 +1,6 @@
 ---
-# genesis playbooks/setup.yml
-#  - Enroll inventory to Ironic
+# genesis playbooks/baremetal.yml
+#  - Baremetal Nodes Life Cycle
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -20,7 +20,18 @@
   become: no
   gather_facts: no
   roles:
+  
+    # -----> B4 - SETUP 
     - role: "genesis.setup"
       when: 
-      - not (skip_install | default(false) | bool)
-      - (genesis_stage is not defined)  or  (genesis_stage=='B4') 
+      - (genesis_stage is not defined)  or  (genesis_stage=='B4')
+      
+    # -----> B5 - DEPLOY   
+    - role: "genesis.deploy"
+      when: 
+      - (genesis_stage is not defined)  or  (genesis_stage=='B5')    
+
+    # -----> B6 - PROVISION
+    - role: "genesis.provision"
+      when: 
+      - (genesis_stage is not defined)  or  (genesis_stage=='B6')          
