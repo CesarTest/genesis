@@ -5,3 +5,17 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
+- name: "STEP 5 - Leave Node in Available State"
+  shell:
+     cmd: "{{command | default('ls') }}"
+  vars:
+     node_uuid: "{{ uuid | default(' ') }}"
+     command_off: |
+       . /opt/stack/bifrost/bin/activate
+       export OS_CLOUD=bifrost
+       baremetal node power off {{node_uuid}}
+     commands: 
+      - "{{ command_off | default('ls') }}"
+  loop: "{{ commands | default('') }}"
+  loop_control:
+    loop_var: command

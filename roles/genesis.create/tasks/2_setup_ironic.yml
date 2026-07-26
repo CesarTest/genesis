@@ -28,18 +28,15 @@
         config_auth_url: "{{ keystone.bootstrap.public_url }}"
         config_system_scope: true
 
-
-
-
 #---------------------------------------
 # 2. Setup Ironic
 #---------------------------------------            
 - name: "STEP 2 - SETUP IRONIC: adjust Configurations Files"
   ansible.builtin.lineinfile:
-    path:        "{{ replace.file   | default(ommit)  }}"
-    regexp:      "{{ replace.regexp | default(ommit)  }}"
-    line:        "{{ replace.line   | default(ommit)  }}"
-    insertafter: "{{ replace.insertafter | default(ommit) }}" 
+    path:        "{{ replace.file   | default(omit)  }}"
+    regexp:      "{{ replace.regexp | default(omit)  }}"
+    line:        "{{ replace.line   | default(omit)  }}"
+    insertafter: "{{ replace.insertafter | default(omit) }}" 
   loop: "{{ genesis_create_setup_ironic | default([]) }}"
   loop_control:
     loop_var: "replace"

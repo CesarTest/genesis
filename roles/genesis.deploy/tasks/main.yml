@@ -1,2 +1,17 @@
 ---
-# tasks file for genesis.deploy
+# genesis.deploy main.yml
+#  - Unattended OS installation
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "------------------> B4- DEPLOY BAREMETAL NODES <------------------" 
+  ignore_errors: yes
+  block:
+    - name: "B4 - DEPLOY"
+      ansible.builtin.include_tasks: "{{ baremetal_deploy_stage | default ('1_manifesto.yml') }}"
+      loop:
+         - "1_deploy.yml"          
+      loop_control:
+        loop_var: "baremetal_deploy_stage" 
+  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

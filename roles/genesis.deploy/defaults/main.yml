@@ -1,2 +1,22 @@
 ---
-# defaults file for genesis.deploy
+# genesis.deploy default
+#  - Unattended OS installation
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+######################################################
+#  PATHS
+######################################################
+# 1.- Bifrost Role Paths
+genesis_bifrost_role_name: "genesis.bifrost"
+genesis_bifrost_path:       "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+
+######################################################
+#  BIFROST ROLES DEFINITION 
+######################################################
+genesis_baremetal_deploy_roles:
+   - name: "bifrost-deploy-nodes-dynamic"
+

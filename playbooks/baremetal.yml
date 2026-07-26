@@ -32,6 +32,6 @@
       - (genesis_stage is not defined)  or  (genesis_stage=='B5')    
 
     # -----> B6 - PROVISION
-    - role: "genesis.provision"
-      when: 
-      - (genesis_stage is not defined)  or  (genesis_stage=='B6')          
+    #- role: "genesis.provision"
+    #  when: 
+    #  - (genesis_stage is not defined)  or  (genesis_stage=='B6')          

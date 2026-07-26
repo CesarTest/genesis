@@ -24,4 +24,4 @@
          - "5_available.yml"          
       loop_control:
         loop_var: "baremetal_setup_stage" 
-  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"   
+  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

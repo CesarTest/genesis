@@ -1,0 +1,15 @@
+---
+# genesis.deploy 1_deploy
+#  - Unattended OS installation
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- ansible.builtin.include_role:
+    name: "{{ genesis_baremetal_deploy.name }}"
+  when: 
+    - genesis_baremetal_deploy.name is defined
+    - genesis_baremetal_deploy.condition | default(true) | bool 
+  loop: "{{ genesis_baremetal_deploy_roles | default([]) }}"
+  loop_control:
+    loop_var: "genesis_baremetal_deploy"  
