@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: cesar-delgado
+  role_name: genesis.setup
+  description: Ironic Enroll & Setup Machines Life Cycle stages
+  license: Apache-2.0
+  company: none
+  min_ansible_version: "2.10"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 24.04
+
+  galaxy_tags:
+    - openstack
+    - ironic
+    - bifrost    
+
+dependencies: []

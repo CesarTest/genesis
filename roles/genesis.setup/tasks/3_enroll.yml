@@ -1,0 +1,19 @@
+---
+# genesis.setup 3_enroll.yml
+#   - Add Nodes to Ironic Database
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Enroll Baremeral Nodes
+#---------------------------------------   
+- ansible.builtin.include_role: 
+    name: "{{ genesis_baremetal_enroll.name }}"
+  when: 
+    - genesis_baremetal_enroll.name is defined
+    - genesis_baremetal_enroll.condition | default(true) | bool 
+  loop: "{{ genesis_baremetal_enroll_roles | default([]) }}"
+  loop_control:
+    loop_var: "genesis_baremetal_enroll"  

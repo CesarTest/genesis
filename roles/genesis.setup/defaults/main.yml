@@ -1,0 +1,38 @@
+---
+# genesis.setup defaults
+#   - Generate Install Manifesto for each Node
+#   - Enroll Nodes
+#   - Set Boot Interface
+#   - Set deploy Interface
+#   - Move across node life cycle transitions until Available State
+#  
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  PATHS
+######################################################
+# 1.- Repos Paths
+genesis_repo_path:      "{{ role_path }}/../../repo"
+genesis_environments_path: "{{ genesis_repo_path | realpath }}/../hosts"
+genesis_default_target_environment_path: "{{ genesis_environments_path | realpath }}/target"
+genesis_target_vars_file: "{{ genesis_default_target_environment_path | realpath }}/group_vars/target"   
+
+# 2.- Bifrost Role Paths
+genesis_bifrost_role_name: "genesis.bifrost"
+genesis_bifrost_path:       "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+
+######################################################
+#  BIFROST ROLES DEFINITION 
+######################################################
+genesis_baremetal_configdrive_roles:
+   - name: "bifrost-configdrives-dynamic"
+
+genesis_baremetal_enroll_roles:
+   - name: "ironic-enroll-dynamic"
+   - name: "ironic-inspect-node"
+     condition: "{{ inspect_nodes | default('false') | bool }}" 
+ 

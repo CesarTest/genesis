@@ -1,0 +1,27 @@
+---
+# genesis.setup main
+#   - Generate Install Manifesto for each Node
+#   - Clean Nodes
+#   - Enroll Nodes
+#   - Set Node Life-Cycle stages
+#     - Clean: BMC steps to wipe disks
+#     - Deploy: Boot Interface + Deploy Interface 
+#   - Move transitions until Node is in Available State (ready to deploy)
+#  
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "------------------> B3- SETUP BAREMETAL NODES <------------------" 
+  ignore_errors: yes
+  block:
+    - name: "B3 - SETUP"
+      ansible.builtin.include_tasks: "{{ baremetal_setup_stage | default ('1_manifesto.yml') }}"
+      loop:
+         - "1_manifesto.yml"
+         - "2_clear_ironic.yml"
+         - "3_enroll.yml" 
+         - "4_setup.yml"
+         - "5_available.yml"          
+      loop_control:
+        loop_var: "baremetal_setup_stage" 
+  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"   

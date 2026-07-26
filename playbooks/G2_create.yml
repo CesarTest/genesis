@@ -43,10 +43,12 @@
   # 2. Tasks: Spawn & Init Genesis Node
   #---------------------------------------    
   roles:
+  
     - role: "genesis.create"
       when: 
         - not (skip_install | default(false) | bool)
-        - (genesis_stage is not defined)  or  (genesis_stage=='G2') 
+        - (genesis_stage is not defined)  or  (genesis_stage=='G2')   
+        
     - role: "genesis.init"
       when: 
         - not (skip_install | default(false) | bool)

@@ -1,0 +1,25 @@
+---
+# genesis.setup 1_manifesto.yml
+#   - Generate Install Manifesto:
+#      - cloud-init
+#      - kickstart
+#      - ignition
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 2. Create Config Drive with Manifesto 
+#---------------------------------------
+- ansible.builtin.include_vars: 
+    file: "{{ genesis_target_vars_file | default('') }}"
+    
+- ansible.builtin.include_role:
+    name: "{{ genesis_baremetal_configdrive.name }}"
+  when: 
+    - genesis_baremetal_configdrive.name is defined
+    - genesis_baremetal_configdrive.condition | default(true) | bool 
+  loop: "{{ genesis_baremetal_configdrive_roles | default([]) }}"
+  loop_control:
+    loop_var: "genesis_baremetal_configdrive"  

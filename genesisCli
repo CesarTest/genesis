@@ -60,7 +60,7 @@ GENESIS_WORKING_PATH=$(dirname "$(readlink -f "$0")")
 GENESIS_PROJECT_ANSIBLE_CFG="${GENESIS_WORKING_PATH}/ansible.cfg"
 GENESIS_HOSTS_WORKING_PATH="${GENESIS_WORKING_PATH}/hosts"
 GENESIS_HOSTS_TARGET_FILE="${GENESIS_HOSTS_WORKING_PATH}/target/group_vars/target"
-GENESIS_BIFROST_WORKING_PATH="${GENESIS_WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
+GENESIS_BIFROST_WORKING_PATH="${GENESIS_WORKING_PATH}/roles/genesis.bifrost/genesis.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${GENESIS_BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
 IRONIC_NODES_FILE='host_vars/baremetal.yml'
@@ -2160,7 +2160,7 @@ function 3_init() {
 function 4_setup() {
    updateInventory
    local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"
-   local EXTRA_VARS="genesis_stage='B1'"   
+   local EXTRA_VARS="genesis_stage='B4'"   
    0_call "${SETUP}" 
    unset IRONIC_BAREMETAL_NODES LOG_FILE
 }
@@ -2172,7 +2172,7 @@ function 4_setup() {
 #========================================================
 function 5_deploy() {
    local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
-   local EXTRA_VARS="genesis_stage='B2'"      
+   local EXTRA_VARS="genesis_stage='B5'"      
    0_call "${DEPLOY}" 
    unset TARGET LOG_FILE
 }
