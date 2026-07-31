@@ -40,6 +40,14 @@
 [Node States Diagram](https://docs.openstack.org/ironic/latest/user/states.html) 
 ![States Machine](https://docs.openstack.org/ironic/latest/_images/states.svg)
 
+## Hardware LifeCycle Certification: Test Cases
+In order to insert a node into undercloud automation:
++ 1- **LifeCycle Stages Certification:** verify that all lifecycle stages can be properly manage by Ironic.
++ 2- **Use Bluprints**: Create Configuration Blueprints for each Baremetal Node type of your infrastructure. 
++ 3- **Keep Testing Environment** to troubleshoot different situations in a controlled environment.
+![Suite 1 - Native OS Installers](./doc/suite1.jpg)
+
+
 ## OpenStack Modules supported by standalone Ironic, but not used by installer yet.
 - **Horizon plugin**... User Interface.
 - **Keystone**... Authentication, Authorization, Accounting (next release will include TLS certificates handling).
