@@ -47,9 +47,9 @@ In order to insert a node into undercloud automation:
 
 ## 4.- Ironic and Ansible usage in Genesis Node
 #### 4.1 - Deploy Stage Details
-- **Deploy Stage Setup**: this node life cycle stage establish how do you inject OS to instance, based on two interfaces:
- + __Boot Interface:__ depends on hardware particulars of the machine
- + __Deploy Interface:__ dependes on tupe of os installer native os/cloud.
+Deploy stage within the node life cycle establish how to inject OS to instance, based on two interfaces:
+ + __Boot Interface:__ depends on hardware particulars of the machine (UEFI/BIOS/Virtual Media).
+ + __Deploy Interface:__ depends on type of installation *a) native os installer* ; *b) cloud installer*.
 ![Ironic](./doc/ironic.jpg)
 
 
