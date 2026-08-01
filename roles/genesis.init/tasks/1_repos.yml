@@ -1,0 +1,34 @@
+---
+# genesis.init 1_copy.yml
+#   - Load OS images
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Create Symbolik Links to HTTP folder
+#---------------------------------------  
+- debug:
+    msg: "{{ genesis_native_os_installer | default('nono') }}"
+
+- name: "STEP 1: Create Simbolic Links to HTTP Folder"
+  file:
+    src: "{{ repo_src }}"
+    dest: "{{ repo_dest }}"
+    owner: ironic
+    group: ironic
+    state: link
+  vars:
+    repo_os_distro:  "{{ img_src.distribution | default('distro') }}"
+    repo_src_path: "{{ ironic_tftp_master_path | default('/tmp') | realpath }}"
+    repo_dest_path: "{{ http_boot_folder | default('/var/lib/ironic/httpboot') | realpath }}"
+    repo_src: "{{ repo_src_path }}/{{ repo_os_distro }}"
+    repo_dest: "{{ repo_dest_path }}/{{ repo_os_distro | lower }}"
+  loop: "{{ download_image_sources | default([]) }}"
+  loop_control:
+    loop_var: "img_src"
+
+#---------------------------------------
+# 2. SELinux / AppArmor Permissions
+#---------------------------------------  

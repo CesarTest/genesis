@@ -9,12 +9,13 @@
   ignore_errors: yes
   block:
     - name: "G3 - INIT"
-      ansible.builtin.include_tasks: "{{ genesis_init_stage | default ('1_copy.yml') }}"
+      ansible.builtin.include_tasks: "{{ genesis_init_stage | default ('1_repos.yml') }}"
       loop:
-         - "1_copy.yml"
-         - "2_build.yml"
-         - "3_load_ironic.yml" 
-         - "4_load_oras.yml"          
+         - "1_repos.yml"
+         - "2_mount.yml"
+         - "3_os_installer.yml" 
+         #- "4_cloud_image_manifesto.yml"         
+         #- "5_load_oras.yml"          
       loop_control:
         loop_var: "genesis_init_stage"
        

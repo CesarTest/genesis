@@ -23,6 +23,8 @@ genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles | realpath }}/bifrost-
 ######################################################
 #  ENSURE TO USE LOCAL REPOS
 ######################################################
+download_custom_deploy_image: false
+download_ipa: false
 git_url_root:      "{{ genesis_local_repo_url }}"
 tarballs_base_url: "{{ genesis_local_repo_url }}"
 oras_url_root:     "{{ git_url_root }}"   

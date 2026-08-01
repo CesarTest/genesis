@@ -309,7 +309,7 @@ function defineMenu() {
              echo "Removing Temporal Files... rm -f ${TMP_FILE}"
              rm -f "${TMP_FILE}" 2> /dev/null
 	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
-	         echo -e "${COLOR[$SILVER]}     Thank you for using iDAS System... hoping you enjoy the experience !!!!  ${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}     Thank you for using Genesis System... hoping you enjoy the experience !!!!  ${COLOR[$NC]}"
 	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
              exit 0
              ;;
@@ -1844,7 +1844,7 @@ function shootPlaybook() {
        OUT="$?"
 	   
    else
-     echo -e "${COLOR[$YELLOW]} [WARN] - IDAS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH iDAS build installation (option 1)"
+     echo -e "${COLOR[$YELLOW]} [WARN] - GENESIS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH Genesis installation (option 1)"
      error "-r" "${PLAYBOOK}"
    fi
    

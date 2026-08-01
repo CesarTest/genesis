@@ -25,3 +25,14 @@
   loop: "{{ genesis_create_repos | default([]) }}"
   loop_control:
     loop_var: "folder"
+    
+- name: "STEP 1 - Generate Checksums File"
+  copy:
+    dest: "{{ genesis_local_checksum_file.path | default('/tmp/checksum') }}"
+    content: "{{ genesis_local_checksum_file.content | default('None') }}"
+    owner: "{{ ansible_user | default('ironic') }}"
+    group: "{{ ansible_user | default('ironic') }}"
+  when:
+    - genesis_local_checksum_file is defined
+    - genesis_local_checksum_file.path is defined
+    - genesis_local_checksum_file.content is defined
