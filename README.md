@@ -4,8 +4,9 @@
 - **PoC (Proof of Concept)**: adopt Telco Cloud Anuket  [standards](https://cntt.readthedocs.io/en/stable-kali/common/chapter00.html) and [tooling](https://ec.europa.eu/newsroom/repository/document/2025-9/TelcoCloudReferenceArchitecture_v7_L8XM9LekTSnxgxb9NgJkBBifw_113237.pdf) for Software Factories management.
 
 #### 1.2.- Mision
-- **Bootstrap Data-Center Control Plane**, from scratch to install or restore at any moment (just as AT&T Airship Genesis does, but based on components with large communities behind).
+- **Bootstrap Data-Center Control Plane**, from scratch to install or restore at any moment (just as AT&T Airship Genesis does, but based on components with large communities behind.
 - **Hardware Certification Test Suites and Resulting Configuration Blueprints**, automation requires a single control API (provided by Ironic in this case), hardware lifecycle need to be fully integrated into this API.
+- **Deploy Data-Centers from a Central Repository**, last step is deploy a bundle of data-centers from regional header just as Airship Genesis does.
 
 ## 2.- Installation
 #### 2.1.- Supported Platforms
