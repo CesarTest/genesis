@@ -1,5 +1,9 @@
 # Genesis Node Project
-## Goal 
+## Mision
+- **Bootstrap Data-Center Control Plane**, from scratch to install or restore at any moment (just as AT&T Airship Genesis does, but much easier to understand).
+- **Hardware Certification Test Suites and Resulting Configuration Blueprints**, automation requires a single control API (provided by Ironic in this case), hardware lifecycle need to be fully integrated into this API.
+
+## Vision
 - **PoC (Proof of Concept)**: adopt Telco Cloud Anuket  [standards](https://cntt.readthedocs.io/en/stable-kali/common/chapter00.html) and [tooling](https://ec.europa.eu/newsroom/repository/document/2025-9/TelcoCloudReferenceArchitecture_v7_L8XM9LekTSnxgxb9NgJkBBifw_113237.pdf) for Software Factories management.
 
 ## Supported Platforms
@@ -11,8 +15,8 @@
 - 2) Use genesisCli menu to run steps of the Genesis Node Lifecycle
 - 3) Configurations:
     + 3.1.- hosts/{environment} => Hardware & Software Profiles of your machines (becareful defining them well, in hosts/test examples of each deployment use case)
-    + 3.2.- hosts/target        => Genesis Node Customizations, including the list of operating systems you want to deploy and the type of image:
-     	- __Image Types:__ {iso/qcow-img/raw}.
+    + 3.2.- hosts/target        => Genesis Node Customizations, including the list of operating systems you want to deploy and the type of image (os native installer or cloud installer):
+     	- __Image Types:__ *os installer:* iso ; *cloud installer:* partition(qcow/img)/wholedisk(raw)
 		- __Install manifestos:__ {cloud-init/kickstart/ignition} depending on the OS installer used.	
 		- __Install manifestos Provisioning:__ {backed-in/config-drive/tftp-http}.
 		
@@ -26,9 +30,9 @@
 ![Genesis](./doc/genesis.jpg)
 
 ## Ironic and Ansible usage in Genesis Node
-- **Deploy Stage Setup**: this node life cycle stage established how do you inject OS to instance, based on two interfaces:
+- **Deploy Stage Setup**: this node life cycle stage establish how do you inject OS to instance, based on two interfaces:
  + __Boot Interface:__ depends on hardware particulars of the machine
- + __Deploy Interface:__ depends of the kind of image you want to deploy, since involve different installers and how do you provide the installer manifesto.
+ + __Deploy Interface:__ dependes on tupe of os installer native os/cloud.
 
 ![Ironic](./doc/ironic.jpg)
 
