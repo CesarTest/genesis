@@ -5,7 +5,7 @@
 - **Deploy Data-Centers from a Central Repository**, last step is being able to deploy a bundle of data-centers from regional header just as AT&T Airship Genesis does.
 
 #### 1.2.- Mision
-- **Bootstrap Data-Center Control Plane**, from scratch to install or restore at any moment (just as AT&T Airship Genesis does, but based on open source components with large communities behind with governance and testing cycles).
+- **Bootstrap Data-Center Control Plane**, from scratch to install or restore at any moment (just as AT&T Airship Genesis does, but based on open source components with large communities that follows a governance model and testing cycles).
 - **Hardware Certification Test Suites**, automation requires a single control API (provided by Ironic in this case), hardware lifecycle need to be fully integrated into this API. Tests will also provide verified configuration blueprints.
 
 
