@@ -29,39 +29,54 @@ genesis_bifrost_dest_folder:
 ######################################################
 genesis_default_repos:
  - openstack
- - pip
- - qcow
- - iso
+ - os
  - dib
  - dib/files
 genesis_init_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
-genesis_repo_dib_path: "{{genesis_repo_path}}/{{ genesis_init_repos[4] }}"
+genesis_repo_dib_path: "{{genesis_repo_path}}/{{ genesis_init_repos[2] }}"
 
 ######################################################
 #  OS IMAGES RESPOSITORIES
 ######################################################
 create_image_via_dib: true
-ironic_tftp_master_path: "{{ genesis_bifrost_repo_path }}/{{ genesis_create_repos[2] | default('qcow') }}"
+ironic_tftp_master_path: "{{ genesis_bifrost_repo_path }}/{{ genesis_create_repos[1] | default('os') }}"
 bifrost_ironic_install: "{{genesis_bifrost_roles}}/bifrost-ironic-install"
 bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 bifrost_repo: "{{ bifrost_airgap_path | default( genesis_bifrost_path + '/files' ) | realpath }}/dib"
-genesis_default_download_image_sources:
+genesis_native_os_installer:
+  - image: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso"
+    checksum: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso.SHA256SUM"
+    checksum_algorithm: "sha256"
+    distribution: "CentOS"
+    distribution_version: "9"
+    extract_ramdisk: yes
+  - image: "https://releases.ubuntu.com/noble/ubuntu-24.04.4-live-server-amd64.iso"
+    checksum: "https://releases.ubuntu.com/noble/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    distribution: "Ubuntu"
+    distribution_version: "24.04"
+    extract_ramdisk: yes
+  - image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso"
+    checksum: "8ffd0d0fc218eae95c578ec12839fe598d60f96de85fab63d424ad021ed1a62f"
+    checksum_algorithm: "sha256"
+    distribution: "CoreOS"
+    distribution_version: "44"
+  - image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-kernel.x86_64"
+    checksum: "b0389e187ed951727560f517d589f3daa2736dc34dc9aa245b986d72b6f6c3ee"
+    checksum_algorithm: "sha256"
+    distribution: "CoreOS"
+    distribution_version: "44"
+  - image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
+    checksum: "360c3b6b4cc8a58807fca8ac6947c8ec578e482af52d2311ae99ef02fe9d8dc5"
+    checksum_algorithm: "sha256"
+    distribution: "CoreOS"
+    distribution_version: "44"   
+    
+genesis_cloud_os_installer:
   - image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
     checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
     checksum_algorithm: "sha256"
-    distro: "centos"
-    release: "9"
-    imagetype: "qcow2"
-    deploy_interface: "direct"
-    boot_interface: "ipxe"
-  - image: "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-    checksum: "https://cloud-images.ubuntu.com/noble/current/SHA256SUMS"
-    checksum_algorithm: "sha256"
-    distro: "ubuntu"
-    release: "noble"
-    imagetype: "qcow2"
-    deploy_interface: "direct"
-    boot_interface: "ipxe"
-download_image_sources: "{{ genesis_download_images | default(genesis_default_download_image_sources) | default([]) }}"
-
-
+    distribution: "CentOS"
+    distribution_version: "9"
+genesis_all_installers_download: "{{ genesis_native_os_installer + genesis_cloud_os_installer }}"
+download_image_sources: "{{ genesis_download_images | default(genesis_all_installers_download) | default([]) }}"
