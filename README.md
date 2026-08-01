@@ -35,7 +35,7 @@
 #### 3.2.- Use Case 1: Hardware LifeCycle Certification Test Cases
 In order to insert a node into undercloud automation:
 + 1- **LifeCycle Stages Certification:** verify that all lifecycle stages can be properly manage by Ironic.
-+ 2- **Use Bluprints**: Create Configuration Blueprints for each Baremetal Node type of your infrastructure. 
++ 2- **Use Blueprints**: Create Configuration Blueprints for each Baremetal Node type of your infrastructure as a result of the certification process. 
 + 3- **Keep Testing Environment** to troubleshoot different situations in a controlled environment.
 ![Suite 1 - Native OS Installers](./doc/suite1.jpg)
 
