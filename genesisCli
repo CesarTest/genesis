@@ -748,8 +748,9 @@ prepareImageCreation() {
    esac
    
    local USER=$(whoami)
-   echo "${LOG_HEADER} -> sudo chown -R $USER:ironic ${GENESIS_WORKING_PATH}/repo"
-   sudo chown -R $USER:ironic ${GENESIS_WORKING_PATH}/repo
+   local REPO_FOLDER=$(ls -d ${GENESIS_WORKING_PATH}/repo/* | grep -v mnt)
+   echo "${LOG_HEADER} -> sudo chown -R $USER:ironic ${REPO_FOLDER[@]}"
+   sudo chown -R $USER:ironic ${REPO_FOLDER[@]}
 }
 
 #===================================================

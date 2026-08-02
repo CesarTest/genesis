@@ -1,0 +1,14 @@
+---
+# genesis.init 3_oras.yml
+#   - Expose ORAS Registry Repository of Images
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "G3 - INIT: Setup PXE-ORAS: Expose Image Repository"
+  ansible.builtin.include_tasks: "{{ g3_oras_setup | default ('3_oras/1_upload.yml') }}"
+  loop:
+     - "3_oras/1_upload.yml"  
+  loop_control:
+    loop_var: "g3_oras_setup"

@@ -1,0 +1,39 @@
+---
+# genesis.init 2_http/4_expone.yml
+#   - Expones Image Repositories
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Create Symbolik Links to HTTP folder
+#---------------------------------------  
+- name: "STEP 1: HTTP Expose Image Repositories"
+  file:
+    src:  "{{ g3_distro_repo_path }}"
+    dest: "{{ g3_distro_http_path }}"
+    owner: ironic
+    group: ironic
+    state: link
+
+#---------------------------------------
+# 2. Create Symbolik Links to Mounted Folders
+#---------------------------------------  
+- name: "STEP 1: HTTP Expose Mounted ISOs"
+  file:
+    src:  "{{ g3_mount_src_path }}"
+    dest: "{{ g3_mount_http_path }}"
+    state: link
+  vars:
+    g3_mount_default_src_path:   "{{ g3_mount_path }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}" 
+    g3_mount_src_path: "{{ g3_image.mount_path | default(g3_mount_default_src_path) | realpath }}"
+    g3_mount_dest_file: "{{ g3_image_os_distro | lower }}{{ g3_image_os_distro_version | lower }}"
+    g3_mount_http_path: "{{ g3_http_path | realpath }}/{{ g3_mount_dest_file }}"
+  when: 
+    - g3_image.mount is defined
+    - g3_image.mount       
+     
+#---------------------------------------
+# 2. SELinux / AppArmor Permissions
+#---------------------------------------  

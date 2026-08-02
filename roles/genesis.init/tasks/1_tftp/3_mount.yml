@@ -1,0 +1,42 @@
+---
+# genesis.init 1_tftp/3_mount.yml
+#   - Vreate TFTP Folder
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "STEP 1: Create Mount Folder"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ g3_deploy_path }}" 
+    state: directory       
+  vars:
+    g3_deploy_default_path:   "{{ g3_mount_path }}/{{ g3_image_os_distro | lower }}/{{ g3_image_os_distro_version | lower }}" 
+    g3_deploy_path: "{{ g3_image.mount_path | default( g3_deploy_default_path ) | realpath }}"
+  when: 
+    - g3_image.mount is defined
+    - g3_image.mount   
+
+- name: "STEP 1: Mount ISO Image"
+  become: yes
+  ansible.posix.mount:
+    path: "{{ g3_deploy_path }}"
+    src:  "{{ g3_src_image }}"
+    fstype: iso9660
+    opts: ro
+    state: "{{ g3_mount_state | default('present') }}"     
+  loop:
+    - unmounted
+    - mounted
+  loop_control:
+    loop_var: "g3_mount_state"
+  vars:
+    g3_deploy_default_path:   "{{ g3_mount_path }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}" 
+    g3_deploy_path: "{{ g3_image.mount_path | default( g3_deploy_default_path ) | realpath }}"
+    g3_src_path:    "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}" 
+    g3_src_image:   "{{ g3_src_path | realpath }}/{{ g3_deploy_image_name }}"      
+  when: 
+    - g3_image.mount is defined
+    - g3_image.mount       
+    
+    

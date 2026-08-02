@@ -1,0 +1,34 @@
+---
+# genesis.bootstrap 3_os.yml
+#   - Download OS Images from Internet
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------------
+# 1. Prepare Local Folders
+#--------------------------------------- 
+- name: "STEP 3 - Create OS Local Folder"
+  file: 
+    path: "{{ g1_image_os_local_folder }}"
+    state: directory
+    recurse: true
+    owner: "{{ansible_user | default('ironic') }}"
+    group: "{{ansible_user | default('ironic') }}"
+    mode: "775"
+
+#---------------------------------------
+# 2. Download Images
+#--------------------------------------- 
+- name: "STEP 3 - Download OS Images"
+  include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_deployment_image.yml"
+  vars:
+     # Image Source: URL Details
+     deploy_image_upstream_url: "{{ g1_deploy_image_url  | default('') }}"
+     deploy_image_checksum_url: "{{ g1_image.checksum   | default('') }}"
+     deploy_image_checksum_algorithm: "{{ g1_image.checksum_algorithm | default('') }}" 
+     
+     # Image Destination: Path Details
+     http_boot_folder: "{{ g1_image_os_local_folder }}"
+     deploy_image_filename: "{{ g1_deploy_image_name }}"
+     deploy_image: "{{ http_boot_folder }}/{{ deploy_image_filename }}"

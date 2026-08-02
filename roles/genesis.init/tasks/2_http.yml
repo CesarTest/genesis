@@ -1,0 +1,25 @@
+---
+# genesis.init 2_http.yml
+#   - Load OS images
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "G3 - INIT: Setup PXE-HTTP: Expose Image Repository"
+  ansible.builtin.include_tasks: "{{ g3_http_setup | default ('2_http/1_mount.yml') }}"
+  vars:
+    # 1.- OS Particulars
+    g3_image_os_distro:         "{{ g3_image.distribution | default('RedHat') }}"
+    g3_image_os_distro_version: "{{ g3_image.distribution_version | default('8') }}"
+
+    # 2.- HTTP Paths particulars    
+    g3_distro_http_path: "{{ g3_http_path    | realpath }}/{{ g3_image_os_distro | lower }}" 
+    g3_distro_repo_path: "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}"
+    g3_mount_path:       "{{ g3_image.mount_path | default(g3_mount_repo_path) | default('/mnt') | realpath }}"
+    
+  loop:
+     #- "2_http/1_cloud_image.yml"   
+     #- "2_http/2_ipa.yml"       
+     - "2_http/3_expose.yml"
+  loop_control:
+    loop_var: "g3_http_setup"

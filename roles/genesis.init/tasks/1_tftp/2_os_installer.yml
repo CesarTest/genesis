@@ -1,0 +1,45 @@
+---
+# genesis.init 1_tftp/2_os_installer.yml
+#   - Unpack OS Installers to TFTP + HTTP Folders
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Extract OS Native Installer to HTTP Folder
+#---------------------------------------  
+- name: "STEP 1: Extract OS Native Installer to HTTP Folder"
+  become: yes
+  community.general.iso_extract:
+    image: "{{ g3_repo_image }}"
+    dest:  "{{ g3_deploy_path }}"
+    files: "{{ g3_ramdisk_files }}"   
+    
+  vars:
+    g3_deploy_path:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}" 
+    g3_repo_image:    "{{ g3_deploy_path | realpath }}/{{ g3_deploy_image_name }}"    
+
+  when: 
+    - g3_image.extract_ramdisk is defined
+    - g3_image.extract_ramdisk   
+
+#---------------------------------------
+# 2. Copy OS Native Installer to TFTP Folder
+#---------------------------------------
+- name: "STEP 1: Extract OS Native Installer to TFP Folder"
+  become: yes
+  ansible.builtin.copy:
+    src: "{{ g3_src_file }}"
+    dest:  "{{ g3_dest_path }}"  
+  vars:
+    g3_os_installer: "{{ g3_os_installer_file | basename }}"
+    g3_src_file:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}/{{ g3_os_installer }}"     
+    g3_dest_path:   "{{ g3_tftp_path | realpath }}/{{ g3_image_os_distro | lower }}/{{ g3_image_os_distro_version | lower }}"   
+  when: 
+    - g3_image.extract_ramdisk is defined
+    - g3_image.extract_ramdisk   
+  loop: "{{ g3_ramdisk_files | default([]) }}"
+  loop_control:
+    loop_var: "g3_os_installer_file"
+  

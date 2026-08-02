@@ -1,6 +1,6 @@
 ---
-# genesis.init 2_build
-#   - Load OS images
+# genesis.init 2_http/2_cloud_image.yml
+#   - Create Cloud Images with Back-In Manifesto
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0

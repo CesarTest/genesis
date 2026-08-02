@@ -1,0 +1,53 @@
+---
+# genesis.bootstrap 2_download.yml
+#   - Bootstrap Genesis Node for Airgap Ironic Install
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------------
+# 1. OpenStack Components
+#--------------------------------------- 
+- name: "G1 - REFRESH : Download from GIT"
+  ansible.builtin.include_tasks: "2_download/1_git.yml"
+
+#---------------------------------------
+# 2. OS Images
+#--------------------------------------- 
+- name: "G1 - REFRESH : Download OS Images"
+  ansible.builtin.include_tasks: "2_download/2_os.yml"
+  vars:
+  
+    # 1.- OS Particulars
+    g1_image_os_distro:         "{{ g1_image.distribution | default('RedHat') }}"
+    g1_image_os_distro_version: "{{ g1_image.distribution_version | default('8') }}"
+    
+    # 2.- Image Name Default Values
+    g1_deploy_image_url:          "{{ g1_image.image | default('')  }}"
+    g1_deploy_image_default_name: "{{ g1_deploy_image_url | basename }}"
+    g1_deploy_image_default_ext:  "{{ g1_deploy_image_default_name | ansible.builtin.splitext | last }}"
+    g1_default_os_image_name:     "{{ genesis_default_os_image_name[g1_deploy_image_default_ext] |  default(g1_deploy_image_default_name) }}" 
+    g1_deploy_image_name: "{{ g1_image.os_image_name | default(g1_default_os_image_name) }}" 
+   
+    # 3.- Download Folders
+    g1_image_os_default_local_path: "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
+    g1_image_os_local_folder: "{{ image_src.local_folder | default(g1_image_os_default_local_path) | realpath }}"
+   
+  loop: "{{ download_image_sources | default([]) }}"
+  loop_control:
+     loop_var: "g1_image"
+
+#---------------------------------------
+# 3. IPA
+#--------------------------------------- 
+- name: "G1 - REFRESH : Download IPA (Ironic Python Agent) for Cloud OS Installation"
+  ansible.builtin.include_tasks: "2_download/3_ipa.yml"
+  loop: "{{ ipa_image_sources | default([]) }}"
+  loop_control:
+     loop_var: "g1_ipa_image"
+
+#---------------------------------------
+# 4. IPA
+#--------------------------------------- 
+- name: "G1 - REFRESH : Download ORAS"
+  ansible.builtin.include_tasks: "2_download/4_oras.yml"

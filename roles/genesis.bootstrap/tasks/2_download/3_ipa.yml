@@ -1,0 +1,18 @@
+---
+# genesis.refresh 4_ipa.yml
+#   - Download Ironic Python Agent from Internet
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "STEP 4 - Download IPA images"
+  include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_ipa_image.yml"
+  vars:
+     ipa_kernel_upstream_url: "{{ g1_ipa_image.kernel | default('') }}"
+     ipa_kernel_upstream_checksum_url: "{{ g1_ipa_image.kernel_checksum_url | default('') }}"
+     ipa_kernel_upstream_checksum_algo: "{{ g1_ipa_image.kernel_checksum_algo | default('') }}"
+     ipa_ramdisk_upstream_url: "{{ g1_ipa_image.ramdisk | default('') }}"
+     ipa_ramdisk_upstream_checksum_url: "{{ g1_ipa_image.ramdisk_checksum_url | default('') }}"
+     ipa_ramdisk_upstream_checksum_algo: "{{ g1_ipa_image.ramdisk_checksum_algo | default('') }}"
+     ipa_kernel: "{{ genesis_repo_path | realpath }}/dib/files/{{ ipa_kernel_upstream_url | basename }}"
+     ipa_ramdisk: "{{ genesis_repo_path | realpath }}/dib/files/{{ ipa_ramdisk_upstream_url | basename }}"

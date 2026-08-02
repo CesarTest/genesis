@@ -1,0 +1,16 @@
+---
+# genesis.bootstrap 6_setup.yml
+#   - Setup Genesis Node, ready to install Ironic
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "STEP 3 - Machine Ready" 
+  shell:
+    cmd: "{{ g1_setup_command | default('ls') }}"
+  vars: 
+     g1_repo_local_path:   "{{ g1_repo_os_path }}/../"
+     g1_repo_local_folder: "{{ g1_repo_local_path | realpath }}"
+     g1_setup_command: |
+      REPO_FOLDER=$(ls -d {{ g1_repo_local_folder }}/* | grep -v mnt) 
+      chown -R {{ ansible_user | default('ironic') }}:ironic  ${REPO_FOLDER[@]}        

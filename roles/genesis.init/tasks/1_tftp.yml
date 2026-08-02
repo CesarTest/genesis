@@ -1,0 +1,32 @@
+---
+# genesis.init 1_http.yml
+#   - Load OS images
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+   
+- name: "G3 - INIT: Setup PXE-TFTP: Load OS Installer"
+  ansible.builtin.include_tasks: "{{ g3_tftp_setup | default ('1_tftp/1_os_installer.yml') }}"
+  vars:
+  
+    # 1.- OS Particulars
+    g3_image_os_distro:         "{{ g3_image.distribution | default('RedHat') }}"
+    g3_image_os_distro_version: "{{ g3_image.distribution_version | default('8') }}"
+    
+    # 2.- Image Name Default Values
+    g3_deploy_image_default_name: "{{ g3_image.image | default('') | basename }}"
+    g3_deploy_image_default_ext:  "{{ g3_deploy_image_default_name | ansible.builtin.splitext | last }}"
+    g3_default_os_image_name:     "{{ genesis_default_os_image_name[g3_deploy_image_default_ext] |  default(g3_deploy_image_default_name) }}" 
+    g3_deploy_image_name: "{{ g3_image.os_image_name | default(g3_default_os_image_name) }}" 
+    
+    # 3.- Ramdisk Files
+    g3_ramdisk_files: "{{ g3_extract_os_installer[g3_image_os_distro] | default([]) }}"   
+    g3_mount_path:    "{{ g3_image.mount_path | default(g3_mount_repo_path) | default('/mnt') | realpath }}"    
+  
+  loop:
+     - "1_tftp/1_folder.yml"    
+     - "1_tftp/2_os_installer.yml"  
+     - "1_tftp/3_mount.yml"       
+  loop_control:
+    loop_var: "g3_tftp_setup"

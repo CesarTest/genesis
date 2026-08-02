@@ -7,17 +7,15 @@
 
 - name: "------------------> G1- REFRESH GENESIS NODE <------------------" 
   block:
-    - name: "G1 - REFRESH"
-      ansible.builtin.include_tasks: "{{ genesis_refresh_stage | default ('1_repos.yml') }}"
+  
+    - name: "G1 - REFRESH : Prepare Target Machine"
+      ansible.builtin.include_tasks: "{{ g1_stage | default ('1_prepare/1_repos.yml') }}"
       loop:
-         - "1_repos.yml"
-         - "2_git.yml"
-         - "3_os.yml"
-         - "4_ipa.yml"
-         - "5_oras.yml"
-         - "6_setup.yml"        
+         - "1_prepare/1_repos.yml"
+         - "2_download.yml"
+         - "3_ready/1_setup.yml"
       loop_control:
-        loop_var: "genesis_refresh_stage"
+        loop_var: "g1_stage"
         
   rescue:
     - name: "------------------> G1- REFRESH GENESIS NODE - Error"
