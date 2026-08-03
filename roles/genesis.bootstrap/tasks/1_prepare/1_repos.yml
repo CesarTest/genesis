@@ -22,7 +22,7 @@
      owner: "{{ansible_user | default('ironic') }}"
      group: "{{ansible_user | default('ironic') }}"
      mode: "775"
-  loop: "{{ genesis_create_repos | default([]) }}"
+  loop: "{{ g1_repos | default([]) }}"
   loop_control:
     loop_var: "folder"
     

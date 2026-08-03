@@ -47,7 +47,7 @@
      loop_var: "g1_ipa_image"
 
 #---------------------------------------
-# 4. IPA
+# 4. ORAS
 #--------------------------------------- 
 - name: "G1 - REFRESH : Download ORAS"
   ansible.builtin.include_tasks: "2_download/4_oras.yml"
