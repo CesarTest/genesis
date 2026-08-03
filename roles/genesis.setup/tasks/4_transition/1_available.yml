@@ -1,5 +1,5 @@
 ---
-# genesis.setup 5_available.yml
+# genesis.setup 4_transition/1_available.yml
 #   - Leave Node ready to Install
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
@@ -13,7 +13,7 @@
      command_off: |
        . /opt/stack/bifrost/bin/activate
        export OS_CLOUD=bifrost
-       baremetal node power off {{node_uuid}}
+       baremetal node power off {{ node_uuid }}
      commands: 
       - "{{ command_off | default('ls') }}"
   loop: "{{ commands | default('') }}"

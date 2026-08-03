@@ -1,5 +1,5 @@
 ---
-# genesis.setup 3_enroll.yml
+# genesis.setup 2_enroll/2_enroll.yml
 #   - Add Nodes to Ironic Database
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System

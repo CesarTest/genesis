@@ -1,0 +1,12 @@
+---
+# genesis.setup 1_manifesto/1_os_native.yml
+#   - Generate Install Manifesto:
+#      - cloud-init
+#      - kickstart
+#      - ignition
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+   

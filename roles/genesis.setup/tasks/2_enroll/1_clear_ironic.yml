@@ -1,5 +1,5 @@
 ---
-# genesis.setup 2_clear_ironic.yml
+# genesis.setup 2_enroll/1_clear_ironic.yml
 #   - Delete Allocations
 #   - Set Nodes to Maintanance Mode
 #   - Clear Nodes from Ironic Database
