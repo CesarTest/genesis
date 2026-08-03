@@ -11,7 +11,7 @@
     path: "{{ g3_deploy_path }}" 
     state: directory       
   vars:
-    g3_deploy_default_path:   "{{ g3_mount_path }}/{{ g3_image_os_distro | lower }}/{{ g3_image_os_distro_version | lower }}" 
+    g3_deploy_default_path:   "{{ g3_mount_path }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}" 
     g3_deploy_path: "{{ g3_image.mount_path | default( g3_deploy_default_path ) | realpath }}"
   when: 
     - g3_image.mount is defined
