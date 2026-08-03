@@ -13,7 +13,7 @@
     owner: ironic
     group: ironic       
   vars:
-    g3_deploy_path:   "{{ g3_tftp_path }}/{{ g3_image_os_distro | lower }}/{{ g3_image_os_distro_version | lower }}" 
+    g3_deploy_path:   "{{ g3_tftp_path }}/{{ g3_image_os_distro | lower }}{{ g3_image_os_distro_version | lower }}" 
   when: 
     - g3_image.extract_ramdisk is defined
     - g3_image.extract_ramdisk   
