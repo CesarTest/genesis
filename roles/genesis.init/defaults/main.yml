@@ -28,10 +28,12 @@ genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 
 # 3.- Repositories
 genesis_default_repos:
- - openstack
- - os
- - dib
- - dib/files
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+  repo: "mnt"
  
 genesis_default_os_image_name:
   qcow: "partition.qcow"
@@ -44,9 +46,9 @@ genesis_default_os_image_name:
 # G3 - PATHS
 ######################################################
 g3_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
-g3_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos[1] | default('os') }}"
-g3_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos[2] }}"
-g3_repo_mount_path: "{{ genesis_repo_path | realpath }}/mnt"
+g3_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
+g3_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
+g3_repo_mount_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
 g3_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
 g3_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g3_mount_repo_path: "{{ genesis_repo_mount_path | default(g3_repo_mount_path) | default('/mnt') | realpath }}"

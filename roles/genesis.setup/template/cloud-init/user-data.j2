@@ -1,0 +1,458 @@
+#cloud-config
+chpasswd:
+  list: |
+    installer:installer
+  expire: False
+write_files:
+- path: /run/tmpfiles.d/bootorder.sh
+  content: |
+    #!/bin/bash
+    BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
+    BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
+    /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}
+rsyslog:
+  remotes:
+    log_serv: "*.* @@{{ pxeServerIps[hostname] }}:5140"
+autoinstall:
+  version: 1
+  # use interactive-sections to avoid an automatic reboot
+  #interactive-sections:
+  #  - locale
+  apt:
+    # even set to no/false, geoip lookup still happens
+    geoip: no
+    preserve_sources_list: false
+    sources_list: |
+      deb [trusted=yes] http://{{ pxeServerIps[hostname] }}/UB20 ./
+  packages:
+   - ubuntu-desktop-minimal
+  user-data:
+    disable_root: false
+  identity:
+    hostname: {{ hostname }}
+    username: indra
+    password: '$6$eooE5qxHWkjFMeCO$0Mri4P00K8tEYCqwlZFe.mgfuBKxZcn/ZLZeMq2gu71lSZ5lnuIocVRuDVdT075Kpoy9Tg6Bh2W8c6BBPX6761'
+  keyboard:
+    layout: us
+  locale: en_US.UTF-8
+  # interface name will probably be different
+  network:
+    network:
+      version: 2
+      ethernets:
+        eno1:
+          critical: true
+          addresses:
+            - {{ ip }}
+          gateway4: {{ gateway }}
+          match:
+            macaddress: {{ mac }}
+          set-name: eno1
+  ssh:
+    allow-pw: true
+    authorized-keys: []
+    install-server: true
+  # this creates an bios_grub partition, /boot partition, and root(/) lvm volume
+  storage:
+    swap:
+      size: 0
+{% set diskPartition = machines[hostname]['diskPartition'] %}
+{% if diskPartition == 'ProWSServer' %}
+{#  1 Disk.- 2 X (SSD 512 GB ) >>>> RAID1 por software#}
+{#  2 Disk.- 2 X (HDD 1 TB ) >>>> RAID1 por Hardware#}
+    config:
+    - {ptable: gpt, path: /dev/nvme0n1, wipe: superblock-recursive, preserve: false, type: disk, id: disk-nvme0n1}
+    - {ptable: gpt, path: /dev/nvme1n1, wipe: superblock-recursive, preserve: false, type: disk, id: disk-nvme1n1}
+    - {device: disk-nvme0n1, size: 1G, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-0}
+    - {fstype: fat32, volume: partition-0, preserve: false, type: format, id: format-0}
+    - {device: disk-nvme0n1, size: 460G, preserve: false, number: 2, type: partition, id: partition-1}
+    - {device: disk-nvme1n1, size: 460G, preserve: false, number: 1, type: partition, id: partition-2}
+    - name: md0
+      raidlevel: raid1
+      devices: [partition-1, partition-2]
+      preserve: false
+      type: raid
+      id: raid-0
+    - fstype: xfs
+      id: format_raid-0
+      type: format
+      volume: raid-0
+    - name: ubuntu-vg
+      devices: [raid-0]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-0
+    - {name: lv-root, volgroup: lvm_volgroup-0, size: 150G, preserver: false, type: lvm_partition, id: lvm_partition-0}
+    - {fstype: xfs, volume: lvm_partition-0, type: format, id: format-1}
+    - {path: /, device: format-1, type: mount, id: mount-1}
+    - {name: lv-swap, volgroup: lvm_volgroup-0, size: 4G, preserver: false, type: lvm_partition, id: lvm_partition-1}
+    - {fstype: swap, volume: lvm_partition-1, type: format, id: format-2}
+    - {path: '', device: format-2, type: mount, id: mount-2}
+    - {name: lv-irtos, volgroup: lvm_volgroup-0, size: 200G, preserver: false, type: lvm_partition, id: lvm_partition-2}
+    - {fstype: xfs, volume: lvm_partition-2, type: format, id: format-3}
+    - {path: /irtos, device: format-3, type: mount, id: mount-3}
+    - {name: lv-tmp, volgroup: lvm_volgroup-0, size: 10G, preserver: false, type: lvm_partition, id: lvm_partition-3}
+    - {fstype: xfs, volume: lvm_partition-3, preserver: false, type: format, id: format-4}
+    - {path: /tmp, device: format-4, type: mount, id: mount-4}
+    - {path: /boot/efi, device: format-0, type: mount, id: mount-0}
+    - path: /dev/sda
+      preserve: false
+      type: disk
+      id: disk-sda
+      match:
+        serial: ST1000DM014*
+    - path: /dev/sdb
+      preserve: false
+      type: disk
+      id: disk-sdb
+      match:
+        serial: ST1000DM014*
+    - name: md127
+      raidlevel: container
+      devices: [disk-sda, disk-sdb]
+      preserve: false
+      metadata: imsm
+      type: raid
+      id: raid-md127
+    - name: md126
+      raidlevel: raid1
+      preserve: false
+      wipe: superblock
+      container: raid-md127
+      type: raid
+      id: raid-md126
+    - {fstype: xfs, volume: raid-md126, preserve: false, type: format, id: format-5}
+    - {path: /irtos, device: format-5, type: mount, id: mount-5}
+{% elif diskPartition == 'DevSEServer' %}
+    config:
+    - ptable: gpt
+      path: /dev/sda
+      wipe: superblock
+      preserve: false
+      type: disk
+      id: disk-sda
+      match:
+        serial: VK000240G*
+    - ptable: gpt
+      path: /dev/sdb
+      wipe: superblock
+      preserve: false
+      type: disk
+      id: disk-sdb
+      match:
+        serial: VK000240G*
+    - ptable: gpt
+      path: /dev/sdc
+      wipe: superblock-recursive
+      preserve: false
+      type: disk
+      id: disk-sdc
+      match:
+        serial: MM1000G*
+    - ptable: gpt
+      path: /dev/sdd
+      wipe: superblock-recursive
+      preserve: false
+      type: disk
+      id: disk-sdd
+      match:
+        serial: MM1000G*
+    - {device: disk-sda, size: 536870912, wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-1}
+    - {fstype: fat32, volume: partition-1, preserve: false, type: format, id: format-0}
+    - {device: disk-sdb, size: 536870912, wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-2}
+    - {fstype: fat32, volume: partition-2, preserve: false, type: format, id: format-1}
+    - {device: disk-sda, size: 239517827072, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-3}
+    - {device: disk-sdb, size: 239517827072, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-4}
+    - name: md0
+      raidlevel: raid1
+      devices: [partition-3, partition-4]
+      spare_devices: []
+      preserve: false
+      wipe: superblock-recursive
+      ptable: gpt
+      type: raid
+      id: raid-2
+    - {device: raid-2, size: 2147483648, wipe: superblock, number: 1, preserve: false, type: partition, id: partition-5}
+    - {fstype: ext4, volume: partition-5, preserve: false, type: format, id: format-2}
+    - {device: raid-2, size: 237230882816, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-6}
+    - name: ubuntu-vg
+      devices: [partition-6]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-0
+    - {name: lv-swap, volgroup: lvm_volgroup-0, size: 4294967296B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-0}
+    - {fstype: swap, volume: lvm_partition-0, preserve: false, type: format, id: format-3}
+    - {path: '', device: format-3, type: mount, id: mount-2}
+    - {name: lv-tmp, volgroup: lvm_volgroup-0, size: 10737418240B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-1}
+    - {name: lv-root, volgroup: lvm_volgroup-0, size: 161061273600B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-2}
+    - {name: lv-docker, volgroup: lvm_volgroup-0, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-3}
+    - {fstype: xfs, volume: lvm_partition-1, preserve: false, type: format, id: format-7}
+    - {fstype: xfs, volume: lvm_partition-2, preserve: false, type: format, id: format-8}
+    - {path: /, device: format-8, type: mount, id: mount-7}
+    - {fstype: xfs, volume: lvm_partition-3, preserve: false, type: format, id: format-9}
+    - {path: /var/lib, device: format-9, type: mount, id: mount-8}
+    - {device: disk-sdd, size: 1000202043392, wipe: superblock, number: 1, preserve: false, type: partition, id: partition-7}
+    - {device: disk-sdc, size: 1000202043392, wipe: superblock, number: 1, preserve: false, type: partition, id: partition-8}
+    - name: md1
+      raidlevel: raid1
+      devices: [partition-7, partition-8]
+      spare_devices: []
+      preserve: false
+      wipe: superblock-recursive
+      ptable: gpt
+      type: raid
+      id: raid-3
+    - {device: raid-3, size: 1000062582784, wipe: superblock, number: 1, preserve: false, type: partition, id: partition-9}
+    - name: cephfs-vg
+      devices: [partition-9]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-1
+    - {name: lv-irtos, volgroup: lvm_volgroup-1, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-4}
+    - {fstype: xfs, volume: lvm_partition-4, preserve: false, type: format, id: format-10}
+    - {path: /irtos, device: format-10, type: mount, id: mount-9}
+    - {path: /boot, device: format-2, type: mount, id: mount-1}
+    - {path: /tmp, device: format-7, type: mount, id: mount-6}
+    - {path: /boot/efi, device: format-0, type: mount, id: mount-0}
+{% elif diskPartition == 'DevWSNVMEHDD' %}
+    config:
+    - {ptable: gpt, path: /dev/nvme0n1, wipe: superblock, preserve: false, type: disk, id: disk-nvme0n1}
+    - path: /dev/sda
+      wipe: superblock
+      preserve: false
+      type: disk
+      id: disk-sda
+      match:
+        serial: ST1000DM014*
+    - {device: disk-nvme0n1, size: 536870912, wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-0}
+    - {fstype: fat32, volume: partition-0, preserve: false, type: format, id: format-0}
+    - {device: disk-nvme0n1, size: 2147483648, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-1}
+    - {fstype: ext4, volume: partition-1, preserve: false, type: format, id: format-1}
+    - {device: disk-nvme0n1, size: 509423386624, wipe: superblock, number: 3, preserve: false, type: partition, id: partition-2}
+    - name: ubuntu-vg
+      devices: [partition-2]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-1
+    - {name: lv-swap, volgroup: lvm_volgroup-1, size: 4294967296B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-1}
+    - {fstype: swap, volume: lvm_partition-1, preserve: false, type: format, id: format-3}
+    - {path: '', device: format-3, type: mount, id: mount-3}
+    - {name: lv-tmp, volgroup: lvm_volgroup-1, size: 10737418240B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-2}
+    - {fstype: xfs, volume: lvm_partition-2, preserve: false, type: format, id: format-4}
+    - {name: lv-root, volgroup: lvm_volgroup-1, size: 161061273600B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-3}
+    - {fstype: xfs, volume: lvm_partition-3, preserve: false, type: format, id: format-5}
+    - {path: /, device: format-5, type: mount, id: mount-5}
+    - {name: lv-docker, volgroup: lvm_volgroup-1, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-4}
+    - {fstype: xfs, volume: lvm_partition-4, preserve: false, type: format, id: format-6}
+    - {path: /var/lib, device: format-6, type: mount, id: mount-6}
+    - name: cephfs-vg
+      devices: [disk-sda]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-2
+    - {name: lv-irtos, volgroup: lvm_volgroup-2, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-5}
+    - {fstype: xfs, volume: lvm_partition-5, preserve: false, type: format, id: format-9}
+    - {path: /irtos, device: format-9, type: mount, id: mount-7}
+    - {path: /boot, device: format-1, type: mount, id: mount-1}
+    - {path: /tmp, device: format-4, type: mount, id: mount-4}
+    - {path: /boot/efi, device: format-0, type: mount, id: mount-0}
+{% elif diskPartition == 'DevWSServer' %}
+    config:
+    - {ptable: gpt, path: /dev/nvme0n1, wipe: superblock, preserve: false, type: disk, id: disk-nvme0n1}
+    - {device: disk-nvme0n1, size: 536870912, wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-5}
+    - {fstype: fat32, volume: partition-5, preserve: false, type: format, id: format-8}
+    - {device: disk-nvme0n1, size: 2147483648, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-6}
+    - {fstype: ext4, volume: partition-6, preserve: false, type: format, id: format-9}
+    - {device: disk-nvme0n1, size: 253373710336, wipe: superblock, number: 3, preserve: false, type: partition, id: partition-8}
+    - name: ubuntu-vg
+      devices: [partition-8]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-2
+    - {name: lv-swap, volgroup: lvm_volgroup-2, size: 4294967296B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-5}
+    - {fstype: swap, volume: lvm_partition-5, preserve: false, type: format, id: format-10}
+    - {path: '', device: format-10, type: mount, id: mount-9}
+    - {name: lv-tmp, volgroup: lvm_volgroup-2, size: 10737418240B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-6}
+    - {fstype: xfs, volume: lvm_partition-6, preserve: false, type: format, id: format-11}
+    - {name: lv-root, volgroup: lvm_volgroup-2, size: 161061273600B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-7}
+    - {fstype: xfs, volume: lvm_partition-7, preserve: false, type: format, id: format-12}
+    - {path: /, device: format-12, type: mount, id: mount-11}
+    - {name: lv-docker, volgroup: lvm_volgroup-2, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-8}
+    - {fstype: xfs, volume: lvm_partition-8, preserve: false, type: format, id: format-13}
+    - {path: /var/lib, device: format-13, type: mount, id: mount-12}
+    - {path: /boot, device: format-9, type: mount, id: mount-8}
+    - {path: /tmp, device: format-11, type: mount, id: mount-10}
+    - {path: /boot/efi, device: format-8, type: mount, id: mount-7}
+    - path: /dev/sda
+      preserve: true
+      type: disk
+      id: disk-sda
+      match:
+        serial: WDC*
+    - path: /dev/sdb
+      preserve: true
+      type: disk
+      id: disk-sdb
+      match:
+        serial: WDC*
+    - name: md127
+      raidlevel: container
+      devices: [disk-sda, disk-sdb]
+      spare_devices: []
+      preserve: true
+      metadata: imsm
+      type: raid
+      id: raid-md127
+    - name: md126
+      raidlevel: raid1
+      devices: []
+      spare_devices: []
+      preserve: true
+      wipe: superblock
+      ptable: gpt
+      container: raid-md127
+      type: raid
+      id: raid-md126
+    - {device: raid-md126, size: -1, wipe: superblock, number: 1, preserve: false, type: partition, id: partition-9}
+    - name: cephfs-vg
+      devices: [partition-9]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-3
+    - {name: lv-irtos, volgroup: lvm_volgroup-3, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-9}
+    - {fstype: xfs, volume: lvm_partition-9, preserve: false, type: format, id: format-14}
+    - {path: /irtos, device: format-14, type: mount, id: mount-13}
+{% elif diskPartition == 'DevWSRaidSoftHDD' %}
+    config:
+    - path: /dev/sda
+      preserve: true
+      type: disk
+      id: disk-sda
+      match:
+        serial: WDC*
+    - path: /dev/sdb
+      preserve: true
+      type: disk
+      id: disk-sdb
+      match:
+        serial: WDC*
+    - name: md127
+      raidlevel: container
+      devices: [disk-sda, disk-sdb]
+      spare_devices: []
+      preserve: true
+      metadata: imsm
+      type: raid
+      id: raid-md127
+    - name: md126
+      raidlevel: raid1
+      devices: []
+      spare_devices: []
+      preserve: true
+      wipe: superblock
+      ptable: gpt
+      container: raid-md127
+      type: raid
+      id: raid-md126
+    - {device: raid-md126, size: 1G, wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-0}
+    - {fstype: fat32, volume: partition-0, preserve: false, type: format, id: format-0}
+    - {path: /boot/efi, device: format-0, type: mount, id: mount-0}
+    - {device: raid-md126, size: 2G, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-1}
+    - {fstype: ext4, volume: partition-1, preserve: false, type: format, id: format-1}
+    - {path: /boot, device: format-1, type: mount, id: mount-1}
+    - {device: raid-md126, size: -1, wipe: superblock, number: 3, preserve: false, type: partition, id: partition-2}
+    - {name: ubuntu-vg, devices: [partition-2], preserve: false, type: lvm_volgroup, id: lvm_volgroup-1}
+    - {name: lv-root, volgroup: lvm_volgroup-1, size: 150GB, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-0}
+    - {fstype: xfs, volume: lvm_partition-0, preserve: false, type: format, id: format-2}
+    - {path: /, device: format-2, type: mount, id: mount-2}
+    - {name: lv-tmp, volgroup: lvm_volgroup-1, size: 10GB, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-1}
+    - {fstype: xfs, volume: lvm_partition-1, preserve: false, type: format, id: format-3}
+    - {path: /tmp, device: format-3, type: mount, id: mount-3}
+    - {name: lv-swap, volgroup: lvm_volgroup-1, size: 4GB, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-2}
+    - {fstype: swap, volume: lvm_partition-2, preserve: false, type: format, id: format-4}
+    - {path: swap, device: format-4, type: mount, id: mount-4}
+    - {name: lv-docker, volgroup: lvm_volgroup-1, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-3}
+    - {fstype: xfs, volume: lvm_partition-3, preserve: false, type: format, id: format-5}
+    - {path: /var/lib, device: format-5, type: mount, id: mount-5}
+{% elif diskPartition == 'DevWSRaidSoftNVME' %}
+    config:
+    - {ptable: gpt, path: /dev/nvme0n1, wipe: superblock, preserve: false, type: disk, id: disk-nvme0n1}
+    - {ptable: gpt, path: /dev/nvme1n1, wipe: superblock, preserve: false, type: disk, id: disk-nvme1n1}
+    - {device: disk-nvme0n1, size: 536870912, wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-0}
+    - {fstype: fat32, volume: partition-0, preserve: false, type: format, id: format-0}
+    - {device: disk-nvme1n1, size: 536870912, wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-1}
+    - {fstype: fat32, volume: partition-1, preserve: false, type: format, id: format-1}
+    - {device: disk-nvme0n1, size: 255521193984, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-2}
+    - {device: disk-nvme1n1, size: 255521193984, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-3}
+    - name: md0
+      raidlevel: raid1
+      devices: [partition-2, partition-3]
+      spare_devices: []
+      preserve: false
+      wipe: superblock-recursive
+      ptable: gpt
+      type: raid
+      id: raid-0
+    - {device: raid-0, size: 2147483648, wipe: superblock, number: 1, preserve: false, type: partition, id: partition-4}
+    - {fstype: ext4, volume: partition-4, preserve: false, type: format, id: format-2}
+    - {device: raid-0, size: 253234249728, wipe: superblock, number: 2, preserve: false, type: partition, id: partition-5}
+    - name: ubuntu-vg
+      devices: [partition-5]
+      preserve: false
+      type: lvm_volgroup
+      id: lvm_volgroup-0
+    - {name: lv-swap, volgroup: lvm_volgroup-0, size: 4294967296B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-0}
+    - {fstype: swap, volume: lvm_partition-0, preserve: false, type: format, id: format-3}
+    - {path: '', device: format-3, type: mount, id: mount-2}
+    - {name: lv-tmp, volgroup: lvm_volgroup-0, size: 10737418240B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-1}
+    - {name: lv-root, volgroup: lvm_volgroup-0, size: 161061273600B, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-2}
+    - {fstype: xfs, volume: lvm_partition-2, preserve: false, type: format, id: format-5}
+    - {path: /, device: format-5, type: mount, id: mount-4}
+    - {fstype: xfs, volume: lvm_partition-1, preserve: false, type: format, id: format-6}
+    - {path: /tmp, device: format-6, type: mount, id: mount-5}
+    - {name: lv-docker, volgroup: lvm_volgroup-0, size: -1, wipe: superblock, preserve: false, type: lvm_partition, id: lvm_partition-3}
+    - {fstype: xfs, volume: lvm_partition-3, preserve: false, type: format, id: format-7}
+    - {path: /var/lib, device: format-7, type: mount, id: mount-6}
+    - {path: /boot, device: format-2, type: mount, id: mount-1}
+    - {path: /boot/efi, device: format-0, type: mount, id: mount-0}
+{% elif diskPartition == 'DevWSDefault' %}
+    config:
+    - {ptable: gpt, path: /dev/nvme0n1, wipe: superblock-recursive, preserve: false, type: disk, id: disk-nvme0n1}
+    - {device: disk-nvme0n1, size: 1G, flag: boot, number: 1, preserve: false, grub_device: true, type: partition, id: partition-0}
+    - {device: disk-nvme0n1, size: 2G, number: 3, preserve: false, type: partition, id: partition-2}
+    - {device: disk-nvme0n1, size: 230G, wipe: superblock-recursive, number: 2, preserve: false, type: partition, id: partition-1}
+    - {name: ubuntu-vg, devices: [partition-1], preserve: false, type: lvm_volgroup, id: lvm_volgroup-0}
+    - {name: lv-root, volgroup: lvm_volgroup-0, size: 150G, type: lvm_partition, id: lvm_partition-0}
+    - {name: lv-swap, volgroup: lvm_volgroup-0, size: 4G, type: lvm_partition, id: lvm_partition-1}
+    - {name: lv-tmp, volgroup: lvm_volgroup-0, size: 10G, type: lvm_partition, id: lvm_partition-2}
+    - {name: lv-docker, volgroup: lvm_volgroup-0, size: -1, type: lvm_partition, id: lvm_partition-3}
+    - {fstype: fat32, volume: partition-0, type: format, id: format-0}
+    - {fstype: ext4, volume: partition-2, type: format, id: format-6}
+    - {fstype: xfs, volume: lvm_partition-0, type: format, id: format-1}
+    - {fstype: swap, volume: lvm_partition-1, type: format, id: format-2}
+    - {fstype: xfs, volume: lvm_partition-2, type: format, id: format-3}
+    - {fstype: xfs, volume: lvm_partition-3, type: format, id: format-4}
+    - {path: /boot/efi, device: format-0, type: mount, id: mount-0}
+    - {path: /boot, device: format-6, type: mount, id: mount-6}
+    - {path: /, device: format-1, type: mount, id: mount-1}
+    - {path: '', device: format-2, type: mount, id: mount-2}
+    - {path: /tmp, device: format-3, type: mount, id: mount-3}
+    - {path: /var/lib, device: format-4, type: mount, id: mount-4}
+{% else %}
+    layout:
+      name: lvm
+      match: {}
+{% endif %}
+  late-commands:
+    - echo 'indra ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/indra
+    - sed -i 's|^root:.:|root:$1$HLvLgn43$n/B5bYQtDnht33lyu5vs2.:|' /target/etc/shadow
+    - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
+    - /bin/bash /run/tmpfiles.d/bootorder.sh
+#- sed -i 's|^root:.:|root:$6$qo70QsiGgtK.5GPg$hmh/gkHuI1Jjmg03.LENjt3UMXzj9CjVqs/CB45M5TysZzSE77GCBq5tB0qYpD0ICTjtt3TmIkyQkH9NjLYSw1:|' /target/etc/shadow
+#write_files:
+  # override the kernel package
+  #- path: /run/kernel-meta-package
+    #content: |
+      #linux-virtual
+    #owner: root:root
+    #permissions: "0644"

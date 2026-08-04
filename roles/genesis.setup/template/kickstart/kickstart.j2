@@ -1,0 +1,88 @@
+#kickstart file for RHEL 6 server
+#platform=x86, AMD64, or Intel EM64T
+#version=DEVEL
+
+# Use NFS installation media
+url --url http://{{ pxeServerIps[hostname] }}{{ osRepository }}/{{ macros.getOsVersion(hostname, machines, machines[hostname]['os']) }}
+#cdrom
+
+# Root password
+rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33lyu5vs2.
+
+#Skip License
+{% if "RH6" in machines[hostname]['os'] %}
+key --skip
+{% endif %}
+
+
+#system Language
+lang en_GB
+
+
+#system keyboard
+keyboard uk
+
+
+# Firewall configuration
+firewall --disabled
+
+
+# SELinux configuration
+selinux --disabled
+
+
+# System authorization information
+auth  --useshadow --passalgo=sha512
+
+
+{% if hwci == "tsp" or hwci == "aco" or hwci == "iomp" or hwci == "cwp" or "rdu" in hwci %}
+# Do not configure the X Window System
+skipx
+{% endif %}
+
+
+#Sytem timezone
+timezone --utc Europe/London
+
+#Use text mode install
+text
+
+# Install OS instead of upgrade
+install
+
+# Network information
+{% include 'network_das.j2' %}
+
+{% if hwci == "aco" %}
+unsupported_hardware
+{% endif %}
+
+# Reboot after installation
+reboot
+
+# Installation logging level
+logging --level=info
+
+# Clear the Master Boot Record
+zerombr
+
+# System bootloader configuration
+bootloader --location=mbr
+
+# Partition clearing information
+clearpart --all --initlabel
+
+
+#Partitions
+{% if hwci == "cmd" or hwci == "sim" or hwci == "dbm" or hwci == "sdp" or hwci == "rdcu" %}
+{% include 'partition_das_P21.j2' %}
+{% else %}
+{% include 'partitions_das.j2' %}
+{% endif %}
+
+
+#Package install information
+%packages
+{% include 'packages_das.j2' %}
+
+%end

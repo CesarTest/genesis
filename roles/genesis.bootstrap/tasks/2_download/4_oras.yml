@@ -8,6 +8,6 @@
 - name: "STEP 5 - Download ORAS tarball"
   get_url:
      url:  "{{ oras_download_url }}"
-     dest: "{{ genesis_repo_path }}/openstack/{{ oras_tarball_name }}"
+     dest: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
      checksum: "sha256:{{ oras_checksum }}"
      mode: '0644'

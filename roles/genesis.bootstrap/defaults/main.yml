@@ -29,10 +29,11 @@ genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 
 # 3.- Repositories
 genesis_default_repos:
- - openstack
- - os
- - dib
- - dib/files
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
  
 # 4.- Bifrost Root Paths
 git_root: "{{ genesis_repo_path | realpath }}/openstack"
@@ -60,8 +61,10 @@ genesis_default_os_image_name:
 # G3 - PATHS
 ######################################################
 g1_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
-g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos[1] | default('os') }}"
-g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos[2] }}"
+g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default('os') }}"
+g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
+g1_repo_ipa_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['ipa'] | default('dib/files')}}"
+g1_repo_openstack_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['components'] | default('dib/files')}}"
 g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
 g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
@@ -137,7 +140,7 @@ download_image_sources: "{{ genesis_download_images | default(genesis_all_instal
 ######################################################
 #  IPA IMAGES RESPOSITORIES
 ######################################################
-ipa_local_repo: "{{ g1_repos[3] | default('dib/files') }}"
+ipa_local_repo: "{{ g1_repos['ipa'] | default('dib/files') }}"
 update_ipa: true
 ipa_upstream_release: "master"
 ipa_download_headers: {}

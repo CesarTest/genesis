@@ -14,5 +14,5 @@
      ipa_ramdisk_upstream_url: "{{ g1_ipa_image.ramdisk | default('') }}"
      ipa_ramdisk_upstream_checksum_url: "{{ g1_ipa_image.ramdisk_checksum_url | default('') }}"
      ipa_ramdisk_upstream_checksum_algo: "{{ g1_ipa_image.ramdisk_checksum_algo | default('') }}"
-     ipa_kernel: "{{ genesis_repo_path | realpath }}/dib/files/{{ ipa_kernel_upstream_url | basename }}"
-     ipa_ramdisk: "{{ genesis_repo_path | realpath }}/dib/files/{{ ipa_ramdisk_upstream_url | basename }}"
+     ipa_kernel: "{{ g1_repo_ipa_path | realpath }}/{{ ipa_kernel_upstream_url | basename }}"
+     ipa_ramdisk: "{{ g1_repo_ipa_path | realpath }}/{{ ipa_ramdisk_upstream_url | basename }}"

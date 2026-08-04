@@ -16,13 +16,13 @@
 
 - name: "STEP 1 - Create Repos Folders"
   file:
-     path: "{{ genesis_repo_path | default('/tmp') }}/{{ folder| default('repo') }}"
+     path: "{{ genesis_repo_path | default('/tmp') | realpath }}/{{ folder.value | default('repo') }}"
      state: "directory"
      recurse: true
      owner: "{{ansible_user | default('ironic') }}"
      group: "{{ansible_user | default('ironic') }}"
      mode: "775"
-  loop: "{{ g1_repos | default([]) }}"
+  loop: "{{ g1_repos | dict2items | default([]) }}"
   loop_control:
     loop_var: "folder"
     

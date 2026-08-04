@@ -11,28 +11,169 @@
 #
 
 ######################################################
-#  PATHS
+#  GENESIS PATHS (global for update all genesis roles at once)
 ######################################################
 # 1.- Repos Paths
-genesis_repo_path:      "{{ role_path }}/../../repo"
-genesis_environments_path: "{{ genesis_repo_path | realpath }}/../hosts"
-genesis_default_target_environment_path: "{{ genesis_environments_path | realpath }}/target"
-genesis_target_vars_file: "{{ genesis_default_target_environment_path | realpath }}/group_vars/target"   
+genesis_repo_path:     "{{ role_path }}/../../repo"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 
 # 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
-genesis_bifrost_path:       "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_path:     "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
 genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
 genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+
+# 3.- Repositories
+genesis_default_repos:
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+  repo: "mnt"
+
+######################################################
+# B4 - PATHS
+######################################################
+b4_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repos['os'] | default('os') }}"
+b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_repos['manifesto'] | default('manifesto') }}"
 
 ######################################################
 #  BIFROST ROLES DEFINITION 
 ######################################################
-genesis_baremetal_configdrive_roles:
+b4_configdrive_roles:
    - name: "bifrost-configdrives-dynamic"
 
-genesis_baremetal_enroll_roles:
+b4_enroll_roles:
    - name: "ironic-enroll-dynamic"
    - name: "ironic-inspect-node"
      condition: "{{ inspect_nodes | default('false') | bool }}" 
- 
+
+######################################################
+#  OS_NATIVE: BOOTLOADERS MENU RENDERING
+###################################################### 
+b4_bootloaders:
+   kickstart:  "inst.ks={{ b4_kickstart_manifesto_url }} inst.repo={{ b4_netinstall_url }}"
+   cloud-init: "url={{ b4_cloud-init_isoinstall_url }} autoinstall ds=nocloud-net;s={{ b4_cloud-init_manifesto_meta_url }}"
+   preseed:    "auto=true priority=critical url={{ b4_preseed_manifesto_url }}"
+   ignition:   "ignition.config.url={{ b4_ignition_manifesto_url }} ip=dhcp" 
+   
+######################################################
+#  OS_NATIVE: INSTALLERS TEMPLATES RENDERING
+#    TODO: API for System Installation abstracting installers particulars
+###################################################### 
+b4_kickstart_template:
+   default:
+     system: |
+       # Use NFS installation media
+       url --url {{ b4_kickstart_netinstall_url }}    
+       
+       #system Language
+       lang en_GB
+              
+       #system keyboard
+       keyboard uk
+              
+       # Firewall configuration
+       firewall --disabled
+       
+       # SELinux configuration
+       selinux --disabled
+              
+       # System authorization information
+       auth  --useshadow --passalgo=sha512   
+       
+       #Sytem timezone
+       timezone --utc Europe/London
+       
+       #Use text mode install
+       text
+       
+       # Install OS instead of upgrade
+       install
+     logging: |
+       # Reboot after installation
+       reboot
+       
+       # Installation logging level
+       logging --level=info     
+     network: |
+       network  --bootproto=static --ip={{ g4_bmc_ip }} --netmask={{ g4_bmc_netmask }} --gateway={{ g4_bmc_gateway }} --onboot=on --hostname={{ g4_node_name }} --device={{ g4_bmc_mac }}
+     packages: |
+       @ base
+       @ core
+     storage: |
+       # Clear the Master Boot Record
+       zerombr
+       
+       # System bootloader configuration
+       bootloader --location=mbr
+       
+       # Partition clearing information
+       clearpart --all --initlabel
+       
+       #Partitions
+       part / --fstype=ext4 --size=17408
+       part pv.lab-okd-worker3-0001 --grow --size=1
+       volgroup VolGroup00 --pesize=4096 pv.{{ g4_node_name }}
+       logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
+       logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
+
+b4_cloud-init_template:
+   default: 
+     system: |
+       user-data:
+         disable_root: false
+       identity:
+         hostname: {{ g4_node_name }}
+         username: {{ g4_default_user_name }}
+         password: '{{ g4_default_user_password }}'
+       keyboard:
+         layout: us
+       locale: en_US.UTF-8   
+     ssh: |
+       allow-pw: true
+       authorized-keys: []
+       install-server: true
+     logging: |
+       remotes:
+         log_serv: "*.* @@{{ g4_genesis_ip }}:{{ g4_genesis_rsyslog_port }}"     
+     network: |
+       network:
+         version: 2
+         ethernets:
+           eno1:
+             critical: true
+             addresses:
+               - {{ g4_bmc_ip }}
+             gateway4: {{ g4_bmc_gateway }}
+             match:
+               macaddress: {{ g4_bmc_mac }}
+             set-name: eno1         
+     storage: |
+       layout:
+         name: lvm
+         match: {} 
+     packages: |
+       # even set to no/false, geoip lookup still happens
+       geoip: no
+       preserve_sources_list: false
+       sources_list: |
+         deb [trusted=yes] http://{{ b4_netinstall_url }} ./
+       packages:
+        - ubuntu-desktop-minimal          
+     preinstall: |
+       - path: /run/tmpfiles.d/bootorder.sh
+         content: |
+           #!/bin/bash
+           BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
+           BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
+           /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}     
+     postinstall: |
+       - echo '{{ g4_default_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ g4_default_user_name }}
+       - sed -i 's|^root:.:|root:{{ g4_root_user_password }}|' /target/etc/shadow
+       - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
+       - /bin/bash /run/tmpfiles.d/bootorder.sh
+       
