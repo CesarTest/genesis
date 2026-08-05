@@ -1,0 +1,77 @@
+{#############################################################################
+#                    ANSIBLE GENERATED KICKSTART FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.0
+#############################################################################} 
+{%- if input is defined -%}
+{%-   if input is not none -%}
+{%-      if input is not string -%}
+{%-         if input is mapping -%}
+{%-            if input is iterable -%}
+{%-               if input|length > 0 -%}
+{###############################
+         CAPTURE VALUES 
+BEWARE: Capturing Dict Values with for loop
+  - Append values in list
+  - Extract values from list[0]
+ ##############################}
+{%-  set blank = " " -%}
+{%-  set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%-  set model     = 'trufa' -%}
+{%-  set ks_system   = profiles[model]['system']  | default(input['system'])  | default('')  -%}
+{%-  set ks_user     = profiles[model]['user']    | default(input['user'])    | default('') -%}
+{%-  set ks_ssh      = profiles[model]['ssh']     | default(input['ssh'])     | default('') -%}
+{%-  set ks_gui      = profiles[model]['gui']     | default(input['gui'])     | default('') -%}
+{%-  set ks_logging  = profiles[model]['logging'] | default(input['logging']) | default('') -%}
+{%-  set ks_network  = profiles[model]['network'] | default(input['network']) | default('') -%}
+{%-  set ks_packages = profiles[model]['packages']| default(input['packages'])| default('') -%}
+{%-  set ks_storage  = profiles[model]['storage'] | default(input['storage']) | default('') -%}
+{%-  set ks_postinstall = profiles[model]['postinstall'] | default(input['postinstall']) | default('') -%}
+{#......... 2.- Kickstart Sections Definition ..... #}
+{%-  set ks_sections = [  
+        { "header": "# SYSTEM",                               "content": ks_system   },
+        { "header": "# Root password",                        "content": ks_user     },
+        { "header": "# Do not configure the X Window System", "content": ks_gui      },				  
+        { "header": "# SSH Keys",                             "content": ks_ssh      },	
+        { "header": "# Installation logging level",           "content": ks_logging  },
+        { "header": "# Network information",                  "content": ks_network  },
+        { "header": "# Partitions",                           "content": ks_storage  },				  
+        { "header": "%packages",                              "content": ks_packages },
+        { "header": "# PostInstall",                          "content": ks_postinstall }
+      ]			  
+-%}
+{###############################
+         RENDERING FILE
+ ##############################}
+#kickstart file for RHEL 6 server
+#platform=x86, AMD64, or Intel EM64T
+#version=DEVEL
+{%-        for section in ks_sections -%}
+{%-           if section.content is defined -%}
+{%-             if section.content is not none -%}
+{%-                if section.content is string -%}
+{%-                  if section.content|length > 0 -%}
+{{ section.header  | default('') }}{{eol}}
+{{ section.content | default('') }}{{eol}}
+{{ section.end     | default(eol) }}
+{%-                  endif -%}
+{%-                endif -%}
+{%-              endif -%}
+{%-           endif -%}
+{%-        endfor -%}
+
+{###############################
+              END
+ ##############################}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED KICKSTART FILE 
+#############################################################################} 

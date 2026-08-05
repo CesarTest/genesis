@@ -15,6 +15,8 @@
     # 2.- HTTP Paths particulars    
     g3_distro_http_path: "{{ g3_http_path    | realpath }}/{{ g3_image_os_distro | lower }}" 
     g3_distro_repo_path: "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}"
+    g3_manifesto_repo_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
+    g3_manifesto_http_path: "{{ g3_http_path }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
     g3_mount_path:       "{{ g3_image.mount_path | default(g3_mount_repo_path) | default('/mnt') | realpath }}"
     
   loop:

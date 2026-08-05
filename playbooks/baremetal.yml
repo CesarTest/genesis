@@ -19,19 +19,36 @@
 - hosts: "baremetal"
   become: no
   gather_facts: no
+  vars:  
+    genesis_repo_path:   "{{ playbook_dir }}/../repo"
+    genesis_hosts_path:  "{{ playbook_dir }}/../hosts"
+    genesis_target_path: "{{ genesis_hosts_path | realpath }}/target"
+    genesis_target_vars: "{{ genesis_target_path | realpath }}/group_vars/target"
+    genesis_default_inventory_source: "{{ genesis_hosts_path | realpath }}/tests/host_vars/baremetal.yml"
+    genesis_baremetal_vars: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or genesis_default_inventory_source }}"
+    ironic_http_path:   "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
+    
+  vars_files:
+    - "{{ genesis_target_vars      | default('') }}"
+    - "{{ genesis_baremetal_vars   | default('') }}"
+    
   roles:
   
-    # -----> B4 - SETUP 
+    # -----> B4 - SETUP
+    #  - Local Generation of Bootloader/Installer Files
+    #  - Enroll to Ironic 
+    #  - Transition to Available State
     - role: "genesis.setup"
       when: 
       - (genesis_stage is not defined)  or  (genesis_stage=='B4')
       
-    # -----> B5 - DEPLOY   
+    # -----> B5 - DEPLOY 
+    #   - Unattended OS Installation
     - role: "genesis.deploy"
       when: 
       - (genesis_stage is not defined)  or  (genesis_stage=='B5')    
 
     # -----> B6 - PROVISION
-    #- role: "genesis.provision"
+    #- role: "genesis.strategy"
     #  when: 
-    #  - (genesis_stage is not defined)  or  (genesis_stage=='B6')          
+    #  - (genesis_stage is not defined)  or  (genesis_stage=='B6')

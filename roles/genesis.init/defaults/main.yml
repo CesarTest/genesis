@@ -47,6 +47,7 @@ genesis_default_os_image_name:
 ######################################################
 g3_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
 g3_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
+g3_repo_components_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['components'] | default('openstack') }}"
 g3_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
 g3_repo_mount_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
 g3_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"

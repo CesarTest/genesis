@@ -19,8 +19,8 @@ genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 
 # 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
-genesis_bifrost_path:     "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
-genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_path:  "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles: "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
 genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
 genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 
@@ -33,12 +33,37 @@ genesis_default_repos:
   ipa: "dib/files" 
   repo: "mnt"
 
+genesis_os:
+  centos:
+    ansible_distribution: "CentOS"
+    installer: "anaconda"
+    manifesto: 
+      - "kickstart.j2"
+    prefix: "ks_"
+    ext: ".ks" 
+  redhat:
+    ansible_distribution: "RedHat"
+    installer: "anaconda"
+    manifesto: 
+      - "kickstart.j2"
+    prefix: "ks_"
+    ext: ".ks"     
+  ubuntu:
+    ansible_distribution: "Ubuntu"
+    installer: "subsiquity"
+    manifesto_folder: yes
+    manifesto: 
+      - "cloud-init/meta-data.j2"
+      - "cloud-init/user-data.j2"     
+
 ######################################################
 # B4 - PATHS
 ######################################################
 b4_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
 b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repos['os'] | default('os') }}"
-b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_repos['manifesto'] | default('manifesto') }}"
+b4_manifesto_subpath: "{{ b4_repos['manifesto'] | default('manifesto') }}"
+b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_manifesto_subpath }}"
+b4_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b4_manifesto_subpath }}"
 
 ######################################################
 #  BIFROST ROLES DEFINITION 
@@ -52,128 +77,244 @@ b4_enroll_roles:
      condition: "{{ inspect_nodes | default('false') | bool }}" 
 
 ######################################################
+# NODE PARTICULARS
+######################################################
+
+# 1.- Node Details
+#------------------
+# 1.1.- Properties
+b4_node_name: "{{ name | default(hostname) | default(inventory_hostname_short) | default(ansible_hostname) | default('nohost') }}"
+
+   
+
+# 1.2.- BMC
+b4_node_bmc_driver: "{{ driver | default('redfish') }}"
+b4_node_bmc_info:   "{{ driver_info | default('') }}"
+b4_node_bmc_mac:    ""
+b4_node_bmc_ip: "{{ netaddress | default('genesis') }}"
+b4_node_bmc_gateway: ""
+b4_node_bmc_netmask: ""
+
+# 1.2.- OS
+b4_capture_node_os: "{{ os.name | default('centos') | lower }}"
+b4_node_os: "{{ genesis_os[b4_capture_node_os]['ansible_distribution'] }}"
+b4_node_os_version: "{{ os.version | default('9') }}"
+b4_node_os_arch:    "{{ os.arch | default('x86_64') }}"
+b4_node_os_installer: "{{ genesis_os[b4_capture_node_os]['installer'] | default('anaconda') }}"
+b4_node_os_manifesto_template: "{{ genesis_os[b4_capture_node_os]['manifesto'] | default( [ 'kickstart.j2' ] )}}"
+b4_node_os_manifesto_prefix: "{{ genesis_os[b4_capture_node_os]['prefix'] | default('ks_') }}"
+b4_node_os_manifesto_ext: "{{ genesis_os[b4_capture_node_os]['ext'] | default('.ks') }}"
+b4_node_os_manifesto_in_folder: "{{  genesis_os[b4_capture_node_os]['manifesto_folder'] | default(false) }}"
+b4_node_os_manifesto_path:  "{{ b4_repo_manifesto_path }}{{ b4_node_os_manifesto_in_folder | ternary('/'+b4_node_name,'','') }}"
+ 
+# 2.- Users 
+#------------------
+b4_default_user_name: 'genesis'
+b4_default_user_password: ''
+b4_root_user_password: ''
+
+# 3.- OS Installers URLs
+#------------------
+b4_netinstall_repo_path: "{{ b4_node_os | lower }}{{ b4_node_os_version | lower}}"
+b4_netinstall_iso_path: "{{ b4_node_os }}/{{ b4_node_os_version }}"
+
+b4_manifesto_url: "http://{{ b4_manifesto_subpath }}/{{ b4_node_os_manifesto_file | default('') }}" 
+b4_netinstall_iso_url: "http://{{ b4_netinstall_iso_path }}/{{ b4_node_os_arch }}.iso" 
+b4_netinstall_url: "http://{{ b4_netinstall_repo_path }}"
+
+
+######################################################
 #  OS_NATIVE: BOOTLOADERS MENU RENDERING
 ###################################################### 
-b4_bootloaders:
-   kickstart:  "inst.ks={{ b4_kickstart_manifesto_url }} inst.repo={{ b4_netinstall_url }}"
-   cloud-init: "url={{ b4_cloud-init_isoinstall_url }} autoinstall ds=nocloud-net;s={{ b4_cloud-init_manifesto_meta_url }}"
-   preseed:    "auto=true priority=critical url={{ b4_preseed_manifesto_url }}"
-   ignition:   "ignition.config.url={{ b4_ignition_manifesto_url }} ip=dhcp" 
+b4_bootloaders_menu:
+   kickstart:  "inst.ks={{ b4_manifesto_url }} inst.repo={{ b4_netinstall_url }}"
+   esxi:       "ks={{ b4_manifesto_url }}"
+   cloud-init: "url={{ b4_netinstall_iso_url }} autoinstall ds=nocloud-net;s={{ b4_manifesto_url }}"
+   preseed:    "auto=true priority=critical url={{ b4_manifesto_url }}"
+   ignition:   "ignition.config.url={{ b4_manifesto_url }} ip=dhcp" 
    
 ######################################################
-#  OS_NATIVE: INSTALLERS TEMPLATES RENDERING
-#    TODO: API for System Installation abstracting installers particulars
+#  NODE LIFECYCLE STAGES DEFINITION
 ###################################################### 
-b4_kickstart_template:
-   default:
-     system: |
-       # Use NFS installation media
-       url --url {{ b4_kickstart_netinstall_url }}    
-       
-       #system Language
-       lang en_GB
-              
-       #system keyboard
-       keyboard uk
-              
-       # Firewall configuration
-       firewall --disabled
-       
-       # SELinux configuration
-       selinux --disabled
-              
-       # System authorization information
-       auth  --useshadow --passalgo=sha512   
-       
-       #Sytem timezone
-       timezone --utc Europe/London
-       
-       #Use text mode install
-       text
-       
-       # Install OS instead of upgrade
-       install
-     logging: |
-       # Reboot after installation
-       reboot
-       
-       # Installation logging level
-       logging --level=info     
-     network: |
-       network  --bootproto=static --ip={{ g4_bmc_ip }} --netmask={{ g4_bmc_netmask }} --gateway={{ g4_bmc_gateway }} --onboot=on --hostname={{ g4_node_name }} --device={{ g4_bmc_mac }}
-     packages: |
-       @ base
-       @ core
-     storage: |
-       # Clear the Master Boot Record
-       zerombr
-       
-       # System bootloader configuration
-       bootloader --location=mbr
-       
-       # Partition clearing information
-       clearpart --all --initlabel
-       
-       #Partitions
-       part / --fstype=ext4 --size=17408
-       part pv.lab-okd-worker3-0001 --grow --size=1
-       volgroup VolGroup00 --pesize=4096 pv.{{ g4_node_name }}
-       logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
-       logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
+#b4_node_lifecycle:
+#  deploy:
+#     boot_interface:   'ipxe'
+#     deploy_interface: 'custom-agent'
+#     installer:   
+#        kernel: 
+#        initram:
+#        kernel_append_params: 
+        
+     
+#####################################################
+# OS_NATIVE: INSTALLERS TEMPLATES RENDERING
+#   TODO: Install definition API that abstracts installer particulars
+##################################################### 
 
-b4_cloud-init_template:
-   default: 
-     system: |
-       user-data:
-         disable_root: false
-       identity:
-         hostname: {{ g4_node_name }}
-         username: {{ g4_default_user_name }}
-         password: '{{ g4_default_user_password }}'
-       keyboard:
-         layout: us
-       locale: en_US.UTF-8   
-     ssh: |
-       allow-pw: true
-       authorized-keys: []
-       install-server: true
-     logging: |
-       remotes:
-         log_serv: "*.* @@{{ g4_genesis_ip }}:{{ g4_genesis_rsyslog_port }}"     
-     network: |
-       network:
-         version: 2
-         ethernets:
-           eno1:
-             critical: true
-             addresses:
-               - {{ g4_bmc_ip }}
-             gateway4: {{ g4_bmc_gateway }}
-             match:
-               macaddress: {{ g4_bmc_mac }}
-             set-name: eno1         
+#------------------------------------
+# 1.- Kickstart
+#------------------------------------
+b4_kickstart_template_defaults:
+    system: |
+      # Use NFS installation media
+      url --url {{ b4_netinstall_url }}    
+      
+      #system Language
+      lang en_GB
+             
+      #system keyboard
+      keyboard uk
+             
+      # Firewall configuration
+      firewall --disabled
+      
+      # SELinux configuration
+      selinux --disabled
+             
+      # System authorization information
+      auth  --useshadow --passalgo=sha512   
+      
+      #Sytem timezone
+      timezone --utc Europe/London
+      
+      #Use text mode install
+      text
+      
+      # Install OS instead of upgrade
+      install
+    logging: |
+      # Reboot after installation
+      reboot
+      
+      # Installation logging level
+      logging --level=info     
+    network: |
+      network  --bootproto=static --ip={{ b4_node_bmc_ip }} --netmask={{ b4_node_bmc_netmask }} --gateway={{ b4_node_bmc_gateway }} --onboot=on --hostname={{ b4_node_name }} --device={{ b4_node_bmc_mac }}
+    packages: |
+      @ base
+      @ core
+    storage: |
+      # Clear the Master Boot Record
+      zerombr
+      
+      # System bootloader configuration
+      bootloader --location=mbr
+      
+      # Partition clearing information
+      clearpart --all --initlabel
+      
+      #Partitions
+      part / --fstype=ext4 --size=17408
+      part pv.lab-okd-worker3-0001 --grow --size=1
+      volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}
+      logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
+      logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
+
+b4_kickstart_template_profiles:
+   vmware_esxi: 
      storage: |
-       layout:
-         name: lvm
-         match: {} 
-     packages: |
-       # even set to no/false, geoip lookup still happens
-       geoip: no
-       preserve_sources_list: false
-       sources_list: |
-         deb [trusted=yes] http://{{ b4_netinstall_url }} ./
-       packages:
-        - ubuntu-desktop-minimal          
-     preinstall: |
-       - path: /run/tmpfiles.d/bootorder.sh
-         content: |
-           #!/bin/bash
-           BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
-           BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
-           /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}     
-     postinstall: |
-       - echo '{{ g4_default_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ g4_default_user_name }}
-       - sed -i 's|^root:.:|root:{{ g4_root_user_password }}|' /target/etc/shadow
-       - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
-       - /bin/bash /run/tmpfiles.d/bootorder.sh
-       
+      # Clear the Master Boot Record
+      zerombr
+      
+      # System bootloader configuration
+      bootloader --location=mbr
+      
+      # Partition clearing information
+      clearpart --all --initlabel
+      
+      #Partitions
+      part / --fstype=ext4 --size=17408
+      part pv.lab-okd-worker3-0001 --grow --size=1
+      volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}
+      logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
+      logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288     
+
+#------------------------------------
+# 2.- Cloud Init
+#------------------------------------
+b4_cloud-init_template_defaults:
+    system: |
+      user-data:
+        disable_root: false
+      identity:
+        hostname: {{ b4_node_name }}
+        username: {{ b4_default_user_name }}
+        password: '{{ b4_default_user_password }}'
+      keyboard:
+        layout: us
+      locale: en_US.UTF-8   
+    ssh: |
+      allow-pw: true
+      authorized-keys: []
+      install-server: true
+    logging: |
+      remotes:
+        log_serv: "*.* @@{{ g4_genesis_ip }}:{{ g4_genesis_rsyslog_port }}"     
+    network: |
+      network:
+        version: 2
+        ethernets:
+          eno1:
+            critical: true
+            addresses:
+              - {{ g4_bmc_ip }}
+            gateway4: {{ g4_bmc_gateway }}
+            match:
+              macaddress: {{ g4_bmc_mac }}
+            set-name: eno1         
+    storage: |
+      layout:
+        name: lvm
+        match: {} 
+    packages: |
+      # even set to no/false, geoip lookup still happens
+      geoip: no
+      preserve_sources_list: false
+      sources_list: |
+        deb [trusted=yes] http://{{ b4_cloud-init_netinstall_url }} ./
+      packages:
+       - ubuntu-desktop-minimal          
+    preinstall: |
+      - path: /run/tmpfiles.d/bootorder.sh
+        content: |
+          #!/bin/bash
+          BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
+          BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
+          /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}     
+    postinstall: |
+      - echo '{{ g4_default_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ g4_default_user_name }}
+      - sed -i 's|^root:.:|root:{{ g4_root_user_password }}|' /target/etc/shadow
+      - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
+      - /bin/bash /run/tmpfiles.d/bootorder.sh
+      
+#------------------------------------
+# 3.- Preseeds
+#------------------------------------
+
+
+#------------------------------------
+# 4.- Ignition
+#------------------------------------
+
+
+#------------------------------------
+# 5.- Data Model
+#------------------------------------
+b4_os_installer_datamodel:
+  anaconda:
+    kernel:    "{{ b4_kickstart_kernel  | default('vmlinuz') }}"
+    initram:   "{{ b4_kickstart_initram | default('initrd.img') }}"
+    defaults:  "{{ b4_kickstart_template_defaults | default({}) }}"
+    profiles:  "{{ b4_kickstart_template_profiles | default({}) }}"
+    
+  subsiquity:
+    kernel:    "{{ b4_cloud-init_kernel  | default('vmlinuz') }}"
+    initram:   "{{ b4_cloud-init_initram | default('initrd') }}"  
+    defaults:  "{{ b4_cloud-init_template_defaults | default({}) }}"
+    profiles:  "{{ b4_cloud-init_template_profiles | default({}) }}"
+    
+  ignition:
+    kernel:    "{{ b4_ignition_kernel | default('vmlinuz') }}"
+    initram:   "{{ b4_igntion_initram | default('initramfs') }}"    
+    defaults:  "{{ b4_ignition_template_defaults | default({}) }}"
+    profiles:  "{{ b4_ignition_template_profiles | default({}) }}"

@@ -2,7 +2,7 @@
 #--------------------------
 # OCI: QCOW Images with baked-in Cloud-Init Install Manifesto
 #--------------------------
-servera199.maas.lab:
+servera199:
    uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
    driver_info:
      redfish_verify_ca: false
@@ -32,7 +32,7 @@ servera199.maas.lab:
 #--------------------------
 # OCI: ISO Images with external Install Manifesto (kickstart, ignition)
 #--------------------------
-serverb199.maas.lab:
+serverb199:
    uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
    driver_info:
      redfish_verify_ca: false
