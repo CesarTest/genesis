@@ -6,11 +6,19 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-
 - name: "B4 - SETUP: Setup Manifesto for Current Node"
   ansible.builtin.include_tasks: "{{ b4_manifesto | default ('1_manifesto/1_os_native.yml') }}" 
+  vars:
+    # Manifesto Files
+    b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
+    b4_os_manifesto_files:     "{{ b4_node_os_manifesto['file']     | default([]) }}"
+    
+    # Manifesto Jinja2 Rendering Properties
+    j2_input:      "{{ b4_node_os_manifesto['defaults'] | default({}) }}"
+    j2_profiles:   "{{ b4_node_os_manifesto['profiles'] | default({}) }}"
+    j2_os_profile: "{{ b4_node_os_profile               | default('None') }}"
   loop:
      - "1_manifesto/1_os_native.yml"    
-     - "1_manifesto/2_cloud.yml"            
+     #- "1_manifesto/2_cloud.yml"            
   loop_control:
     loop_var: "b4_manifesto"

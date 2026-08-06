@@ -5,12 +5,13 @@
 # Date:   05/08/2026
 # Version: 1.0
 #############################################################################} 
-{%- if input is defined -%}
-{%-   if input is not none -%}
-{%-      if input is not string -%}
-{%-         if input is mapping -%}
-{%-            if input is iterable -%}
-{%-               if input|length > 0 -%}
+{{ b4_os_installer_bootloader_call }}
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
 {###############################
          CAPTURE VALUES 
 BEWARE: Capturing Dict Values with for loop
@@ -20,16 +21,16 @@ BEWARE: Capturing Dict Values with for loop
 {%-  set blank = " " -%}
 {%-  set eol = "\n" -%}
 {#......... 1.- Node Data Model ..... #}
-{%-  set model     = 'trufa' -%}
-{%-  set ks_system   = profiles[model]['system']  | default(input['system'])  | default('')  -%}
-{%-  set ks_user     = profiles[model]['user']    | default(input['user'])    | default('') -%}
-{%-  set ks_ssh      = profiles[model]['ssh']     | default(input['ssh'])     | default('') -%}
-{%-  set ks_gui      = profiles[model]['gui']     | default(input['gui'])     | default('') -%}
-{%-  set ks_logging  = profiles[model]['logging'] | default(input['logging']) | default('') -%}
-{%-  set ks_network  = profiles[model]['network'] | default(input['network']) | default('') -%}
-{%-  set ks_packages = profiles[model]['packages']| default(input['packages'])| default('') -%}
-{%-  set ks_storage  = profiles[model]['storage'] | default(input['storage']) | default('') -%}
-{%-  set ks_postinstall = profiles[model]['postinstall'] | default(input['postinstall']) | default('') -%}
+{%-  set ks_model    = j2_os_profile | default('none') -%}
+{%-  set ks_system   = j2_profiles[ks_model]['system']  | default(j2_input['system'])  | default('') -%}
+{%-  set ks_user     = j2_profiles[ks_model]['user']    | default(j2_input['user'])    | default('') -%}
+{%-  set ks_ssh      = j2_profiles[ks_model]['ssh']     | default(j2_input['ssh'])     | default('') -%}
+{%-  set ks_gui      = j2_profiles[ks_model]['gui']     | default(j2_input['gui'])     | default('') -%}
+{%-  set ks_logging  = j2_profiles[ks_model]['logging'] | default(j2_input['logging']) | default('') -%}
+{%-  set ks_network  = j2_profiles[ks_model]['network'] | default(j2_input['network']) | default('') -%}
+{%-  set ks_packages = j2_profiles[ks_model]['packages']| default(j2_input['packages'])| default('') -%}
+{%-  set ks_storage  = j2_profiles[ks_model]['storage'] | default(j2_input['storage']) | default('') -%}
+{%-  set ks_postinstall = j2_profiles[ks_model]['postinstall'] | default(j2_input['postinstall']) | default('') -%}
 {#......... 2.- Kickstart Sections Definition ..... #}
 {%-  set ks_sections = [  
         { "header": "# SYSTEM",                               "content": ks_system   },
