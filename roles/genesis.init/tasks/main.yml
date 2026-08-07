@@ -5,57 +5,87 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "------------------> G3- INIT GENESIS NODE <------------------" 
+
+#---------------------------------------
+# 1. PXE - TFTP: Upload Bootloader & OS Installers
+#---------------------------------------   
+- name: "------------------> G3- INIT - Populate TFTP Service <------------------" 
   ignore_errors: yes
   block:
-
-    #---------------------------------------
-    # 1. PXE - TFTP: Upload Bootloader & OS Installers
-    #---------------------------------------   
     - name: "G3 - INIT: Setup PXE-TFTP - Upload Bootloader & OS Installers"
       ansible.builtin.include_tasks: "1_tftp.yml"
       loop: "{{ download_image_sources | default([]) }}"
       loop_control:
-         loop_var: "g3_image"
+         loop_var:  "g3_image"
          index_var: "g3_image_index"       
 
-    #---------------------------------------
-    # 2. PXE - HTTP: Full Access to Images Repositories
-    #--------------------------------------- 
-    - name: "G3 - INIT: Setup PXE-HTTP - Expose Images Repositories"
+#---------------------------------------
+# 2. PXE - HTTP: Full Access to Images Repositories
+#--------------------------------------- 
+- name: "------------------> Populate HTTP Service <------------------" 
+  ignore_errors: yes
+  vars:
+    # HTTP Paths particulars    
+    g3_os_images_repo_path: "{{ g3_repo_os_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
+    g3_os_images_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['os'] | default('os') }}" 
+    g3_cloud_images_repo_path: "{{ g3_repo_os_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
+    g3_cloud_images_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"     
+    g3_mnt_repo_path: "{{ g3_repo_os_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
+    g3_mnt_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"       
+    g3_manifesto_repo_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
+    g3_manifesto_http_path: "{{ g3_http_path }}/{{ g3_repos['manifesto'] | default('manifesto') }}"  
+    g3_paths_to_expose:
+      - repo:   "{{ g3_manifesto_repo_path }}"  
+        expose: "{{ g3_manifesto_http_path }}"
+      - repo:   "{{ g3_os_images_repo_path }}"
+        expose: "{{ g3_os_images_http_path }}"
+      - repo:   "{{ g3_cloud_images_repo_path }}"
+        expose: "{{ g3_cloud_images_http_path }}"
+      - repo:   "{{ g3_mnt_repo_path }}"
+        expose: "{{ g3_mnt_http_path }}"
+  block:
+    - name: "G3 - INIT: Setup PXE-HTTP - Create Images Repositories"
       ansible.builtin.include_tasks: "2_http.yml"
-      loop: "{{ download_image_sources | default([]) }}"
       loop_control:
          loop_var: "g3_image"
-         index_var: "g3_image_index"      
+         index_var: "g3_image_index"
+         
+    - name: "G3 - INIT: Setup PXE-HTTP - Expose Images Repositories"
+      ansible.builtin.include_tasks: "2_http/4_expose.yml"  
+
+#---------------------------------------
+# 3. PXE - ORAS: Full Access to Images Repositories
+#---------------------------------------   
+#- name: "------------------> G3- INIT - Populate ORAS Service <------------------" 
+#  ignore_errors: yes
+#  block:
   
-    #---------------------------------------
-    # 3. PXE - ORAS: Full Access to Images Repositories
-    #---------------------------------------      
+   
     #- name: "G3 - INIT: Setup PXE-ORAS - Expose Images Repositories"
     #  ansible.builtin.include_tasks: "3_oras.yml"
     #  loop: "{{ download_image_sources | default([]) }}"
     #  loop_control:
     #     loop_var: "g3_image"
     #     index_var: "g3_image_index"                
-    
-    #---------------------------------------
-    # 4. Users
-    #---------------------------------------      
+
+#---------------------------------------
+# 4. Permissions
+#---------------------------------------     
+- name: "------------------> G3- INIT - Permissions <------------------" 
+  ignore_errors: yes
+  block:
+      
     - name: "G3 - INIT: Ready PXE: Users Permissions to Allow Ironic SetUp"
       ansible.builtin.user:
-        name: "{{ g3_user.name }}"
-        groups:  "{{ g3_user.groups }}" 
+        name:   "{{ g3_user.name }}"
+        groups: "{{ g3_user.groups }}" 
         append: true
-        state: present  
-      vars:
-        # Eventually choose according to genesis distro
-        g3_groups: "cesar,adm,cdrom,sudo,dip,plugdev,lxd,ironic"      
+        state: present     
       loop:
-        - name: "cesar"
-          groups: "{{ g3_groups }}"
+        - name:   "{{ ansible_user | default('ironic') }}"
+          groups: "{{ g3_groups_webserver_group }}"
         - name: "ironic"
-          groups: "{{ g3_groups }}"
+          groups: "{{ g3_groups_webserver_group }}"
       loop_control:
-         loop_var: "g3_user"
-         index_var: "g3_user_index"                    
+         loop_var:  "g3_user"
+         index_var: "g3_user_index"

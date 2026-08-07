@@ -1,0 +1,54 @@
+---
+# genesis.init 2_http/3_expone.yml
+#   - Expones Image Repositories
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Ownership of Folders to Expose (Web Server Owner = Ironic)
+#---------------------------------------  
+- name: "STEP 2.3 - HTTP: Ownership Before exposure"
+  ansible.builtin.file:
+    path:  "{{ http_exposure.repo }}"
+    owner: "{{ g3_webserver_user | default(omit) }}"
+    group: "{{ g3_webserver_group | default(omit) }}"
+    mode: "o+x"
+    recurse: true
+  loop: "{{ g3_paths_to_expose | default([]) }}"
+  loop_control:
+    loop_var: "http_exposure"
+  
+#---------------------------------------
+# 2. Create Symbolik Links to HTTP folder
+#---------------------------------------  
+- name: "STEP 2.3 - HTTP: Expose Image Repositories"
+  file:
+    src:   "{{ http_exposure.repo }}"
+    dest:  "{{ http_exposure.expose }}"
+    owner: "{{ g3_webserver_user | default(omit) }}"
+    group: "{{ g3_webserver_group | default(omit) }}"  
+    state: link
+  loop: "{{ g3_paths_to_expose | default([]) }}"
+  loop_control:
+    loop_var: "http_exposure"  
+     
+#---------------------------------------
+# 3. WebServer Update
+#---------------------------------------  
+- name: "STEP 2.3 - HTTP: adjust Webserver Configurations Files"
+  ansible.builtin.lineinfile:
+    path:        "{{ g3_web.file        | default(omit) }}"
+    regexp:      "{{ g3_web.regexp      | default(omit) }}"
+    line:        "{{ g3_web.line        | default(omit) }}"    
+    insertafter: "{{ g3_web.insertafter | default(omit) }}" 
+  loop: "{{ g3_setup_webserver | default([]) }}"
+  loop_control:
+    loop_var: "g3_web"
+  notify:
+    - Restart Web Server  
+
+#---------------------------------------
+# 4. SELinux / AppArmor
+#---------------------------------------  

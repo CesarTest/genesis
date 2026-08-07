@@ -5,11 +5,13 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "STEP 1: Create Mount Folder"
+- name: "STEP 2.1: Create Mount Folder"
   become: yes
   ansible.builtin.file:
     path: "{{ g3_deploy_path }}" 
-    state: directory       
+    state: directory
+    owner: "{{ g3_webserver_user | default(omit) }}"
+    group: "{{ g3_webserver_group | default(omit) }}"  
   vars:
     g3_deploy_default_path: "{{ g3_mount_path }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}" 
     g3_deploy_path: "{{ g3_image.mount_path | default( g3_deploy_default_path ) | realpath }}"
@@ -17,13 +19,13 @@
     - g3_image.mount is defined
     - g3_image.mount   
 
-- name: "STEP 1: Mount ISO Image"
+- name: "STEP 2.1: Mount ISO Image"
   become: yes
   ansible.posix.mount:
     path: "{{ g3_deploy_path }}"
     src:  "{{ g3_src_image }}"
     fstype: iso9660
-    opts: ro
+    opts:  "{{ g3_iso_mount_properties | default(omit) }}"
     state: "{{ g3_mount_state | default('present') }}"     
   loop:
     - unmounted

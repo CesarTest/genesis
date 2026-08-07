@@ -9,9 +9,7 @@
   become: yes
   ansible.builtin.file:
     path: "{{ g3_deploy_path }}" 
-    state: directory   
-    owner: ironic
-    group: ironic       
+    state: directory      
   vars:
     g3_deploy_path:   "{{ g3_tftp_path }}/{{ g3_image_os_distro | lower }}{{ g3_image_os_distro_version | lower }}" 
   when: 

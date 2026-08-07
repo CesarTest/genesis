@@ -17,6 +17,8 @@
 genesis_repo_path:     "{{ role_path }}/../../repo"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 genesis_rsyslog_port: "5456"
+file_url_port_tls: "8083"
+
 
 # 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
@@ -64,11 +66,26 @@ genesis_os_definitions:
 ######################################################
 # B4 - PATHS
 ######################################################
+# 1.- Paths
 b4_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
 b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repos['os'] | default('os') }}"
 b4_manifesto_subpath: "{{ b4_repos['manifesto'] | default('manifesto') }}"
 b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_manifesto_subpath }}"
 b4_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b4_manifesto_subpath }}"
+
+# 2.- URLs
+b4_url_protocol: "http"
+b4_url_short_subpath:  "{{ b4_node_os | lower }}{{ b4_node_os_version | lower}}"
+b4_url_full_subpath:   "{{ b4_node_os }}/{{ b4_node_os_version }}"
+b4_url_genesis_ip: "{{ dhcp_address | ansible.utils.ipaddr('address') | default('') }}"
+b4_url_genesis_gateway: "{{ dhcp_address | ansible.utils.ipaddr('last_usable') | default('') }}" 
+b4_url_genesis_netmask: "{{ dhcp_address | ansible.utils.ipaddr('netmask') | default('255.255.255.0') }}"
+b4_genesis_port:
+  http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
+  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
+b4_url_genesis_port: "{{ b4_genesis_port[b4_url_protocol] is defined | ternary (':','','') }}{{ b4_genesis_port[b4_url_protocol] | default('') }}"
+b4_url_genesis_url: "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_genesis_port }}"
+
 
 ######################################################
 #  BIFROST ROLES DEFINITION 
@@ -94,8 +111,8 @@ b4_node_name: "{{ name | default(hostname) | default(inventory_hostname_short) |
 b4_node_bmc_driver: "{{ driver | default('redfish') }}"
 b4_node_bmc_info:   "{{ driver_info | default('') }}"
 b4_node_bmc_mac:    ""
-b4_node_bmc_ip: "{{ netaddress | default('genesis') }}"
-b4_node_bmc_gateway: ""
+b4_node_bmc_ip: ""
+b4_node_bmc_gateway: "" 
 b4_node_bmc_netmask: ""
 
 # 1.2.- OS
@@ -120,18 +137,11 @@ b4_root_user_password: ''
 
 # 3.- OS Installers URLs
 #------------------
-# 3.1.- Subpaths
-b4_http_genesis_address: "{{ genesis_address | default(b4_node_bmc_ip) }}"
-b4_http_full_subpath:    "{{ b4_node_os | lower }}{{ b4_node_os_version | lower}}"
-b4_http_short_subpath:   "{{ b4_node_os }}/{{ b4_node_os_version }}"
-
-# 3.2.- URLs
-b4_netinstall_url_protocol: "http"
-b4_netinstall_os_images_url: "{{ b4_netinstall_url_protocol }}://{{ b4_http_genesis_address }}/{{ b4_http_full_subpath }}"
-b4_netinstall_os_iso_url: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
-b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_url_protocol }}://{{ b4_http_genesis_address }}/{{ b4_http_short_subpath }}"
-b4_netinstall_os_manifesto_url: "{{ b4_netinstall_url_protocol }}://{{ b4_http_genesis_address }}/{{ b4_manifesto_subpath }}"
-
+b4_netinstall_base_url: "{{ b4_url_protocol }}://{{ b4_url_genesis_url }}"
+b4_netinstall_os_manifesto_url:    "{{ b4_netinstall_base_url }}/{{ b4_manifesto_subpath }}"
+b4_netinstall_os_images_url:       "{{ b4_netinstall_base_url }}/{{ b4_url_full_subpath }}"
+b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_url_short_subpath }}"
+b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
 
 #####################################################
 # OS_NATIVE: INSTALLERS TEMPLATES RENDERING

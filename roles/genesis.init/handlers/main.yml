@@ -1,0 +1,10 @@
+---
+# genesis.init handlers
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "Restart Web Server"
+  service:
+    name: nginx
+    state: restarted

@@ -12,16 +12,11 @@
     g3_image_os_distro:         "{{ g3_image.distribution | default('RedHat') }}"
     g3_image_os_distro_version: "{{ g3_image.distribution_version | default('8') }}"
 
-    # 2.- HTTP Paths particulars    
-    g3_distro_http_path: "{{ g3_http_path    | realpath }}/{{ g3_image_os_distro | lower }}" 
-    g3_distro_repo_path: "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}"
-    g3_manifesto_repo_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
-    g3_manifesto_http_path: "{{ g3_http_path }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
-    g3_mount_path:       "{{ g3_image.mount_path | default(g3_mount_repo_path) | default('/mnt') | realpath }}"
-    
+    # 2.- Mount Points
+    g3_mount_path: "{{ g3_image.mount_path | default(g3_mount_repo_path) | default('/mnt') | realpath }}"    
   loop:
-     #- "2_http/1_cloud_image.yml"   
-     #- "2_http/2_ipa.yml"       
-     - "2_http/3_expose.yml"
+     - "2_http/1_mount.yml"   
+     #- "2_http/2_cloud_image.yml"   
+     #- "2_http/3_ipa.yml"       
   loop_control:
     loop_var: "g3_http_setup"

@@ -41,10 +41,11 @@ genesis_default_os_image_name:
   img: "partition.img"
   raw: "wholedisk.raw" 
   iso:  "netboot.iso"
- 
+  
 ######################################################
-# G3 - PATHS
+# G3 - PARTICULARS
 ######################################################
+# 1.- Paths
 g3_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
 g3_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
 g3_repo_components_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['components'] | default('openstack') }}"
@@ -53,8 +54,29 @@ g3_repo_mount_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['repo'] | de
 g3_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
 g3_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g3_mount_repo_path: "{{ genesis_repo_mount_path | default(g3_repo_mount_path) | default('/mnt') | realpath }}"
+
+# 2.- URL
 g3_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
 
+# 3.- Users
+g3_webserver_user:  "{{ genesis_werserver_user | default('www-data') }}"
+g3_webserver_group: "{{ genesis_werserver_group | default('www-data') }}"
+g3_groups_webserver_group: "{{ ansible_user }},{{ g3_webserver_group }},adm,cdrom,sudo,dip,plugdev,lxd,ironic" 
+g3_iso_mount_properties: "loop,ro,uid={{ g3_webserver_user }},gid={{ g3_webserver_group }},mode=0755"
+
+# 4.- Webserver Update
+g3_setup_webserver:
+  - file: "/etc/nginx/conf.d/bifrost-httpboot.conf"
+    regexp: '^\s*disable_symlinks\s+'       # Busca la directiva si ya está escrita
+    line: '        disable_symlinks off;'   # Texto exacto que queremos asegurar
+    insertafter: 'server {'                 # Si no existía, la mete aquí debajo  
+  - file: "/etc/nginx/conf.d/bifrost-httpboot.conf"
+    regexp: '^\s*autoindex\s+'       # Busca la directiva si ya está escrita
+    line: '        autoindex on;'    # Texto exacto que queremos asegurar
+    insertafter: 'server {'          # Si no existía, la mete aquí debajo  
+  
+  
+ 
 ######################################################
 #  G3 - OS IMAGES RESPOSITORIES
 ######################################################

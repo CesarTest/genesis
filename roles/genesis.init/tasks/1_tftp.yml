@@ -22,11 +22,9 @@
     
     # 3.- Ramdisk Files
     g3_ramdisk_files: "{{ g3_extract_os_installer[g3_image_os_distro] | default([]) }}"   
-    g3_mount_path:    "{{ g3_image.mount_path | default(g3_mount_repo_path) | default('/mnt') | realpath }}"    
   
   loop:
      - "1_tftp/1_folder.yml"    
-     - "1_tftp/2_os_installer.yml"  
-     - "1_tftp/3_mount.yml"       
+     - "1_tftp/2_os_installer.yml"       
   loop_control:
     loop_var: "g3_tftp_setup"
