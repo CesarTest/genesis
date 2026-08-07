@@ -9,12 +9,23 @@
 #---------------------------------------
 # 1. Ownership of Folders to Expose (Web Server Owner = Ironic)
 #---------------------------------------  
+- name: "STEP 2.3 - HTTP: Grant Web Server Permission to Base Repo Path"
+  ansible.builtin.file:
+    path: "{{ http_exposure_subdir | realpath }}"
+    mode: 'o+x'
+  when: 
+    - (http_exposure_subdir | realpath) != '/'
+    - (http_exposure_subdir | realpath) != ''
+  loop: "{{ g3_base_list_subfolders | default([ g3_base_path ]) }}"
+  loop_control:
+    loop_var: "http_exposure_subdir"
+    
+
 - name: "STEP 2.3 - HTTP: Ownership Before exposure"
   ansible.builtin.file:
     path:  "{{ http_exposure.repo }}"
     owner: "{{ g3_webserver_user | default(omit) }}"
     group: "{{ g3_webserver_group | default(omit) }}"
-    mode: "o+x"
     recurse: true
   loop: "{{ g3_paths_to_expose | default([]) }}"
   loop_control:
