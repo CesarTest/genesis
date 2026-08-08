@@ -5,7 +5,6 @@
 # Date:   05/08/2026
 # Version: 1.0
 #############################################################################} 
-{{ b4_os_installer_bootloader_call }}
 {%- if j2_input is defined -%}
 {%-   if j2_input is not none -%}
 {%-      if j2_input is not string -%}
@@ -40,7 +39,7 @@ BEWARE: Capturing Dict Values with for loop
         { "header": "# Installation logging level",           "content": ks_logging  },
         { "header": "# Network information",                  "content": ks_network  },
         { "header": "# Partitions",                           "content": ks_storage  },				  
-        { "header": "%packages",                              "content": ks_packages },
+        { "header": "%packages", "end": "%end",               "content": ks_packages },
         { "header": "# PostInstall",                          "content": ks_postinstall }
       ]			  
 -%}
@@ -55,8 +54,8 @@ BEWARE: Capturing Dict Values with for loop
 {%-             if section.content is not none -%}
 {%-                if section.content is string -%}
 {%-                  if section.content|length > 0 -%}
-{{ section.header  | default('') }}{{eol}}
-{{ section.content | default('') }}{{eol}}
+{{ section.header  | default('') }}
+{{ section.content | default('') }}
 {{ section.end     | default(eol) }}
 {%-                  endif -%}
 {%-                endif -%}

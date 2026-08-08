@@ -26,7 +26,7 @@
     src:  "{{ g3_src_image }}"
     fstype: iso9660
     opts:  "{{ g3_iso_mount_properties | default(omit) }}"
-    state: "{{ g3_mount_state | default('present') }}"     
+    state: "{{ g3_mount_state          | default('present') }}"     
   loop:
     - unmounted
     - mounted

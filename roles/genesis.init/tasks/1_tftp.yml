@@ -18,8 +18,8 @@
     g3_deploy_image_default_name: "{{ g3_image.image | default('') | basename }}"
     g3_deploy_image_default_ext:  "{{ g3_deploy_image_default_name | ansible.builtin.splitext | last }}"
     g3_default_os_image_name:     "{{ genesis_default_os_image_name[g3_deploy_image_default_ext] |  default(g3_deploy_image_default_name) }}" 
-    g3_deploy_image_name: "{{ g3_image.os_image_name | default(g3_default_os_image_name) }}" 
-    
+    g3_deploy_image_name: "{{ g3_image.os_image_name | default(g3_default_os_image_name) }}"     
+       
     # 3.- Ramdisk Files
     g3_ramdisk_files: "{{ g3_extract_os_installer[g3_image_os_distro] | default([]) }}"   
   

@@ -65,6 +65,8 @@ g3_groups_webserver_group: "{{ ansible_user }},{{ g3_webserver_group }},adm,cdro
 g3_iso_mount_properties: "loop,ro,uid={{ g3_webserver_user }},gid={{ g3_webserver_group }},mode=0755"
 
 # 4.- Webserver Update
+g3_node_default_os: "{{ genesis_node_default_os | default('CentOS') }}"
+g3_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
 g3_setup_webserver:
   - file: "/etc/nginx/conf.d/bifrost-httpboot.conf"
     regexp: '^\s*disable_symlinks\s+'       # Busca la directiva si ya está escrita

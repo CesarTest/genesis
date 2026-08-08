@@ -68,10 +68,12 @@ genesis_os_definitions:
 ######################################################
 # 1.- Paths
 b4_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
-b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repos['os'] | default('os') }}"
-b4_manifesto_subpath: "{{ b4_repos['manifesto'] | default('manifesto') }}"
-b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_manifesto_subpath }}"
-b4_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b4_manifesto_subpath }}"
+b4_os_images_subpath: "{{ b4_repos['os'] | default('os') }}"
+b4_os_mounted_repo_subpath: "{{ b4_repos['repo'] | default('mnt') }}"
+b4_os_manifesto_subpath: "{{ b4_repos['manifesto'] | default('manifesto') }}"
+b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repo_os_images_subpath }}"
+b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_os_manifesto_subpath }}"
+b4_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b4_os_manifesto_subpath }}"
 
 # 2.- URLs
 b4_url_protocol: "http"
@@ -108,16 +110,16 @@ b4_enroll_roles:
 b4_node_name: "{{ name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
 
 # 1.2.- BMC
-b4_node_bmc_driver: "{{ driver | default('redfish') }}"
-b4_node_bmc_info:   "{{ driver_info | default('') }}"
-b4_node_bmc_mac:    ""
-b4_node_bmc_ip: ""
-b4_node_bmc_gateway: "" 
-b4_node_bmc_netmask: ""
+b4_node_bmc_driver:  "{{ driver | default('redfish') }}"
+b4_node_bmc_info:    "{{ driver_info | default('') }}"
+b4_node_bmc_mac:     "{{ nics[0]['mac'] | default('') }}" 
+b4_node_bmc_ip:      "{{ ipv4_address | default('') }}"
+b4_node_bmc_gateway: "{{ b4_url_genesis_gateway }}" 
+b4_node_bmc_netmask: "{{ ipv4_netmask| default('255.255.255.0') }}"
 
 # 1.2.- OS
-b4_node_default_os: "CentOS"
-b4_node_default_os_version: "9"
+b4_node_default_os: "{{ genesis_node_default_os | default('CentOS') }}"
+b4_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
 b4_node_default_os_arch: "x86_64"
 b4_node_default_os_profile: "none"
 b4_capture_node_os:   "{{ os.name | default(b4_node_default_os) | lower }}"
@@ -128,6 +130,7 @@ b4_node_os_arch:      "{{ os.arch    | default(b4_node_default_os_arch) }}"
 b4_node_os_profile:   "{{ os.profile | default(b4_node_default_os_profile) }}"
 b4_node_os_installer: "{{ b4_node_os_definitions['installer'] | default('anaconda') | lower}}"
 b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] }}{{ b4_node_name }}{{ b4_node_os_definitions['ext'] }}"
+b4_node_os_iso_file: "{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
 
 # 2.- Users 
 #------------------
@@ -138,10 +141,10 @@ b4_root_user_password: ''
 # 3.- OS Installers URLs
 #------------------
 b4_netinstall_base_url: "{{ b4_url_protocol }}://{{ b4_url_genesis_url }}"
-b4_netinstall_os_manifesto_url:    "{{ b4_netinstall_base_url }}/{{ b4_manifesto_subpath }}"
-b4_netinstall_os_images_url:       "{{ b4_netinstall_base_url }}/{{ b4_url_full_subpath }}"
-b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_url_short_subpath }}"
-b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
+b4_netinstall_os_manifesto_url:    "{{ b4_netinstall_base_url }}/{{ b4_os_manifesto_subpath }}"
+b4_netinstall_os_images_url:       "{{ b4_netinstall_base_url }}/{{ b4_os_images_subpath }}/{{ b4_url_full_subpath }}"
+b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_os_mounted_repo_subpath }}/{{ b4_url_full_subpath }}"
+b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_iso_file }}"
 
 #####################################################
 # OS_NATIVE: INSTALLERS TEMPLATES RENDERING
@@ -155,6 +158,9 @@ b4_kickstart_template_defaults:
   system: |
     # Use NFS installation media
     url --url {{ b4_netinstall_os_mounted_repo_url }}    
+    
+    # Root password 
+    rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly
     
     #system Language
     lang en_GB
@@ -202,7 +208,7 @@ b4_kickstart_template_defaults:
     
     #Partitions
     part / --fstype=ext4 --size=17408
-    part pv.lab-okd-worker3-0001 --grow --size=1
+    part pv.{{ b4_node_name }} --grow --size=1
     volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}
     logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
     logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
@@ -221,8 +227,8 @@ b4_kickstart_template_profiles:
       
       #Partitions
       part / --fstype=ext4 --size=17408
-      part pv.lab-okd-worker3-0001 --grow --size=1
-      volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}
+      part pv.lab-{{ b4_node_name }}-0001 --grow --size=1
+      volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}-0001
       logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
       logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288     
 

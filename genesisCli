@@ -168,6 +168,7 @@ function defineMenu() {
                                  )
               RETURNING_MENU="0"
               RUN_ACTION="1"
+			  EXTRA_VARS="genesis_stage='G1'"
               unset RUN_BACKGROUND LOG_FILE
               ;;
 
@@ -199,6 +200,7 @@ function defineMenu() {
 			                     )
              RETURNING_MENU="0"
              RUN_ACTION="2"
+			 EXTRA_VARS="genesis_stage='G2'"
              unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND LOG_FILE
              ;;
 
@@ -213,6 +215,7 @@ function defineMenu() {
                                 )
              RETURNING_MENU="0"
              RUN_ACTION="3"
+			 EXTRA_VARS="genesis_stage='G3'"
              unset RUN_BACKGROUND LOG_FILE
 		     ;;
 
@@ -229,6 +232,7 @@ function defineMenu() {
              MENU_SKIP_PATHS="1"
 			 RETURNING_MENU="0"
              RUN_ACTION="4"
+			 EXTRA_VARS="genesis_stage='B4'"
              unset IRONIC_BAREMETAL_NODES LOG_FILE
 		     ;;
 
@@ -243,6 +247,7 @@ function defineMenu() {
                                     )
              RETURNING_MENU="0"
              RUN_ACTION="5"
+			 EXTRA_VARS="genesis_stage='B5'"
              unset TARGET LOG_FILE
 	         ;;
 
@@ -270,6 +275,7 @@ function defineMenu() {
                              )
               RETURNING_MENU="0"
               RUN_ACTION="7"
+			  EXTRA_VARS="genesis_stage='B6'"
               unset INVENTORY TARGET LOG_FILE
 		  ;;
 
@@ -749,8 +755,8 @@ prepareImageCreation() {
    
    local USER=$(whoami)
    local REPO_FOLDER=$(ls -d ${GENESIS_WORKING_PATH}/repo/* | grep -v mnt)
-   echo "${LOG_HEADER} -> sudo chown -R $USER:ironic ${REPO_FOLDER[@]}"
-   sudo chown -R $USER:ironic ${REPO_FOLDER[@]}
+   #echo "${LOG_HEADER} -> sudo chown -R $USER:ironic ${REPO_FOLDER[@]}"
+   #sudo chown -R $USER:ironic ${REPO_FOLDER[@]}
 }
 
 #===================================================
@@ -2079,12 +2085,11 @@ function 1_refresh() {
    # 2.- Call
    if [ ! -n "${ONLINE}" ] ; then
       #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}" 
-      local EXTRA_VARS="genesis_stage='G1'"	  
       0_call "${REFRESH}" 
    fi  
    
    # 3.- Clean environment
-   unset PXE_DHCP_IP PXE_DHCP_NIC CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
+   unset PXE_DHCP_IP PXE_DHCP_NIC CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
    echo -e '......................................................................................................'
    echo -e "   BEWARE !!!! ====> Don't forget DEPLOY (option 2) and SETUP (option 4) iDAS"
    echo -e '......................................................................................................'
@@ -2101,7 +2106,6 @@ function 2_create() {
    #--------------------
    #  LOCAL ENVIRONMENT
    #--------------------
-   local EXTRA_VARS="genesis_stage='G2'"
    local FLUSH_CACHE="yes"
    if [ -n "${network_interface}" ] ; then PXE[${DHCP_NIC}]="${network_interface}"      ; fi
    if [ -n "${dhcp_address}" ] ; then PXE[${DHCP_IP}]=$( echo "$dhcp_address" | tr -d \/  |  tr '\' '/' )    ; fi
@@ -2121,7 +2125,7 @@ function 2_create() {
    0_call "${CREATE}"
       
    # 3.- Clean Environemnt
-   unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO
+   unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
    
    echo -e '......................................................................................................'
    echo -e "   BEWARE !!!! ====> Don't forget SETUP (option 4) iDAS"
@@ -2137,10 +2141,9 @@ function 2_create() {
 #========================================================
 function 3_init() {
 
-   local EXTRA_VARS="genesis_stage='G3'"   
    prepareImageCreation
    0_call "${INIT}" 
-   unset LOG_FILE 
+   unset LOG_FILE  EXTRA_VARS
 }
 
 #========================================================
@@ -2150,10 +2153,9 @@ function 3_init() {
 #========================================================
 function 4_setup() {
    updateInventory
-   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"
-   local EXTRA_VARS="genesis_stage='B4'"   
+   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
    0_call "${SETUP}" 
-   unset IRONIC_BAREMETAL_NODES LOG_FILE
+   unset IRONIC_BAREMETAL_NODES LOG_FILE EXTRA_VARS
 }
 
 #========================================================
@@ -2162,10 +2164,9 @@ function 4_setup() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 5_deploy() {
-   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"  
-   local EXTRA_VARS="genesis_stage='B5'"      
+   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"      
    0_call "${DEPLOY}" 
-   unset TARGET LOG_FILE
+   unset TARGET LOG_FILE EXTRA_VARS
 }
 
 
@@ -2189,9 +2190,9 @@ function 6_ansible() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 7_provision() {
-   local EXTRA_VARS="genesis_stage='B6'"      
+         
    0_call "${PROVISION}" 
-   unset TARGET LOG_FILE
+   unset TARGET LOG_FILE EXTRA_VARS
 }
 
 #========================================================

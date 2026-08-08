@@ -9,7 +9,7 @@
 #---------------------------------------
 # 1. Build OS Image
 #---------------------------------------   
-- name: "STEP 2 - Build OS Bootable Images from local repository"
+- name: "STEP 2.2 - Build OS Bootable Images from local repository"
   ansible.builtin.include_role:
      name: "{{ genesis_bifrost_ironic_init }}"
   vars:
@@ -40,7 +40,7 @@
 #---------------------------------------
 # 1. Build Kernel & RamDisk
 #---------------------------------------   
-- name: "STEP 2 - Build RamDisk of Images from local repository"
+- name: "STEP 2.2 - Build RamDisk of Images from local repository"
   ansible.builtin.include_role:
      name: "{{ genesis_bifrost_ironic_init }}"
   vars:
