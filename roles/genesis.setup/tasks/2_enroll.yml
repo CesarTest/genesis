@@ -6,3 +6,11 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
+
+- name: "B4 - SETUP: Enroll Current Node into Ironic"
+  ansible.builtin.include_tasks: "{{ b4_enroll | default ('2_enroll/1_clear_ironic.yml') }}" 
+  loop:
+     - "2_enroll/1_clear_ironic.yml"    
+     - "2_enroll/2_enroll.yml"            
+  loop_control:
+    loop_var: "b4_enroll"

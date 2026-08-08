@@ -10,10 +10,10 @@
 # 1. Enroll Baremeral Nodes
 #---------------------------------------   
 - ansible.builtin.include_role: 
-    name: "{{ genesis_baremetal_enroll.name }}"
+    name: "{{ b4_enroll.name }}"
   when: 
-    - genesis_baremetal_enroll.name is defined
-    - genesis_baremetal_enroll.condition | default(true) | bool 
-  loop: "{{ genesis_baremetal_enroll_roles | default([]) }}"
+    - b4_enroll.name is defined
+    - b4_enroll.condition | default(true) | bool 
+  loop: "{{ b4_enroll_roles | default([]) }}"
   loop_control:
-    loop_var: "genesis_baremetal_enroll"  
+    loop_var: "b4_enroll"  
