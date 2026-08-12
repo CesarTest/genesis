@@ -85,6 +85,8 @@ b4_url_genesis_netmask: "{{ dhcp_address | ansible.utils.ipaddr('netmask') | def
 b4_genesis_port:
   http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
   https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
+  oci:   "{{ genesis_https_oci  | default(registry_port)     | default('5500') }}"
+
 b4_url_genesis_port: "{{ b4_genesis_port[b4_url_protocol] is defined | ternary (':','','') }}{{ b4_genesis_port[b4_url_protocol] | default('') }}"
 b4_url_genesis_url: "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_genesis_port }}"
 
@@ -155,13 +157,59 @@ b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node
 # 1.- Kickstart
 #------------------------------------
 b4_kickstart_template_defaults:
-  system: |
+  preinstall: |
     # Use NFS installation media
-    url --url {{ b4_netinstall_os_mounted_repo_url }}    
+    url --url {{ b4_netinstall_os_mounted_repo_url }} 
+  postinstall: |
+    # 1. DETECCIÓN INTELIGENTE: ¿Es una Máquina Virtual?
+    # Buscamos fabricantes comunes de VMs (QEMU, VMware, VirtualBox, KVM, Xen)
+    IS_VM=0
+    if command -v dmidecode &>/dev/null; then
+        SYS_VENDOR=$(dmidecode -s system-manufacturer 2>/dev/null | tr '[:upper:]' '[:lower:]')
+        if [[ "$SYS_VENDOR" =~ (qemu|kvm|vmware|virtualbox|xen|innotek|bochs) ]]; then
+            IS_VM=1
+        fi
+    fi
     
-    # Root password 
-    rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly
+    # 2. EJECUCIÓN CONDICIONAL
+    if [ "$IS_VM" -eq 1 ]; then
+        echo "[INFO] Entorno virtual detectado ($SYS_VENDOR). Omitiendo ipmitool para evitar errores." >> /root/ks-post-ipmi.log
+    else
+        echo "[INFO] Hardware físico detectado. Iniciando configuración IPMI..." >> /root/ks-post-ipmi.log
     
+        # Asegurar módulos del Kernel (Requerido en RHEL modernos)
+        modprobe ipmi_msghandler 2>/dev/null
+        modprobe ipmi_si 2>/dev/null
+        modprobe ipmi_devintf 2>/dev/null
+        
+        # Asegurar el nodo del dispositivo dentro del chroot de Anaconda
+        if [ ! -c /dev/ipmi0 ]; then
+            mknod /dev/ipmi0 c 242 0 2>/dev/null || mknod /dev/ipmi0 c 243 0
+        fi
+        
+        # Doble validación: Si el nodo /dev/ipmi0 no existe tras el mknod, el hardware no tiene BMC real
+        if [ ! -c /dev/ipmi0 ]; then
+            echo "[ERROR] El dispositivo /dev/ipmi0 no pudo ser creado o el hardware no soporta IPMI." >> /root/ks-post-ipmi.log
+        else
+            # INTENTO 1: Servidores modernos UEFI (RHEL 8 y 9)
+            echo "Intentando configurar orden persistente con UEFI..." >> /root/ks-post-ipmi.log
+            ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log
+            
+            # INTENTO 2: Servidores modernos con Legacy BIOS (RHEL 8 y 9)
+            if [ $? -ne 0 ]; then
+                echo "Fallo UEFI. Intentando persistent estándar..." >> /root/ks-post-ipmi.log
+                ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log
+            fi
+            
+            # INTENTO 3: Servidores antiguos o BMCs obsoletos (RHEL 6 y 7)
+            if [ $? -ne 0 ]; then
+                echo "Fallo 'options='. Intentando comando ipmitool clásico..." >> /root/ks-post-ipmi.log
+                ipmitool chassis bootdev disk 2>>/root/ks-post-ipmi.log
+            fi
+        fi
+    fi
+
+  system: |       
     #system Language
     lang en_GB
            
@@ -185,6 +233,9 @@ b4_kickstart_template_defaults:
     
     # Install OS instead of upgrade
     install
+  user: |
+    # Root password 
+    rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly  
   logging: |
     # Reboot after installation
     reboot
@@ -196,6 +247,9 @@ b4_kickstart_template_defaults:
   packages: |
     @ base
     @ core
+    ipmitool
+    OpenIPMI
+    coreutils
   storage: |
     # Clear the Master Boot Record
     zerombr
@@ -208,9 +262,9 @@ b4_kickstart_template_defaults:
     
     #Partitions
     part / --fstype=ext4 --size=17408
-    part pv.{{ b4_node_name }} --grow --size=1
-    volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}
-    logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
+    part pv.{{ b4_node_name }}-0001 --grow --size=1
+    volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}-0001
+    logvol /home --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
     logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
 
 b4_kickstart_template_profiles:

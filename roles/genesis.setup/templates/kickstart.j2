@@ -21,6 +21,7 @@ BEWARE: Capturing Dict Values with for loop
 {%-  set eol = "\n" -%}
 {#......... 1.- Node Data Model ..... #}
 {%-  set ks_model    = j2_os_profile | default('none') -%}
+{%-  set ks_system   = j2_profiles[ks_model]['preinstall']  | default(j2_input['preinstall'])  | default('') -%}
 {%-  set ks_system   = j2_profiles[ks_model]['system']  | default(j2_input['system'])  | default('') -%}
 {%-  set ks_user     = j2_profiles[ks_model]['user']    | default(j2_input['user'])    | default('') -%}
 {%-  set ks_ssh      = j2_profiles[ks_model]['ssh']     | default(j2_input['ssh'])     | default('') -%}
@@ -32,15 +33,16 @@ BEWARE: Capturing Dict Values with for loop
 {%-  set ks_postinstall = j2_profiles[ks_model]['postinstall'] | default(j2_input['postinstall']) | default('') -%}
 {#......... 2.- Kickstart Sections Definition ..... #}
 {%-  set ks_sections = [  
+        { "header": "# Installer",                            "content": ks_preinstall },
+        { "header": "# Users",                                "content": ks_user     },
         { "header": "# SYSTEM",                               "content": ks_system   },
-        { "header": "# Root password",                        "content": ks_user     },
         { "header": "# Do not configure the X Window System", "content": ks_gui      },				  
         { "header": "# SSH Keys",                             "content": ks_ssh      },	
         { "header": "# Installation logging level",           "content": ks_logging  },
         { "header": "# Network information",                  "content": ks_network  },
         { "header": "# Partitions",                           "content": ks_storage  },				  
         { "header": "%packages", "end": "%end",               "content": ks_packages },
-        { "header": "# PostInstall",                          "content": ks_postinstall }
+        { "header": "%post --log=/root/ks-post-ipmi.log", "end":"%end" "content": ks_postinstall }
       ]			  
 -%}
 {###############################

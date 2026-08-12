@@ -8,7 +8,7 @@
 #
 
 - name: "B4 - SETUP: Enroll Current Node into Ironic"
-  ansible.builtin.include_tasks: "{{ b4_enroll | default ('2_enroll/1_clear_ironic.yml') }}" 
+  ansible.builtin.include_tasks: "{{ b4_enroll | default('2_enroll/1_clear_ironic.yml') }}" 
   loop:
      - "2_enroll/1_clear_ironic.yml"    
      - "2_enroll/2_enroll.yml"            

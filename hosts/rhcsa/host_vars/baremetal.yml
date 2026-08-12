@@ -1,71 +1,76 @@
 ---
 #--------------------------
-# OCI: QCOW Images with baked-in Cloud-Init Install Manifesto
+# OS NATIVE
 #--------------------------
 servera199:
-   uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
-   driver_info:
-     redfish_verify_ca: false
-     redfish_username: "root@pam"
-     redfish_address: "https://10.10.41.1:8000"
-     redfish_password: "cesardgm"
-     redfish_system_id: "/redfish/v1/Systems/102"
-   nics:
-     -
-       mac: "BC:24:11:28:C3:E2"
-     #-
-     #  mac: "BC:24:11:7A:BD:68"
-   instance_info:
-     boot_mode: uefi
-     sercure_boot: false   
-     image_source: "oci://10.10.41.5:5500/bifrost/images:centos-9.qcow2-1783669028"
-   driver: "redfish"
-   ipv4_address: "10.10.10.150"
-   properties:
-     cpu_arch: "x86_64"
-     ram: "4096"
-     disk_size: "32"
-     cpus: "4"
-     capabilities: "boot_mode:uefi,secure_boot:false"
-   name: "servera199"
+
+   enroll:
+      name: "servera199"
+      uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
+      properties:
+        boot_mode: "uefi" 
+        secure_boot: false
+        cpu_arch: "x86_64"
+        ram: "4096"
+        disk_size: "32"
+        cpus: "4"  
+      nics:
+        - mac: "BC:24:11:28:C3:E2"
+          ipv4: "192.168.1.510" 
+          network_interface: "noop"
+          pxe: yes
+        - mac: "BC:24:11:7A:BD:68"
+          ipv4: "10.10.10.150"
+          network_interface: "noop"          
+      driver: "redfish"
+      driver_info:
+        redfish_node_id: "102"
+        redfish_username: "root@pam"
+        redfish_password: "cesardgm"
+        redfish_verify_ca: false
+
+   deploy:   
+      boot_interface:   "ipxe"
+      deploy_interface: "ramdisk"
+      os:
+        name: "CentOS"
+        version: "9"   
+     
+     
+
 
 #--------------------------
 # OCI: ISO Images with external Install Manifesto (kickstart, ignition)
 #--------------------------
-serverb199:
-   uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
-   driver_info:
-     redfish_verify_ca: false
-     redfish_username: "root@pam"
-     redfish_address: "https://10.10.41.1:8000"
-     redfish_password: "cesardgm"
-     redfish_system_id: "/redfish/v1/Systems/103"
-   nics:
-     -
-       mac: "BC:24:11:70:D8:B0"
-     #-
-     #  mac: "BC:24:11:E5:66:0C"
-   instance_info:
-     boot_mode: uefi
-     sercure_boot: false
-     image_source: "http://10.10.41.5:8080/centos-9.qcow2"
-     image_os_hash_value: "7a282d59866229cd3b21ced9d4df6f81bc83b8fc76700c220a53168d13f87d70"
-     image_os_hash_algo: "sha256"
-     configdrive: 
-        meta_data: 
-          public_keys: 
-            "0": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
-          hostname: "serverb199.maas.lab"
-          
-   driver: "redfish"
-   ipv4_address: "10.10.10.151"
-   properties:
-     cpu_arch: "x86_64"
-     ram: "4096"
-     disk_size: "32"
-     cpus: "4"
-     capabilities: "boot_mode:uefi,secure_boot:false"
-   name: "serverb199"
+#serverb199:
+#   uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
+#   driver: "redfish"
+#   driver_info:
+#     redfish_verify_ca: false
+#     redfish_username: "root@pam"
+#     redfish_address: "https://10.10.41.1:8000"
+#     redfish_password: "cesardgm"
+#     redfish_system_id: "/redfish/v1/Systems/103"
+#   properties:
+#     boot_mode: "uefi" 
+#     secure_boot: false
+#     cpu_arch: "x86_64"
+#     ram: "4096"
+#     disk_size: "32"
+#     cpus: "4"     
+#   nics:
+#     -
+#       mac: "BC:24:11:70:D8:B0"
+#     -
+#       mac: "BC:24:11:E5:66:0C"
+#   ipv4_address: "10.10.10.151"  
+#   instance_info:
+#     boot_interface:   "ipxe"
+#     deploy_interface: "ramdisk"
+#     os:
+#       name: "Ubuntu"
+#       version: "24.04"
+#
 
 #--------------------------
 # HTTP: QCOW Images with baked-in Cloud-Init Install Manifesto

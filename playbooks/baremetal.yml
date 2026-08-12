@@ -27,11 +27,7 @@
     genesis_default_inventory_source: "{{ genesis_hosts_path | realpath }}/tests/host_vars/baremetal.yml"
     genesis_baremetal_vars: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or genesis_default_inventory_source }}"
     ironic_http_path:   "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
-    
-  vars_files:
-    - "{{ genesis_target_vars      | default('') }}"
-    - "{{ genesis_baremetal_vars   | default('') }}"
-    
+        
   roles:
   
     # -----> B4 - SETUP

@@ -2153,7 +2153,7 @@ function 3_init() {
 #========================================================
 function 4_setup() {
    updateInventory
-   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
+   #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
    0_call "${SETUP}" 
    unset IRONIC_BAREMETAL_NODES LOG_FILE EXTRA_VARS
 }
@@ -2164,7 +2164,7 @@ function 4_setup() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 5_deploy() {
-   local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"      
+   #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"      
    0_call "${DEPLOY}" 
    unset TARGET LOG_FILE EXTRA_VARS
 }

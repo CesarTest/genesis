@@ -1,0 +1,54 @@
+---
+# lifecycle.ymnl
+#
+#   - Lifecycle Stages Definition
+#     - Enroll
+#     - Inspect
+#     - Clean
+#     - Deploy
+#     - Mantainace
+#     - Retire
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+#-----------------
+# 1.- Enroll Stage
+#-----------------
+enroll:
+
+   # 1.1.- Chassis Information
+   name: "servera199"
+   uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
+   properties:
+     boot_mode: "uefi" 
+     secure_boot: false
+     cpu_arch: "x86_64"
+     ram: "4096"
+     disk_size: "32"
+     cpus: "4"  
+
+   # 1.2.- Network Devices Description    
+   nics:
+     - mac: "BC:24:11:28:C3:E2"
+       ipv4: "192.168.1.150" 
+       network_interface: "noop" # No-Operation = No network Setup
+       pxe: yes
+     - mac: "BC:24:11:7A:BD:68"
+       ipv4: "10.10.10.150"
+       network_interface: "noop" # No-Operation = No network Setup
+
+   # 1.3.- Out-of-Band BMC Information       
+   driver: "redfish"
+   driver_info:
+     redfish_node_id: "102"
+
+#-----------------
+# 2.- Deploy Stage
+#-----------------
+deploy:   
+   boot_interface:   "ipxe"
+   deploy_interface: "ramdisk"
+   os:
+     name: "CentOS"
+     version: "9"

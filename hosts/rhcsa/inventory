@@ -4,6 +4,15 @@ all:
  #--------------------------------------------------------------------
  #  HOST_VARS: HARDWARE PROFILE DECLARED IN IRONIC API FORMAT
  #--------------------------------------------------------------------
+ vars:
+   bifrost_static_dhcp: true
+   inventory_dhcp: true
+   inventory_dhcp_static_ip: true
+   bmc_credentials: 
+     redfish_username: "root@pam"
+     redfish_password: "cesardgm"
+     redfish_verify_ca: false
+    
  hosts:  
    servera199.maas.lab:
      ansible_user: cesar 
@@ -21,13 +30,8 @@ all:
  #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
  #--------------------------------------------------------------------
  children:
-   repository:
+   baremetal:
      hosts:
-       workstation199.maas.lab 
-   servers:
-     hosts:
-       servera199.maas.lab 	   
-       serverb199.maas.lab
-   documents:
-     hosts:
-       training.maas.lab
+       servera199.maas.lab:        
+       serverb199.maas.lab: 
+       workstation199.maas.lab:
