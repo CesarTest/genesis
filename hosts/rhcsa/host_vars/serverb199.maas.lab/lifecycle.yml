@@ -1,13 +1,14 @@
 ---
 # lifecycle.ymnl
 #
-#   - Lifecycle Stages Definition
-#     - Enroll
-#     - Inspect
-#     - Clean
-#     - Deploy
-#     - Mantainace
-#     - Retire
+#   - Lifecycle Stages Definition - Overwrite default values
+#     - Enroll  - BMC Properties
+#     - Manage  - HW Propierties for Validation
+#     - Inspect - Steps
+#     - Clean   - Steps
+#     - Deploy  - PXE Particulars
+#     - Active  - hearbeat + Tenant networks
+#     - Delete  - Steps
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -22,12 +23,13 @@ enroll:
    name: "serverb199"
    uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
    properties:
-     boot_mode: "uefi" 
-     secure_boot: false
      cpu_arch: "x86_64"
      ram: "4096"
      disk_size: "32"
      cpus: "4"  
+   capabilities: 
+     boot_mode: "uefi" 
+     secure_boot: false
 
    # 1.2.- Network Devices Description    
    nics:
@@ -45,11 +47,91 @@ enroll:
      redfish_node_id: "103"
 
 #-----------------
-# 2.- Deploy Stage
+# 2.- Manage Stage
 #-----------------
-deploy:   
+manage:
+   validation:
+     power_interface: "redfish"
+     management_interface: "redfish"
+     concurrency_timeout: 300
+
+#-----------------
+# 3.- Inspect Stage
+#-----------------
+inspect:
+   # Define inspection strategy and dynamic capability mapping
+   inspect_interface: "redfish" # OOB Inspection preferred over IPA for core telemetry
+   processing_hooks:
+     - "ramdisk_error"
+     - "root_disk_selection"
+     - "lldp_basic"
+   auto_traits_assignment: true
+
+
+#-----------------
+# 4.- Clean Stage
+#-----------------
+clean:
+   # Automated safety steps triggered between multi-tenant deployments
+   automated_clean: true
+   steps:
+     - interface: "deploy"
+       step: "erase_devices_metadata"
+       priority: 10
+     - interface: "bios"
+       step: "factory_reset"
+       priority: 0 # Disabled by default, triggered only during manual maintenance
+
+#-----------------
+# 6.- Deploy Stage
+#-----------------
+deploy: 
+
+   # 2.1.- PXE Setup  
    boot_interface:   "ipxe"
    deploy_interface: "ramdisk"
+   
+  # 2.2.- Operating System Description
    os:
-     name: "CentOS"
-     version: "9"
+     name: "CoreOS"
+     version: "44"
+     manifesto:
+       native: 
+         profile: "default"
+       cloud-init:
+         profile: "default"
+   
+  # 2.3.- Network Configuration
+   network_setup:
+     interface_to_bind: "BC:24:11:70:D8:B0"
+     provisioning_ipv4: "192.168.1.151"      # IP temporal de instalación
+     provisioning_vlan: 100                 # VLAN aislada de despliegue
+     gateway: "192.168.1.1"
+
+
+#-----------------
+# 5.- Active Stage
+#-----------------
+active:
+   runtime:
+     agent_heartbeat_timeout: 300
+     tenant_network_interface: "flat" # Conmutes from provisioning network to isolated tenant space
+     monitoring_enabled: true
+
+   tenant_network:
+     production_ipv4: "10.10.10.151"       # IP definitiva del cliente
+     production_vlan: 200                   # VLAN de producción del cliente
+     netmask: "255.255.255.0"
+     gateway: "10.10.10.1"
+     dns_servers:
+       - "1.1.1.1"
+   
+#-----------------
+# 7.- Delete Stage
+#-----------------
+delete:
+   # Safe de-provisioning flow and reverse deployment parameters
+   steps:
+     network_teardown: "immediate"
+     power_off_policy: "soft" # Attempts ACPI shutdown first, falls back to hard power off via BMC
+     power_state_change_timeout: 60

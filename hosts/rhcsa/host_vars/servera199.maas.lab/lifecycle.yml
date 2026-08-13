@@ -1,13 +1,14 @@
 ---
 # lifecycle.ymnl
 #
-#   - Lifecycle Stages Definition
-#     - Enroll
-#     - Inspect
-#     - Clean
-#     - Deploy
-#     - Mantainace
-#     - Retire
+#   - Lifecycle Stages Definition - Overwrite default values
+#     - Enroll  - BMC Properties
+#     - Manage  - HW Propierties for Validation
+#     - Inspect - Steps
+#     - Clean   - Steps
+#     - Deploy  - PXE Particulars
+#     - Active  - hearbeat + Tenant networks
+#     - Delete  - Steps
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -21,21 +22,22 @@ enroll:
    name: "servera199"
    uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
    properties:
-     boot_mode: "uefi" 
-     secure_boot: false
      cpu_arch: "x86_64"
      ram: "4096"
      disk_size: "32"
      cpus: "4"  
+   capabilities: 
+     boot_mode: "uefi" 
+     secure_boot: false
 
    # 1.2.- Network Devices Description    
    nics:
      - mac: "BC:24:11:28:C3:E2"
-       ipv4: "192.168.1.150" 
+       ipv4: "10.10.41.150" 
        network_interface: "noop" # No-Operation = No network Setup
        pxe: yes
      - mac: "BC:24:11:7A:BD:68"
-       ipv4: "10.10.10.150"
+       ipv4: "10.10.51.150"
        network_interface: "noop" # No-Operation = No network Setup
 
    # 1.3.- Out-of-Band BMC Information       
