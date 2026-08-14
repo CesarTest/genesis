@@ -75,21 +75,6 @@ b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repo_os_images_subpat
 b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_os_manifesto_subpath }}"
 b4_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b4_os_manifesto_subpath }}"
 
-# 2.- URLs
-b4_url_protocol: "http"
-b4_url_short_subpath:  "{{ b4_node_os | lower }}{{ b4_node_os_version | lower}}"
-b4_url_full_subpath:   "{{ b4_node_os }}/{{ b4_node_os_version }}"
-b4_url_genesis_ip: "{{ dhcp_address | ansible.utils.ipaddr('address') | default('') }}"
-b4_url_genesis_gateway: "{{ dhcp_address | ansible.utils.ipaddr('last_usable') | default('') }}" 
-b4_url_genesis_netmask: "{{ dhcp_address | ansible.utils.ipaddr('netmask') | default('255.255.255.0') }}"
-b4_genesis_port:
-  http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
-  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
-  oci:   "{{ genesis_https_oci  | default(registry_port)     | default('5500') }}"
-
-b4_url_genesis_port: "{{ b4_genesis_port[b4_url_protocol] is defined | ternary (':','','') }}{{ b4_genesis_port[b4_url_protocol] | default('') }}"
-b4_url_genesis_url: "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_genesis_port }}"
-
 
 ######################################################
 #  BIFROST ROLES DEFINITION 
@@ -103,44 +88,118 @@ b4_enroll_roles:
      condition: "{{ inspect_nodes | default('false') | bool }}" 
 
 ######################################################
-# NODE PARTICULARS
+# ENROLL PARTICULARS
 ######################################################
 
-# 1.- Node Details
 #------------------
-# 1.1.- Properties
-b4_node_name: "{{ name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
+# 1.- Nics Details
+#------------------
+b4_enroll_nics:            "{{ enroll['nics'] | default({}) }}"
+b4_enroll_nic_bmc:         "{{ b4_enroll_nics['outband'][0] | default({}) }}"
+b4_enroll_nic_bmc_mac:     "{{ b4_enroll_nic_bmc['mac'] | default('') }}"
+b4_enroll_nic_bmc_ip:      "{{ b4_enroll_nic_bmc['ipv4'] | default('127.0.0.1/24')  }}"
+b4_enroll_nic_bmc_ipv4:    "{{ b4_enroll_nic_bmc_ip | ansible.utils.ipaddr('address') }}"
+b4_enroll_nic_bmc_netmask: "{{ b4_enroll_nic_bmc_ip | ansible.utils.ipaddr('netmask') }}"
+b4_enroll_nic_bmc_prefix:  "{{ b4_enroll_nic_bmc_ip  | ansible.utils.ipaddr('prefix') }}"
+b4_enroll_nic_bmc_default_gateway: "{{ b4_enroll_nic_bmc_ip | ansible.utils.ipaddr('last_usable') }}"
+b4_enroll_nic_bmc_gateway: "{{ b4_enroll_nic_bmc['gateway'] | default(b4_enroll_nic_bmc_default_gateway) }}"
+b4_enroll_node_nics: "{{ (b4_enroll_nics.values() | flatten | json_query('[*].{mac: mac}')) | default([]) }}"
 
-# 1.2.- BMC
-b4_node_bmc_driver:  "{{ driver | default('redfish') }}"
-b4_node_bmc_info:    "{{ driver_info | default('') }}"
-b4_node_bmc_mac:     "{{ nics[0]['mac'] | default('') }}" 
-b4_node_bmc_ip:      "{{ ipv4_address | default('') }}"
-b4_node_bmc_gateway: "{{ b4_url_genesis_gateway }}" 
-b4_node_bmc_netmask: "{{ ipv4_netmask| default('255.255.255.0') }}"
 
-# 1.2.- OS
+#------------------
+# 2.- Out-Of-Band BMC Details (node -> inventory -> defaults)
+#------------------
+b4_enroll_node_name: "{{ enroll.name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
+b4_enroll_node_uuid: "{{ enroll.uuid | default('') }}" 
+b4_enroll_node_bmc_driver: "{{ enroll.driver | default('redfish') }}" 
+
+#------------------
+# 3.- Out-Of-Band BMC Credentials (node -> inventory -> defaults)
+#------------------
+b4_enroll_default_bmc_credentials:
+   redfish:
+     ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}/{{ b4_enroll_nic_bmc_prefix }}"  
+     username: "root"
+     password: "calvin"
+     verify_ca: false 
+   ipmi:
+     ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}/{{ b4_enroll_nic_bmc_prefix }}"  
+     username: "root"
+     password: "calvin"
+     verify_ca: false   
+b4_enroll_genesis_bmc_credentials: "{{ genesis_bmc_credentials[b4_enroll_node_bmc_driver] | default(b4_enroll_default_bmc_credentials) }}"
+b4_enroll_node_bmc_credentials: "{{ enroll.bmc_credentials[b4_enroll_node_bmc_driver] | default(b4_enroll_genesis_bmc_credentials) }}"
+b4_enroll_default_node_id: "{{ enroll.driver_info['node_id'] | default(b4_enroll_node_bmc_credentials['node_id']) | default(b4_enroll_genesis_bmc_credentials['node_id']) | default('') }}"
+
+#------------------
+# 4.- Out-Of-Band BMC URLs (node -> inventory -> defaults)
+#------------------
+b4_enroll_node_bmc_protocol: "{{ b4_enroll_node_bmc_credentials['protocol'] | default(b4_enroll_genesis_bmc_credentials['protocol']) | default('https') }}"
+b4_enroll_node_bmc_ipv4: "{{ b4_enroll_node_bmc_credentials['ipv4'] | default(b4_enroll_genesis_bmc_credentials['ipv4']) | default(b4_enroll_nic_bmc_ipv4) | ansible.utils.ipaddr('address') }}"
+b4_enroll_node_bmc_port: "{{ b4_enroll_node_bmc_credentials['port'] | default(b4_enroll_genesis_bmc_credentials['port']) | default(none) }}"
+b4_enroll_node_bmc_url: "{{b4_enroll_node_bmc_protocol }}://{{ b4_enroll_node_bmc_ipv4 }}{{  b4_enroll_node_bmc_port is not none | ternary(':'+b4_enroll_node_bmc_port,'','') }}"
+b4_enroll_default_system_id: "/redfish/v1/Systems/{{ b4_enroll_default_node_id | default('') }}"
+
+#------------------
+# 5.- End Data Model
+#------------------
+b4_enroll_node_bmc_driver_info:
+  redfish:
+    redfish_address: "{{ b4_enroll_node_bmc_url }}"
+    redfish_username: "{{ enroll.driver_info['redfish_username'] | default(b4_enroll_node_bmc_credentials['username']) | default(b4_enroll_genesis_bmc_credentials['username']) | default('root') }}"
+    redfish_password: "{{ enroll.driver_info['redfish_password'] | default(b4_enroll_node_bmc_credentials['password']) | default(b4_enroll_genesis_bmc_credentials['password']) | default('calvin') }}"
+    redfish_verify_ca: "{{ enroll.driver_info['redfish_verify_ca'] | default(b4_enroll_node_bmc_credentials['verify_ca']) | default(b4_enroll_genesis_bmc_credentials['verify_ca']) | default(false) }}"
+    redfish_system_id: "{{ enroll.driver_info['redfish_system_id'] | default(b4_enroll_node_bmc_credentials['redfish_system_id']) | default(b4_enroll_genesis_bmc_credentials['redfish_system_id']) | default(b4_enroll_default_system_id) }}"
+
+######################################################
+# DEPLOY STAGE PARTICULARS
+######################################################
+
+#------------------
+# 1.- Inband Provision URLs
+#------------------
+b4_url_protocol: "http"
+b4_url_short_subpath:   "{{ b4_node_os | lower }}{{ b4_node_os_version | lower}}"
+b4_url_full_subpath:    "{{ b4_node_os }}/{{ b4_node_os_version }}"
+b4_url_genesis_ipv4:    "{{ hostvars[groups['target'][0]]['dhcp_address'] | default('127.0.0.1/24') }}"
+b4_url_genesis_ip:      "{{ b4_url_genesis_ipv4 | ansible.utils.ipaddr('address') }}"
+b4_url_genesis_gateway: "{{ b4_url_genesis_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+b4_url_genesis_netmask: "{{ b4_url_genesis_ipv4 | ansible.utils.ipaddr('netmask') }}"
+
+b4_genesis_port:
+  http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
+  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
+  oci:   "{{ genesis_https_oci  | default(registry_port)     | default('5500') }}"
+
+b4_url_genesis_port: "{{ b4_genesis_port[b4_url_protocol] is defined | ternary (':','','') }}{{ b4_genesis_port[b4_url_protocol] | default('') }}"
+b4_url_genesis_url: "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_genesis_port }}"
+
+#------------------
+# 2.- OS
+#------------------
 b4_node_default_os: "{{ genesis_node_default_os | default('CentOS') }}"
 b4_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
 b4_node_default_os_arch: "x86_64"
 b4_node_default_os_profile: "none"
-b4_capture_node_os:   "{{ os.name | default(b4_node_default_os) | lower }}"
+b4_capture_node_os:   "{{ deploy.os.name | default(b4_node_default_os) | lower }}"
 b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os] }}"
 b4_node_os:           "{{ b4_node_os_definitions['ansible_distribution'] | default('unknown') }}"
-b4_node_os_version:   "{{ os.version | default(b4_node_default_os_version) }}"
-b4_node_os_arch:      "{{ os.arch    | default(b4_node_default_os_arch) }}"
-b4_node_os_profile:   "{{ os.profile | default(b4_node_default_os_profile) }}"
+b4_node_os_version:   "{{ deploy.os.version | default(b4_node_default_os_version) }}"
+b4_node_os_arch:      "{{ deploy.os.arch    | default(b4_node_default_os_arch) }}"
+b4_node_os_profile:   "{{ deploy.os.profile | default(b4_node_default_os_profile) }}"
 b4_node_os_installer: "{{ b4_node_os_definitions['installer'] | default('anaconda') | lower}}"
-b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] }}{{ b4_node_name }}{{ b4_node_os_definitions['ext'] }}"
+b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] }}{{ b4_enroll_node_name }}{{ b4_node_os_definitions['ext'] }}"
 b4_node_os_iso_file: "{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
 
-# 2.- Users 
+#------------------
+# 3.- Users 
 #------------------
 b4_default_user_name: 'genesis'
 b4_default_user_password: ''
 b4_root_user_password: ''
 
-# 3.- OS Installers URLs
+#------------------
+# 4.- OS Installers URLs
 #------------------
 b4_netinstall_base_url: "{{ b4_url_protocol }}://{{ b4_url_genesis_url }}"
 b4_netinstall_os_manifesto_url:    "{{ b4_netinstall_base_url }}/{{ b4_os_manifesto_subpath }}"
@@ -243,7 +302,7 @@ b4_kickstart_template_defaults:
     # Installation logging level
     logging --level=info     
   network: |
-    network  --bootproto=static --ip={{ b4_node_bmc_ip }} --netmask={{ b4_node_bmc_netmask }} --gateway={{ b4_node_bmc_gateway }} --onboot=on --hostname={{ b4_node_name }} --device={{ b4_node_bmc_mac }}
+    network  --bootproto=static --ip={{ b4_enroll_nic_bmc_ipv4 }} --netmask={{ b4_enroll_nic_bmc_netmask }} --gateway={{ b4_enroll_nic_bmc_gateway }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_bmc_mac }}
   packages: |
     @ base
     @ core
@@ -262,8 +321,8 @@ b4_kickstart_template_defaults:
     
     #Partitions
     part / --fstype=ext4 --size=17408
-    part pv.{{ b4_node_name }}-0001 --grow --size=1
-    volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}-0001
+    part pv.{{ b4_enroll_node_name }}-0001 --grow --size=1
+    volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
     logvol /home --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
     logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
 
@@ -281,69 +340,69 @@ b4_kickstart_template_profiles:
       
       #Partitions
       part / --fstype=ext4 --size=17408
-      part pv.lab-{{ b4_node_name }}-0001 --grow --size=1
-      volgroup VolGroup00 --pesize=4096 pv.{{ b4_node_name }}-0001
+      part pv.lab-{{ b4_enroll_node_name }}-0001 --grow --size=1
+      volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
       logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
       logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288     
 
 #------------------------------------
 # 2.- Cloud Init
 #------------------------------------
-b4_subsiquity_template_defaults:
-  system: |
-    user-data:
-      disable_root: false
-    identity:
-      hostname: {{ b4_node_name }}
-      username: {{ b4_default_user_name }}
-      password: '{{ b4_default_user_password }}'
-    keyboard:
-      layout: us
-    locale: en_US.UTF-8   
-  ssh: |
-    allow-pw: true
-    authorized-keys: []
-    install-server: true
-  logging: |
-    remotes:
-      log_serv: "*.* @@{{ b4_http_genesis_address }}:{{ genesis_rsyslog_port }}"     
-  network: |
-    network:
-      version: 2
-      ethernets:
-        eno1:
-          critical: true
-          addresses:
-            - {{ b4_node_bmc_ip }}
-          gateway4: {{ b4_node_bmc_gateway }}
-          match:
-            macaddress: {{ b4_node_bmc_mac }}
-          set-name: eno1         
-  storage: |
-    layout:
-      name: lvm
-      match: {} 
-  packages: |
-    # even set to no/false, geoip lookup still happens
-    geoip: no
-    preserve_sources_list: false
-    sources_list: |
-      deb [trusted=yes] http://{{ b4_netinstall_os_mounted_repo_url }} ./
-    packages:
-     - ubuntu-desktop-minimal          
-  preinstall: |
-    - path: /run/tmpfiles.d/bootorder.sh
-      content: |
-        #!/bin/bash
-        BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
-        BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
-        /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}     
-  postinstall: |
-    - echo '{{ b4_default_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ b4_default_user_name }}
-    - sed -i 's|^root:.:|root:{{ b4_root_user_password }}|' /target/etc/shadow
-    - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
-    - /bin/bash /run/tmpfiles.d/bootorder.sh
-      
+#b4_subsiquity_template_defaults:
+#  system: |
+#    user-data:
+#      disable_root: false
+#    identity:
+#      hostname: {{ b4_enroll_node_name }}
+#      username: {{ b4_default_user_name }}
+#      password: '{{ b4_default_user_password }}'
+#    keyboard:
+#      layout: us
+#    locale: en_US.UTF-8   
+#  ssh: |
+#    allow-pw: true
+#    authorized-keys: []
+#    install-server: true
+#  logging: |
+#    remotes:
+#      log_serv: "*.* @@{{ b4_url_genesis_url }}:{{ genesis_rsyslog_port }}"     
+#  network: |
+#    network:
+#      version: 2
+#      ethernets:
+#        eno1:
+#          critical: true
+#          addresses:
+#            - {{ b4_enroll_nic_bmc_ipv4 }}
+#          gateway4: {{ b4_enroll_nic_bmc_gateway }}
+#          match:
+#            macaddress: {{ b4_enroll_nic_bmc_mac }}
+#          set-name: eno1         
+#  storage: |
+#    layout:
+#      name: lvm
+#      match: {} 
+#  packages: |
+#    # even set to no/false, geoip lookup still happens
+#    geoip: no
+#    preserve_sources_list: false
+#    sources_list: |
+#      deb [trusted=yes] http://{{ b4_netinstall_os_mounted_repo_url }} ./
+#    packages:
+#     - ubuntu-desktop-minimal          
+#  preinstall: |
+#    - path: /run/tmpfiles.d/bootorder.sh
+#      content: |
+#        #!/bin/bash
+#        BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
+#        BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
+#        /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}     
+#  postinstall: |
+#    - echo '{{ b4_default_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ b4_default_user_name }}
+#    - sed -i 's|^root:.:|root:{{ b4_root_user_password }}|' /target/etc/shadow
+#    - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
+#    - /bin/bash /run/tmpfiles.d/bootorder.sh
+#      
 #------------------------------------
 # 3.- Preseeds
 #------------------------------------
@@ -394,9 +453,9 @@ b4_os_installer_manifesto:
       - "cloud-init/meta-data.j2"
       - "cloud-init/user-data.j2"     
     file:      
-      - "{{ b4_repo_manifesto_path }}/{{ b4_node_name }}/meta-data"
-      - "{{ b4_repo_manifesto_path }}/{{ b4_node_name }}/user-data"
-    url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_name }}/meta-data"  
+      - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/meta-data"
+      - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/user-data"
+    url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_enroll_node_name }}/meta-data"  
     defaults:  "{{ b4_subsiquity_template_defaults | default({}) }}"
     profiles:  "{{ b4_subsiquity_template_profiles | default({}) }}"
     

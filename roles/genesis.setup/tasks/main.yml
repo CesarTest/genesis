@@ -16,10 +16,9 @@
     - name: "B3 - SETUP"
       ansible.builtin.include_tasks: "{{ b4_stage | default ('1_manifesto.yml') }}"
       loop:
-         - "1_manifesto.yml"
-         - "2_enroll.yml"
-    #     - "3_lifecycle.yml"
-    #     - "4_transition.yml"         
+         - "1_config.yml"
+         - "2_lifecycle.yml"
+    #     - "3_transition.yml"         
       loop_control:
         loop_var: "b4_stage" 
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

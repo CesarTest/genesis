@@ -1,5 +1,5 @@
 ---
-# genesis.setup 2_enroll/1_clear_ironic.yml
+# genesis.setup 2_lifecycle/8_delete.yml
 #   - Delete Allocations
 #   - Set Nodes to Maintanance Mode
 #   - Clear Nodes from Ironic Database
@@ -8,12 +8,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-- name: "STEP 2 - Remove Nodes"
+- name: "NODE LIFECYCLE STAGE 8 - Delete Node"
   shell:
      cmd: "{{command | default('ls')}}"
   vars:
-     node_uuid: "{{ uuid | default(' ') }}"
-     node_name: "{{ name | default(' ') }}"
+     node_uuid: "{{ enroll.uuid | default(' ') }}"
+     node_name: "{{ enroll.name | default(' ') }}"
      command: |
        . /opt/stack/bifrost/bin/activate
        export OS_CLOUD=bifrost

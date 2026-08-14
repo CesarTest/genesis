@@ -1,5 +1,5 @@
 ---
-# genesis.setup 3_lifecycle/2_deploy.yml
+# genesis.setup 2_lifecycle/5_deploy.yml
 #   - Bootloader Rendering
 #   - OS Installer Properties
 #

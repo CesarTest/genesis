@@ -1,0 +1,31 @@
+---
+# genesis.setup 2_lifecycle/21_enroll.yml
+#   - Add Nodes to Ironic Database
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Enroll Baremeral Nodes
+#---------------------------------------   
+
+- name: "NODE LIFECYCLE STAGE 1 - Enroll: Assure Outband BMC Access to the Node" 
+  ignore_errors: yes
+  vars:
+     uuid: "{{ enroll.uuid | default('') }}"
+     name: "{{ enroll.name | default('') }}"
+     driver: "{{ enroll.driver | default('') }}"
+     driver_info: "{{ enroll.driver_info | default('') }}"
+     properties: "{{ enroll.properties | default('') }}"
+     nics: "{{ enroll.nics | default('') }}"
+     provisioning_ipv4_address:  "{{ enroll.nics[1]['ipv4'] | default('') }}"
+  block: 
+    - ansible.builtin.include_role: 
+        name: "{{ b4_enroll.name }}"
+      when: 
+        - b4_enroll.name is defined
+        - b4_enroll.condition | default(true) | bool 
+      loop: "{{ b4_enroll_roles | default([]) }}"
+      loop_control:
+        loop_var: "b4_enroll"  

@@ -8,10 +8,13 @@ all:
    bifrost_static_dhcp: true
    inventory_dhcp: true
    inventory_dhcp_static_ip: true
-   bmc_credentials: 
-     redfish_username: "root@pam"
-     redfish_password: "cesardgm"
-     redfish_verify_ca: false
+   genesis_bmc_credentials: 
+     redfish:
+       ipv4: "10.10.41.1/24" # Proxmox Hypervisor 
+       port: "8000"          # Proxmox RedFish Daemon
+       username: "root@pam"
+       password: "cesardgm"
+       verify_ca: false
     
  hosts:  
    servera199.maas.lab:
@@ -33,5 +36,5 @@ all:
    baremetal:
      hosts:
        servera199.maas.lab:        
-       serverb199.maas.lab: 
-       workstation199.maas.lab:
+       #serverb199.maas.lab: 
+       #workstation199.maas.lab:

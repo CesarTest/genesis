@@ -230,6 +230,7 @@ function defineMenu() {
 	                             "-----> Log File                   [${VALOR_DEFECTO[1]}]:" \
                                     )
              MENU_SKIP_PATHS="1"
+			 MENU_SKIP_ELEMENT="target"
 			 RETURNING_MENU="0"
              RUN_ACTION="4"
 			 EXTRA_VARS="genesis_stage='B4'"
@@ -1351,8 +1352,10 @@ function listaOpciones_Dinamica() {
 		        NUM_OPCIONES="${INDICE}"
 
 		        # Listando Opciones
-		        echo -e "${INDICE} .- ${ELEMENTO}"
-		        local INDICE=`expr "${INDICE}" + 1`
+				if [[ "$ELEMENTO" != *"${MENU_SKIP_ELEMENT}"* ]] ; then
+		           echo -e "${INDICE} .- ${ELEMENTO}"
+		           local INDICE=`expr "${INDICE}" + 1`
+				fi
 	        done
         else
            error "-r" "${RUTA}/*${EXT}"
