@@ -1,15 +1,15 @@
 ---
-# genesis.setup 1_manifesto
+# genesis.setup 1_prepare.yml
 #   - Generate Install Manifesto (Kickstart, cloud init, ignition)
 #   - Create Config Drive (drivers + manifesto) for cloud installers 
 #  
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "B4 - SETUP: Setup Manifesto for Current Node"
-  ansible.builtin.include_tasks: "{{ b4_manifesto | default ('1_manifesto/1_os_native.yml') }}" 
+- name: "B4 - SETUP: Prepare Installation of Current Node"
+  ansible.builtin.include_tasks: "{{ b4_prepare | default ('1_prepare/1_os_manifesto.yml') }}" 
   loop:
-     - "1_config/1_os_manifesto.yml"    
+     - "1_prepare/1_os_manifesto.yml"    
      #- "1_manifesto/2_config_drive.yml"            
   loop_control:
-    loop_var: "b4_manifesto"
+    loop_var: "b4_prepare"

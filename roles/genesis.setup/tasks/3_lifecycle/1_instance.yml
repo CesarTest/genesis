@@ -1,0 +1,56 @@
+---
+# genesis.setup 3_lifecycle/5_deploy.yml
+#   - Bootloader Rendering
+#   - OS Installer Properties
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "B4 SETUP - Nodes Configuration Pipeline"
+  vars:
+    b4_ironic_base_url: "http://{{ b4_url_genesis_ip | default('127.0.0.1') }}"
+    b4_ironic_port: "{{ b4_url_ironic_port | default(':6385') }}" 
+    b4_ironic_path: "/v1/nodes/{{ uuid | default(name) }}"
+    b4_ironic_uri: "{{ b4_ironic_base_url }}{{ b4_ironic_port }}{{ b4_ironic_path }}"
+    b4_ironic_api_version: "{{ genesis_ironic_api_version | default('1.31') }}"
+  block:
+
+    - name: "B4 SETUP - Instance Info: Instance Properties vía URI"
+      ansible.builtin.uri:
+        url:    "{{ b4_ironic_uri }}"
+        method: "{{ lifecycle_stage.method }}"
+        body_format: json
+        headers:
+          X-OpenStack-Ironic-API-Version: "{{ b4_ironic_api_version }}"  
+        body: "{{ lifecycle_stage.body  | default(omit) }}"
+        status_code: 200
+      register: b4_pipeline_results
+      loop:
+        # Stage 1 - Enroll Properties 
+        - method: "PATCH"
+          body:
+           - op: "add"
+             path: "/properties"
+             value: "{{ properties | default({}) }}"
+        # Stage 5 - Deploy Properties 
+        - method: "PATCH"
+          body:
+           - op: "replace"
+             path: "/boot_interface"
+             value: "{{ boot_interface | default('ipxe') }}"
+        - method: "PATCH"
+          body:
+           - op: "replace"
+             path: "/deploy_interface"
+             value: "{{ deploy_interface | default('direct') }}"
+        - method: "PATCH"
+          body:
+           - op: "add"
+             path: "/instance_info"
+             value: "{{ instance_info | default({}) }}"
+        # Verification: Gather Instance Information
+        - method: "GET"
+  
+      loop_control:
+         loop_var: "lifecycle_stage"

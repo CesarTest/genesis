@@ -1,5 +1,5 @@
 ---
-# genesis.setup 1_manifesto/2_cloud.yml
+# genesis.setup 1_prepare/2_config_drive.yml
 #   - Pack OS Manifestos + Drivers into Config Drive
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System

@@ -1,5 +1,5 @@
 ---
-# genesis.setup 1_manifesto/1_os_native.yml
+# genesis.setup 1_prepare/1_os_manifesto.yml
 #   - Generate Install Manifesto:
 #      - cloud-init
 #      - kickstart

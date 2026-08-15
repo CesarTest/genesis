@@ -1,0 +1,37 @@
+---
+# genesis.setup 2_enroll/1_delete.yml
+#   - Delete Allocations
+#   - Set Nodes to Maintanance Mode
+#   - Clear Nodes from Ironic Database
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "B4 SETUP - Enroll: Delete Node" 
+  ignore_errors: yes
+  block: 
+    - ansible.builtin.include_role: 
+        name: "{{ b4_delete.name }}"
+      when: 
+        - b4_delete.name is defined
+        - b4_delete.condition | default(true) | bool 
+      loop: "{{ b4_delete_roles | default([]) }}"
+      loop_control:
+        loop_var: "b4_delete"  
+
+
+    
+ 
+#- name: "B4 SETUP - Enroll: Delete Node"
+#  shell:
+#     cmd: "{{command | default('ls')}}"
+#  vars:
+#     node_uuid: "{{ enroll.uuid | default(' ') }}"
+#     node_name: "{{ enroll.name | default(' ') }}"
+#     command: |
+#       . /opt/stack/bifrost/bin/activate
+#       export OS_CLOUD=bifrost
+#       baremetal allocation delete {{node_name}}
+#       baremetal node maintenance set {{node_uuid}}
+#       baremetal node delete {{node_uuid}}
+#  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

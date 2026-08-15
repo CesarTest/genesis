@@ -12,13 +12,37 @@
 #
 - name: "------------------> B3- SETUP BAREMETAL NODES <------------------" 
   ignore_errors: yes
+  
+  #-----------------------
+  # 1.- Bifrost Data Model
+  #-----------------------
+  vars:
+     uuid:        "{{ b4_enroll_node_uuid               | default(omit) }}"
+     name:        "{{ b4_enroll_node_name               | default(omit) }}" 
+     properties:  "{{ b4_enroll_node_chassis_properties | default(omit) }}"
+     driver:      "{{ b4_enroll_node_bmc_driver         | default('redfish') }}"
+     driver_info: "{{ b4_enroll_node_bmc_driver_info[driver] | default(omit) }}"
+     nics:        "{{ b4_enroll_node_nics                  | default(omit) }}"
+     ipv4_address:     "{{ b4_enroll_nic_provision_ip      | default(omit)}}"
+     ipv4_subnet_mask: "{{ b4_enroll_nic_provision_subnet  | default(omit) }}" 
+     ipv4_router:      "{{ b4_enroll_nic_provision_gateway | default(omit) }}" 
+     boot_interface:   "{{ b4_node_boot_interface    | default('ipxe') }}"
+     deploy_interface: "{{ b4_node_deploy_interface  | default('direct') }}"
+     instance_info:    "{{ b4_deploy_interface_node_instance_info | default(omit) }}"
+     provisioning_ipv4_address: "{{ b4_url_genesis_ipv4 }}"
+
+  #-----------------------
+  # 2.- Setup Ironic
+  #-----------------------
   block:
+
     - name: "B3 - SETUP"
       ansible.builtin.include_tasks: "{{ b4_stage | default ('1_manifesto.yml') }}"
       loop:
-         - "1_config.yml"
-         - "2_lifecycle.yml"
-    #     - "3_transition.yml"         
+         #- "1_prepare.yml"
+         - "2_enroll.yml"		 
+         - "3_lifecycle.yml"
+    #     - "4_manage.yml"         
       loop_control:
         loop_var: "b4_stage" 
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
