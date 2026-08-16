@@ -207,7 +207,7 @@ b4_enroll_node_chassis_cpus: "{{ b4_enroll_node_chassis_properties_input['cpus']
 b4_enroll_node_chassis_cpu_arch: "{{ b4_enroll_node_chassis_properties_input['cpu_arch'] | default(b4_enroll_node_chassis_properties_input['arch'] | default(b4_enroll_node_chassis_default_properties['cpu_arch'])) }}"
 b4_enroll_node_chassis_memory_mb: "{{ b4_enroll_node_chassis_properties_input['memory_mb'] | default(b4_enroll_node_chassis_properties_input['ram'] | default(b4_enroll_node_chassis_default_properties['memory_mb'])) | int }}"
 b4_enroll_node_chassis_local_gb: "{{ b4_enroll_node_chassis_properties_input['local_gb'] | default(b4_enroll_node_chassis_properties_input['disk_size'] | default(b4_enroll_node_chassis_default_properties['local_gb'])) | int }}"
-b4_enroll_node_chassis_root_device: "{{ b4_enroll_node_chassis_properties_input['root_device'] | default({}) }}"
+b4_enroll_node_chassis_root_device: "{{ b4_enroll_node_chassis_properties_input['root_device'] | default(omit) }}"
 b4_enroll_node_chassis_properties:
    cpus:         "{{ b4_enroll_node_chassis_cpus }}"
    cpu_arch:     "{{ b4_enroll_node_chassis_cpu_arch }}"

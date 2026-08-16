@@ -1,0 +1,8 @@
+---
+# genesis.deploy 2_manage/1_inband.yml
+#  - Ensure Inband Connectitivy in different scenarios
+#     - Case 1: Direct Visibility  
+#     - Case 2: Spine-Leaf
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0

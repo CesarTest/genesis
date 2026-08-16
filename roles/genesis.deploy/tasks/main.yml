@@ -9,7 +9,7 @@
   ignore_errors: yes
   block:
     - name: "B4 - DEPLOY"
-      ansible.builtin.include_tasks: "{{ baremetal_deploy_stage | default ('1_manifesto.yml') }}"
+      ansible.builtin.include_tasks: "{{ baremetal_deploy_stage | default ('1_deploy.yml') }}"
       loop:
          - "1_deploy.yml"          
       loop_control:

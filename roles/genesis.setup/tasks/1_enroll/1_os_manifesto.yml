@@ -1,9 +1,10 @@
 ---
-# genesis.setup 1_prepare/1_os_manifesto.yml
-#   - Generate Install Manifesto:
+# genesis.setup 1_enroll/1_os_manifesto.yml
+#   - Generate Install OS Native Installer Manifesto:
 #      - cloud-init
 #      - kickstart
 #      - ignition
+#      - preseed
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -25,7 +26,7 @@
     #---------------------------------------
     # 1. Manifest Folder
     #---------------------------------------   
-    - name: "STEP 1 - Create Manifesto Folders"
+    - name: "B4 SETUP - Enroll: Create Manifesto Folders"
       file:
          path: "{{ b4_folder | realpath }}"
          state: "directory"  
@@ -35,7 +36,7 @@
       loop_control:
         loop_var: "b4_folder" 
         
-    - name: "STEP 1 - Expose Manifesto Folder"
+    - name: "B4 SETUP - Enroll: Expose Manifesto Folder"
       file:
         src:  "{{ b4_repo_manifesto_path }}"
         dest: "{{ b4_http_manifesto_path }}"   
@@ -44,7 +45,7 @@
     #---------------------------------------
     # 2. Manifest Rendering (KickStart, Cloud-Init, Ignition)
     #---------------------------------------
-    - name: "STEP 1 - Rendering OS Installation Manifest"
+    - name: "B4 SETUP - Enroll: Rendering OS Installation Manifest"
       ansible.builtin.template:
         src:   "{{ b4_node_manifesto_src  | default(omit) }}"
         dest:  "{{ b4_node_manifesto_dest | default(omit)  }}"

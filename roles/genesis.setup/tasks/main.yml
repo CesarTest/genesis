@@ -1,16 +1,12 @@
 ---
 # genesis.setup main.yml
-#   - Generate Install Manifesto for each Node
-#   - Enroll Nodes
-#   - Set Node Life-Cycle stages
-#     - Clean: BMC steps to wipe disks
-#     - Deploy: Boot Interface + Deploy Interface 
-#   - Move transitions until Node is in Available State (ready to deploy)
+#   - Node Lifecycle Stage 1 - Enroll
+#   - Node Lifecycle Stage 2 - Manage
 #  
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "------------------> B3- SETUP BAREMETAL NODES <------------------" 
+- name: "------------------> B4- SETUP BAREMETAL NODE <------------------" 
   ignore_errors: yes
   
   #-----------------------
@@ -32,17 +28,28 @@
      provisioning_ipv4_address: "{{ b4_url_genesis_ipv4 }}"
 
   #-----------------------
-  # 2.- Setup Ironic
+  # 2.- Setup the Node in Ironic
   #-----------------------
   block:
 
-    - name: "B3 - SETUP"
-      ansible.builtin.include_tasks: "{{ b4_stage | default ('1_manifesto.yml') }}"
+    # => 2 1.- Stage 1: Enroll - Outband Control
+    - name: "B4 - SETUP - Stage 1: Enroll the Node - Outband Control"
+      ansible.builtin.include_tasks: "{{ b4_enroll | default ('1_enroll/1_os_manifesto.yml') }}"
       loop:
-         #- "1_prepare.yml"
-         - "2_enroll.yml"		 
-         - "3_lifecycle.yml"
-    #     - "4_manage.yml"         
+         - "1_enroll/1_os_manifesto.yml"
+         #- "1_enroll/2_config_drive.yml"
+         - "1_enroll/3_delete.yml"		 
+         - "1_enroll/4_outband.yml"        
       loop_control:
-        loop_var: "b4_stage" 
+        loop_var: "b4_enroll" 
+
+    # =>  2.- Stage 2: Manage - Inband Provision	
+    - name: "B4 - SETUP - Stage 2:  Manage the Node - Inband Provision"
+      ansible.builtin.include_tasks: "{{ b4_manage | default ('2_manage/1_inband.yml') }}"
+      loop:
+         - "2_manage/1_inband.yml"
+         - "2_manage/2_lifecycle.yml"		 
+         - "2_manage/3_available.yml"
+      loop_control:		 
+        loop_var: "b4_manage"		
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

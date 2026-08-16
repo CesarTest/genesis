@@ -1,6 +1,6 @@
 ---
-# genesis.setup 1_prepare/2_config_drive.yml
-#   - Pack OS Manifestos + Drivers into Config Drive
+# genesis.setup 1_enroll/2_config_drive.yml
+#   - Pack OS Manifestos + Drivers into into Config Drive
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -9,7 +9,8 @@
 #---------------------------------------
 # 1. Create Config Drive with Manifesto 
 #---------------------------------------   
-- ansible.builtin.include_role:
+- name: "B4 SETUP - Enroll: Create Ironic Config Drive"
+  ansible.builtin.include_role:
     name: "{{ genesis_baremetal_configdrive.name }}"
   when: 
     - genesis_baremetal_configdrive.name is defined
