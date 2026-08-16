@@ -1,0 +1,58 @@
+{#############################################################################
+#                    ANSIBLE GENERATED NETPLAN FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.0
+#############################################################################} 
+{% if j2_input is defined %}
+{%   if j2_input is not none %}
+{%      if j2_input is not string %}
+{%         if j2_input is mapping %}
+{%            if j2_input is iterable %}
+{%               if j2_input|length > 0 %}
+{###############################
+         CAPTURE VALUES 
+BEWARE: Capturing Dict Values with for loop
+  - Append values in list
+  - Extract values from list[0]
+ ##############################}
+{% set blank = " " %}
+{% set eol = "\n" %}
+{#......... 1.- Node Data Model ..... #}
+{###############################
+         RENDERING FILE
+ ##############################}
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+{% for nic_name, data in j2_input.items() %}
+    {{ nic_name }}:
+      match:
+        macaddress: "{{ data.mac | lower }}"
+      addresses:
+        - "{{ data.ip }}"
+{% if data.gateway is defined and data.gateway != '' %}
+      routes:
+        - to: default
+          via: "{{ data.gateway }}"
+{% endif %}
+{% if data.dns is defined and data.dns != '' %}
+      nameservers:
+        addresses:
+          - "{{ data.dns }}"
+{% endif %}
+{% endfor %}
+{###############################
+              END
+ ##############################}
+{%               endif %}
+{%            endif %}
+{%         endif %}
+{%      endif %}
+{%   endif %}
+{% endif %}
+{#############################################################################
+#                    ANSIBLE GENERATED NETPLAN FILE 
+#############################################################################}

@@ -1,17 +1,54 @@
 ---
 # genesis.deploy main.yml
-#  - Unattended OS installation
-#
+#   - Node Lifecycle Stage 1 - Enroll
+#   - Node Lifecycle Stage 2 - Manage
+#  
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-
-- name: "------------------> B4- DEPLOY BAREMETAL NODES <------------------" 
+#
+- name: "------------------> B5- DEPLOY BAREMETAL NODE <------------------" 
   ignore_errors: yes
   block:
-    - name: "B4 - DEPLOY"
-      ansible.builtin.include_tasks: "{{ baremetal_deploy_stage | default ('1_deploy.yml') }}"
+
+    #-----------------------
+    # 1.- Bifrost Data Model
+    #-----------------------
+    - name: "B5 - DEPLOY - Cargar el modelo de datos guardado del nodo"
+      ansible.builtin.include_vars:
+        file: "{{ b5_file }}"
+      vars:
+        b5_path: "{{ ansible_config.defaults.fact_caching_connection | default('/tmp') }}"
+        b5_name: "genesis_{{ inventory_hostname }}.yml"
+        b5_file: "{{ b5_path }}/{{ b5_name }}"
+
+
+    #-----------------------
+    # 2.- Deploy Instance 
+    #-----------------------
+    # => 2 1.- Stage 1: Clean - Wipe Disks
+    #- name: "B5 - DEPLOY - Stage 1: Clean - Wipe Disks"
+    #  ansible.builtin.include_tasks: "{{ b5_clean | default ('1_clean/1_wipedisks.yml') }}"
+    #  loop:
+    #     - "1_clean/1_wipedisks.yml"      
+    #  loop_control:
+    #    loop_var: "b5_clean" 
+
+    # =>  2.- Stage 2: Deploy - Unattended OS Installation	
+    - name: "B5 - DEPLOY - Stage 2:  Deploy - Unattended OS Installation"
+      ansible.builtin.include_tasks: "{{ b5_deploy | default ('2_deploy/1_instance.yml') }}"
       loop:
-         - "1_deploy.yml"          
-      loop_control:
-        loop_var: "baremetal_deploy_stage" 
+         - "2_deploy/1_instance.yml"
+      loop_control:		 
+        loop_var: "b5_deploy"		
+
+    # =>  2.- Stage 3: Active - HeartBeat, Network Connection, Hardware Configuration	
+    #- name: "B5 - DEPLOY - Stage 3:  Active - HeartBeat, Network Connection, Hardware Configuration"
+    #  ansible.builtin.include_tasks: "{{ b5_active | default ('3_active/1_hearbeat.yml') }}"
+    #  loop:
+    #     - "3_active/1_hearbeat.yml"
+    #     - "3_active/2_hardware.yml"		 
+    #     - "3_active/3_network.yml"
+    #  loop_control:		 
+    #    loop_var: "b5_active"
+
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

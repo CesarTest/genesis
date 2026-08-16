@@ -10,15 +10,20 @@
   
     - name: "G1 - REFRESH : Prepare Target Machine"
       ansible.builtin.include_tasks: "{{ g1_stage | default ('1_prepare/1_repos.yml') }}"
-      loop:
+      loop: 
          - "1_prepare/1_repos.yml"
          - "2_download.yml"
          - "3_ready/1_setup.yml"
+         - "3_ready/2_network.yml" 
       loop_control:
         loop_var: "g1_stage"
         
   rescue:
+
+    - name: "G1 - REFRESH : Try to Recover Network Configuration"
+      ansible.builtin.include_tasks: "3_ready/2_network.yml"		
+ 
     - name: "------------------> G1- REFRESH GENESIS NODE - Error"
       debug:
         msg:
-        - "Possible errors:"
+        - "Possible errors:"	 

@@ -58,8 +58,10 @@ genesis_default_os_image_name:
   iso:  "netboot.iso"
  
 ######################################################
-# G3 - PATHS
+# G1 BOOTSTRAP DETAILS
 ######################################################
+
+# 1.- Paths  
 g1_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
 g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default('os') }}"
 g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
@@ -68,6 +70,39 @@ g1_repo_openstack_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['compone
 g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
 g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
+
+# 2.- Network  
+g1_network_provider: "{{ (ansible_facts['distribution'] == 'Ubuntu') | ternary('netplan', 'nm', 'nm') }}"
+g1_network_state:
+  interfaces: >-
+    {% set ifaces = [] %}
+    {% for name, data in genesis_nics.items() %}
+      {% set ip_clean = data.ip.split('/') | first %}
+      {% set prefix = data.ip.split('/') | last | int %}
+      {% set _ = ifaces.append({
+        'name': name,
+        'type': 'ethernet',
+        'state': 'up',
+        'match': { 'mac-address': data.mac | lower },
+        'ipv4': {
+          'enabled': true,
+          'address': [{ 'ip': ip_clean, 'prefix-length': prefix }]
+        }
+      }) %}
+    {% endfor %}
+    {{ ifaces | to_json }}
+
+  # Default Route to Internet
+  routes:
+    config:
+      - destination: "0.0.0.0/0"
+        next-hop-address: "{{ genesis_nics.internet.gateway | default('192.168.1.1') }}"
+        next-hop-interface: "internet"
+
+  # DNS Global (Corregido con fallback seguro a DNS público)
+  dns-resolver:
+    config:
+      server: [ "{{ dnsmasq_dns_servers | default(genesis_network.internet.dns) | default('8.8.8.8') }}" ]
 
 ######################################################
 #  DOWNLOAD OPENSTACK COMPONENTS FROM GIT

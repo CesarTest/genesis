@@ -176,27 +176,19 @@ function defineMenu() {
 	         if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/create.log" ; fi
 			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			 
 		     MENU_TEXT="(2)___________ ${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}"
-	         PARAMETRO=(    "network_interface" "dhcp_address" "dhcp_pool_start" "dhcp_pool_end" "RUN_BACKGROUND" "LOG_FILE"   )
-             VALOR_DEFECTO=(  "${PXE[$DHCP_NIC]}" \
-			                  "${PXE[$DHCP_IP]}" \
-							  "${PXE[$DHCP_POOL_START]}" \
-							  "${PXE[$DHCP_POOL_END]}" \
-							  "No" \
+	         PARAMETRO=(  "RUN_BACKGROUND" "LOG_FILE"   )
+             VALOR_DEFECTO=(  "No" \
 							  "${LOG_FILE}" \
 							  )
-	         CNF_REEMPLAZO=( "${GENESIS_HOSTS_TARGET_FILE}" \
-			                  "${GENESIS_HOSTS_TARGET_FILE}" \
-							  "${GENESIS_HOSTS_TARGET_FILE}" \
-							  "${GENESIS_HOSTS_TARGET_FILE}" \
-							  '' \
-							  )
-			 CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' ': ' '' )
-			 SOLICITA_PARAMETRO=("-----> DHCP NIC            [${VALOR_DEFECTO[0]}]:" \
-			                     "-----> DHCP IP             [${VALOR_DEFECTO[1]}]:" \
-			                     "-----> DHCP POOL START IP  [${VALOR_DEFECTO[2]}]:" \
-			                     "-----> DHCP POOL END IP    [${VALOR_DEFECTO[3]}]:" \
-								 "-----> Run Ansible in Background [${VALOR_DEFECTO[4]}]:" \
-								 "-----> Log File            [${VALOR_DEFECTO[5]}]:" \
+	        #CNF_REEMPLAZO=( "${GENESIS_HOSTS_TARGET_FILE}" \
+			#                 "${GENESIS_HOSTS_TARGET_FILE}" \
+			#				  "${GENESIS_HOSTS_TARGET_FILE}" \
+			#				  "${GENESIS_HOSTS_TARGET_FILE}" \
+			#				  '' \
+			#				  )
+			# CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' ': ' '' )
+			 SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
+								 "-----> Log File            [${VALOR_DEFECTO[1]}]:" \
 			                     )
              RETURNING_MENU="0"
              RUN_ACTION="2"
@@ -2120,8 +2112,8 @@ function 2_create() {
    #  ACTIONS
    #--------------------  
    # 1.- Load Configurations
-   enableIronicNetworkInterface
-   addGenesisToHosts
+   #enableIronicNetworkInterface
+   #addGenesisToHosts
    
    # 2.- Call
    #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"

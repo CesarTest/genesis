@@ -6,17 +6,93 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ######################################################
-#  PATHS
+#  GENESIS PATHS (global for update all genesis roles at once)
 ######################################################
-# 1.- Bifrost Role Paths
+# 1.- Repos Paths
+genesis_repo_path:     "{{ role_path }}/../../repo"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+# 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
-genesis_bifrost_path:       "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
-genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_path:  "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles: "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
 genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+
+######################################################
+# B5 - PATHS
+######################################################
+# 1.- Paths
+b5_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+b5_os_images_subpath: "{{ b5_repos['os'] | default('os') }}"
+b5_os_mounted_repo_subpath: "{{ b5_repos['repo'] | default('mnt') }}"
+b5_os_manifesto_subpath: "{{ b5_repos['manifesto'] | default('manifesto') }}"
+b5_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b5_repo_os_images_subpath }}"
+b5_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b5_os_manifesto_subpath }}"
+b5_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b5_os_manifesto_subpath }}"
 
 ######################################################
 #  BIFROST ROLES DEFINITION 
 ######################################################
 genesis_baremetal_deploy_roles:
    - name: "bifrost-deploy-nodes-dynamic"
+   
+   
+######################################################
+# DEPLOY STAGE PARTICULARS
+######################################################  
+
+#------------------
+# 1.- Nics Details, extract BMC and Provision NICs
+#------------------
+# 1.1.- Capture Nics Data
+b5_enroll_nics:      "{{ enroll['nics'] | default({}) }}"
+
+# ---- 1.1.1. Aplanamos combinando las listas internas de forma segura (Evita el fallo de dict2items)
+b5_enroll_nics_list: "{{ (b5_enroll_nics['outband'] | default([])) + (b5_enroll_nics['inband'] | default([])) }}"
+b5_enroll_node_inband_nics:  "{{ b5_enroll_nics['inband']  | default([]) }}"
+b5_enroll_node_outband_nics: "{{ b5_enroll_nics['outband'] | default([]) }}" 
+
+# ---- 1.1.2. Extraemos el elemento que tiene provision: yes/true
+b5_enroll_default_provision: "{{ b5_enroll_nics_list | selectattr('provision', 'defined') | selectattr('provision', 'equalto', true) | list }}"
+
+# ---- 1.1.3. Lógica de selección de tarjetas (BMC y Provisión)
+b5_enroll_nic_bmc:   "{{ b5_enroll_node_outband_nics[0] | default(b5_enroll_default_provision[0] | default({})) }}"
+
+#-----  Si no hay una marcada con provision:yes, cae hacia la primera inband, luego a la bmc, luego a la primera de la lista
+b5_enroll_nic_provision: "{{ b5_enroll_default_provision[0] | default(b5_enroll_node_inband_nics[0] | default(b5_enroll_nic_bmc | default(b5_enroll_nics_list[0] | default({})))) }}"
+
+# ----- 1.1.4. LA VARIABLE QUE VA AL NODO FINAL (Formato exacto [{'mac': 'xx:xx...'}] que exige Ironic)
+# ------ Tomamos solo la MAC de la interfaz de provisión elegida y la envolvemos en la estructura de lista que pide la API
+b5_enroll_node_nics: >-
+  {{ [{'mac': b5_enroll_nic_provision.mac | lower}] if (b5_enroll_nic_provision.mac is defined) else [] }}
+
+# 1.2.- BMC NIC Particulars
+b5_enroll_nic_bmc_mac:     "{{ b5_enroll_nic_bmc['mac'] | default('') }}"
+b5_enroll_nic_bmc_ipv4:    "{{ b5_enroll_nic_bmc['ipv4'] | default('127.0.0.1/24')  }}"
+b5_enroll_nic_bmc_ip:      "{{ b5_enroll_nic_bmc_ipv4  | ansible.utils.ipaddr('address') }}"
+b5_enroll_nic_bmc_netmask: "{{ b5_enroll_nic_bmc_ipv4  | ansible.utils.ipaddr('netmask') }}"
+b5_enroll_nic_bmc_prefix:  "{{ b5_enroll_nic_bmc_ipv4  | ansible.utils.ipaddr('prefix') }}"
+b5_enroll_nic_bmc_default_gateway: "{{ b5_enroll_nic_bmc_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+b5_enroll_nic_bmc_gateway: "{{ b5_enroll_nic_bmc['gateway'] | default(b5_enroll_nic_bmc_default_gateway) }}"
+
+# 1.3.- Provision NIC Particulars
+b5_enroll_nic_provision_mac:     "{{ b5_enroll_nic_provision['mac'] | default('') }}"
+b5_enroll_nic_provision_ipv4:    "{{ b5_enroll_nic_provision['ipv4'] | default('127.0.0.1/24')  }}"
+b5_enroll_nic_provision_ip:      "{{ b5_enroll_nic_provision_ipv4  | ansible.utils.ipaddr('address') }}"
+b5_enroll_nic_provision_netmask: "{{ b5_enroll_nic_provision_ipv4  | ansible.utils.ipaddr('netmask') }}"
+b5_enroll_nic_provision_prefix:  "{{ b5_enroll_nic_provision_ipv4  | ansible.utils.ipaddr('prefix') }}"
+b5_enroll_nic_provision_default_gateway: "{{ b5_enroll_nic_provision_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+b5_enroll_nic_provision_gateway: "{{ b5_enroll_nic_provision['gateway'] | default(b5_enroll_nic_provision_default_gateway) }}"
+
+# 1.4.- Ironic partoculars
+b5_url_genesis_ipv4:    "{{ hostvars[groups['target'][0]]['dhcp_address'] | default('127.0.0.1/24') }}"
+b5_url_genesis_ip:      "{{ b5_url_genesis_ipv4 | ansible.utils.ipaddr('address') }}"
+b5_url_genesis_gateway: "{{ b5_url_genesis_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+b5_url_genesis_netmask: "{{ b5_url_genesis_ipv4 | ansible.utils.ipaddr('netmask') }}"
+
+
+
+b5_enroll_node_name: "{{ enroll.name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
+b5_enroll_node_uuid: "{{ enroll.uuid | default('') }}"    
 

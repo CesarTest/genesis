@@ -25,7 +25,7 @@
      boot_interface:   "{{ b4_node_boot_interface    | default('ipxe') }}"
      deploy_interface: "{{ b4_node_deploy_interface  | default('direct') }}"
      instance_info:    "{{ b4_deploy_interface_node_instance_info | default(omit) }}"
-     provisioning_ipv4_address: "{{ b4_url_genesis_ipv4 }}"
+     provisioning_ipv4_address: "{{ ipv4_address }}"
 
   #-----------------------
   # 2.- Setup the Node in Ironic

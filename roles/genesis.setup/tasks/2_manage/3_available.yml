@@ -5,3 +5,27 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
+- name: "B4 SETUP - Manage: Dump Bifrost Data Model to File"
+  ansible.builtin.copy:
+    dest: "{{ b4_file }}"
+    content: |
+      {{ b4_bifrost_node_data_model | to_nice_yaml(indent=2) }}
+  delegate_to: "localhost"
+  vars:
+    b4_path: "{{ ansible_config.defaults.fact_caching_connection | default('/tmp') }}"
+    b4_name: "genesis_{{ inventory_hostname }}.yml"
+    b4_file: "{{ b4_path }}/{{ b4_name }}"  
+    b4_bifrost_node_data_model:
+      uuid:        "{{ uuid        | default('') }}"
+      name:        "{{ name        | default('') }}" 
+      properties:  "{{ properties  | default('') }}"
+      driver:      "{{ driver      | default('redfish') }}"
+      driver_info: "{{ driver_info | default('') }}"
+      nics:        "{{ nics        | default('') }}"
+      ipv4_address:     "{{ ipv4_address      | default('') }}"
+      ipv4_subnet_mask: "{{ ipv4_subnet_mask  | default('') }}" 
+      ipv4_router:      "{{ ipv4_router       | default('') }}" 
+      boot_interface:   "{{ boot_interface    | default('ipxe') }}"
+      deploy_interface: "{{ deploy_interface  | default('direct') }}"
+      instance_info:    "{{ instance_info     | default('') }}"
+      provisioning_ipv4_address: "{{ provisioning_ipv4_address  | default('')}}"

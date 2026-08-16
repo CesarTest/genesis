@@ -1,11 +1,16 @@
 ---
 all:
-  children:
-   target:
-     hosts: 
-       localhost
+  hosts: 
+    localhost:
+      ansible_user: "cesar" 
+      ansible_become_pass: "cesar"
+      ansible_connection: "local"
    
-     vars:
-       ansible_user: cesar 
-       ansible_become_pass: cesar
-       ansible_connection: local
+  children:
+    target:
+      hosts: 
+        localhost:  
+
+    genesis.maas.lab:
+      hosts: 
+        localhost:  

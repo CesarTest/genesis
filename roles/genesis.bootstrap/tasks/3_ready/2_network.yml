@@ -1,0 +1,77 @@
+---
+# genesis.bootstrap 3_ready/1_network.yml
+#   - Setup Genesis Network Interfaces (Universal Multi-Distro Setup)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------------
+#  1.- NetPlan on Debian OS Family
+#---------------------------------------
+- name: "G0 BOOTSTRAP - Prepare : Ubuntu System Preparation"
+  vars:
+    j2_input: "{{ genesis_nics | default({}) }}"
+  when: ansible_facts['os_family'] == "Debian"  
+  block:
+  
+    - name: "G0 BOOTSTRAP - Prepare : Find Old Configurations"
+      ansible.builtin.find:
+        paths: "/etc/netplan"
+        patterns: "*.yaml"
+      register: g1_netplan_old
+
+    - name: "G0 BOOTSTRAP - Prepare : Remove Old Configurations"
+      ansible.builtin.file:
+        path: "{{ g1_netplan_file.path | default(omit) }}"
+        state: absent  
+      # NOTA: Idempotency Protection
+      when:  
+        - g1_netplan_file.path != "/etc/netplan/01-netplan-genesis.yaml"
+      loop: "{{ g1_netplan_old.files | default([]) }}"
+      loop_control:
+        loop_var: "g1_netplan_file"
+
+    - name: "G0 BOOTSTRAP - Prepare : Render Netplan Template"
+      ansible.builtin.template:
+        src: "netplan.j2"               
+        dest: "/etc/netplan/01-netplan-genesis.yaml"
+        owner: "root"
+        group: "root"
+        mode: "0600"                 
+      register: netplan_file_status
+
+    - name: "G0 BOOTSTRAP - Prepare : Apply Changes"
+      ansible.builtin.command: "netplan apply"
+      changed_when: true  
+
+#---------------------------------------
+#  2.- System Linux Roles on RedHat OS Family
+#---------------------------------------
+- name: "G0 BOOTSTRAP - Prepare : RHEL System Preparation"
+  when: ansible_facts['os_family'] == "RedHat"  
+  block:
+    - name: "G0 BOOTSTRAP - Prepare : Network Setup via Linux System Roles (RHEL)"
+      ansible.builtin.include_role:
+        name: "fedora.linux_system_roles.network"  
+      vars:
+        network_state:    "{{ g1_network_state }}"
+        network_provider: "nm"
+      when: ansible_facts['os_family'] == "RedHat"
+
+#---------------------------------------
+#   3.- Verifications
+#---------------------------------------
+- name: "G0 BOOTSTRAP - Prepare : Verification"
+  block:  
+    - name: "G0 BOOTSTRAP - Prepare : Wait to recover the Connection"
+      ansible.builtin.pause:
+        seconds: 3
+    
+    - name: "G0 BOOTSTRAP - Prepare : Capture Network Configuration"
+      ansible.builtin.command: "ip a"
+      register: genesis_network_result
+      changed_when: false
+    
+    - name: "G0 BOOTSTRAP - Prepare : Dump Network Configuration"
+      ansible.builtin.debug:
+        var: genesis_network_result.stdout_lines
