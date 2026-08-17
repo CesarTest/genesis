@@ -1,11 +1,33 @@
 ---
 all:
+
+  #--------------------------------------------------------------------
+  #  GLOBAL ENVIRONMENT
+  #--------------------------------------------------------------------
+  vars:
+    git_branch: "stable/2026.1"
+    genesis_nics:
+      inband: 
+        mac: "bc:24:11:4c:37:14"
+        ip: "10.10.51.5/24"
+      outband: 
+        mac: "bc:24:11:c1:ec:1a"
+        ip: "10.10.41.5/24"
+      internet: 
+        mac: "bc:24:11:34:c8:96"
+        ip: "192.168.1.40/24"
+        gateway: "192.168.1.1"
+        dns: "192.168.1.1"
+    
   hosts: 
     localhost:
       ansible_user: "cesar" 
       ansible_become_pass: "cesar"
       ansible_connection: "local"
-   
+
+  #--------------------------------------------------------------------
+  #  GROUPS DEFINITIONS
+  #--------------------------------------------------------------------   
   children:
     target:
       hosts: 

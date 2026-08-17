@@ -8,7 +8,7 @@
 - name: "------------------> G1- REFRESH GENESIS NODE <------------------" 
   block:
   
-    - name: "G1 - REFRESH : Prepare Target Machine"
+    - name: "G1 - BOOTSTRAP : Prepare Target Machine"
       ansible.builtin.include_tasks: "{{ g1_stage | default ('1_prepare/1_repos.yml') }}"
       loop: 
          - "1_prepare/1_repos.yml"

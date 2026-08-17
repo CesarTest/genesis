@@ -1,16 +1,47 @@
 ---
-# genesis.bootstrap 6_setup.yml
-#   - Setup Genesis Node, ready to install Ironic
+# genesis.bootstrap 3_ready/1_setup.yml
+#   - Local Repository Folder Mandatory Access Control (MAC)
+#      - User Permissions
+#      - SELinux
+#      - AppArmor
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "STEP 3 - Machine Ready" 
-  shell:
-    cmd: "{{ g1_setup_command | default('ls') }}"
-  vars: 
-     g1_repo_local_path:   "{{ g1_repo_os_path }}/../"
-     g1_repo_local_folder: "{{ g1_repo_local_path | realpath }}"
-     g1_setup_command: |
-      REPO_FOLDER=$(ls -d {{ g1_repo_local_folder }}/* | grep -v mnt) 
-      chown -R {{ ansible_user | default('ironic') }}:ironic  ${REPO_FOLDER[@]}        
+- name: "G1 - BOOSTRAP: Genesis Machine Ready"
+  vars:
+     g1_repo_local_folder:   "{{ g1_repo_os_path | dirname | realpath }}" 
+  block:
+
+    - name: "G1 - BOOSTRAP - Ready: Find Repo Folders"
+      ansible.builtin.find:
+        paths: "{{ g1_repo_local_folder }}"
+        file_type: directory
+        patterns: "*"
+        excludes: "*mnt*"
+      register: g1_repo_folders_downloaded
+    
+    - name: "G1 - BOOSTRAP - Ready: Set Ownership to Repo Folders"
+      ansible.builtin.file:
+        path: "{{ g1_repo_folder_download.path }}"
+        owner: "{{ ansible_user | default('ironic') }}"
+        group: ironic
+        recurse: true
+      loop: "{{ g1_repo_folders_downloaded.files | default([]) }}"
+      loop_control:
+        loop_var: "g1_repo_folder_download"
+      when: 
+        - g1_repo_folders_downloaded.matched > 0
+    
+
+#- name: "STEP 3 - Machine Ready" 
+#  shell:
+#    cmd: "{{ g1_setup_command | default('ls') }}"
+#  args:
+#    executable: /bin/bash	
+#  vars: 
+#     g1_repo_local_path:   "{{ g1_repo_os_path }}/../"
+#     g1_repo_local_folder: "{{ g1_repo_local_path | realpath }}"
+#     g1_setup_command: |
+#      REPO_FOLDER=$(ls -d {{ g1_repo_local_folder }}/* | grep -v mnt) 
+#      chown -R {{ ansible_user | default('ironic') }}:ironic  ${REPO_FOLDER[@]}        

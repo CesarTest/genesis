@@ -6,15 +6,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 - name: "B4 SETUP - Manage: Dump Bifrost Data Model to File"
-  ansible.builtin.copy:
-    dest: "{{ b4_file }}"
-    content: |
-      {{ b4_bifrost_node_data_model | to_nice_yaml(indent=2) }}
-  delegate_to: "localhost"
   vars:
-    b4_path: "{{ ansible_config.defaults.fact_caching_connection | default('/tmp') }}"
-    b4_name: "genesis_{{ inventory_hostname }}.yml"
-    b4_file: "{{ b4_path }}/{{ b4_name }}"  
     b4_bifrost_node_data_model:
       uuid:        "{{ uuid        | default('') }}"
       name:        "{{ name        | default('') }}" 
@@ -22,6 +14,7 @@
       driver:      "{{ driver      | default('redfish') }}"
       driver_info: "{{ driver_info | default('') }}"
       nics:        "{{ nics        | default('') }}"
+      mac:         "{{ mac         | default('') }}"
       ipv4_address:     "{{ ipv4_address      | default('') }}"
       ipv4_subnet_mask: "{{ ipv4_subnet_mask  | default('') }}" 
       ipv4_router:      "{{ ipv4_router       | default('') }}" 
@@ -29,3 +22,14 @@
       deploy_interface: "{{ deploy_interface  | default('direct') }}"
       instance_info:    "{{ instance_info     | default('') }}"
       provisioning_ipv4_address: "{{ provisioning_ipv4_address  | default('')}}"
+  ansible.builtin.copy:
+    dest: "{{ b4_baremetal_vars_file }}"
+    content: |
+      {{ b4_bifrost_node_data_model | to_nice_yaml(indent=2) }}
+  when: 
+    - b5_baremetal_vars_file is defined
+    - b4_baremetal_vars_file is not none
+    - b4_baremetal_vars_file is string
+    - b4_baremetal_vars_file is not mapping
+    - b4_baremetal_vars_file | length > 0	  
+  delegate_to: "localhost"

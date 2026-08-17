@@ -8,13 +8,13 @@
 #---------------------------------------
 # 1. OpenStack Components
 #--------------------------------------- 
-- name: "G1 - REFRESH : Download from GIT"
+- name: "G1 - BOOTSTRAP : Download from GIT"
   ansible.builtin.include_tasks: "2_download/1_git.yml"
 
 #---------------------------------------
 # 2. OS Images
 #--------------------------------------- 
-- name: "G1 - REFRESH : Download OS Images"
+- name: "G1 - BOOTSTRAP : Download OS Images"
   ansible.builtin.include_tasks: "2_download/2_os.yml"
   vars:
   
@@ -40,7 +40,7 @@
 #---------------------------------------
 # 3. IPA
 #--------------------------------------- 
-- name: "G1 - REFRESH : Download IPA (Ironic Python Agent) for Cloud OS Installation"
+- name: "G1 - BOOTSTRAP : Download IPA (Ironic Python Agent) for Cloud OS Installation"
   ansible.builtin.include_tasks: "2_download/3_ipa.yml"
   loop: "{{ ipa_image_sources | default([]) }}"
   loop_control:
@@ -49,5 +49,5 @@
 #---------------------------------------
 # 4. ORAS
 #--------------------------------------- 
-- name: "G1 - REFRESH : Download ORAS"
+- name: "G1 - BOOTSTRAP : Download ORAS"
   ansible.builtin.include_tasks: "2_download/4_oras.yml"

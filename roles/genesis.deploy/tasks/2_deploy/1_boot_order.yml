@@ -1,0 +1,102 @@
+---
+# genesis.deploy 1_deploy/1_boot_order.yml
+#  - Set PXE NIC for deploy
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "B5 - DEPLOY - Set NIC for PXE Boot " 
+  
+  #----------------------
+  # 1.- Bifrost Role
+  #----------------------  
+  block: 
+    - name: "B5 - DEPLOY - Set NIC for PXE Boot"
+      openstack.cloud.baremetal_port:
+        cloud: "bifrost"
+        node:     "{{ uuid | default(omit) }}"
+        address:  "{{ mac  | default(omit)}}"
+        is_pxe_enabled: true   
+        state: present
+      environment:
+        OS_CLOUD: "bifrost"
+ 
+  #----------------------
+  # 2.- Command Line	
+  #----------------------
+  rescue:
+    - name: "B5 - DEPLOY - Set NIC for PXE Boot through command line"
+      ansible.builtin.shell:
+         cmd: "{{ b5_baremetal_cmd | default('ls') }}"
+      vars:
+         b5_command_nic: |
+           . /opt/stack/bifrost/bin/activate
+           export OS_CLOUD=bifrost
+           
+           # 1. Buscamos el UUID usando tu variable dinámica de la MAC
+           PORT_UUID=$(baremetal port list --address {{ mac }} -f value -c UUID)
+           if [ ! -z "$PORT_UUID" ]; then
+             baremetal port set --pxe-enabled $PORT_UUID
+           else
+             echo "Error: No se encontró ningún puerto con la MAC {{ mac }}"
+             exit 1
+           fi
+         b5_command_pxe: |
+           . /opt/stack/bifrost/bin/activate
+           export OS_CLOUD=bifrost
+           baremetal node boot device set --persistent {{ uuid }} pxe
+         b5_command_baremetal:
+           - "{{ b5_command_nic | default('ls') }}"
+           - "{{ b5_command_pxe | default('ps') }}"
+      loop: "{{ b5_command_baremetal | default([]) }}"
+      loop_control:
+         loop_var: "b5_baremetal_cmd"	  
+
+  #----------------------
+  # 3.- Always (Bypass Hypervisors such Proxmox)
+  #----------------------
+  always:
+
+    - name: "B5 - DEPLOY - PROXMOX Hypervisor Workaround via API HTTPS"
+      ignore_errors: yes
+      vars:
+        # 1. Traemos los datos básicos del nodo
+        b5_driver_info: "{{ driver_info | default(hostvars[inventory_hostname]['driver_info']) | default({}) }}"
+        b5_redfish_username: "{{ b5_driver_info['redfish_username'] | default(none) }}"
+        b5_redfish_password: "{{ b5_driver_info['redfish_password'] | default('') }}"
+        b5_redfish_system_id: "{{ b5_driver_info['redfish_system_id'] | default('/102') }}"
+
+        # 2. Desguazamos la URL de Redfish (https://10.10.41.1:8000) por partes nativas
+        b5_px_proto: "{{ b5_driver_info['redfish_address'] | urlsplit('scheme') }}"
+        b5_px_ip:    "{{ b5_driver_info['redfish_address'] | urlsplit('hostname') }}"
+        b5_px_vmid:  "{{ b5_redfish_system_id | basename }}"
+        b5_px_node:  "{{ b5_proxmox_node_name | default('proxmox') }}"
+        b5_proxmox_url: "{{ b5_px_proto }}://{{ b5_px_ip }}:8006/api2/json/nodes/{{ b5_px_node }}/qemu/{{ b5_px_vmid }}/config"
+
+        # 3. Renombramos la variable a b5_script_boot_order para evitar recursividad
+        b5_script_boot_order: |
+          # Inyectamos el Token directamente en la cabecera PVEAPIToken
+          curl -X POST -k \
+            -H "Authorization: PVEAPIToken={{ b5_redfish_username }}!{{ b5_proxmox_token_name | default('genesis') }}={{ b5_redfish_password }}" \
+            --data-urlencode "boot=order={{ b5_boot_order_target | default('net0;scsi0') }}" \
+            "{{ b5_proxmox_url }}"
+        b5_proxmox_patches: 
+          - "{{ b5_script_boot_order }}"
+
+      ansible.builtin.shell:
+         cmd: "{{ b5_proxmox_cmd }}"
+      loop: "{{ b5_proxmox_patches | default([]) }}"
+      loop_control:
+         loop_var: "b5_proxmox_cmd"			 
+      delegate_to: localhost
+      when:
+        - b5_redfish_username is defined	  
+        - b5_redfish_username is not none
+        - b5_redfish_username is search('@pam')
+
+  #----------------------
+  # 4.- Conditions
+  #----------------------
+  when:
+    - uuid is defined
+    - mac is defined

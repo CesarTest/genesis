@@ -8,7 +8,8 @@
 #---------------------------------------
 # 1. Install Ironic
 #---------------------------------------   
-- ansible.builtin.include_role: 
+- name: "G2 - CREATE - Install Ironic"
+  ansible.builtin.include_role: 
     name: "{{ genesis_install_ironic_role.name }}"
   when: 
     - genesis_install_ironic_role.name is defined

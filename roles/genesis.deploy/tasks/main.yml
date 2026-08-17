@@ -1,13 +1,20 @@
 ---
 # genesis.deploy main.yml
-#   - Node Lifecycle Stage 1 - Enroll
-#   - Node Lifecycle Stage 2 - Manage
+#   - Node Lifecycle Stage 1 - Clean
+#   - Node Lifecycle Stage 2 - Deploy
+#   - Node Lifecycle Stage 3 - Active
 #  
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
 - name: "------------------> B5- DEPLOY BAREMETAL NODE <------------------" 
-  ignore_errors: yes
+  when: 
+    - b5_baremetal_vars_file is defined
+    - b5_baremetal_vars_file is not none
+    - b5_baremetal_vars_file is string
+    - b5_baremetal_vars_file is not mapping
+    - b5_baremetal_vars_file | length > 0
+    - lookup('ansible.builtin.file', b5_baremetal_vars_file, errors='ignore') is not none
   block:
 
     #-----------------------
@@ -15,12 +22,7 @@
     #-----------------------
     - name: "B5 - DEPLOY - Cargar el modelo de datos guardado del nodo"
       ansible.builtin.include_vars:
-        file: "{{ b5_file }}"
-      vars:
-        b5_path: "{{ ansible_config.defaults.fact_caching_connection | default('/tmp') }}"
-        b5_name: "genesis_{{ inventory_hostname }}.yml"
-        b5_file: "{{ b5_path }}/{{ b5_name }}"
-
+        file: "{{ b5_baremetal_vars_file }}"
 
     #-----------------------
     # 2.- Deploy Instance 
@@ -37,7 +39,8 @@
     - name: "B5 - DEPLOY - Stage 2:  Deploy - Unattended OS Installation"
       ansible.builtin.include_tasks: "{{ b5_deploy | default ('2_deploy/1_instance.yml') }}"
       loop:
-         - "2_deploy/1_instance.yml"
+         - "2_deploy/1_boot_order.yml"
+         - "2_deploy/2_instance.yml"
       loop_control:		 
         loop_var: "b5_deploy"		
 

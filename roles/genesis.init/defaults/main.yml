@@ -10,12 +10,12 @@
 #  GENESIS PATHS (global for update all genesis roles at once)
 ######################################################
 # 1.- Repos Paths
-genesis_repo_path:     "{{ role_path }}/../../repo"
+genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 
 # 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
-genesis_bifrost_path:     "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_path:     "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
 genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
 genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
 genesis_bifrost_ironic_init: "{{ genesis_bifrost_roles | realpath }}/bifrost-create-dib-image"

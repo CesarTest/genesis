@@ -14,7 +14,7 @@
     b4_ironic_path: "/v1/nodes/{{ uuid | default(name) }}"
     b4_ironic_uri: "{{ b4_ironic_base_url }}{{ b4_ironic_port }}{{ b4_ironic_path }}"
     b4_ironic_api_version: "{{ genesis_ironic_api_version | default('1.31') }}"
-    b4_ironic_api_default_status: [200, 202]
+    b4_ironic_api_default_status: [200, 202, 204]
   block:
 
     - name: "B4 SETUP - Manage: Instance Properties vía URI"
@@ -50,6 +50,17 @@
            - op: "add"
              path: "/instance_info"
              value: "{{ instance_info | default({}) }}"
+        # Stage 2 - Manage Properties 
+        - method: "PATCH"
+          body:
+           - op: "add"
+             path: "/instance_info/bootif"
+             value: "{{ b4_enroll_nic_provision_mac | default(omit) }}" 
+        - method: "PUT"
+          path: "/management/boot_device"
+          body:
+            boot_device: "pxe"
+            persistent: true
         # Power Off			 
         - method: "PUT"
           path: "/states/power"

@@ -7,7 +7,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 - name: "------------------> B4- SETUP BAREMETAL NODE <------------------" 
-  ignore_errors: yes
   
   #-----------------------
   # 1.- Bifrost Data Model
@@ -19,8 +18,9 @@
      driver:      "{{ b4_enroll_node_bmc_driver         | default('redfish') }}"
      driver_info: "{{ b4_enroll_node_bmc_driver_info[driver] | default(omit) }}"
      nics:        "{{ b4_enroll_node_nics                  | default(omit) }}"
+     mac:              "{{ b4_enroll_nic_provision_mac     | default(omit) }}"	 
      ipv4_address:     "{{ b4_enroll_nic_provision_ip      | default(omit)}}"
-     ipv4_subnet_mask: "{{ b4_enroll_nic_provision_subnet  | default(omit) }}" 
+     ipv4_subnet_mask: "{{ b4_enroll_nic_provision_netmask | default(omit) }}" 
      ipv4_router:      "{{ b4_enroll_nic_provision_gateway | default(omit) }}" 
      boot_interface:   "{{ b4_node_boot_interface    | default('ipxe') }}"
      deploy_interface: "{{ b4_node_deploy_interface  | default('direct') }}"

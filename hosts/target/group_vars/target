@@ -1,23 +1,9 @@
 ---
 # The ironic API URL for bifrost operations.  Defaults to localhost.
 # ironic_url: "http://localhost:6385/"
-git_branch: "stable/2026.1"
 
 # The network interface that bifrost will be operating on.  Defaults
 # to virbr0 in roles, can be overridden here.
-genesis_nics:
-  inband: 
-    mac: "bc:24:11:4c:37:14"
-    ip: "10.10.51.5/24"
-  outband: 
-    mac: "bc:24:11:c1:ec:1a"
-    ip: "10.10.41.5/24"
-  internet: 
-    mac: "bc:24:11:34:c8:96"
-    ip: "192.168.1.40/24"
-    gateway: "192.168.1.1"
-    dns: "192.168.1.1"
-
 genesis_default_nic: "{{ ansible_default_ipv4.interface | default(ansible_interfaces | reject('sameas', 'lo') | first) | default('ens19') }}"
 network_interface: >-
   {{
@@ -28,15 +14,27 @@ network_interface: >-
     | map(attribute='key') | first | default(genesis_default_nic)
   }}
 
-# DHCP properties (global for all roles)
+# DHCP properties for static IP to MAC assignation (global for all roles)
+#  - DNSmasq propeties
 enable_dhcp: true
 dhcp_provider: "dnsmasq"
-dhcp_address: "{{ genesis_nics.inband.ip | default('10.10.51.5/24') }}"
-dhcp_static_mask: "{{ genesis_nics.inband.ip | ansible.utils.ipaddr('netmask') }}"
-dhcp_pool_start: "static"
-dhcp_pool_end: "static"
-dhcp_lease_time: 12h
 
+#  - DNSmasq static IP <-> MAC Assignation
+#bifrost_static_dhcp: true
+#inventory_dhcp: true
+#inventory_dhcp_static_ip: true
+#inventory_dns: true
+
+# - DHCP IP range
+dhcp_ipv4:    "{{ genesis_nics.inband.ip | default(genesis_nics.outband.ip) | default(genesis_nics.internet.ip) | default('10.10.51.5/24') }}"
+dhcp_address: "{{ dhcp_ipv4       |  ansible.utils.ipaddr('address') }}"
+dhcp_static_mask: "{{ dhcp_ipv4 | ansible.utils.ipaddr('netmask') }}"
+dhcp_prefix:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('prefix') }}"
+dhcp_subnet:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('network') }}"
+dhcp_subnet_cidr: "{{ dhcp_ipv4 | ansible.utils.ipaddr('network/prefix') }}"
+dhcp_subnet_num_ip: "{{ dhcp_subnet_cidr | ansible.utils.ipaddr('size') }}"
+dhcp_pool_start: "{{ dhcp_subnet | ansible.utils.ipmath(dhcp_subnet_num_ip | int-10)  }}"
+dhcp_pool_end:   "{{ dhcp_subnet | ansible.utils.ipmath(dhcp_subnet_num_ip | int-2)  }}"
 
 # password to use between services
 noauth_mode: true
@@ -84,13 +82,6 @@ mysql_password:
 # will be generated using diskimage-builder.
 # deploy_image_filename: "deployment_image.qcow2"
 # deploy_image: "{{http_boot_folder}}/{{deploy_image_filename}}"
-
-# Setting to utilize diskimage-builder to create a bootable image.
-create_image_via_dib: "{{ not (download_custom_deploy_image | default(use_cirros) | default(false) | bool) }}"
-dib_image_type: vm
-
-# Create IPA image instead of downloading an pre-made IPA image.
-create_ipa_image: false
 
 # Registry
 install_dib: true

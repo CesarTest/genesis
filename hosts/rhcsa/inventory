@@ -5,9 +5,6 @@ all:
  #  HOST_VARS: HARDWARE PROFILE DECLARED IN IRONIC API FORMAT
  #--------------------------------------------------------------------
  vars:
-   bifrost_static_dhcp: true
-   inventory_dhcp: true
-   inventory_dhcp_static_ip: true
    genesis_bmc_credentials: 
      redfish:
        ipv4: "10.10.41.1/24" # Proxmox Hypervisor 

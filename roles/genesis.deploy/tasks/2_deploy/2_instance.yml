@@ -1,5 +1,5 @@
 ---
-# genesis.deploy 1_deploy/1_instance.yml
+# genesis.deploy 1_deploy/2_instance.yml
 #  - Unattended OS installation
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System

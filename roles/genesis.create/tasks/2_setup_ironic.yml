@@ -8,7 +8,7 @@
 #---------------------------------------
 # 1. Setup Keystone Client
 #---------------------------------------     
-- name: "STEP 2 - SETUP KEYSTONE CLIENT: Create Bifrost Cloud"
+- name: "G2 - CREATE - Setup Ironic: KEYSTONE CLIENT - Create Bifrost Cloud"
   ansible.builtin.include_role: 
     name: bifrost-keystone-client-config
   vars: 
@@ -31,7 +31,7 @@
 #---------------------------------------
 # 2. Setup Ironic
 #---------------------------------------            
-- name: "STEP 2 - SETUP IRONIC: adjust Configurations Files"
+- name: "G2 - CREATE - Setup Ironic: adjust Configurations Files"
   ansible.builtin.lineinfile:
     path:        "{{ replace.file   | default(omit)  }}"
     regexp:      "{{ replace.regexp | default(omit)  }}"
