@@ -103,7 +103,8 @@ g3_ative_os_installer:
   - distribution: "Rocky"
     distribution_version: "8"
     os_image_name: "x86_64.iso"
-    image: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.10-x86_64-dvd1.iso"    checksum: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/CHECKSUM"
+    image: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.10-x86_64-dvd1.iso"    
+    checksum: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/CHECKSUM"
     checksum_algorithm: "sha256"
     extract_ramdisk: yes   
     mount: yes 
