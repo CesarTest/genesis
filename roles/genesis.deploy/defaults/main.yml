@@ -61,3 +61,5 @@ b5_url_ironic_url: "{{b5_url_protocol}}://{{ genesis_address | default(b5_url_ge
 #------------------
 #b5_proxmox_root_password: "cesardgm"
 b5_proxmox_hypervisor_ip: "10.10.51.1"
+b5_proxmox_pxe_boot_order: "{{ capabilities.pxe_boot_order | default('net1;virtio0') }}"
+b5_proxmox_os_boot_order:  "{{ capabilities.os_boot_order | default('virtio0;net1') }}"

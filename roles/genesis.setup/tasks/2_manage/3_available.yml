@@ -31,5 +31,4 @@
     - b4_baremetal_vars_file is not none
     - b4_baremetal_vars_file is string
     - b4_baremetal_vars_file is not mapping
-    - b4_baremetal_vars_file | length > 0	  
-  delegate_to: "localhost"
+    - b4_baremetal_vars_file | length > 0

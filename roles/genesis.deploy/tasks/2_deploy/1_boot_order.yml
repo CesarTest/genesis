@@ -70,7 +70,7 @@
         b5_px_proto: "{{ b5_driver_info['redfish_address'] | urlsplit('scheme') }}"
         b5_px_ip:    "{{ b5_driver_info['redfish_address'] | urlsplit('hostname') }}"
         b5_px_vmid:  "{{ b5_redfish_system_id | basename }}"
-        b5_px_node:  "{{ b5_proxmox_node_name | default('proxmox') }}"
+        b5_px_node:  "{{ b5_proxmox_node_name | default('pve') }}"
         b5_proxmox_url: "{{ b5_px_proto }}://{{ b5_px_ip }}:8006/api2/json/nodes/{{ b5_px_node }}/qemu/{{ b5_px_vmid }}/config"
 
         # 3. Renombramos la variable a b5_script_boot_order para evitar recursividad
@@ -78,7 +78,7 @@
           # Inyectamos el Token directamente en la cabecera PVEAPIToken
           curl -X POST -k \
             -H "Authorization: PVEAPIToken={{ b5_redfish_username }}!{{ b5_proxmox_token_name | default('genesis') }}={{ b5_redfish_password }}" \
-            --data-urlencode "boot=order={{ b5_boot_order_target | default('net0;scsi0') }}" \
+            --data-urlencode "boot={{ b5_proxmox_pxe_boot_order | default('net1;scsi0') }}" \
             "{{ b5_proxmox_url }}"
         b5_proxmox_patches: 
           - "{{ b5_script_boot_order }}"

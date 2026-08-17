@@ -42,6 +42,11 @@ genesis_os_definitions:
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks" 
+  rocky:
+    ansible_distribution: "Rocky"
+    installer: "anaconda"
+    prefix: "ks_"
+    ext: ".ks"
   redhat:
     ansible_distribution: "RedHat"
     installer: "anaconda"
@@ -129,10 +134,11 @@ b4_enroll_nic_provision_default_gateway: "{{ b4_enroll_nic_provision_ipv4 | ansi
 b4_enroll_nic_provision_gateway: "{{ b4_enroll_nic_provision['gateway'] | default(b4_enroll_nic_provision_default_gateway) }}"
 
 # 1.4.- List of NICs for OpenStack Ansible Module
-b4_enroll_node_nics_raw: 
-  - mac: "{{ b4_enroll_nic_provision_mac | default(none) }}" 
-  - mac: "{{ b4_enroll_nic_bmc_mac       | default(none) }}"
-b4_enroll_node_nics: >-
+b4_enroll_node_nics: 
+  - 
+    mac: "{{ b4_enroll_nic_provision_mac | default(none) }}" 
+#  - mac: "{{ b4_enroll_nic_bmc_mac       | default(none) }}"
+b4_enroll_node_nics_tmp: >-
   {{ b4_enroll_node_nics_raw 
      | rejectattr('mac', 'none') 
      | rejectattr('mac', 'undefined') 
@@ -203,6 +209,7 @@ b4_enroll_node_chassis_default_properties:
   
 b4_enroll_node_chassis_properties_input: "{{ enroll['properties'] | default(b4_enroll_node_chassis_default_properties) }}"
 b4_enroll_node_chassis_capabilities: "{{ enroll['capabilities'] | default({}) }}"
+b4_enroll_node_chassis_type: "{{ (b4_enroll_node_chassis_capabilities.uefi | default(true)) | ternary('uefi','bios','uefi') }}"
 b4_enroll_node_chassis_capabilities_string: "{{ (b4_enroll_node_chassis_capabilities | length > 0) | ternary(b4_enroll_node_chassis_capabilities.items() | map('join', ':') | join(',') | lower, '') }}"
 b4_enroll_node_chassis_cpus: "{{ b4_enroll_node_chassis_properties_input['cpus'] | default(b4_enroll_node_chassis_default_properties['cpus']) | int }}"
 b4_enroll_node_chassis_cpu_arch: "{{ b4_enroll_node_chassis_properties_input['cpu_arch'] | default(b4_enroll_node_chassis_properties_input['arch'] | default(b4_enroll_node_chassis_default_properties['cpu_arch'])) }}"
@@ -303,13 +310,24 @@ b4_node_deploy_interface: "{{ deploy['deploy_interface'] | default(b4_node_defau
 #------------------------------------
 # 1.- Kickstart
 #------------------------------------
+b4_kickstart_storage_chassis_type: 
+  uefi: |
+    bootloader
+    part /boot/efi --fstype=vfat --size=600
+    part /boot --fstype=xfs --size=1024
+  bios:	|
+    bootloader --location=mbr
+    part /boot --fstype=ext4 --size=1024
+
+b4_kickstart_storage_snippet: "{{ b4_kickstart_storage_chassis_type[b4_enroll_node_chassis_type] | default(b4_kickstart_storage_chassis_type['uefi']) }}"
+
 b4_kickstart_template_defaults:
   preinstall: |
     # Use NFS installation media
     url --url {{ b4_netinstall_os_mounted_repo_url }} 
   postinstall: |
-    # 1. DETECCIÓN INTELIGENTE: ¿Es una Máquina Virtual?
-    # Buscamos fabricantes comunes de VMs (QEMU, VMware, VirtualBox, KVM, Xen)
+    # 1. DETECT VIRTUAL MACHINE 
+    # Hypervisors Manufacturers (QEMU, VMware, VirtualBox, KVM, Xen)
     IS_VM=0
     if command -v dmidecode &>/dev/null; then
         SYS_VENDOR=$(dmidecode -s system-manufacturer 2>/dev/null | tr '[:upper:]' '[:lower:]')
@@ -318,39 +336,39 @@ b4_kickstart_template_defaults:
         fi
     fi
     
-    # 2. EJECUCIÓN CONDICIONAL
+    # 2. CHANGE BOOT DEVICE
     if [ "$IS_VM" -eq 1 ]; then
-        echo "[INFO] Entorno virtual detectado ($SYS_VENDOR). Omitiendo ipmitool para evitar errores." >> /root/ks-post-ipmi.log
+        echo "[INFO] Virtual Machine Detected ($SYS_VENDOR). Not Using ipmitool to avoid errors." >> /root/ks-post-ipmi.log
     else
-        echo "[INFO] Hardware físico detectado. Iniciando configuración IPMI..." >> /root/ks-post-ipmi.log
+        echo "[INFO] Bare Metal detected. Usign IPMI..." >> /root/ks-post-ipmi.log
     
-        # Asegurar módulos del Kernel (Requerido en RHEL modernos)
+        # Check Kernel Modules (Requered in modern RHEL)
         modprobe ipmi_msghandler 2>/dev/null
         modprobe ipmi_si 2>/dev/null
         modprobe ipmi_devintf 2>/dev/null
         
-        # Asegurar el nodo del dispositivo dentro del chroot de Anaconda
+        # Check devices in Anaconda chroot 
         if [ ! -c /dev/ipmi0 ]; then
             mknod /dev/ipmi0 c 242 0 2>/dev/null || mknod /dev/ipmi0 c 243 0
         fi
         
-        # Doble validación: Si el nodo /dev/ipmi0 no existe tras el mknod, el hardware no tiene BMC real
+        # Double Validation: If node /dev/ipmi0 do no exist after mknod, hardware do not have real BMC
         if [ ! -c /dev/ipmi0 ]; then
-            echo "[ERROR] El dispositivo /dev/ipmi0 no pudo ser creado o el hardware no soporta IPMI." >> /root/ks-post-ipmi.log
+            echo "[ERROR] Device /dev/ipmi0 couldn't be created or hardware do not  support IPMI." >> /root/ks-post-ipmi.log
         else
-            # INTENTO 1: Servidores modernos UEFI (RHEL 8 y 9)
-            echo "Intentando configurar orden persistente con UEFI..." >> /root/ks-post-ipmi.log
+            # TRIAL 1: Modern UEFI Servers (RHEL 8 y 9)
+            echo "Trying configure persistent boot order with UEFI..." >> /root/ks-post-ipmi.log
             ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log
             
-            # INTENTO 2: Servidores modernos con Legacy BIOS (RHEL 8 y 9)
+            # TRIAL 2: Modern Servers in Legacy BIOS Mode (RHEL 8 y 9)
             if [ $? -ne 0 ]; then
-                echo "Fallo UEFI. Intentando persistent estándar..." >> /root/ks-post-ipmi.log
+                echo "Failure UEFI. Trying configure persistent boot order with standard methods..." >> /root/ks-post-ipmi.log
                 ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log
             fi
             
-            # INTENTO 3: Servidores antiguos o BMCs obsoletos (RHEL 6 y 7)
+            # TRIAL 3: Old Servers or obsolete BMCs (RHEL 6 y 7)
             if [ $? -ne 0 ]; then
-                echo "Fallo 'options='. Intentando comando ipmitool clásico..." >> /root/ks-post-ipmi.log
+                echo "Trying 'options='. Ipmi classical command..." >> /root/ks-post-ipmi.log
                 ipmitool chassis bootdev disk 2>>/root/ks-post-ipmi.log
             fi
         fi
@@ -397,23 +415,22 @@ b4_kickstart_template_defaults:
     ipmitool
     OpenIPMI
     coreutils
+  
   storage: |
-    # Clear the Master Boot Record
+    # Clear the Master Boot Record  
     zerombr
-    
-    # System bootloader configuration
-    bootloader --location=mbr
     
     # Partition clearing information
     clearpart --all --initlabel
     
     #Partitions
+    {{ b4_kickstart_storage_snippet }}
     part / --fstype=ext4 --size=17408
     part pv.{{ b4_enroll_node_name }}-0001 --grow --size=1
     volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
     logvol /home --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
     logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
-
+  
 b4_kickstart_template_profiles:
   vmware_esxi: 
     storage: |
@@ -511,7 +528,7 @@ b4_kickstart_template_profiles:
 b4_os_installer_manifesto:
   anaconda:
     template:  
-      - "kickstart.j2"
+      - "manifesto/kickstart.j2"
     file:      
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
@@ -520,7 +537,7 @@ b4_os_installer_manifesto:
     
   esxi:
     template:  
-      - "kickstart.j2"
+      - "manifesto/kickstart.j2"
     file:      
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
@@ -529,7 +546,7 @@ b4_os_installer_manifesto:
     
   preseed:
     template:  
-      - "preseed.j2"
+      - "manifesto/preseed.j2"
     file:      
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
@@ -538,8 +555,8 @@ b4_os_installer_manifesto:
     
   subsiquity:
     template:  
-      - "cloud-init/meta-data.j2"
-      - "cloud-init/user-data.j2"     
+      - "manifesto/cloud-init/meta-data.j2"
+      - "manifesto/cloud-init/user-data.j2"     
     file:      
       - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/meta-data"
       - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/user-data"
@@ -549,7 +566,7 @@ b4_os_installer_manifesto:
     
   ignition:
     template:  
-      - "ignition.j2"    
+      - "manifesto/ignition.j2"    
     file:      
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
@@ -562,6 +579,7 @@ b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | defa
 #------------------------------------
 # 2.- OS Installer Call from Bootloader
 #------------------------------------
+#       ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::bootif:none
 b4_os_installer_bootloader_call:
   anaconda:
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.kernel  | default('vmlinuz') }}"
