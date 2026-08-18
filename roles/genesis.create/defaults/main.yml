@@ -35,7 +35,15 @@ oras_url_root:     "{{ git_url_root }}"
 
 # Default network interface that bifrost will be attached to.
 # This is used in ipa_* so it must be before
-network_interface: "virbr0"
+genesis_default_nic: "{{ ansible_default_ipv4.interface | default(ansible_interfaces | reject('sameas', 'lo') | first) | default('ens19') }}"
+network_interface: >-
+  {{
+    ansible_facts | dict2items
+    | selectattr('value.macaddress', 'defined')
+
+    | selectattr('value.macaddress', '==', (genesis_nics.inband.mac | lower))
+    | map(attribute='key') | first | default(genesis_default_nic)
+  }}
 ans_network_interface: "{{ network_interface | replace('-', '_') }}"
 internal_interface: "{{ hostvars[inventory_hostname]['ansible_' + ans_network_interface]['ipv4'] }}"
 internal_ip: "{{ internal_interface['address'] }}"
@@ -105,6 +113,7 @@ keystone:
 ######################################################
 #  IRONIC CONFIG 
 ######################################################
+genesis_ironic_deploy_interfaces: "direct,ramdisk,anaconda,bootc,ansible"
 genesis_ironic_install_roles:
    - name: "bifrost-prep-for-install"
      condition: "{{ not (skip_install | default(false) | bool) }}" 
@@ -123,7 +132,7 @@ genesis_create_setup_ironic:
      line: 'automated_clean = false'
    - file: "{{ genesis_ironic_config_file }}"
      regexp: '^enabled_deploy_interfaces '
-     line: 'enabled_deploy_interfaces = ramdisk,bootc,direct,anaconda'  
+     line: "enabled_deploy_interfaces = {{ genesis_ironic_deploy_interfaces }}" 
 #    - file: "{{ genesis_ironic_config_file }}"  
 #      regexp: '[DEFAULT]'
 #      insertafter: '[DEFAULT]'

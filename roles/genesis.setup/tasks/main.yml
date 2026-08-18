@@ -16,7 +16,7 @@
      name:        "{{ b4_enroll_node_name               | default(omit) }}" 
      properties:  "{{ b4_enroll_node_chassis_properties | default(omit) }}"
      driver:      "{{ b4_enroll_node_bmc_driver         | default('redfish') }}"
-     driver_info: "{{ b4_enroll_node_bmc_driver_info[driver] | default(omit) }}"
+     driver_info: "{{ b4_node_driver_info               | default(omit) }}"
      nics:        "{{ b4_enroll_node_nics                  | default(omit) }}"
      mac:              "{{ b4_enroll_nic_provision_mac     | default(omit) }}"	 
      ipv4_address:     "{{ b4_enroll_nic_provision_ip      | default(omit)}}"
@@ -24,7 +24,7 @@
      ipv4_router:      "{{ b4_enroll_nic_provision_gateway | default(omit) }}" 
      boot_interface:   "{{ b4_node_boot_interface    | default('ipxe') }}"
      deploy_interface: "{{ b4_node_deploy_interface  | default('direct') }}"
-     instance_info:    "{{ b4_deploy_interface_node_instance_info | default(omit) }}"
+     instance_info:    "{{ b4_node_instance_info | default(omit) }}"
      provisioning_ipv4_address: "{{ ipv4_address }}"
 
   #-----------------------

@@ -6,3 +6,15 @@
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
+
+- name: "B4 SETUP - Manage: Assure Inband Provision Access to the Node" 
+  ignore_errors: yes
+  block: 
+    - ansible.builtin.include_role: 
+        name: "{{ b4_manage_node.name }}"
+      when: 
+        - b4_manage_node.name is defined
+        - b4_manage_node.condition | default(true) | bool 
+      loop: "{{ b4_manage_roles | default([]) }}"
+      loop_control:
+        loop_var: "b4_manage_node"  

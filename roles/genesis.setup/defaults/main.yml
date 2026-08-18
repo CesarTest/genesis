@@ -1,10 +1,8 @@
 ---
 # genesis.setup defaults
-#   - Generate Install Manifesto for each Node
-#   - Enroll Nodes
-#   - Set Boot Interface
-#   - Set deploy Interface
-#   - Move across node life cycle transitions until Available State
+#   - Stage 1 - Enroll the Node - Outband BMC
+#   - Stage 2 - Manage the Node - Inband Provision 
+#     - Result: Instance Configure, Ready to Deploy
 #  
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -18,7 +16,6 @@ genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 genesis_rsyslog_port: "5456"
 file_url_port_tls: "8083"
-
 
 # 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
@@ -85,16 +82,17 @@ b4_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b4_os_manifesto_su
 ######################################################
 b4_configdrive_roles:
    - name: "bifrost-configdrives-dynamic"
-
-b4_enroll_roles:
-   - name: "ironic-enroll-dynamic"
    - name: "ironic-inspect-node"
      condition: "{{ inspect_nodes | default('false') | bool }}" 
+ 
+b4_enroll_roles:
+   - name: "ironic-enroll-dynamic"
 
 b4_delete_roles:
    - name: "ironic-delete-dynamic"
  
-
+b4_manage_roles: []
+ 
 ######################################################
 # ENROLL PARTICULARS
 ######################################################
@@ -134,11 +132,10 @@ b4_enroll_nic_provision_default_gateway: "{{ b4_enroll_nic_provision_ipv4 | ansi
 b4_enroll_nic_provision_gateway: "{{ b4_enroll_nic_provision['gateway'] | default(b4_enroll_nic_provision_default_gateway) }}"
 
 # 1.4.- List of NICs for OpenStack Ansible Module
-b4_enroll_node_nics: 
-  - 
-    mac: "{{ b4_enroll_nic_provision_mac | default(none) }}" 
-#  - mac: "{{ b4_enroll_nic_bmc_mac       | default(none) }}"
-b4_enroll_node_nics_tmp: >-
+b4_enroll_node_nics_raw: 
+  - mac: "{{ b4_enroll_nic_provision_mac | default(none) }}" 
+  - mac: "{{ b4_enroll_nic_bmc_mac       | default(none) }}"
+b4_enroll_node_nics: >-
   {{ b4_enroll_node_nics_raw 
      | rejectattr('mac', 'none') 
      | rejectattr('mac', 'undefined') 
@@ -224,7 +221,6 @@ b4_enroll_node_chassis_properties:
    root_device:  "{{ b4_enroll_node_chassis_root_device }}"
    capabilities: "{{ b4_enroll_node_chassis_capabilities_string }}"
 
-   
 ######################################################
 # MANAGE STAGE PARTICULARS
 ######################################################
@@ -579,19 +575,68 @@ b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | defa
 #------------------------------------
 # 2.- OS Installer Call from Bootloader
 #------------------------------------
-#       ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::bootif:none
 b4_os_installer_bootloader_call:
   anaconda:
+    # ...............................................................
+    # KERNEL PARAMETERS DOCUMENTATION (DRACUT & ANACONDA NETINSTALL)
+    # ...............................................................
+    # These parameters configure the behavior of the initramfs (Dracut) and the
+    # OS installer (Anaconda) during the network boot (PXE) stage.
+    #
+    # Parameter breakdown:
+    #
+    # 1. inst.ks:
+    #    - Purpose: Specifies the URL of the automated installation answer file (Kickstart).
+    #    - Impact: Enables a 100% unattended and automated installation process.
+    #
+    # 2. inst.repo:
+    #    - Purpose: Defines the repository path containing the actual RPM packages.
+    #    - Impact: Anaconda looks here for the 'repodata/' structure to install the OS.
+    #
+    # 3. ip:
+    #    - Purpose: Configures static networking during the early boot phase via Dracut.
+    #    - Strict Syntax: ip=<client_ip>::<gateway>:<netmask>::<interface>:<method>
+    #    - Note: 'bootif' binds to the PXE NIC; 'none' disables subsequent DHCP requests.
+    #
+    # 4. BOOTIF:
+    #    - Purpose: Passes the MAC address of the network card used by the bootloader.
+    #    - Format: Requires the '01-' hardware prefix followed by lowercase, dash-separated MAC.
+    #
+    # 5. rd.neednet=1:
+    #    - Purpose: Forces Dracut to bring up and maintain the network infrastructure.
+    #    - Impact: Prevents early network teardown before Anaconda takes full control.
+    # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.kernel  | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.initram | default('initrd.img') }}"
     menu: >-
-      inst.ks={{ b4_node_os_manifesto['url'] }}
-      inst.repo={{ b4_netinstall_os_mounted_repo_url }}
-      ifname=bootif:{{ b4_enroll_nic_provision_mac | lower }}
-      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::bootif:none
-      BOOTIF={{ b4_enroll_nic_provision_mac | lower }}
-
+      inst.ks={{ b4_node_os_manifesto['url'] | default('') }}
+      inst.repo={{ b4_netinstall_os_mounted_repo_url | default('') }}
+      ip={{ b4_enroll_nic_provision_ip | default('') }}::{{ b4_url_genesis_ip | default('') }}:{{ b4_enroll_nic_provision_netmask | default('') }}::bootif:none
+      BOOTIF=01-{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}
+      rd.neednet=1
+      rd.net.timeout=60
+      rd.shell rd.debug
   esxi:     
+    # ...............................................................
+    # KERNEL PARAMETERS DOCUMENTATION (VMWARE ESXI NETINSTALL)
+    # ...............................................................
+    # VMware ESXi uses its own native boot loader (mboot.c32 / efi) and setup engine.
+    # It does not understand standard Linux network arguments as standalone keys.
+    #
+    # Parameter breakdown:
+    #
+    # 1. ks:
+    #    - Purpose: Specifies the location of the ESXi Kickscript (ks.cfg) file.
+    #    - Critical Note: Static network configurations MUST be appended inline within this parameter string.
+    #
+    # 2. ip / netmask / gateway / nameserver:
+    #    - Purpose: Configures the initial temporary static network interface to pull the kickstart.
+    #    - Syntax: Appended as suffix keypairs right after the ks URL path.
+    #
+    # 3. netdevice:
+    #    - Purpose: Directs the installer to the physical network card mapping.
+    #    - Value: 'detect' forces ESXi to probe and select the active link that initiated PXE.
+    # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.kernel  | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.initram | default('initrd.img') }}"
     menu: >-
@@ -599,28 +644,97 @@ b4_os_installer_bootloader_call:
       ip={{ b4_enroll_nic_provision_ip }}
       netmask={{ b4_enroll_nic_provision_netmask }}
       gateway={{ b4_enroll_nic_provision_gateway }}
-      netdevice={{ b4_enroll_nic_provision_mac | lower }}
-  
+      nameserver=1.1.1.1
+      netdevice=detect
+
   subsiquity:
+    # ...............................................................
+    # KERNEL PARAMETERS DOCUMENTATION (UBUNTU SUBIQUITY / CASPER)
+    # ...............................................................
+    # Ubuntu uses the 'casper' boot framework (initramfs-tools), which behaves
+    # differently from Red Hat's Dracut engine.
+    #
+    # Parameter breakdown:
+    #
+    # 1. url:
+    #    - Purpose: Specifies the HTTP/HTTPS path to the full Ubuntu Server cloud-init ISO.
+    #    - Impact: Casper mounts this live ISO over the network into RAM memory.
+    #
+    # 2. autoinstall:
+    #    - Purpose: Flags the Subiquity engine to trigger the non-interactive automated installer.
+    #
+    # 3. ds=nocloud-net:
+    #    - Purpose: Defines the cloud-init data source location.
+    #    - Syntax: 's=' points to the HTTP directory containing 'user-data' and 'meta-data'.
+    #
+    # 4. ip:
+    #    - Purpose: Sets the static IP schema inside the casper network configuration block.
+    #    - Strict Syntax: ip=<client_ip>::<gateway>:<netmask>::<interface>:<method>
+    #    - Note: 'eth0' acts as a compatible placeholder; 'off' disables fallback DHCP hooks.
+    #
+    # 5. BOOTIF:
+    #    - Purpose: Standard PXE hardware mapping string passed down to the internal network stack.
+    # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.kernel  | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.initram | default('initrd') }}"  
-    # Envolvemos el ds="..." completo en comillas para proteger el punto y coma del formateo de bloques YAML
     menu: >-
       url={{ b4_netinstall_os_iso_url }}
       autoinstall
       "ds=nocloud-net;s={{ b4_node_os_manifesto.url }}"
-      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::bootif:none
+      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::eth0:off
       BOOTIF=01-{{ b4_enroll_nic_provision_mac | lower | replace(':', '-') }}
-  
+
   ignition:
+    # ...............................................................
+    # KERNEL PARAMETERS DOCUMENTATION (FEDORA COREOS / FLATCAR IGNITION)
+    # ...............................................................
+    # Ignition boots via Dracut but acts as a first-boot configuration engine
+    # designed specifically for container-optimized immutable infrastructures.
+    #
+    # Parameter breakdown:
+    #
+    # 1. ignition.config.url:
+    #    - Purpose: URL path pointing to the JSON-formatted Ignition provisioning file (.ign).
+    #
+    # 2. ip:
+    #    - Purpose: Standard Dracut network string to set up early static network layers.
+    #    - Note: 'bootif' ensures the JSON download interface matches the PXE boot interface.
+    #
+    # 3. BOOTIF:
+    #    - Purpose: Resolves the dynamic hardware MAC address into a standard interface object,
+    #               preventing systemd predictable naming rules from breaking hardcoded configurations.
+    # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.initram | default('initramfs') }}"      
     menu: >-
       ignition.config.url={{ b4_node_os_manifesto.url }}
-      ifname=eth0:{{ b4_enroll_nic_provision_mac | lower }}
-      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::eth0:none
-  
+      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::bootif:none
+      BOOTIF=01-{{ b4_enroll_nic_provision_mac | lower | replace(':', '-') }}
+
   preseed:  
+    # ...............................................................
+    # KERNEL PARAMETERS DOCUMENTATION (DEBIAN / DEVUAN PRESEED)
+    # ...............................................................
+    # Debian relies on the traditional Debian Installer (d-i) network module (netcfg)
+    # which uses an explicit key-value argument mapping instead of standard colon strings.
+    #
+    # Parameter breakdown:
+    #
+    # 1. auto=true / priority=critical:
+    #    - Purpose: Bypasses non-essential configuration prompts and forces automated execution.
+    #
+    # 2. url:
+    #    - Purpose: Points to the raw flat-text Debian Preseed configuration deployment file.
+    #
+    # 3. netcfg/disable_dhcp=true:
+    #    - Purpose: Instructs the d-i network framework to completely skip DHCP polling loops.
+    #
+    # 4. interface=auto:
+    #    - Purpose: Triggers physical link detection to find the wire connected to the PXE host.
+    #
+    # 5. netcfg/get_*:
+    #    - Purpose: Feeds static IPv4 parameters directly into the core installer network stack.
+    # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.kernel  | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.initram | default('initrd') }}"  
     menu: >-
@@ -628,7 +742,7 @@ b4_os_installer_bootloader_call:
       priority=critical
       url={{ b4_node_os_manifesto.url }}
       netcfg/disable_dhcp=true
-      netcfg/choose_interface={{ b4_enroll_nic_provision_mac | lower }}
+      interface=auto
       netcfg/get_ipaddress={{ b4_enroll_nic_provision_ip }}
       netcfg/get_netmask={{ b4_enroll_nic_provision_netmask }}
       netcfg/get_gateway={{ b4_enroll_nic_provision_gateway }}
@@ -640,12 +754,34 @@ b4_node_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_nod
 #------------------------------------
 # 3.- Deploy Interfaces Configuration
 #------------------------------------  
-
+b4_node_os_installer_bootloader_menu: "{{ b4_node_os_installer_bootloader_info['menu'].split() | join(' ') }}"
 b4_deploy_interface_instance_info:
+  default:
+    instance_info:
+      image_source: "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
+      kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
+      ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}" 
   ramdisk:
-    image_source: "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
-    kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
-    ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}"
-    boot_append_arguments: "{{ b4_node_os_installer_bootloader_info['menu'] }}"
+    driver_info:
+      pxe_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+    instance_info:
+      image_source: "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
+      kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
+      ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}"
+      kernel_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+  
+######################################################
+# INSTANCE INFORMATION
+###################################################### 
 
-b4_deploy_interface_node_instance_info: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface] }}"	
+#------------------------------------
+# 1.- Driver Info
+#------------------------------------ 
+b4_node_driver_info_credentials: "{{ b4_enroll_node_bmc_driver_info[b4_enroll_node_bmc_driver] | default({}) }}"
+b4_node_driver_info_pxe: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface]['driver_info'] | default(b4_deploy_interface_instance_info['default']['driver_info']) | default({}) }}"
+b4_node_driver_info: "{{ b4_node_driver_info_credentials | combine(b4_node_driver_info_pxe) }}"
+
+#------------------------------------
+# 2.- Instance Info
+#------------------------------------ 
+b4_node_instance_info: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface]['instance_info'] | default(b4_deploy_interface_instance_info['default']['instance_info']) | default({}) }}"

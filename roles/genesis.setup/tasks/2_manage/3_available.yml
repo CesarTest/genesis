@@ -7,7 +7,7 @@
 #
 - name: "B4 SETUP - Manage: Dump Bifrost Data Model to File"
   vars:
-    b4_bifrost_node_data_model:
+    b4_bifrost_node_data_model: 
       uuid:        "{{ uuid        | default('') }}"
       name:        "{{ name        | default('') }}" 
       properties:  "{{ properties  | default('') }}"
@@ -26,6 +26,11 @@
     dest: "{{ b4_baremetal_vars_file }}"
     content: |
       {{ b4_bifrost_node_data_model | to_nice_yaml(indent=2) }}
+    force: true
+    unsafe_writes: true
+    backup: false 
+    async: 10
+    poll: 0
   when: 
     - b5_baremetal_vars_file is defined
     - b4_baremetal_vars_file is not none
