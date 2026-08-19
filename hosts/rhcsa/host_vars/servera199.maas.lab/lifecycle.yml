@@ -51,7 +51,7 @@ enroll:
 # 5.- Deploy - Install Operating System
 #-----------------
 deploy:   
-   boot_interface:   "pxe"
+   boot_interface:   "ipxe"
    deploy_interface: "ramdisk"
    os:
      name: "CentOS"

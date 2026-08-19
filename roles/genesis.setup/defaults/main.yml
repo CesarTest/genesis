@@ -643,7 +643,7 @@ b4_os_installer_bootloader_call:
       ks={{ b4_node_os_manifesto.url }}
       ip={{ b4_enroll_nic_provision_ip }}
       netmask={{ b4_enroll_nic_provision_netmask }}
-      gateway={{ b4_enroll_nic_provision_gateway }}
+      gateway={{ b4_url_genesis_ip }}
       nameserver=1.1.1.1
       netdevice=detect
 
@@ -681,7 +681,7 @@ b4_os_installer_bootloader_call:
       url={{ b4_netinstall_os_iso_url }}
       autoinstall
       "ds=nocloud-net;s={{ b4_node_os_manifesto.url }}"
-      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::eth0:off
+      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_url_genesis_ip }}:{{ b4_enroll_nic_provision_netmask }}::eth0:off
       BOOTIF=01-{{ b4_enroll_nic_provision_mac | lower | replace(':', '-') }}
 
   ignition:
@@ -708,7 +708,7 @@ b4_os_installer_bootloader_call:
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.initram | default('initramfs') }}"      
     menu: >-
       ignition.config.url={{ b4_node_os_manifesto.url }}
-      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}::bootif:none
+      ip={{ b4_enroll_nic_provision_ip }}::{{ b4_url_genesis_ip }}:{{ b4_enroll_nic_provision_netmask }}::bootif:none
       BOOTIF=01-{{ b4_enroll_nic_provision_mac | lower | replace(':', '-') }}
 
   preseed:  
@@ -745,7 +745,7 @@ b4_os_installer_bootloader_call:
       interface=auto
       netcfg/get_ipaddress={{ b4_enroll_nic_provision_ip }}
       netcfg/get_netmask={{ b4_enroll_nic_provision_netmask }}
-      netcfg/get_gateway={{ b4_enroll_nic_provision_gateway }}
+      netcfg/get_gateway={{ b4_url_genesis_ip }}
       netcfg/confirm_static=true
   
 b4_node_default_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_node_default_os_installer] | default({}) }}"
@@ -758,14 +758,14 @@ b4_node_os_installer_bootloader_menu: "{{ b4_node_os_installer_bootloader_info['
 b4_deploy_interface_instance_info:
   default:
     instance_info:
-      image_source: "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
+      image_source: "{{ b4_netinstall_os_iso_url }}"
       kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
       ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}" 
   ramdisk:
     driver_info:
       pxe_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
     instance_info:
-      image_source: "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
+      image_source: "{{ b4_netinstall_os_iso_url }}"
       kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
       ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}"
       kernel_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
