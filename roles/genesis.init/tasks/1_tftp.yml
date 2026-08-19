@@ -7,7 +7,7 @@
 #
    
 - name: "G3 - INIT: Setup PXE-TFTP: Load OS Installer"
-  ansible.builtin.include_tasks: "{{ g3_tftp_setup | default ('1_tftp/1_os_installer.yml') }}"
+  ansible.builtin.include_tasks: "{{ g3_tftp_setup | default ('1_tftp/2_os_installer.yml') }}"
   vars:
   
     # 1.- OS Particulars

@@ -17,6 +17,13 @@
     b4_ironic_api_version: "{{ genesis_ironic_api_version | default('1.31') }}"
     b4_ironic_api_default_status: [200, 202, 204]
     b4_lifecycle_instructions:
+
+        # Stage 1 - Manage State
+        - method: "PUT"
+          path: "/states/provision"
+          body:
+            target: "manage"
+
         # Stage 1 - Enroll Properties 
         - method: "PATCH"
           body:
@@ -41,19 +48,6 @@
               path: "/instance_info"
               value: "{{ instance_info | default({}) }}"
 
-        # Stage 2 - Manage Properties - Transition to Manageable State
-        #          (Force render GRUB/iPXE files)     
-        - method: "PUT"
-          path: "/states/provision"
-          body:
-            target: "manage"
-
-        # Stage 2 - Manage Properties - Transition to Available State
-        - method: "PUT"
-          path: "/states/provision"
-          body:
-            target: "provide"
-
         # Stage 2 - Manage Properties - Set PXE Boot Order
         - method: "PATCH"
           body:
@@ -66,6 +60,12 @@
             boot_device: "pxe"
             persistent: true
 
+        # Stage 2 - Manage Properties - Transition to Manageable State
+        - method: "PUT"
+          path: "/states/provision"
+          body:
+            target: "provide"
+
         # Out-of-Band Power Management - Power Off Node
         - method: "PUT"
           path: "/states/power"
@@ -73,9 +73,12 @@
             target: "power off"
 
         # Verification Phase - Gather Current Instance Status
+        #     (Force render GRUB/iPXE files)
         - method: "GET"
-
+          path: "/validate"
+        - method: "GET"	
   block:
+
     - name: "B4 SETUP - Manage: Instance Properties vía URI"
       ansible.builtin.uri:
         url:    "{{ b4_ironic_uri }}{{ lifecycle_stage.path | default('') }}"

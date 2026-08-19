@@ -12,7 +12,7 @@
   hosts: localhost
   become: no
   gather_facts: yes
-
+ 
 #---------------------------------
 #  SETUP NODES
 #---------------------------------
@@ -27,7 +27,11 @@
     genesis_default_inventory_source: "{{ genesis_hosts_path | realpath }}/tests/host_vars/baremetal.yml"
     genesis_baremetal_vars: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or genesis_default_inventory_source }}"
     ironic_http_path:   "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
-        
+
+  pre_tasks:
+    - name: "B4 SETUP - Reset existing connection sockets"
+      ansible.builtin.meta: reset_connection
+  
   roles:
   
     # -----> B4 - SETUP

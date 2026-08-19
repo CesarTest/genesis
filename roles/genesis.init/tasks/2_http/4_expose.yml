@@ -9,11 +9,11 @@
 #---------------------------------------
 # 1. MAC - Mandatory Access Control to Contents
 #---------------------------------------  
-- name: "STEP 2.1.- MAC - Mandatory Access Control to Contents"
+- name: "G3 - INIT: Setup PXE-HTTP: 4 - MAC (Mandatory Access Control) to Contents"
   block: 
   
     # ----> 1.1. Linux Permissions: Ownership of Folders to Expose (Web Server Owner = Ironic)
-    - name: "STEP 2.3 - HTTP: Grant Web Server Permission to Base Repo Path"
+    - name: "G3 - INIT: Setup PXE-HTTP: 4 - MAC Grant Web Server Permission to Base Repo Path"
       ansible.builtin.file:
         path: "{{ http_exposure_subdir | realpath }}"
         mode: 'o+x'
@@ -25,7 +25,7 @@
       loop_control:
         loop_var: "http_exposure_subdir"
     
-    - name: "STEP 2.3 - HTTP: Ownership Before exposure"
+    - name: "G3 - INIT: Setup PXE-HTTP: 4 - MAC Ownership Before exposure"
       ansible.builtin.file:
         path:  "{{ http_exposure.repo }}"
         owner: "{{ g3_webserver_user | default(omit) }}"
@@ -42,11 +42,11 @@
 #---------------------------------------
 # 2. HTTP EXPOSURE - Ensure Access to Public Web Folder
 #---------------------------------------     
-- name: "STEP 2.1.- HTTP EXPOSURE - Ensure Access to Web Public Folder"
+- name: "G3 - INIT: Setup PXE-HTTP: 4 - HTTP EXPOSURE - Ensure Access to Web Public Folder"
   block: 
       
     # ----> 2.1. Create Symbolik Links to HTTP folder
-    - name: "STEP 2.3 - HTTP: Expose Image Repositories"
+    - name: "G3 - INIT: Setup PXE-HTTP: 4 - HTTP EXPOSURE - Expose Image Repositories"
       file:
         src:   "{{ http_exposure.repo }}"
         dest:  "{{ http_exposure.expose }}"
@@ -58,7 +58,7 @@
         loop_var: "http_exposure"  
          
     # ----> 2.2. WebServer Update
-    - name: "STEP 2.3 - HTTP: adjust Webserver Configurations Files"
+    - name: "G3 - INIT: Setup PXE-HTTP: 4 - HTTP EXPOSURE - adjust Webserver Configurations Files"
       ansible.builtin.lineinfile:
         path:        "{{ g3_web.file        | default(omit) }}"
         regexp:      "{{ g3_web.regexp      | default(omit) }}"

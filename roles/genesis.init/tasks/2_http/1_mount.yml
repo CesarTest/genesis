@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "STEP 2.1: Create Mount Folder"
+- name: "G3 - INIT: Setup PXE-HTTP: 1 - Create Mount Folder"
   become: yes
   ansible.builtin.file:
     path: "{{ g3_deploy_path }}" 
@@ -19,7 +19,7 @@
     - g3_image.mount is defined
     - g3_image.mount   
 
-- name: "STEP 2.1: Mount ISO Image"
+- name: "G3 - INIT: Setup PXE-HTTP: 1 Mount ISO Image"
   become: yes
   ansible.posix.mount:
     path: "{{ g3_deploy_path }}"

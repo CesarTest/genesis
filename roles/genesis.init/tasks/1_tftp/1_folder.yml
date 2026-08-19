@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "STEP 1: Create TFTP Folder"
+- name: "G3 - INIT: Setup PXE-TFTP: 1 - Create TFTP Folder"
   become: yes
   ansible.builtin.file:
     path: "{{ g3_deploy_path }}" 

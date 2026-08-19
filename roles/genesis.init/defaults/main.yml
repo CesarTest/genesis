@@ -10,19 +10,19 @@
 #  GENESIS PATHS (global for update all genesis roles at once)
 ######################################################
 # 1.- Repos Paths
-genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
+genesis_repo_path: "{{ role_path | dirname | dirname | realpath }}/repo"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 
 # 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
-genesis_bifrost_path:     "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
-genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_path: "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles: "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
 genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
 genesis_bifrost_ironic_init: "{{ genesis_bifrost_roles | realpath }}/bifrost-create-dib-image"
 genesis_bifrost_dest_folder:
-  - "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
-  - "{{http_boot_folder | default('/var/lib/ironic/httpboot') }}"
-  - "{{bifrost_iso_folder | default('/var/lib/ironic/isos') }}"
+  - "{{ ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
+  - "{{ http_boot_folder | default('/var/lib/ironic/httpboot') }}"
+  - "{{ bifrost_iso_folder | default('/var/lib/ironic/isos') }}"
 genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles }}/bifrost-ironic-install"
 genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 
@@ -40,7 +40,7 @@ genesis_default_os_image_name:
   qcow2: "partition.qcow2"
   img: "partition.img"
   raw: "wholedisk.raw" 
-  iso:  "netboot.iso"
+  iso: "netboot.iso"
   
 ######################################################
 # G3 - PARTICULARS
@@ -59,7 +59,7 @@ g3_mount_repo_path: "{{ genesis_repo_mount_path | default(g3_repo_mount_path) | 
 g3_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
 
 # 3.- Users
-g3_webserver_user:  "{{ genesis_werserver_user | default('www-data') }}"
+g3_webserver_user: "{{ genesis_werserver_user | default('www-data') }}"
 g3_webserver_group: "{{ genesis_werserver_group | default('www-data') }}"
 g3_groups_webserver_group: "{{ ansible_user }},{{ g3_webserver_group }},adm,cdrom,sudo,dip,plugdev,lxd,ironic" 
 g3_iso_mount_properties: "loop,ro,uid={{ g3_webserver_user }},gid={{ g3_webserver_group }},mode=0755"
@@ -69,16 +69,14 @@ g3_node_default_os: "{{ genesis_node_default_os | default('CentOS') }}"
 g3_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
 g3_setup_webserver:
   - file: "/etc/nginx/conf.d/bifrost-httpboot.conf"
-    regexp: '^\s*disable_symlinks\s+'       # Busca la directiva si ya está escrita
-    line: '        disable_symlinks off;'   # Texto exacto que queremos asegurar
-    insertafter: 'server {'                 # Si no existía, la mete aquí debajo  
+    regexp: '^\s*disable_symlinks\s+'
+    line: '        disable_symlinks off;'
+    insertafter: 'server {'
   - file: "/etc/nginx/conf.d/bifrost-httpboot.conf"
-    regexp: '^\s*autoindex\s+'       # Busca la directiva si ya está escrita
-    line: '        autoindex on;'    # Texto exacto que queremos asegurar
-    insertafter: 'server {'          # Si no existía, la mete aquí debajo  
+    regexp: '^\s*autoindex\s+'
+    line: '        autoindex on;'
+    insertafter: 'server {'
   
-  
- 
 ######################################################
 #  G3 - OS IMAGES RESPOSITORIES
 ######################################################
@@ -91,7 +89,7 @@ g3_extract_os_installer:
     - images/pxeboot/initrd.img 
   Rocky:
     - images/pxeboot/vmlinuz
-    - images/pxeboot/initrd.img  	
+    - images/pxeboot/initrd.img
   Ubuntu:
     - casper/vmlinuz
     - casper/initrd
@@ -100,45 +98,37 @@ g3_extract_os_installer:
     - install.amd/initrd.gz   
 
 g3_ative_os_installer:
-  #- distribution: "Rocky"
-  #  distribution_version: "8"
-  #  os_image_name: "x86_64.iso"
-  #  image: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.10-x86_64-dvd1.iso"    
-  #  checksum: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/CHECKSUM"
-  #  checksum_algorithm: "sha256"
-  #  extract_ramdisk: yes   
-  #  mount: yes 
   - distribution: "CentOS"
     distribution_version: "9"
     os_image_name: "x86_64.iso"
-    image: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso"
-    checksum: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso.SHA256SUM"
+    image: "https://centos.org"
+    checksum: "https://centos.org.SHA256SUM"
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
     mount: yes
   - distribution: "Ubuntu"
     distribution_version: "24.04"
     os_image_name: "amd64.iso"
-    image: "https://releases.ubuntu.com/noble/ubuntu-24.04.4-live-server-amd64.iso"
-    checksum: "https://releases.ubuntu.com/noble/SHA256SUMS"
+    image: "https://ubuntu.com"
+    checksum: "https://ubuntu.com"
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "x86_64.iso"  
-    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso"
+    image: "https://fedoraproject.org"
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"      
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "vmlinuz"
-    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-kernel.x86_64"
+    image: "https://fedoraproject.org"
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "initramfs" 
-    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
+    image: "https://fedoraproject.org"
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"
     
@@ -146,10 +136,10 @@ g3_cloud_os_installer:
   - distribution: "CentOS"
     distribution_version: "9"
     os_image_name: "partition.qcow2"
-    image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
-    checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
+    image: "https://centos.org"
+    checksum: "https://centos.org"
     checksum_algorithm: "sha256"
 
 # Using bifrost internal variable name
-genesis_installers_download: "{{ g3_native_os_installer + g3_cloud_os_installer }}"
+genesis_installers_download: "{{ g3_ative_os_installer + g3_cloud_os_installer }}"
 download_image_sources: "{{ genesis_download_images | default(genesis_installers_download) | default([]) }}"

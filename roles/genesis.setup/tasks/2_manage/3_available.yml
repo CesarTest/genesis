@@ -26,11 +26,6 @@
     dest: "{{ b4_baremetal_vars_file }}"
     content: |
       {{ b4_bifrost_node_data_model | to_nice_yaml(indent=2) }}
-    force: true
-    unsafe_writes: true
-    backup: false 
-    async: 10
-    poll: 0
   when: 
     - b5_baremetal_vars_file is defined
     - b4_baremetal_vars_file is not none

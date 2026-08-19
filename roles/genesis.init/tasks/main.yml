@@ -10,7 +10,6 @@
 # 1. PXE - TFTP: Upload Bootloader & OS Installers
 #---------------------------------------   
 - name: "------------------> G3- INIT - Populate TFTP Service <------------------" 
-  ignore_errors: yes
   block:
     - name: "G3 - INIT: Setup PXE-TFTP - Upload Bootloader & OS Installers"
       ansible.builtin.include_tasks: "1_tftp.yml"
@@ -23,7 +22,6 @@
 # 2. PXE - HTTP: Full Access to Images Repositories
 #--------------------------------------- 
 - name: "------------------> Populate HTTP Service <------------------" 
-  ignore_errors: yes
   vars:
     # HTTP Paths particulars    
     g3_base_path: "{{ genesis_repo_path | default('../../../repo') | realpath }}"
@@ -35,7 +33,7 @@
       {%- endfor -%}
       {{ lista }}
     g3_os_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
-    g3_os_images_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['os'] | default('os') }}" 
+    g3_os_images_http_path: "{{ g3_http_path | realpath }}/{{ g3_repos['os'] | default('os') }}" 
     g3_cloud_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
     g3_cloud_images_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"     
     g3_mnt_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
@@ -79,22 +77,7 @@
 
 #---------------------------------------
 # 4. Permissions
-#---------------------------------------     
-- name: "------------------> G3- INIT - Permissions <------------------" 
+#---------------------------------------
+- name: "------------------> G3- INIT - Permissions <------------------"
   ignore_errors: yes
-  block:
-      
-    - name: "G3 - INIT: Ready PXE: Users Permissions to Allow Ironic SetUp"
-      ansible.builtin.user:
-        name:   "{{ g3_user.name }}"
-        groups: "{{ g3_user.groups }}" 
-        append: true
-        state: present     
-      loop:
-        - name:   "{{ ansible_user | default('ironic') }}"
-          groups: "{{ g3_groups_webserver_group }}"
-        - name: "ironic"
-          groups: "{{ g3_groups_webserver_group }}"
-      loop_control:
-         loop_var:  "g3_user"
-         index_var: "g3_user_index"
+  ansible.builtin.include_tasks: "4_ready/1_permissions.yml"

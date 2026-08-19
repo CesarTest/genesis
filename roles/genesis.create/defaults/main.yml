@@ -35,15 +35,7 @@ oras_url_root:     "{{ git_url_root }}"
 
 # Default network interface that bifrost will be attached to.
 # This is used in ipa_* so it must be before
-genesis_default_nic: "{{ ansible_default_ipv4.interface | default(ansible_interfaces | reject('sameas', 'lo') | first) | default('ens19') }}"
-network_interface: >-
-  {{
-    ansible_facts | dict2items
-    | selectattr('value.macaddress', 'defined')
-
-    | selectattr('value.macaddress', '==', (genesis_nics.inband.mac | lower))
-    | map(attribute='key') | first | default(genesis_default_nic)
-  }}
+network_interface: "virbr0"
 ans_network_interface: "{{ network_interface | replace('-', '_') }}"
 internal_interface: "{{ hostvars[inventory_hostname]['ansible_' + ans_network_interface]['ipv4'] }}"
 internal_ip: "{{ internal_interface['address'] }}"

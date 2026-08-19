@@ -879,13 +879,28 @@ prepareLocalMachine() {
 }
 
 #========================================================
+#   Function: reloadUserEnvironment
+#--------------------------------------------------------
+#   Reload Bash Environment during execution without interruption
+#========================================================
+function reloadUserEnvironment() {
+   echo "${LOG_HEADER} - => Reloading User Environment in Hot Cache"
+   
+   # Cargamos los archivos de entorno en la shell actual
+   echo "${LOG_HEADER} - Sourcing profile and rc files..."
+   source /etc/profile
+   [ -f ~/.bash_profile ] && source ~/.bash_profile
+   [ -f ~/.bashrc ] && source ~/.bashrc
+}
+
+#========================================================
 #   Function: updateInventory
 #--------------------------------------------------------
 #   iDAS ISOS generation
 #    - common.yaml... create from /mnt/isos/ contents
 #========================================================
 function updateInventory() {
-   	
+   		
 	if [ -n "${IRONIC_BAREMETAL_NODES}" ] ; then
 	
 	   # Local Environment
@@ -2147,6 +2162,7 @@ function 3_init() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 4_setup() {
+   reloadUserEnvironment
    updateInventory
    #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
    0_call "${SETUP}" 

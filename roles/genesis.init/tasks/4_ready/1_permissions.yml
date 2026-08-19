@@ -1,0 +1,24 @@
+---
+# genesis.init 4_ready/1_permissions.yml
+#  - Users Permissions to Allow Ironic SetUp
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- block:
+     
+    - name: "G3 - INIT: Ready PXE: Users Permissions to Allow Ironic SetUp Nodes"
+      ansible.builtin.user:
+        name:   "{{ g3_user.name }}"
+        groups: "{{ g3_user.groups }}" 
+        append: true
+        state: present     
+      loop:
+        - name:   "{{ ansible_user | default('ironic') }}"
+          groups: "{{ g3_groups_webserver_group }}"
+        - name: "ironic"
+          groups: "{{ g3_groups_webserver_group }}"
+      loop_control:
+         loop_var:  "g3_user"
+         index_var: "g3_user_index"

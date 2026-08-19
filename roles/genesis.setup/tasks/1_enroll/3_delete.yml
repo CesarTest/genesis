@@ -38,3 +38,61 @@
            baremetal allocation delete {{ node_name }}
            baremetal node maintenance set {{ node_uuid }}
            baremetal node delete {{ node_uuid }}
+   
+  #----------------------
+  # 3.- Remove old instance information	
+  #----------------------
+  always: 
+
+    # ==> 3.1. Symbolink Links Removal
+    - name: "B4 INFRA - AUDIT: Detect symlinks pointing to this instance"
+      ansible.builtin.find:
+        paths:
+          - "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}"
+        file_type: "link"          
+        recurse: yes                   
+      register: b4_detected_symlinks   
+
+    - name: "B4 INFRA - AUDIT: Gather deep stats of found links to extract targets"
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+      loop: "{{ b4_detected_symlinks.files | default([]) }}"
+      register: b4_links_stats
+    
+    - name: "B4 INFRA - PURGE: Remove detected symlinks pointing to instance information UUID"
+      ansible.builtin.file:
+        path: "{{ b4_symlink.stat.path }}" 
+        state: absent
+      become: yes	  
+      loop: "{{ b4_links_stats.results | default([]) }}"
+      loop_control:
+        loop_var: b4_symlink
+      when: 
+        - uuid is defined
+        - uuid is not none
+        - uuid is string
+        - uuid is not mapping
+        - uuid | length > 0
+        - b4_symlink.stat.islnk is defined 
+        - b4_symlink.stat.islnk
+        - b4_symlink.stat.lnk_source is defined
+        - b4_symlink.stat.lnk_source is not none
+        - b4_symlink.stat.lnk_source is string
+        - b4_symlink.stat.lnk_source is not mapping
+        - b4_symlink.stat.lnk_source | length > 0
+        - uuid in b4_symlink.stat.lnk_source
+  
+    # ==> 3.2. Instance Path
+    - name: "B4 INFRA - PURGE: Wipe the physical instance UUID directory cache"
+      ansible.builtin.file:
+        path: "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}/{{ uuid }}"
+        state: absent
+      become: yes	  
+      vars:
+        b4_instance_path: "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}/{{ uuid | default('') }}"
+      when:
+        - uuid is defined
+        - uuid is not none
+        - uuid is string
+        - uuid is not mapping
+        - uuid | length > 0

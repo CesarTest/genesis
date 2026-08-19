@@ -25,6 +25,7 @@ genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
 genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 
 # 3.- Repositories
+genesis_http_path: "{{ ironic_http_path | default('/var/lib/ironic/httpboot') | realpath }}"
 genesis_default_repos:
   os: "os"
   manifesto: "manifesto" 
@@ -75,21 +76,21 @@ b4_os_mounted_repo_subpath: "{{ b4_repos['repo'] | default('mnt') }}"
 b4_os_manifesto_subpath: "{{ b4_repos['manifesto'] | default('manifesto') }}"
 b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repo_os_images_subpath }}"
 b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_os_manifesto_subpath }}"
-b4_http_manifesto_path: "{{ ironic_http_path | realpath }}/{{ b4_os_manifesto_subpath }}"
+b4_http_manifesto_path: "{{ genesis_http_path | realpath }}/{{ b4_os_manifesto_subpath }}"
 
 ######################################################
 #  BIFROST ROLES DEFINITION 
 ######################################################
 b4_configdrive_roles:
    - name: "bifrost-configdrives-dynamic"
-   - name: "ironic-inspect-node"
-     condition: "{{ inspect_nodes | default('false') | bool }}" 
  
-b4_enroll_roles:
-   - name: "ironic-enroll-dynamic"
-
 b4_delete_roles:
    - name: "ironic-delete-dynamic"
+   
+b4_enroll_roles:
+   - name: "ironic-enroll-dynamic"
+   - name: "ironic-inspect-node"
+     condition: "{{ inspect_nodes | default('false') | bool }}" 
  
 b4_manage_roles: []
  
@@ -317,116 +318,104 @@ b4_kickstart_storage_chassis_type:
 
 b4_kickstart_storage_snippet: "{{ b4_kickstart_storage_chassis_type[b4_enroll_node_chassis_type] | default(b4_kickstart_storage_chassis_type['uefi']) }}"
 
-b4_kickstart_template_defaults:
-  preinstall: |
-    # Use NFS installation media
-    url --url {{ b4_netinstall_os_mounted_repo_url }} 
-  postinstall: |
-    # 1. DETECT VIRTUAL MACHINE 
-    # Hypervisors Manufacturers (QEMU, VMware, VirtualBox, KVM, Xen)
-    IS_VM=0
-    if command -v dmidecode &>/dev/null; then
-        SYS_VENDOR=$(dmidecode -s system-manufacturer 2>/dev/null | tr '[:upper:]' '[:lower:]')
-        if [[ "$SYS_VENDOR" =~ (qemu|kvm|vmware|virtualbox|xen|innotek|bochs) ]]; then
-            IS_VM=1
-        fi
-    fi
-    
-    # 2. CHANGE BOOT DEVICE
-    if [ "$IS_VM" -eq 1 ]; then
-        echo "[INFO] Virtual Machine Detected ($SYS_VENDOR). Not Using ipmitool to avoid errors." >> /root/ks-post-ipmi.log
-    else
-        echo "[INFO] Bare Metal detected. Usign IPMI..." >> /root/ks-post-ipmi.log
-    
-        # Check Kernel Modules (Requered in modern RHEL)
-        modprobe ipmi_msghandler 2>/dev/null
-        modprobe ipmi_si 2>/dev/null
-        modprobe ipmi_devintf 2>/dev/null
-        
-        # Check devices in Anaconda chroot 
-        if [ ! -c /dev/ipmi0 ]; then
-            mknod /dev/ipmi0 c 242 0 2>/dev/null || mknod /dev/ipmi0 c 243 0
-        fi
-        
-        # Double Validation: If node /dev/ipmi0 do no exist after mknod, hardware do not have real BMC
-        if [ ! -c /dev/ipmi0 ]; then
-            echo "[ERROR] Device /dev/ipmi0 couldn't be created or hardware do not  support IPMI." >> /root/ks-post-ipmi.log
-        else
-            # TRIAL 1: Modern UEFI Servers (RHEL 8 y 9)
-            echo "Trying configure persistent boot order with UEFI..." >> /root/ks-post-ipmi.log
-            ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log
-            
-            # TRIAL 2: Modern Servers in Legacy BIOS Mode (RHEL 8 y 9)
-            if [ $? -ne 0 ]; then
-                echo "Failure UEFI. Trying configure persistent boot order with standard methods..." >> /root/ks-post-ipmi.log
-                ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log
-            fi
-            
-            # TRIAL 3: Old Servers or obsolete BMCs (RHEL 6 y 7)
-            if [ $? -ne 0 ]; then
-                echo "Trying 'options='. Ipmi classical command..." >> /root/ks-post-ipmi.log
-                ipmitool chassis bootdev disk 2>>/root/ks-post-ipmi.log
-            fi
-        fi
-    fi
+b4_kickstart_template_defaults_os_version:
+  "9":
+    preinstall: |
+      # Use Netinstall installation media
+      url --url {{ b4_netinstall_os_mounted_repo_url }} 
 
-  system: |       
-    #system Language
-    lang en_GB
-           
-    #system keyboard
-    keyboard uk
-           
-    # Firewall configuration
-    firewall --disabled
-    
-    # SELinux configuration
-    selinux --disabled
-           
-    # System authorization information
-    auth  --useshadow --passalgo=sha512   
-    
-    #Sytem timezone
-    timezone --utc Europe/London
-    
-    #Use text mode install
-    text
-    
-    # Install OS instead of upgrade
-    install
-  user: |
-    # Root password 
-    rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly  
-  logging: |
-    # Reboot after installation
-    reboot
-    
-    # Installation logging level
-    logging --level=info     
-  network: |
-    network  --bootproto=static --ip={{ b4_enroll_nic_bmc_ipv4 }} --netmask={{ b4_enroll_nic_bmc_netmask }} --gateway={{ b4_enroll_nic_bmc_gateway }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_bmc_mac }}
-  packages: |
-    @ base
-    @ core
-    ipmitool
-    OpenIPMI
-    coreutils
-  
-  storage: |
-    # Clear the Master Boot Record  
-    zerombr
-    
-    # Partition clearing information
-    clearpart --all --initlabel
-    
-    #Partitions
-    {{ b4_kickstart_storage_snippet }}
-    part / --fstype=ext4 --size=17408
-    part pv.{{ b4_enroll_node_name }}-0001 --grow --size=1
-    volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
-    logvol /home --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
-    logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288
-  
+    #postinstall: |
+    #  # 1. ULTRA-ROBUST VIRTUAL MACHINE DETECTION (Fallback safe)
+    #  IS_VM=0
+    #  if [ -x /usr/bin/systemd-detect-virt ]; then
+    #      if /usr/bin/systemd-detect-virt -q; then IS_VM=1; fi
+    #  elif [ -f /sys/class/dmi/id/sys_vendor ]; then
+    #      SYS_VENDOR=$(cat /sys/class/dmi/id/sys_vendor | tr '[:upper:]' '[:lower:]')
+    #      if [[ "$SYS_VENDOR" =~ (qemu|kvm|vmware|virtualbox|xen|innotek|bochs) ]]; then IS_VM=1; fi
+    #  fi
+    #  if [ "$IS_VM" -eq 1 ]; then
+    #      echo "[INFO] VM environment verified. Skipping hardware IPMI boot management." >> /root/ks-post-ipmi.log
+    #  else
+    #      echo "[INFO] Bare Metal verified. Initializing IPMI kernel layers..." >> /root/ks-post-ipmi.log
+    #      
+    #      # 2. FORCE BACKEND MODULE LOADING IN CHROOT (Mandatory for RHEL 9 %post)
+    #      modprobe ipmi_msghandler 2>/dev/null
+    #      modprobe ipmi_si 2>/dev/null
+    #      modprobe ipmi_devintf 2>/dev/null
+    #      udevadm settle 2>/dev/null
+    #      # 3. UEFI PERSISTENT BOOT ASSIGNMENT WITH classical FALLBACK
+    #      echo "[INFO] Applying persistent UEFI boot device ordering..." >> /root/ks-post-ipmi.log
+    #      if ! ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log; then
+    #          echo "[WARN] UEFI target failed. Forcing legacy bootdev fallback..." >> /root/ks-post-ipmi.log
+    #          if ! ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log; then
+    #              echo "[ERROR] Hard boot override rejected by BMC hardware." >> /root/ks-post-ipmi.log
+    #          fi
+    #      fi
+    #  fi
+
+    system: |       
+      # System Language
+      lang en_GB
+             
+      # System keyboard
+      keyboard uk
+             
+      # Firewall configuration
+      firewall --disabled
+      
+      # SELinux configuration
+      selinux --disabled
+             
+      # System authorization information (RHEL 9 standard)
+      authselect --useshadow --passalgo=sha512   
+      
+      # System timezone
+      timezone Europe/London --utc
+      
+      # Use text mode install
+      text
+
+    user: |
+      # Root password 
+      rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly  
+
+    logging: |
+      # Reboot after installation
+      reboot
+      
+      # Installation logging level
+      logging --level=info     
+
+    network: |
+      network --bootproto=static --ip={{ b4_enroll_nic_provision_ip | default('10.10.51.150') }} --netmask={{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }} --gateway={{ b4_url_genesis_ip | default('10.10.51.5') }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
+
+    storage: |	
+      {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('vda') %}
+      {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'vda' %}{% endif %}
+      
+      {% set total_mb = (b4_enroll_node_chassis_properties.local_gb | default(32) | int * 1024) %}
+      {% set fixed_mb = 19456 %}
+      {% set pv_size = total_mb - fixed_mb - 512 %}
+      {% set swap_size = (b4_enroll_node_chassis_properties.memory_mb | default(4096) | int / 2) | int %}
+        
+      # Partitions Configuration (100% Dynamic calculated from chassis properties)
+      zerombr
+      clearpart --all --initlabel
+      
+      # 1. First: Fixed size standard partitions (Total: ~19 GB / 19456 MB)
+      {{ b4_kickstart_storage_snippet }} 
+      part /         --fstype=ext4 --size=17408 
+      
+      # 2. Second: Physical Volume utilizing the calculated remaining space of the disk
+      part pv.{{ b4_enroll_node_name }}-0001 --size={{ pv_size if pv_size > 1024 else 2048 }} --grow
+      
+      # 3. Third: Logical Volumes inside the Volume Group
+      volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
+      logvol /home --fstype=ext4 --name=LogVol03    --vgname=VolGroup00 --size=4096 --grow
+      logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }} --maxsize=8192
+
+b4_kickstart_template_defaults: "{{ b4_kickstart_template_defaults_os_version[b4_node_os_version] | default(b4_kickstart_template_defaults_os_version['9'])  }}"
+
 b4_kickstart_template_profiles:
   vmware_esxi: 
     storage: |
@@ -606,16 +595,16 @@ b4_os_installer_bootloader_call:
     #    - Purpose: Forces Dracut to bring up and maintain the network infrastructure.
     #    - Impact: Prevents early network teardown before Anaconda takes full control.
     # ...............................................................
-    kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.kernel  | default('vmlinuz') }}"
-    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definions.initram | default('initrd.img') }}"
+    kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd.img') }}"
     menu: >-
       inst.ks={{ b4_node_os_manifesto['url'] | default('') }}
       inst.repo={{ b4_netinstall_os_mounted_repo_url | default('') }}
-      ip={{ b4_enroll_nic_provision_ip | default('') }}::{{ b4_url_genesis_ip | default('') }}:{{ b4_enroll_nic_provision_netmask | default('') }}::bootif:none
-      BOOTIF=01-{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}
+      ip=bootif
       rd.neednet=1
       rd.net.timeout=60
-      rd.shell rd.debug
+      BOOTIF={{ b4_enroll_nic_provision_mac | default('') | lower }}
+# bc:24:11:7a:bd:68,set:b34054e6-cb08-4977-9499-15d95ac93373,10.10.51.150,servera199,infinite
   esxi:     
     # ...............................................................
     # KERNEL PARAMETERS DOCUMENTATION (VMWARE ESXI NETINSTALL)

@@ -9,7 +9,7 @@
 #---------------------------------------
 # 1. Extract OS Native Installer to HTTP Folder
 #---------------------------------------  
-- name: "STEP 1: Extract OS Native Installer to HTTP Folder"
+- name: "G3 - INIT: Setup PXE-TFTP: 1 Extract OS Native Installer to HTTP Folder"
   become: yes
   community.general.iso_extract:
     image: "{{ g3_repo_image }}"
