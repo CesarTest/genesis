@@ -40,18 +40,21 @@ genesis_os_definitions:
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks" 
+    installer_url: "images/install.img"
 
   rocky:
     ansible_distribution: "Rocky"
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks"
+    installer_url: "images/install.img"
 
   redhat:
     ansible_distribution: "RedHat"
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks"  
+    installer_url: "images/install.img"
 
   esxi:
     ansible_distribution: "VMwareESXi" 
@@ -62,21 +65,22 @@ genesis_os_definitions:
   ubuntu:
     ansible_distribution: "Ubuntu"
     installer: "subiquity"
-    prefix: "user_data_"
-    ext: ".yaml"
+    prefix: "casper_"
+    ext: ".yml"
 
   coreos:
     ansible_distribution: "Fedora CoreOS"
     installer: "ignition"
     prefix: "ignition_"
-    ext: ".ign"     
+    ext: ".ign"   
+    installer_url: "rootfs.img"	
 
   debian:
     ansible_distribution: "Debian"
     installer: "preseed" 
     ext: ".cfg"
 
-  sles:
+  suse:
     ansible_distribution: "SLES"
     installer: "autoyast"
     prefix: "autoyast_"
@@ -288,6 +292,7 @@ b4_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
 b4_node_default_os_arch: "x86_64"
 b4_node_default_os_profile: "none"
 b4_node_default_os_installer: "anaconda"
+b4_node_default_os_installer_url_subpath: "images/pxeboot/rootfs.img"
 b4_capture_node_os:   "{{ deploy.os.name | default(b4_node_default_os) | lower }}"
 b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os] }}"
 b4_node_os:           "{{ b4_node_os_definitions['ansible_distribution'] | default('unknown') }}"
@@ -296,6 +301,7 @@ b4_node_os_arch:      "{{ deploy.os.arch    | default(b4_node_default_os_arch) }
 b4_node_os_profile:   "{{ deploy.os.profile | default(b4_node_default_os_profile) }}"
 b4_node_os_installer: "{{ b4_node_os_definitions['installer'] | default(b4_node_default_os_installer) | lower}}"
 b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] }}{{ b4_enroll_node_name }}{{ b4_node_os_definitions['ext'] }}"
+b4_node_os_installer_url_subpath: "{{ b4_node_os_definitions['installer_url'] | default(b4_node_default_os_installer_url_subpath) }}"
 b4_node_os_iso_file: "{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
 
 #------------------
@@ -648,8 +654,9 @@ b4_os_installer_bootloader_call:
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd.img') }}"
     menu: >-
+      root=live:{{ b4_netinstall_os_mounted_repo_url | default('') }}/{{b4_node_os_installer_url_subpath | default('') }}
       inst.ks={{ b4_node_os_manifesto['url'] | default('') }}
-      inst.repo={{ b4_netinstall_os_mounted_repo_url | default('') }}
+      inst.repo={{ b4_netinstall_os_mounted_repo_url | default('') }}/
       ifname=net0:{{ b4_enroll_nic_provision_mac | default('') | lower }}
       ip={{ b4_enroll_nic_provision_ip | default('') }}::{{ b4_enroll_nic_provision_gateway | default('') }}:{{ b4_enroll_nic_provision_netmask | default('') }}:{{ b4_enroll_node_name | default('') }}:net0:none
       nameserver={{ b4_url_genesis_ip | default('') }}
@@ -658,6 +665,7 @@ b4_os_installer_bootloader_call:
       rd.net.timeout.carrier=10
       ksdevice=net0
       inst.ks.sendmac
+      inst.sshd
 
   esxi:     
     # SYSTEM COMPATIBILITY: 
@@ -719,6 +727,7 @@ b4_os_installer_bootloader_call:
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
     menu: >-
+      root=ramfs
       url={{ b4_netinstall_os_iso_url }}
       autoinstall
       ds=nocloud-net;s={{ b4_node_os_manifesto['url'] | default('') }}/
@@ -765,6 +774,7 @@ b4_os_installer_bootloader_call:
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initramfs') }}"      
     menu: >-
+      root=live:{{ b4_netinstall_os_mounted_repo_url | default('') }}/{{b4_node_os_installer_url_subpath | default('') }}
       ignition.config.url={{ b4_node_os_manifesto['url'] | default('') }}
       ifname=net0:{{ b4_enroll_nic_provision_mac | default('') | lower }}
       ip={{ b4_enroll_nic_provision_ip | default('') }}::{{ b4_enroll_nic_provision_gateway | default('') }}:{{ b4_enroll_nic_provision_netmask | default('') }}:{{ b4_enroll_node_name | default('') }}:net0:none
@@ -805,6 +815,8 @@ b4_os_installer_bootloader_call:
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
     menu: >-
+      root=/dev/ram
+      rw
       auto=true
       priority=critical
       url={{ b4_node_os_manifesto['url'] | default('') }}
@@ -839,6 +851,15 @@ b4_deploy_interface_instance_info:
       kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
       ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}"
       kernel_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+  anaconda:
+    driver_info:
+      pxe_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+    instance_info:
+      image_source: "{{ b4_netinstall_os_iso_url }}"
+      kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
+      ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}"
+      kernel_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+      image_type: "anaconda"
   
 ######################################################
 # INSTANCE INFORMATION

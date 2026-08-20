@@ -31,7 +31,7 @@ enroll:
      secure_boot: false
    properties:
      cpu_arch: "x86_64"
-     ram: "4096"
+     ram: "8192"
      disk_size: "32"
      cpus: "4"  
 
