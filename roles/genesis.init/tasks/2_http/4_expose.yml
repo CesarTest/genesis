@@ -56,8 +56,32 @@
       loop: "{{ g3_paths_to_expose | default([]) }}"
       loop_control:
         loop_var: "http_exposure"  
-         
-    # ----> 2.2. WebServer Update
+
+    # ----> 2.2. Create Symbolik Links to Mounted ISOs
+    - name: "G3 - INIT: Setup PXE-HTTP: 3 - FIND OS - Search ISO mounted Folders"
+      ansible.builtin.find:
+        paths: "{{ g3_mnt_repo_path }}"
+        file_type: directory
+        recurse: false
+      register: g3_found_os_directories
+    
+    - name: "G3 - INIT: Setup PXE-HTTP: 4 - HTTP EXPOSURE - Expose OS Repositories"
+      ansible.builtin.file:
+        src:   "{{ http_os_exposure.path }}"
+        dest:  "{{ g3_http_path }}/{{ http_os_exposure.path | basename | lower | replace('.', '') }}"
+        owner: "{{ g3_webserver_user  | default(omit) }}"
+        group: "{{ g3_webserver_group | default(omit) }}"  
+        state: link
+        force: yes
+      loop: "{{ g3_found_os_directories.files | default([], true) }}"
+      loop_control:
+        loop_var: "http_os_exposure"
+      when: 
+        - g3_found_os_directories.matched is defined
+        - g3_found_os_directories.matched is not none	
+        - g3_found_os_directories.matched > 0
+
+    # ----> 2.3. WebServer Update
     - name: "G3 - INIT: Setup PXE-HTTP: 4 - HTTP EXPOSURE - adjust Webserver Configurations Files"
       ansible.builtin.lineinfile:
         path:        "{{ g3_web.file        | default(omit) }}"

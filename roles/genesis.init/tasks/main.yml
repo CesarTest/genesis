@@ -47,8 +47,6 @@
         expose: "{{ g3_os_images_http_path }}"
       - repo:   "{{ g3_cloud_images_repo_path }}"
         expose: "{{ g3_cloud_images_http_path }}"
-      - repo:   "{{ g3_mnt_repo_path }}"
-        expose: "{{ g3_mnt_http_path }}"
   block:
     - name: "G3 - INIT: Setup PXE-HTTP - Create Images Repositories"
       ansible.builtin.include_tasks: "2_http.yml"
