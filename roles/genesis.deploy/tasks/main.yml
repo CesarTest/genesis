@@ -37,12 +37,8 @@
 
     # =>  2.- Stage 2: Deploy - Unattended OS Installation	
     - name: "B5 - DEPLOY - Stage 2:  Deploy - Unattended OS Installation"
-      ansible.builtin.include_tasks: "{{ b5_deploy | default ('2_deploy/1_instance.yml') }}"
-      loop:
-         - "2_deploy/1_boot_order.yml"
-         - "2_deploy/2_instance.yml"
-      loop_control:		 
-        loop_var: "b5_deploy"		
+      ansible.builtin.include_tasks: "2_deploy/1_boot_order.yml"
+    - ansible.builtin.include_tasks: "2_deploy/2_instance.yml"	
 
     # =>  2.- Stage 3: Active - HeartBeat, Network Connection, Hardware Configuration	
     #- name: "B5 - DEPLOY - Stage 3:  Active - HeartBeat, Network Connection, Hardware Configuration"

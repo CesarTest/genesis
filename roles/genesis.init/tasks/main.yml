@@ -6,11 +6,19 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-#---------------------------------------
-# 1. PXE - TFTP: Upload Bootloader & OS Installers
-#---------------------------------------   
+
 - name: "------------------> G3- INIT - Populate TFTP Service <------------------" 
+  vars:
+  
+    # 1.- OS Deploy Paths   
+    g3_deploy_os_path:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
+    g3_deploy_tftp_path:   "{{ g3_tftp_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
+    g3_deploy_mount_path:  "{{ g3_repo_mount_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
+
   block:
+    #---------------------------------------
+    # 1. PXE - TFTP: Upload Bootloader & OS Installers
+    #---------------------------------------   
     - name: "G3 - INIT: Setup PXE-TFTP - Upload Bootloader & OS Installers"
       ansible.builtin.include_tasks: "1_tftp.yml"
       loop: "{{ download_image_sources | default([]) }}"
@@ -18,11 +26,9 @@
          loop_var:  "g3_image"
          index_var: "g3_image_index"       
 
-#---------------------------------------
-# 2. PXE - HTTP: Full Access to Images Repositories
-#--------------------------------------- 
-- name: "------------------> Populate HTTP Service <------------------" 
-  block:
+    #---------------------------------------
+    # 2. PXE - HTTP: Full Access to Images Repositories
+    #--------------------------------------- 
     - name: "G3 - INIT: Setup PXE-HTTP - Create Images Repositories"
       ansible.builtin.include_tasks: "2_http.yml"
       loop: "{{ download_image_sources | default([]) }}"      
@@ -48,9 +54,9 @@
     #     loop_var: "g3_image"
     #     index_var: "g3_image_index"                
 
-#---------------------------------------
-# 4. Permissions
-#---------------------------------------
-- name: "------------------> G3- INIT - Permissions <------------------"
-  ignore_errors: yes
-  ansible.builtin.include_tasks: "4_ready/1_permissions.yml"
+    #---------------------------------------
+    # 4. Permissions
+    #---------------------------------------
+    - name: "------------------> G3- INIT - Permissions <------------------"
+      ignore_errors: yes
+      ansible.builtin.include_tasks: "4_ready/1_permissions.yml"

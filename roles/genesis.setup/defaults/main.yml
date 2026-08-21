@@ -40,7 +40,7 @@ genesis_os_definitions:
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks"
-	
+
   rocky:
     ansible_distribution: "Rocky"
     installer: "anaconda"

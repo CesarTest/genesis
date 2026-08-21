@@ -9,14 +9,10 @@
   block:
   
     - name: "G1 - BOOTSTRAP : Prepare Target Machine"
-      ansible.builtin.include_tasks: "{{ g1_stage | default ('1_prepare/1_repos.yml') }}"
-      loop: 
-         - "1_prepare/1_repos.yml"
-         - "2_download.yml"
-         - "3_ready/1_setup.yml"
-         - "3_ready/2_network.yml" 
-      loop_control:
-        loop_var: "g1_stage"
+      ansible.builtin.include_tasks: "1_prepare/1_repos.yml"
+    - ansible.builtin.include_tasks: "2_download.yml"
+    - ansible.builtin.include_tasks: "3_ready/1_setup.yml"
+    - ansible.builtin.include_tasks: "3_ready/2_network.yml"
         
   rescue:
 
