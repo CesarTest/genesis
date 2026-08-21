@@ -39,22 +39,19 @@ genesis_os_definitions:
     ansible_distribution: "CentOS"
     installer: "anaconda"
     prefix: "ks_"
-    ext: ".ks" 
-    installer_url: "images/install.img"
-
+    ext: ".ks"
+	
   rocky:
     ansible_distribution: "Rocky"
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks"
-    installer_url: "images/install.img"
 
   redhat:
     ansible_distribution: "RedHat"
     installer: "anaconda"
     prefix: "ks_"
-    ext: ".ks"  
-    installer_url: "images/install.img"
+    ext: ".ks" 
 
   esxi:
     ansible_distribution: "VMwareESXi" 
@@ -73,7 +70,6 @@ genesis_os_definitions:
     installer: "ignition"
     prefix: "ignition_"
     ext: ".ign"   
-    installer_url: "rootfs.img"	
 
   debian:
     ansible_distribution: "Debian"
@@ -301,7 +297,6 @@ b4_node_os_arch:      "{{ deploy.os.arch    | default(b4_node_default_os_arch) }
 b4_node_os_profile:   "{{ deploy.os.profile | default(b4_node_default_os_profile) }}"
 b4_node_os_installer: "{{ b4_node_os_definitions['installer'] | default(b4_node_default_os_installer) | lower}}"
 b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] }}{{ b4_enroll_node_name }}{{ b4_node_os_definitions['ext'] }}"
-b4_node_os_installer_url_subpath: "{{ b4_node_os_definitions['installer_url'] | default(b4_node_default_os_installer_url_subpath) }}"
 b4_node_os_iso_file: "{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
 
 #------------------
@@ -318,7 +313,7 @@ b4_ironic_base_url: "{{ b4_url_protocol }}://{{ b4_url_ironic_url }}"
 b4_netinstall_base_url: "{{ b4_url_protocol }}://{{ b4_url_genesis_url }}"
 b4_netinstall_os_manifesto_url:    "{{ b4_netinstall_base_url }}/{{ b4_os_manifesto_subpath }}"
 b4_netinstall_os_images_url:       "{{ b4_netinstall_base_url }}/{{ b4_os_images_subpath }}/{{ b4_url_full_subpath }}"
-b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_url_short_subpath }}"
+b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_url_full_subpath }}"
 b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_iso_file }}"
 
 #------------------
@@ -652,9 +647,9 @@ b4_os_installer_bootloader_call:
     #    - 'rd.net.dhcp.retry=0' prevents network re-negotiation loops during stage transitions.
     # ==============================================================================
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
-    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd.img') }}"
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"
     menu: >-
-      root=live:{{ b4_netinstall_os_mounted_repo_url | default('') }}/{{b4_node_os_installer_url_subpath | default('') }}
+      root=live:{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.install | default('install.img') }}
       inst.ks={{ b4_node_os_manifesto['url'] | default('') }}
       inst.repo={{ b4_netinstall_os_mounted_repo_url | default('') }}/
       ifname=net0:{{ b4_enroll_nic_provision_mac | default('') | lower }}

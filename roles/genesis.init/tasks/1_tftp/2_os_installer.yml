@@ -9,37 +9,16 @@
 #---------------------------------------
 # 1. Extract OS Native Installer to HTTP Folder
 #---------------------------------------  
-- name: "G3 - INIT: Setup PXE-TFTP: 1 Extract OS Native Installer to HTTP Folder"
+- name: "G3 - INIT: Setup PXE-TFTP: 1 Extract OS Native Installer to local Repo OS Folder"
   become: yes
   community.general.iso_extract:
     image: "{{ g3_repo_image }}"
-    dest:  "{{ g3_deploy_path }}"
+    dest:  "{{ g3_deploy_os_path }}"
     files: "{{ g3_ramdisk_files }}"   
     
   vars:
-    g3_deploy_path:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}" 
-    g3_repo_image:    "{{ g3_deploy_path | realpath }}/{{ g3_deploy_image_name }}"    
+    g3_repo_image:    "{{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}"    
 
   when: 
     - g3_image.extract_ramdisk is defined
-    - g3_image.extract_ramdisk   
-
-#---------------------------------------
-# 2. Copy OS Native Installer to TFTP Folder
-#---------------------------------------
-- name: "STEP 1: Extract OS Native Installer to TFP Folder"
-  become: yes
-  ansible.builtin.copy:
-    src: "{{ g3_src_file }}"
-    dest:  "{{ g3_dest_path }}"  
-  vars:
-    g3_os_installer: "{{ g3_os_installer_file | basename }}"
-    g3_src_file:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}/{{ g3_os_installer }}"     
-    g3_dest_path:   "{{ g3_tftp_path | realpath }}/{{ g3_image_os_distro | lower }}{{ g3_image_os_distro_version | lower }}"   
-  when: 
-    - g3_image.extract_ramdisk is defined
-    - g3_image.extract_ramdisk   
-  loop: "{{ g3_ramdisk_files | default([]) }}"
-  loop_control:
-    loop_var: "g3_os_installer_file"
-  
+    - g3_image.extract_ramdisk

@@ -1,0 +1,24 @@
+---
+# genesis.init 1_tftp/3_cp_installer.yml
+#   - Copy OS Installers to TFTP + HTTP Folders
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "STEP 1: Extract OS Native Installer to TFP Folder"
+  become: yes
+  ansible.builtin.copy:
+    src:  "{{ g3_src_file }}"
+    dest: "{{ g3_dest_file }}"  
+  vars:
+    g3_os_installer_src:  "{{ g3_os_installer_file.src  | basename }}"
+    g3_os_installer_dest: "{{ g3_os_installer_file.dest | basename }}"
+    g3_src_file:   "{{ g3_deploy_os_path }}/{{ g3_os_installer_src }}"     
+    g3_dest_file:  "{{ g3_os_installer_path }}/{{ g3_os_installer_dest }}"   
+  when: 
+    - g3_image.extract_ramdisk is defined
+    - g3_image.extract_ramdisk   
+  loop: "{{ g3_iso_files | default([]) }}"
+  loop_control:
+    loop_var: "g3_os_installer_file"
+  

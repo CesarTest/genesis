@@ -82,20 +82,45 @@ g3_setup_webserver:
 ######################################################
 g3_extract_os_installer:
   CentOS:
-    - images/pxeboot/vmlinuz
-    - images/pxeboot/initrd.img    
+    - src: "images/pxeboot/vmlinuz"
+      dest: "vmlinuz"
+    - src: "images/pxeboot/initrd.img"
+      dest: "initrd"
+    - src: "images/install.img"
+      dest: "install.img"
   RedHat:
-    - images/pxeboot/vmlinuz
-    - images/pxeboot/initrd.img 
+    - src: "images/pxeboot/vmlinuz"
+      dest: "vmlinuz"
+    - src: "images/pxeboot/initrd.img"
+      dest: "initrd"
+    - src: "images/install.img"
+      dest: "install.img" 
   Rocky:
-    - images/pxeboot/vmlinuz
-    - images/pxeboot/initrd.img
+    - src: "images/pxeboot/vmlinuz"
+      dest: "vmlinuz"
+    - src: "images/pxeboot/initrd.img"
+      dest: "initrd"
+    - src: "images/install.img"
+      dest: "install.img" 
   Ubuntu:
-    - casper/vmlinuz
-    - casper/initrd
+    - src: "casper/vmlinuz"
+      dest: "vmlinuz"
+    - src: "casper/initrd"
+      dest: "initrd"	
+#    - src: "casper/filesystem.squashfs"
+#      dest: "install.img"
   Debian:
-    - install.amd/vmlinuz
-    - install.amd/initrd.gz   
+    - src: "install.amd/vmlinuz"
+      dest: "vmlinuz"	
+    - src: "install.amd/initrd.gz"
+      dest: "initrd"
+  SUSE:
+    - src: "boot/x86_64/loader/linux"
+      dest: "vmlinuz"
+    - src: "boot/x86_64/loader/initrd"  
+      dest: "initrd"   
+    - src: "boot/x86_64/root"
+      dest: "install.img"
 
 g3_ative_os_installer:
   - distribution: "CentOS"
@@ -143,3 +168,33 @@ g3_cloud_os_installer:
 # Using bifrost internal variable name
 genesis_installers_download: "{{ g3_ative_os_installer + g3_cloud_os_installer }}"
 download_image_sources: "{{ genesis_download_images | default(genesis_installers_download) | default([]) }}"
+
+######################################################
+#  G3 - HTTP EXPOSURE DETAILS
+######################################################
+# HTTP Paths particulars    
+g3_base_path: "{{ genesis_repo_path | default('../../../repo') | realpath }}"
+g3_base_list_subfolders_base_path: >-
+  {%- set partes = g3_base_path.split('/') | select('string') | list -%}
+  {%- set lista = [] -%}
+  {%- for i in range(1, partes | length + 1) -%}
+    {%- set _ = lista.append('/' ~ partes[:i] | join('/')) -%}
+  {%- endfor -%}
+  {{ lista }}
+g3_os_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
+g3_os_images_http_path: "{{ g3_http_path | realpath }}/{{ g3_repos['os'] | default('os') }}" 
+g3_cloud_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
+g3_cloud_images_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"     
+g3_mnt_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
+g3_mnt_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"       
+g3_manifesto_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
+g3_manifesto_http_path: "{{ g3_http_path }}/{{ g3_repos['manifesto'] | default('manifesto') }}"  
+g3_paths_to_expose:
+  - repo:   "{{ g3_manifesto_repo_path }}"  
+    expose: "{{ g3_manifesto_http_path }}"
+  - repo:   "{{ g3_os_images_repo_path }}"
+    expose: "{{ g3_os_images_http_path }}"
+  - repo:   "{{ g3_cloud_images_repo_path }}"
+    expose: "{{ g3_cloud_images_http_path }}"
+  - repo:   "{{ g3_mnt_repo_path }}"
+    expose: "{{ g3_mnt_http_path }}"

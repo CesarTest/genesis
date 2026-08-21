@@ -22,31 +22,6 @@
 # 2. PXE - HTTP: Full Access to Images Repositories
 #--------------------------------------- 
 - name: "------------------> Populate HTTP Service <------------------" 
-  vars:
-    # HTTP Paths particulars    
-    g3_base_path: "{{ genesis_repo_path | default('../../../repo') | realpath }}"
-    g3_base_list_subfolders_base_path: >-
-      {%- set partes = g3_base_path.split('/') | select('string') | list -%}
-      {%- set lista = [] -%}
-      {%- for i in range(1, partes | length + 1) -%}
-        {%- set _ = lista.append('/' ~ partes[:i] | join('/')) -%}
-      {%- endfor -%}
-      {{ lista }}
-    g3_os_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
-    g3_os_images_http_path: "{{ g3_http_path | realpath }}/{{ g3_repos['os'] | default('os') }}" 
-    g3_cloud_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
-    g3_cloud_images_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"     
-    g3_mnt_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
-    g3_mnt_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"       
-    g3_manifesto_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
-    g3_manifesto_http_path: "{{ g3_http_path }}/{{ g3_repos['manifesto'] | default('manifesto') }}"  
-    g3_paths_to_expose:
-      - repo:   "{{ g3_manifesto_repo_path }}"  
-        expose: "{{ g3_manifesto_http_path }}"
-      - repo:   "{{ g3_os_images_repo_path }}"
-        expose: "{{ g3_os_images_http_path }}"
-      - repo:   "{{ g3_cloud_images_repo_path }}"
-        expose: "{{ g3_cloud_images_http_path }}"
   block:
     - name: "G3 - INIT: Setup PXE-HTTP - Create Images Repositories"
       ansible.builtin.include_tasks: "2_http.yml"

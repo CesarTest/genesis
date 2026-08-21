@@ -8,10 +8,8 @@
 - name: "G3 - INIT: Setup PXE-TFTP: 1 - Create TFTP Folder"
   become: yes
   ansible.builtin.file:
-    path: "{{ g3_deploy_path }}" 
+    path: "{{ g3_deploy_tftp_path }}" 
     state: directory      
-  vars:
-    g3_deploy_path:   "{{ g3_tftp_path }}/{{ g3_image_os_distro | lower }}{{ g3_image_os_distro_version | lower | replace('.', '') }}" 
   when: 
     - g3_image.extract_ramdisk is defined
     - g3_image.extract_ramdisk   
