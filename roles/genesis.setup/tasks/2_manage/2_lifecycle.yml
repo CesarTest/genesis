@@ -48,18 +48,6 @@
               path: "/instance_info"
               value: "{{ instance_info | default({}) }}"
 
-        # Stage 2 - Manage Properties - Set PXE Boot Order
-        - method: "PATCH"
-          body:
-            - op: "add"
-              path: "/instance_info/bootif"
-              value: "{{ b4_enroll_nic_provision_mac | default(omit) }}" 
-        - method: "PUT"
-          path: "/management/boot_device"
-          body:
-            boot_device: "pxe"
-            persistent: true
-
         # Stage 2 - Manage Properties - Transition to Manageable State
         - method: "PUT"
           path: "/states/provision"

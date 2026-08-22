@@ -21,6 +21,7 @@
       ipv4_router: "{{ ipv4_router | default('') }}"
       boot_interface: "{{ boot_interface | default('ipxe') }}"
       deploy_interface: "{{ deploy_interface | default('direct') }}"
+      management_interface: "{{ management_interface | default('direct') }}"
       instance_info: "{{ instance_info | default('') }}"
       provisioning_ipv4_address: "{{ provisioning_ipv4_address | default('') }}"
   when: 

@@ -57,6 +57,17 @@ b5_url_ironic_port: "{{ b5_genesis_port['ironic'] is defined | ternary (':','','
 b5_url_ironic_url: "{{b5_url_protocol}}://{{ genesis_address | default(b5_url_genesis_ip) }}{{ b5_url_ironic_port }}"
 
 #------------------
+# 3.- Type or Machine
+#------------------
+b5_bios_machine: >-
+ {{ capabilities is defined and 
+     'boot_mode:bios' in capabilities }}
+b5_proxmox_hypervisor: >-
+  {{ b5_redfish_username is defined and	  
+     b5_redfish_username is not none and
+     '@pam' in b5_redfish_username }}
+
+#------------------
 # 2.- Proxmo Bypass
 #------------------
 #b5_proxmox_root_password: "cesardgm"

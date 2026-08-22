@@ -36,9 +36,18 @@
     #    loop_var: "b5_clean" 
 
     # =>  2.- Stage 2: Deploy - Unattended OS Installation	
-    - name: "B5 - DEPLOY - Stage 2:  Deploy - Unattended OS Installation"
-      ansible.builtin.include_tasks: "2_deploy/1_boot_order.yml"
-    - ansible.builtin.include_tasks: "2_deploy/2_instance.yml"	
+    - ansible.builtin.include_tasks: "2_deploy/1_boot_order.yml"
+      vars: 
+         b5_deploy_boot_order: "pxe"
+    - ansible.builtin.include_tasks: "2_deploy/2_instance.yml"
+    - ansible.builtin.pause:
+         seconds: 240
+      when: 
+         - b5_bios_machine|bool #or b5_proxmox_hypervisor|bool 
+    - ansible.builtin.include_tasks: "2_deploy/1_boot_order.yml"
+      vars: 
+         b5_deploy_boot_order: "os"
+         b5_skip_bios_workaround: yes
 
     # =>  2.- Stage 3: Active - HeartBeat, Network Connection, Hardware Configuration	
     #- name: "B5 - DEPLOY - Stage 3:  Active - HeartBeat, Network Connection, Hardware Configuration"

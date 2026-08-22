@@ -62,7 +62,7 @@ genesis_os_definitions:
 
   ubuntu:
     ansible_distribution: "Ubuntu"
-    installer: "subiquity"
+    installer: "casper"
     prefix: "casper_"
     ext: ".yml"
 
@@ -266,7 +266,7 @@ b4_enroll_node_nics: >-
 #------------------
 b4_enroll_node_name: "{{ enroll.name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
 b4_enroll_node_uuid: "{{ enroll.uuid | default('') }}" 
-b4_enroll_node_bmc_driver: "{{ enroll.driver | default('redfish') }}" 
+b4_enroll_node_bmc_driver: "{{ enroll.driver  | default('redfish') }}" 
 
 #------------------
 # 3.- Out-Of-Band BMC Credentials (node -> inventory -> defaults)
@@ -286,7 +286,8 @@ b4_enroll_default_bmc_credentials:
      cipher_suite: "17"
 b4_enroll_genesis_bmc_credentials: "{{ genesis_bmc_credentials[b4_enroll_node_bmc_driver] | default(b4_enroll_default_bmc_credentials) }}"
 b4_enroll_node_bmc_credentials: "{{ enroll.bmc_credentials[b4_enroll_node_bmc_driver] | default(b4_enroll_genesis_bmc_credentials) }}"
-b4_enroll_default_node_id: "{{ enroll.driver_info['node_id'] | default(b4_enroll_node_bmc_credentials['node_id']) | default(b4_enroll_genesis_bmc_credentials['node_id']) | default('') }}"
+b4_enroll_node_driver_info: "{{ enroll.driver_info |  default({}) }}"
+b4_enroll_default_node_id: "{{ b4_enroll_node_driver_info['node_id'] | default(b4_enroll_node_bmc_credentials['node_id']) | default(b4_enroll_genesis_bmc_credentials['node_id']) | default('') }}"
 
 #------------------
 # 4.- Out-Of-Band BMC URLs (node -> inventory -> defaults)
@@ -296,6 +297,7 @@ b4_enroll_node_bmc_ipv4: "{{ b4_enroll_node_bmc_credentials['ipv4'] | default(b4
 b4_enroll_node_bmc_port: "{{ b4_enroll_node_bmc_credentials['port'] | default(b4_enroll_genesis_bmc_credentials['port']) | default(omit) }}"
 b4_enroll_node_bmc_url: "{{b4_enroll_node_bmc_protocol }}://{{ b4_enroll_node_bmc_ipv4 }}{{  b4_enroll_node_bmc_port is not none | ternary(':'+b4_enroll_node_bmc_port,'','') }}"
 b4_enroll_default_system_id: "/redfish/v1/Systems/{{ b4_enroll_default_node_id | default('') }}"
+b4_enroll_default_auth_type: "{{ b4_enroll_node_bmc_credentials['auth_type'] | default(b4_enroll_genesis_bmc_credentials['auth_type']) | default('') }}"
 
 #------------------
 # 5.- Out-Of-Band BMC driver Info
@@ -303,17 +305,18 @@ b4_enroll_default_system_id: "/redfish/v1/Systems/{{ b4_enroll_default_node_id |
 b4_enroll_node_bmc_driver_info:
   redfish:
     redfish_address: "{{ b4_enroll_node_bmc_url }}"
-    redfish_username: "{{ enroll.driver_info['redfish_username'] | default(b4_enroll_node_bmc_credentials['username']) | default(b4_enroll_genesis_bmc_credentials['username']) | default('root') }}"
-    redfish_password: "{{ enroll.driver_info['redfish_password'] | default(b4_enroll_node_bmc_credentials['password']) | default(b4_enroll_genesis_bmc_credentials['password']) | default('calvin') }}"
-    redfish_verify_ca: "{{ enroll.driver_info['redfish_verify_ca'] | default(b4_enroll_node_bmc_credentials['verify_ca']) | default(b4_enroll_genesis_bmc_credentials['verify_ca']) | default(false) }}"
-    redfish_system_id: "{{ enroll.driver_info['redfish_system_id'] | default(b4_enroll_node_bmc_credentials['system_id']) | default(b4_enroll_genesis_bmc_credentials['system_id']) | default(b4_enroll_default_system_id) }}"
+    redfish_username: "{{ b4_enroll_node_driver_info['redfish_username'] | default(b4_enroll_node_bmc_credentials['username']) | default(b4_enroll_genesis_bmc_credentials['username']) | default('root') }}"
+    redfish_password: "{{ b4_enroll_node_driver_info['redfish_password'] | default(b4_enroll_node_bmc_credentials['password']) | default(b4_enroll_genesis_bmc_credentials['password']) | default('calvin') }}"
+    redfish_verify_ca: "{{ b4_enroll_node_driver_info['redfish_verify_ca'] | default(b4_enroll_node_bmc_credentials['verify_ca']) | default(b4_enroll_genesis_bmc_credentials['verify_ca']) | default(false) }}"
+    redfish_system_id: "{{ b4_enroll_node_driver_info['redfish_system_id'] | default(b4_enroll_node_bmc_credentials['system_id']) | default(b4_enroll_genesis_bmc_credentials['system_id']) | default(b4_enroll_default_system_id) }}"
+    #redfish_auth_type: "{{ b4_enroll_node_driver_info['redfish_auth_type'] | default(b4_enroll_node_bmc_credentials['auth_type']) | default(b4_enroll_genesis_bmc_credentials['auth_type']) | default(b4_enroll_default_auth_type) }}"
   ipmi:
     ipmi_address: "{{ b4_enroll_node_bmc_ipv4 }}"
-    ipmi_username:  "{{ enroll.driver_info['ipmi_username'] | default(b4_enroll_node_bmc_credentials['username']) | default(b4_enroll_genesis_bmc_credentials['username']) | default('root') }}"
-    ipmi_password: "{{ enroll.driver_info['ipmi_password'] | default(b4_enroll_node_bmc_credentials['password']) | default(b4_enroll_genesis_bmc_credentials['password']) | default('calvin') }}"
-    ipmi_priv_level: "{{ enroll.driver_info['priv_level'] | default(b4_enroll_node_bmc_credentials['priv_level']) | default(b4_enroll_genesis_bmc_credentials['priv_level']) | default('ADMINISTRATOR') }}"
+    ipmi_username:  "{{ b4_enroll_node_driver_info['ipmi_username'] | default(b4_enroll_node_bmc_credentials['username']) | default(b4_enroll_genesis_bmc_credentials['username']) | default('root') }}"
+    ipmi_password: "{{ b4_enroll_node_driver_info['ipmi_password'] | default(b4_enroll_node_bmc_credentials['password']) | default(b4_enroll_genesis_bmc_credentials['password']) | default('calvin') }}"
+    ipmi_priv_level: "{{ b4_enroll_node_driver_info['priv_level'] | default(b4_enroll_node_bmc_credentials['priv_level']) | default(b4_enroll_genesis_bmc_credentials['priv_level']) | default('ADMINISTRATOR') }}"
     ipmi_port: "{{ b4_enroll_node_bmc_port | default('623') }}"
-    ipmi_cipher_suite: "{{  enroll.driver_info['ipmi_cipher_suite'] | default(b4_enroll_node_bmc_credentials['cipher_suite']) | default(b4_enroll_genesis_bmc_credentials['cipher_suite']) | default('17') }}"
+    ipmi_cipher_suite: "{{  b4_enroll_node_driver_info['ipmi_cipher_suite'] | default(b4_enroll_node_bmc_credentials['cipher_suite']) | default(b4_enroll_genesis_bmc_credentials['cipher_suite']) | default('17') }}"
 
 #------------------
 # 6.- Properties (Corregido)
@@ -324,7 +327,7 @@ b4_enroll_node_chassis_default_properties:
   memory_mb: 4096      
   local_gb: 32         
   
-b4_enroll_node_chassis_properties_input: "{{ enroll['properties'] | default(b4_enroll_node_chassis_default_properties) }}"
+b4_enroll_node_chassis_properties_input: "{{ enroll['properties'] |  default(b4_enroll_node_chassis_default_properties) }}"
 b4_enroll_node_chassis_capabilities: "{{ enroll['capabilities'] | default({}) }}"
 b4_enroll_node_chassis_type: "{{ (b4_enroll_node_chassis_capabilities.uefi | default(true)) | ternary('uefi','bios','uefi') }}"
 b4_enroll_node_chassis_capabilities_string: "{{ (b4_enroll_node_chassis_capabilities | length > 0) | ternary(b4_enroll_node_chassis_capabilities.items() | map('join', ':') | join(',') | lower, '') }}"
@@ -403,14 +406,6 @@ b4_netinstall_os_manifesto_url:    "{{ b4_netinstall_base_url }}/{{ b4_os_manife
 b4_netinstall_os_images_url:       "{{ b4_netinstall_base_url }}/{{ b4_os_images_subpath }}/{{ b4_url_full_subpath }}"
 b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_os_mounted_repo_subpath }}/{{ b4_url_full_subpath }}"
 b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_iso_file }}"
-
-#------------------
-# 5.- Interfaces
-#------------------
-b4_node_default_boot_interface: "ipxe"
-b4_node_default_deploy_interface: "direct"
-b4_node_boot_interface:   "{{ deploy['boot_interface'] | default(b4_node_default_boot_interface) }}"
-b4_node_deploy_interface: "{{ deploy['deploy_interface'] | default(b4_node_default_deploy_interface) }}"
 
 #####################################################
 # OS_NATIVE: INSTALLERS TEMPLATES RENDERING
@@ -679,7 +674,7 @@ b4_os_installer_manifesto:
     system:   "{{ b4_system_manifesto_profiles | default({}) }}"
     node:     "{{ b4_node_manifesto_profiles | default({}) }}"
   
-  subsiquity:
+  casper:
     template:  
       - "manifesto/cloud-init/meta-data.j2"
       - "manifesto/cloud-init/user-data.j2"     
@@ -813,7 +808,7 @@ b4_os_installer_bootloader_call:
       gateway={{ b4_enroll_nic_provision_gateway | default(b4_url_genesis_ip) }}
       nameserver={{ b4_url_genesis_ip | default('') }}
 
-  subiquity:
+  casper:
     # Ubuntu uses the 'casper' live boot framework (initramfs-tools). 
     #
     # SYSTEM COMPATIBILITY:
@@ -987,7 +982,28 @@ b4_node_driver_info_credentials: "{{ b4_enroll_node_bmc_driver_info[b4_enroll_no
 b4_node_driver_info_pxe: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface]['driver_info'] | default(b4_deploy_interface_instance_info['default']['driver_info']) | default({}) }}"
 b4_node_driver_info: "{{ b4_node_driver_info_credentials | combine(b4_node_driver_info_pxe) }}"
 
+#-----------------------------------------------------------------------------
+# 2.- Interfaces (Universal Genesis Data Model)
+#-----------------------------------------------------------------------------
+# 2.1.- Detect Hypervisor 
+b4_proxmox_hypervisor: >-
+  {{ b4_node_driver_info.redfish_username is defined and	  
+     b4_node_driver_info.redfish_username is not none and
+     '@pam' in b4_node_driver_info.redfish_username }}
+
+# 2.2.- Infrastructure flat default values  
+b4_node_default_boot_interface: "ipxe"
+b4_node_default_deploy_interface: "direct"
+
+# 2.3.- Clean cascade capturing (Millimeter-precise fallbacks)
+b4_node_boot_interface:   "{{ deploy['boot_interface']   | default(b4_node_default_boot_interface) }}"
+b4_node_deploy_interface: "{{ deploy['deploy_interface']  | default(b4_node_default_deploy_interface) }}"
+
+# 2.4.- Strict flat mirrors for API URI payload execution
+boot_interface:   "{{ b4_node_boot_interface }}"
+deploy_interface: "{{ b4_node_deploy_interface }}"
+
 #------------------------------------
-# 2.- Instance Info
+# 3.- Instance Info
 #------------------------------------ 
 b4_node_instance_info: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface]['instance_info'] | default(b4_deploy_interface_instance_info['default']['instance_info']) | default({}) }}"

@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 - name: "B5 - DEPLOY - Set NIC for PXE Boot " 
-  
+
   #----------------------
   # 1.- Bifrost Role
   #----------------------  
@@ -20,37 +20,49 @@
         state: present
       environment:
         OS_CLOUD: "bifrost"
- 
-  #----------------------
-  # 2.- Command Line	
-  #----------------------
+      when: b5_deploy_boot_order | default('os') == 'pxe'
+
+    - name: "B5 - DEPLOY - [UNIVERSAL] Set Node Boot Device Priority Target (PXE / OS)"
+      openstack.cloud.baremetal_node_action:
+        cloud: "bifrost"
+        uuid: "{{ uuid | default(omit) }}"
+        instance_info: "{{ instance_info | default(omit) }}"
+        action: "boot_device"
+        boot_device: "{{ (b5_deploy_boot_order | default('pxe') == 'os') | ternary('pxe', 'disk') }}"
+        is_persistent: true
+      environment:
+        OS_CLOUD: "bifrost"
+
+
+  #---------------------------------------------------------------------------
+  # 2.- Command Line Fallback (Executed if the OpenStack native module fails)
+  #---------------------------------------------------------------------------
   rescue:
-    - name: "B5 - DEPLOY - Set NIC for PXE Boot through command line"
+    - name: "B5 - DEPLOY - Set Target Boot Device through Bifrost CLI Fallback"
       ansible.builtin.shell:
-         cmd: "{{ b5_baremetal_cmd | default('ls') }}"
-      vars:
-         b5_command_nic: |
-           . /opt/stack/bifrost/bin/activate
-           export OS_CLOUD=bifrost
-           
-           # 1. Buscamos el UUID usando tu variable dinámica de la MAC
-           PORT_UUID=$(baremetal port list --address {{ mac }} -f value -c UUID)
-           if [ ! -z "$PORT_UUID" ]; then
-             baremetal port set --pxe-enabled $PORT_UUID
-           else
-             echo "Error: No se encontró ningún puerto con la MAC {{ mac }}"
-             exit 1
-           fi
-         b5_command_pxe: |
-           . /opt/stack/bifrost/bin/activate
-           export OS_CLOUD=bifrost
-           baremetal node boot device set --persistent {{ uuid }} pxe
-         b5_command_baremetal:
-           - "{{ b5_command_nic | default('ls') }}"
-           - "{{ b5_command_pxe | default('ps') }}"
-      loop: "{{ b5_command_baremetal | default([]) }}"
+        cmd: "{{ b5_cmd | default('ls') }}"
+      loop: "{{ b5_commands | default([]) }}"
       loop_control:
-         loop_var: "b5_baremetal_cmd"	  
+        loop_var: "b5_cmd"
+      vars:
+        b5_pxe_commands:
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            PORT_UUID=$(baremetal port list --address {{ mac }} -f value -c UUID)
+            if [ ! -z "$PORT_UUID" ]; then baremetal port set --pxe-enabled $PORT_UUID; fi
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            baremetal node boot device set --persistent {{ uuid }} pxe
+
+        b5_os_commands:
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            baremetal node boot device set --persistent {{ uuid }} disk
+
+        b5_commands: "{{ (b5_deploy_boot_order | default('os') == 'pxe') | ternary(b5_pxe_commands, b5_os_commands) }}"
 
   #----------------------
   # 3.- Always - Bypass Bios and Hypervisors (such Proxmox)
@@ -60,57 +72,27 @@
     - name: "B5 - DEPLOY - Remove partition table from discs (Bypass BIOS) to force network boot"
       ansible.builtin.command:
         cmd: "dd if=/dev/zero of=/dev/{{ b5_disk_type }} bs=512 count=100 conv=notrunc"
-      loop:
-        - sda
-        - vda
-        - nvme0n1
-        - xvda
-        - hda
+      loop: [ sda, vda, nvme0n1, xvda, hda ]
       loop_control:
         loop_var: "b5_disk_type"
       ignore_errors: true
       register: b5_dd_clear_result
       changed_when: "b5_dd_clear_result.rc == 0"
       when: 
-        - capabilities is defined
-        - capabilities | search('boot_mode:bios')
+        - b5_bios_machine|bool or b5_proxmox_hypervisor|bool
+        - b5_skip_bios_workaround is not defined
 
-    - name: "B5 - DEPLOY - PROXMOX Hypervisor Workaround via API HTTPS"
-      ignore_errors: yes
-      vars:
-        # 1. Traemos los datos básicos del nodo
-        b5_driver_info: "{{ driver_info | default(hostvars[inventory_hostname]['driver_info']) | default({}) }}"
-        b5_redfish_username: "{{ b5_driver_info['redfish_username'] | default(none) }}"
-        b5_redfish_password: "{{ b5_driver_info['redfish_password'] | default('') }}"
-        b5_redfish_system_id: "{{ b5_driver_info['redfish_system_id'] | default('/102') }}"
-
-        # 2. Desguazamos la URL de Redfish (https://10.10.41.1:8000) por partes nativas
-        b5_px_proto: "{{ b5_driver_info['redfish_address'] | urlsplit('scheme') }}"
-        b5_px_ip:    "{{ b5_driver_info['redfish_address'] | urlsplit('hostname') }}"
-        b5_px_vmid:  "{{ b5_redfish_system_id | basename }}"
-        b5_px_node:  "{{ b5_proxmox_node_name | default('pve') }}"
-        b5_proxmox_url: "{{ b5_px_proto }}://{{ b5_px_ip }}:8006/api2/json/nodes/{{ b5_px_node }}/qemu/{{ b5_px_vmid }}/config"
-
-        # 3. Renombramos la variable a b5_script_boot_order para evitar recursividad
-        b5_script_boot_order: |
-          # Inyectamos el Token directamente en la cabecera PVEAPIToken
-          curl -X POST -k \
-            -H "Authorization: PVEAPIToken={{ b5_redfish_username }}!{{ b5_proxmox_token_name | default('genesis') }}={{ b5_redfish_password }}" \
-            --data-urlencode "boot={{ b5_proxmox_pxe_boot_order | default('net1;scsi0') }}" \
-            "{{ b5_proxmox_url }}"
-        b5_proxmox_patches: 
-          - "{{ b5_script_boot_order }}"
-
-      ansible.builtin.shell:
-         cmd: "{{ b5_proxmox_cmd }}"
-      loop: "{{ b5_proxmox_patches | default([]) }}"
-      loop_control:
-         loop_var: "b5_proxmox_cmd"			 
-      delegate_to: localhost
-      when:
-        - b5_redfish_username is defined	  
-        - b5_redfish_username is not none
-        - b5_redfish_username is search('@pam')
+    - name: "B5 - DEPLOY - Blind Reboot (PXE Start)"
+      ansible.builtin.reboot:
+        msg: "Genesis forcing network boot via PXE on BIOS machines with fix boot order"
+        test_command: "exit 0"
+        post_reboot_delay: 0
+        connect_timeout: 1
+        reboot_timeout: 1
+      ignore_errors: true
+      when: 
+        - b5_bios_machine|bool or b5_proxmox_hypervisor|bool
+        - b5_skip_bios_workaround is not defined
 
   #----------------------
   # 4.- Conditions
@@ -118,3 +100,40 @@
   when:
     - uuid is defined
     - mac is defined
+
+#----------------------------------------------------
+#- name: "B5 - DEPLOY - PROXMOX Hypervisor Workaround via API HTTPS"
+#  ignore_errors: yes
+#  vars:
+#    # 1. Traemos los datos básicos del nodo
+#    b5_driver_info: "{{ driver_info | default(hostvars[inventory_hostname]['driver_info']) | default({}) }}"
+#    b5_redfish_username: "{{ b5_driver_info['redfish_username'] | default(none) }}"
+#    b5_redfish_password: "{{ b5_driver_info['redfish_password'] | default('') }}"
+#    b5_redfish_system_id: "{{ b5_driver_info['redfish_system_id'] | default('/102') }}"
+#
+#    # 2. Desguazamos la URL de Redfish (https://10.10.41.1:8000) por partes nativas
+#    b5_px_proto: "{{ b5_driver_info['redfish_address'] | urlsplit('scheme') }}"
+#    b5_px_ip:    "{{ b5_driver_info['redfish_address'] | urlsplit('hostname') }}"
+#    b5_px_vmid:  "{{ b5_redfish_system_id | basename }}"
+#    b5_px_node:  "{{ b5_proxmox_node_name | default('pve') }}"
+#    b5_proxmox_url: "{{ b5_px_proto }}://{{ b5_px_ip }}:8006/api2/json/nodes/{{ b5_px_node }}/qemu/{{ b5_px_vmid }}/config"
+#
+#    # 3. Renombramos la variable a b5_script_boot_order para evitar recursividad
+#    b5_script_boot_order: |
+#      # Inyectamos el Token directamente en la cabecera PVEAPIToken
+#      curl -X POST -k \
+#        -H "Authorization: PVEAPIToken={{ b5_redfish_username }}!{{ b5_proxmox_token_name | default('genesis') }}={{ b5_redfish_password }}" \
+#        --data-urlencode "boot={{ b5_proxmox_pxe_boot_order | default('virtio') }}" \
+#        "{{ b5_proxmox_url }}"
+#    b5_proxmox_patches: 
+#      - "{{ b5_script_boot_order }}"
+#
+#  ansible.builtin.shell:
+#     cmd: "{{ b5_proxmox_cmd }}"
+#  loop: "{{ b5_proxmox_patches | default([]) }}"
+#  loop_control:
+#     loop_var: "b5_proxmox_cmd"			 
+#  delegate_to: localhost
+#  when:
+#    - b5_proxmox_hypervisor|bool
+#
