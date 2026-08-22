@@ -8,12 +8,12 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "G1 - BOOSTRAP: Genesis Machine Ready"
+- name: "G1 - BOOSTRAP: 3.- Genesis Machine Ready"
   vars:
      g1_repo_local_folder:   "{{ g1_repo_os_path | dirname | realpath }}" 
   block:
 
-    - name: "G1 - BOOSTRAP - Ready: Find Repo Folders"
+    - name: "G1 - BOOSTRAP - 3.- Ready: 3.1) Find Repo Folders"
       ansible.builtin.find:
         paths: "{{ g1_repo_local_folder }}"
         file_type: directory
@@ -21,7 +21,7 @@
         excludes: "*mnt*"
       register: g1_repo_folders_downloaded
     
-    - name: "G1 - BOOSTRAP - Ready: Set Ownership to Repo Folders"
+    - name: "G1 - BOOSTRAP - 3.- Ready: 3.2) Set Ownership to Repo Folders"
       ansible.builtin.file:
         path: "{{ g1_repo_folder_download.path }}"
         owner: "{{ ansible_user | default('ironic') }}"

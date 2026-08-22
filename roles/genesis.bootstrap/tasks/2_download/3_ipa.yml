@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "G1 - BOOTSTRAP - Download IPA: Download IPA images"
+- name: "G1 - BOOTSTRAP - 2.- Download: 3) IPA (Ironic Python Agent) for Cloud OS Installation"
   include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_ipa_image.yml"
   vars:
      ipa_kernel_upstream_url: "{{ g1_ipa_image.kernel | default('') }}"

@@ -32,17 +32,16 @@
   #-----------------------
   block:
 
-    # => 2 1.- Stage 1: Enroll - Outband Control
+    # => 2.1.- Stage 1: Enroll - Outband Control
     - name: "B4 - SETUP - Stage 1: Enroll the Node - Outband Control"
       ansible.builtin.include_tasks: "1_enroll/1_os_manifesto.yml"
-    - ansible.builtin.include_tasks: "1_enroll/2_config_drive.yml"
+    #- ansible.builtin.include_tasks: "1_enroll/2_config_drive.yml"
     - ansible.builtin.include_tasks: "1_enroll/3_delete.yml"
     - ansible.builtin.include_tasks: "1_enroll/4_outband.yml"
  
-    # =>  2.- Stage 2: Manage - Inband Provision	
+    # => 2.2.- Stage 2: Manage - Inband Provision	
     - name: "B4 - SETUP - Stage 2:  Manage the Node - Inband Provision"
-      ansible.builtin.include_tasks: "{{ b4_manage | default ('2_manage/1_inband.yml') }}"
-    - ansible.builtin.include_tasks: "2_manage/1_inband.yml"
+      ansible.builtin.include_tasks: "2_manage/1_inband.yml"
     - ansible.builtin.include_tasks: "2_manage/2_lifecycle.yml"
     - ansible.builtin.include_tasks: "2_manage/3_available.yml"
 

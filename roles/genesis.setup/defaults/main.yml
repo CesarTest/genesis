@@ -34,6 +34,7 @@ genesis_default_repos:
   ipa: "dib/files" 
   repo: "mnt"
 
+# 4.- OS Definitions
 genesis_os_definitions:
   centos:
     ansible_distribution: "CentOS"
@@ -87,6 +88,85 @@ genesis_os_definitions:
     installer: "autoyast"
     prefix: "autoyast_"
     ext: ".xml"
+
+# 4.- OS Locale Definitions
+genesis_locale_matrix:
+  es:
+    keyboard: "es"
+    lang: "es_ES.UTF-8"
+    timezone: "Europe/Madrid"
+  
+  fr:
+    keyboard: "fr"                   # Teclado AZERTY francés nativo
+    lang: "fr_FR.UTF-8"
+    timezone: "Europe/Paris"
+  
+  de:
+    keyboard: "de"                   # Teclado QWERTZ alemán nativo
+    lang: "de_DE.UTF-8"
+    timezone: "Europe/Berlin"
+  
+  it:
+    keyboard: "it"
+    lang: "it_IT.UTF-8"
+    timezone: "Europe/Rome"
+  
+  pt:
+    keyboard: "pt"
+    lang: "pt_PT.UTF-8"
+    timezone: "Europe/Lisbon"
+  
+  nl:
+    keyboard: "nl"                   # Países Bajos
+    lang: "nl_NL.UTF-8"
+    timezone: "Europe/Amsterdam"
+  
+  be:
+    keyboard: "be"                   # Bélgica (Generalmente AZERTY belga)
+    lang: "fr_BE.UTF-8"
+    timezone: "Europe/Brussels"
+  
+  ch:
+    keyboard: "sg"                   # Suiza (Teclado Swiss-German/Swiss-French)
+    lang: "de_CH.UTF-8"
+    timezone: "Europe/Zurich"
+  
+  uk:
+    keyboard: "uk"                   # Reino Unido
+    lang: "en_GB.UTF-8"
+    timezone: "Europe/London"
+
+  ie:
+    keyboard: "uk"                   # Irlanda (Comparte distribución de teclado con UK)
+    lang: "en_IE.UTF-8"
+    timezone: "Europe/Dublin"
+
+  pl:
+    keyboard: "pl"                   # Polonia
+    lang: "pl_PL.UTF-8"
+    timezone: "Europe/Warsaw"
+
+  # Sabor nórdico (Crucial para infraestructura cloud y laboratorios europeos)
+  se:
+    keyboard: "se"                   # Suecia
+    lang: "sv_SE.UTF-8"
+    timezone: "Europe/Stockholm"
+
+  no:
+    keyboard: "no"                   # Noruega
+    lang: "nb_NO.UTF-8"
+    timezone: "Europe/Oslo"
+
+  dk:
+    keyboard: "dk"                   # Dinamarca
+    lang: "da_DK.UTF-8"
+    timezone: "Europe/Copenhagen"
+
+  fi:
+    keyboard: "fi"                   # Finlandia
+    lang: "fi_FI.UTF-8"
+    timezone: "Europe/Helsinki"
+
 
 ######################################################
 # B4 - PATHS
@@ -313,7 +393,7 @@ b4_ironic_base_url: "{{ b4_url_protocol }}://{{ b4_url_ironic_url }}"
 b4_netinstall_base_url: "{{ b4_url_protocol }}://{{ b4_url_genesis_url }}"
 b4_netinstall_os_manifesto_url:    "{{ b4_netinstall_base_url }}/{{ b4_os_manifesto_subpath }}"
 b4_netinstall_os_images_url:       "{{ b4_netinstall_base_url }}/{{ b4_os_images_subpath }}/{{ b4_url_full_subpath }}"
-b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_url_full_subpath }}"
+b4_netinstall_os_mounted_repo_url: "{{ b4_netinstall_base_url }}/{{ b4_os_mounted_repo_subpath }}/{{ b4_url_full_subpath }}"
 b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_iso_file }}"
 
 #------------------
@@ -332,133 +412,153 @@ b4_node_deploy_interface: "{{ deploy['deploy_interface'] | default(b4_node_defau
 #------------------------------------
 # 1.- Kickstart
 #------------------------------------
+# 1.1.- Storage Snippet according BIOS/UEFI
 b4_kickstart_storage_chassis_type: 
   uefi: |
     bootloader
-    part /boot/efi --fstype=vfat --size=600
+    part /boot/efi --fstype=efi --size=600
     part /boot --fstype=xfs --size=1024
-  bios:	|
+  bios: |
     bootloader --location=mbr
     part /boot --fstype=ext4 --size=1024
-
 b4_kickstart_storage_snippet: "{{ b4_kickstart_storage_chassis_type[b4_enroll_node_chassis_type] | default(b4_kickstart_storage_chassis_type['uefi']) }}"
 
-b4_kickstart_template_defaults_os_version:
-  "9":
-    preinstall: |
-      # Use Netinstall installation media
-      url --url {{ b4_netinstall_os_mounted_repo_url }} 
+# 1.2.- Default RHEL derivatives Kickstart
+b4_kickstart_template_defaults:
+  preinstall: |
+    # Use Netinstall installation media
+    url --url {{ b4_netinstall_os_mounted_repo_url }}/
 
-    #postinstall: |
-    #  # 1. ULTRA-ROBUST VIRTUAL MACHINE DETECTION (Fallback safe)
-    #  IS_VM=0
-    #  if [ -x /usr/bin/systemd-detect-virt ]; then
-    #      if /usr/bin/systemd-detect-virt -q; then IS_VM=1; fi
-    #  elif [ -f /sys/class/dmi/id/sys_vendor ]; then
-    #      SYS_VENDOR=$(cat /sys/class/dmi/id/sys_vendor | tr '[:upper:]' '[:lower:]')
-    #      if [[ "$SYS_VENDOR" =~ (qemu|kvm|vmware|virtualbox|xen|innotek|bochs) ]]; then IS_VM=1; fi
-    #  fi
-    #  if [ "$IS_VM" -eq 1 ]; then
-    #      echo "[INFO] VM environment verified. Skipping hardware IPMI boot management." >> /root/ks-post-ipmi.log
-    #  else
-    #      echo "[INFO] Bare Metal verified. Initializing IPMI kernel layers..." >> /root/ks-post-ipmi.log
-    #      
-    #      # 2. FORCE BACKEND MODULE LOADING IN CHROOT (Mandatory for RHEL 9 %post)
-    #      modprobe ipmi_msghandler 2>/dev/null
-    #      modprobe ipmi_si 2>/dev/null
-    #      modprobe ipmi_devintf 2>/dev/null
-    #      udevadm settle 2>/dev/null
-    #      # 3. UEFI PERSISTENT BOOT ASSIGNMENT WITH classical FALLBACK
-    #      echo "[INFO] Applying persistent UEFI boot device ordering..." >> /root/ks-post-ipmi.log
-    #      if ! ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log; then
-    #          echo "[WARN] UEFI target failed. Forcing legacy bootdev fallback..." >> /root/ks-post-ipmi.log
-    #          if ! ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log; then
-    #              echo "[ERROR] Hard boot override rejected by BMC hardware." >> /root/ks-post-ipmi.log
-    #          fi
-    #      fi
-    #  fi
+  system: |       
+    # System Language
+    lang en_GB
+           
+    # System keyboard
+    keyboard uk
+           
+    # Firewall configuration
+    firewall --disabled
+    
+    # SELinux configuration
+    selinux --disabled
+          
+    # System timezone
+    timezone Europe/London --utc
+    
+    # Use text mode install
+    text
+    
+    # Reboot after installation
+    reboot	
+ 
+  auth: |
+    authselect --profile=minimal
+    
+  packages: |
+    @core
+    ipmitool
+    efibootmgr  
 
-    system: |       
-      # System Language
-      lang en_GB
-             
-      # System keyboard
-      keyboard uk
-             
-      # Firewall configuration
-      firewall --disabled
+  user: |
+    # Root password 
+    rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly  
+  
+  network: |
+    network --bootproto=static --ip={{ b4_enroll_nic_provision_ip | default('10.10.51.150') }} --netmask={{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }} --gateway={{ b4_url_genesis_ip | default('10.10.51.5') }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
+
+  storage: |	
+    {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('vda') %}
+    {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'vda' %}{% endif %}
+    
+    {% set total_mb = (b4_enroll_node_chassis_properties.local_gb | default(32) | int * 1024) %}
+    {% set fixed_mb = 19456 %}
+    {% set pv_size = total_mb - fixed_mb - 512 %}
+    {% set swap_size = (b4_enroll_node_chassis_properties.memory_mb | default(4096) | int / 2) | int %}
       
-      # SELinux configuration
-      selinux --disabled
-             
-      # System authorization information (RHEL 9 standard)
-      authselect --useshadow --passalgo=sha512   
-      
-      # System timezone
-      timezone Europe/London --utc
-      
-      # Use text mode install
-      text
+    # Partitions Configuration (100% Dynamic calculated from chassis properties)
+    zerombr
+    clearpart --all --initlabel
+    
+    # 1. First: Fixed size standard partitions (Total: ~19 GB / 19456 MB)
+    {{ b4_kickstart_storage_snippet }} 
+    part /         --fstype=ext4 --size=17408 
+    
+    # 2. Second: Physical Volume utilizing the calculated remaining space of the disk
+    part pv.{{ b4_enroll_node_name }}-0001 --size={{ pv_size if pv_size > 1024 else 2048 }} --grow
+    
+    # 3. Third: Logical Volumes inside the Volume Group
+    volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
+    logvol /home --fstype=ext4 --name=LogVol03    --vgname=VolGroup00 --size=4096 --grow
+    logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }}
 
-    user: |
-      # Root password 
-      rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly  
-
-    logging: |
-      # Reboot after installation
-      reboot
-      
-      # Installation logging level
-      logging --level=info     
-
-    network: |
-      network --bootproto=static --ip={{ b4_enroll_nic_provision_ip | default('10.10.51.150') }} --netmask={{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }} --gateway={{ b4_url_genesis_ip | default('10.10.51.5') }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
-
-    storage: |	
-      {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('vda') %}
-      {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'vda' %}{% endif %}
-      
-      {% set total_mb = (b4_enroll_node_chassis_properties.local_gb | default(32) | int * 1024) %}
-      {% set fixed_mb = 19456 %}
-      {% set pv_size = total_mb - fixed_mb - 512 %}
-      {% set swap_size = (b4_enroll_node_chassis_properties.memory_mb | default(4096) | int / 2) | int %}
+  postinstall: |
+    # 1. ULTRA-ROBUST VIRTUAL MACHINE DETECTION (Fallback safe)
+    IS_VM=0
+    if [ -x /usr/bin/systemd-detect-virt ]; then
+        if /usr/bin/systemd-detect-virt -q; then IS_VM=1; fi
+    elif [ -f /sys/class/dmi/id/sys_vendor ]; then
+        SYS_VENDOR=$(cat /sys/class/dmi/id/sys_vendor | tr '[:upper:]' '[:lower:]')
+        if [[ "$SYS_VENDOR" =~ (qemu|kvm|vmware|virtualbox|xen|innotek|bochs) ]]; then IS_VM=1; fi
+    fi
+    if [ "$IS_VM" -eq 1 ]; then
+        echo "[INFO] VM environment verified. Skipping hardware IPMI boot management." >> /root/ks-post-ipmi.log
+    else
+        echo "[INFO] Bare Metal verified. Initializing IPMI kernel layers..." >> /root/ks-post-ipmi.log
         
-      # Partitions Configuration (100% Dynamic calculated from chassis properties)
-      zerombr
-      clearpart --all --initlabel
-      
-      # 1. First: Fixed size standard partitions (Total: ~19 GB / 19456 MB)
-      {{ b4_kickstart_storage_snippet }} 
-      part /         --fstype=ext4 --size=17408 
-      
-      # 2. Second: Physical Volume utilizing the calculated remaining space of the disk
-      part pv.{{ b4_enroll_node_name }}-0001 --size={{ pv_size if pv_size > 1024 else 2048 }} --grow
-      
-      # 3. Third: Logical Volumes inside the Volume Group
-      volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
-      logvol /home --fstype=ext4 --name=LogVol03    --vgname=VolGroup00 --size=4096 --grow
-      logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }} --maxsize=8192
+        # 2. FORCE BACKEND MODULE LOADING IN CHROOT (Mandatory for RHEL 9 %post)
+        modprobe ipmi_msghandler 2>/dev/null
+        modprobe ipmi_si 2>/dev/null
+        modprobe ipmi_devintf 2>/dev/null
+        udevadm settle 2>/dev/null
+        
+        # 3. UEFI PERSISTENT BOOT ASSIGNMENT WITH classical FALLBACK
+        echo "[INFO] Applying persistent UEFI boot device ordering..." >> /root/ks-post-ipmi.log
+        if ! ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log; then
+            echo "[WARN] UEFI target failed. Forcing legacy bootdev fallback..." >> /root/ks-post-ipmi.log
+            if ! ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log; then
+                echo "[ERROR] Hard boot override rejected by BMC hardware." >> /root/ks-post-ipmi.log
+            fi
+        fi
+    fi
 
-b4_kickstart_template_defaults: "{{ b4_kickstart_template_defaults_os_version[b4_node_os_version] | default(b4_kickstart_template_defaults_os_version['9'])  }}"
+# 1.3.- Changes over Default Template according OS release
+b4_kickstart_template_os_profiles:
+  "8":
+    auth: "authselect --useshadow --passalgo=sha512"  
+    logging: "logging --level=info"   
+    packages: |
+      @core
+      tar
+      bzip2
+      ipmitool
+    postinstall: |
+      echo "[INFO] Ajustando orden de arranque UEFI en CentOS 8..." >> /root/ks-post-bios.log
+      mount -t efivarfs efivarfs /sys/firmware/efi/efivars 2>/dev/null
+      BOOT_INDEX=$(efibootmgr | grep -E "CentOS|Red Hat" | head -n 1 | sed -e 's/Boot\([0-9a-fA-F]\{4\}\).*/\1/')
+      if [ -n "$BOOT_INDEX" ]; then
+          efibootmgr --bootorder $BOOT_INDEX >> /root/ks-post-bios.log 2>&1
+      else
+          modprobe ipmi_si 2>/dev/null && modprobe ipmi_devintf 2>/dev/null
+          ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-bios.log
+      fi
 
-b4_kickstart_template_profiles:
-  vmware_esxi: 
-    storage: |
-      # Clear the Master Boot Record
-      zerombr
-      
-      # System bootloader configuration
-      bootloader --location=mbr
-      
-      # Partition clearing information
-      clearpart --all --initlabel
-      
-      #Partitions
-      part / --fstype=ext4 --size=17408
-      part pv.lab-{{ b4_enroll_node_name }}-0001 --grow --size=1
-      volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
-      logvol /nats --fstype=ext4 --name=LogVol03 --vgname=VolGroup00 --grow --size=1024
-      logvol swap --name=lv_LogVol00 --vgname=VolGroup00 --grow --size=1008 --maxsize=16288     
+  "7":
+    auth: "authselect --useshadow --passalgo=sha512"  
+    logging: "logging --level=info"   
+    packages: |
+      @base
+      @core
+      ipmitool
+    postinstall: |
+      echo "[INFO] Ajustando orden de arranque en CentOS 7..." >> /root/ks-post-bios.log
+      if [ -d /sys/firmware/efi ]; then
+          BOOT_INDEX=$(efibootmgr | grep "CentOS" | head -n 1 | cut -c 5-8)
+          efibootmgr -n $BOOT_INDEX >> /root/ks-post-bios.log 2>&1
+      else
+          modprobe ipmi_msghandler 2>/dev/null && modprobe ipmi_si 2>/dev/null && modprobe ipmi_devintf 2>/dev/null
+          ipmitool chassis bootdev disk 2>>/root/ks-post-bios.log
+      fi
+
 
 #------------------------------------
 # 2.- Cloud Init

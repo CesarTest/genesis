@@ -1,13 +1,12 @@
 ---
 # genesis.init main.yml
-#  - Setup PXE services
+#  - Populate PXE services
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
 
-
-- name: "------------------> G3- INIT - Populate TFTP Service <------------------" 
+- name: "------------------> G3- INIT - Populate PXE Services <------------------" 
   vars:
   
     # 1.- OS Deploy Paths   
@@ -16,11 +15,11 @@
     g3_deploy_mount_path:  "{{ g3_repo_mount_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
 
   block:
+
     #---------------------------------------
     # 1. PXE - TFTP: Upload Bootloader & OS Installers
     #---------------------------------------   
-    - name: "G3 - INIT: Setup PXE-TFTP - Upload Bootloader & OS Installers"
-      ansible.builtin.include_tasks: "1_tftp.yml"
+    - ansible.builtin.include_tasks: "1_tftp.yml"
       loop: "{{ download_image_sources | default([]) }}"
       loop_control:
          loop_var:  "g3_image"
@@ -29,24 +28,18 @@
     #---------------------------------------
     # 2. PXE - HTTP: Full Access to Images Repositories
     #--------------------------------------- 
-    - name: "G3 - INIT: Setup PXE-HTTP - Create Images Repositories"
-      ansible.builtin.include_tasks: "2_http.yml"
+    - ansible.builtin.include_tasks: "2_http.yml"
       loop: "{{ download_image_sources | default([]) }}"      
       loop_control:
          loop_var: "g3_image"
          index_var: "g3_image_index"
          
-    - name: "G3 - INIT: Setup PXE-HTTP - Expose Images Repositories"
+    - name: "G3 - INIT: 2.- Setup PXE-HTTP - 4) Expose Images Repositories"
       ansible.builtin.include_tasks: "2_http/4_expose.yml"  
 
-#---------------------------------------
-# 3. PXE - ORAS: Full Access to Images Repositories
-#---------------------------------------   
-#- name: "------------------> G3- INIT - Populate ORAS Service <------------------" 
-#  ignore_errors: yes
-#  block:
-  
-   
+    #---------------------------------------
+    # 3. PXE - ORAS: Full Access to Images Repositories
+    #---------------------------------------     
     #- name: "G3 - INIT: Setup PXE-ORAS - Expose Images Repositories"
     #  ansible.builtin.include_tasks: "3_oras.yml"
     #  loop: "{{ download_image_sources | default([]) }}"
@@ -55,8 +48,7 @@
     #     index_var: "g3_image_index"                
 
     #---------------------------------------
-    # 4. Permissions
+    # 4. Ironic Full Access to Installation Resources
     #---------------------------------------
-    - name: "------------------> G3- INIT - Permissions <------------------"
+    - ansible.builtin.include_tasks: "4_ready/1_ironic.yml"
       ignore_errors: yes
-      ansible.builtin.include_tasks: "4_ready/1_permissions.yml"

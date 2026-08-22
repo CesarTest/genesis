@@ -5,16 +5,16 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "G1 - BOOTSTRAP - Prepare : Create an ironic service group"
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 1) Create an ironic service group"
   group:
     name: "ironic"
 
-- name: "G1 - BOOTSTRAP - Prepare : Create an ironic service user"
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 2) Create an ironic service user"
   user:
     name: "ironic"
     group: "ironic"
 
-- name: "G1 - BOOTSTRAP - Prepare : Create Repos Folders"
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 3) Create Repos Folders"
   file:
      path: "{{ genesis_repo_path | default('/tmp') | realpath }}/{{ folder.value | default('repo') }}"
      state: "directory"
@@ -26,7 +26,7 @@
   loop_control:
     loop_var: "folder"
     
-- name: "G1 - BOOTSTRAP - Prepare : Generate Checksums File"
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 4) Generate Checksums File"
   copy:
     dest: "{{ genesis_local_checksum_file.path | default('/tmp/checksum') }}"
     content: "{{ genesis_local_checksum_file.content | default('None') }}"

@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "G1 - BOOTSTRAP - Download: OpenStack Components"
+- name: "G1 - BOOTSTRAP - 2.- Download: 1) OpenStack Components"
   ansible.builtin.include_role: 
     name: "bifrost-prep-for-install"
   when: not (skip_install | default(false) | bool)

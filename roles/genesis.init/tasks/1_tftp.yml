@@ -6,7 +6,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-- vars:  
+- name: "G3 - INIT: 1.- Setup PXE-TFTP - Upload Bootloader & OS Installers"
+  vars:  
 
     # 1.- OS Particulars
     g3_image_os_distro:         "{{ g3_image.distribution | default('RedHat') }}"
@@ -23,12 +24,9 @@
     g3_ramdisk_files: "{{ g3_iso_files | map(attribute='src') | list | default([]) }}"  
 
   block: 
-    - name: "G3 - INIT: Setup PXE-TFTP: Create OS Installer Folder"
-      ansible.builtin.include_tasks: "1_tftp/1_folder.yml"
-    - name: "G3 - INIT: Setup PXE-TFTP: Unpack OS Installer from ISO"
-      ansible.builtin.include_tasks: "1_tftp/2_os_installer.yml"	  
-    - name: "G3 - INIT: Setup PXE-TFTP: Copy OS Installer to TFTP/HTTP folders"
-      ansible.builtin.include_tasks: "1_tftp/3_cp_installer.yml"      
+    - ansible.builtin.include_tasks: "1_tftp/1_folder.yml"
+    - ansible.builtin.include_tasks: "1_tftp/2_os_installer.yml"	  
+    - ansible.builtin.include_tasks: "1_tftp/3_cp_installer.yml"      
       loop: 
         - "{{ g3_deploy_os_path | realpath | default('') }}"
         - "{{ g3_deploy_tftp_path | realpath | default('') }}"

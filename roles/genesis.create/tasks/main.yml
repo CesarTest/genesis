@@ -7,7 +7,5 @@
 - name: "------------------> G2- CREATE GENESIS NODE <------------------" 
   ignore_errors: yes 
   block:
-    - name: "G2-CREATE - Spawn Genesis Node"
-      ansible.builtin.include_tasks: "1_install_ironic.yml"
+    - ansible.builtin.include_tasks: "1_install_ironic.yml"
     - ansible.builtin.include_tasks: "2_setup_ironic.yml"
-       

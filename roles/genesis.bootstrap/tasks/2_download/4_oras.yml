@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "G1 - BOOTSTRAP - Download ORAS: - Download ORAS tarball"
+- name: "G1 - BOOTSTRAP - 2.- Download ORAS: - 4) Download ORAS tarball"
   get_url:
      url:  "{{ oras_download_url }}"
      dest: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"

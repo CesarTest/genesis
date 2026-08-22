@@ -23,6 +23,7 @@ BEWARE: Capturing Dict Values with for loop
 {%-  set ks_model    = j2_os_profile | default('none') -%}
 {%-  set ks_preinstall= j2_profiles[ks_model]['preinstall']  | default(j2_input['preinstall'])  | default('') -%}
 {%-  set ks_system   = j2_profiles[ks_model]['system']  | default(j2_input['system'])  | default('') -%}
+{%-  set ks_auth     = j2_profiles[ks_model]['auth']    | default(j2_input['auth'])    | default('') -%}
 {%-  set ks_user     = j2_profiles[ks_model]['user']    | default(j2_input['user'])    | default('') -%}
 {%-  set ks_ssh      = j2_profiles[ks_model]['ssh']     | default(j2_input['ssh'])     | default('') -%}
 {%-  set ks_gui      = j2_profiles[ks_model]['gui']     | default(j2_input['gui'])     | default('') -%}
@@ -36,6 +37,7 @@ BEWARE: Capturing Dict Values with for loop
         { "header": "# Installer",                            "content": ks_preinstall },
         { "header": "# Users",                                "content": ks_user     },
         { "header": "# SYSTEM",                               "content": ks_system   },
+		{ "header": "# System authorization information",     "content": ks_auth     },
         { "header": "# Do not configure the X Window System", "content": ks_gui      },				  
         { "header": "# SSH Keys",                             "content": ks_ssh      },	
         { "header": "# Installation logging level",           "content": ks_logging  },
@@ -48,7 +50,7 @@ BEWARE: Capturing Dict Values with for loop
 {###############################
          RENDERING FILE
  ##############################}
-#kickstart file for RHEL 6 server
+#kickstart file for RHEL server
 #platform=x86, AMD64, or Intel EM64T
 #version=DEVEL
 {%-        for section in ks_sections -%}

@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "STEP 1: Extract OS Native Installer to TFP Folder"
+- name: "G3 - INIT: Setup PXE-TFTP: Copy OS Installer to TFTP folders"
   become: yes
   ansible.builtin.copy:
     src:  "{{ g3_src_file }}"

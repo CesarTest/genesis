@@ -8,7 +8,7 @@
 #---------------------------------------
 # 1. Prepare Local Folders
 #--------------------------------------- 
-- name: "G1 - BOOTSTRAP - Download OS:  Create OS Local Folder"
+- name: "G1 - BOOTSTRAP - 2.- Download OS:  2.1) Create OS Local Folder"
   file: 
     path: "{{ g1_image_os_local_folder }}"
     state: directory
@@ -20,7 +20,7 @@
 #---------------------------------------
 # 2. Download Images
 #--------------------------------------- 
-- name: "G1 - BOOTSTRAP - Download OS: Download OS Images"
+- name: "G1 - BOOTSTRAP - 2.- Download OS: 2.2) Download OS Images"
   include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_deployment_image.yml"
   vars:
      # Image Source: URL Details

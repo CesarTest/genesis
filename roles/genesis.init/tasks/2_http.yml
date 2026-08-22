@@ -5,7 +5,8 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- vars:  
+- name: "G3 - INIT: 2.- Setup PXE-HTTP - Create OS Images Repositories"
+  vars:  
 
     # 1.- OS Particulars
     g3_image_os_distro:         "{{ g3_image.distribution | default('RedHat') }}"
@@ -22,7 +23,6 @@
 
   block:
   
-    - name: "G3 - INIT: Setup PXE-HTTP: Populate OS Images"
-      ansible.builtin.include_tasks: "2_http/1_mount.yml"
+    - ansible.builtin.include_tasks: "2_http/1_mount.yml"
     #- ansible.builtin.include_tasks: "2_http/2_cloud_image.yml"
     #- ansible.builtin.include_tasks: "2_http/3_ipa.yml"

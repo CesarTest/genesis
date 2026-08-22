@@ -8,7 +8,7 @@
 
 - block:
      
-    - name: "G3 - INIT: Ready PXE: Users Permissions to Allow Ironic SetUp Nodes"
+    - name: "G3 - INIT: 4.- Setup Ironic-Ready - Users Permissions to Allow Ironic SetUp Nodes"
       ansible.builtin.user:
         name:   "{{ g3_user.name }}"
         groups: "{{ g3_user.groups }}" 
