@@ -53,9 +53,27 @@
          loop_var: "b5_baremetal_cmd"	  
 
   #----------------------
-  # 3.- Always (Bypass Hypervisors such Proxmox)
+  # 3.- Always - Bypass Bios and Hypervisors (such Proxmox)
   #----------------------
   always:
+
+    - name: "B5 - DEPLOY - Remove partition table from discs (Bypass BIOS) to force network boot"
+      ansible.builtin.command:
+        cmd: "dd if=/dev/zero of=/dev/{{ b5_disk_type }} bs=512 count=100 conv=notrunc"
+      loop:
+        - sda
+        - vda
+        - nvme0n1
+        - xvda
+        - hda
+      loop_control:
+        loop_var: "b5_disk_type"
+      ignore_errors: true
+      register: b5_dd_clear_result
+      changed_when: "b5_dd_clear_result.rc == 0"
+      when: 
+        - capabilities is defined
+        - capabilities | search('boot_mode:bios')
 
     - name: "B5 - DEPLOY - PROXMOX Hypervisor Workaround via API HTTPS"
       ignore_errors: yes

@@ -91,6 +91,11 @@ genesis_os_definitions:
 
 # 4.- OS Locale Definitions
 genesis_locale_matrix:
+  us:
+    keyboard: "us"                   # El estándar internacional de sistemas
+    lang: "en_US.UTF-8"
+    timezone: "America/New_York"
+
   es:
     keyboard: "es"
     lang: "es_ES.UTF-8"
@@ -166,7 +171,6 @@ genesis_locale_matrix:
     keyboard: "fi"                   # Finlandia
     lang: "fi_FI.UTF-8"
     timezone: "Europe/Helsinki"
-
 
 ######################################################
 # B4 - PATHS
@@ -368,16 +372,20 @@ b4_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
 b4_node_default_os_arch: "x86_64"
 b4_node_default_os_profile: "none"
 b4_node_default_os_installer: "anaconda"
-b4_node_default_os_installer_url_subpath: "images/pxeboot/rootfs.img"
-b4_capture_node_os:   "{{ deploy.os.name | default(b4_node_default_os) | lower }}"
-b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os] }}"
+b4_node_default_os_locale: "uk"
+b4_default_os_locale: "{{ genesis_locale_matrix['us'] }}" 
+b4_capture_node_os: "{{ deploy.os | default(os) | default({}) }}"
+b4_capture_node_os_name:   "{{ b4_capture_node_os.name | default(b4_node_default_os) | lower }}"
+b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os_name] }}"
 b4_node_os:           "{{ b4_node_os_definitions['ansible_distribution'] | default('unknown') }}"
-b4_node_os_version:   "{{ deploy.os.version | default(b4_node_default_os_version) }}"
-b4_node_os_arch:      "{{ deploy.os.arch    | default(b4_node_default_os_arch) }}"
-b4_node_os_profile:   "{{ deploy.os.profile | default(b4_node_default_os_profile) }}"
+b4_node_os_version:   "{{ b4_capture_node_os.version | default(b4_node_default_os_version) }}"
+b4_node_os_locale:    "{{ b4_capture_node_os.locale  | default(b4_node_default_os_locale) }}"
+b4_node_os_arch:      "{{ b4_capture_node_os.arch    | default(b4_node_default_os_arch) }}"
+b4_node_os_profile:   "{{ b4_capture_node_os.profile | default(b4_node_default_os_profile) }}"
 b4_node_os_installer: "{{ b4_node_os_definitions['installer'] | default(b4_node_default_os_installer) | lower}}"
 b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] }}{{ b4_enroll_node_name }}{{ b4_node_os_definitions['ext'] }}"
 b4_node_os_iso_file: "{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
+b4_node_os_locale_info: "{{ genesis_locale_matrix[b4_node_os_locale] | default(b4_default_os_locale) }}" 
 
 #------------------
 # 3.- Users 
@@ -431,10 +439,10 @@ b4_kickstart_template_defaults:
 
   system: |       
     # System Language
-    lang en_GB
+    lang {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
            
     # System keyboard
-    keyboard uk
+    keyboard {{ b4_node_os_locale_info.keyboard | default('us') }}
            
     # Firewall configuration
     firewall --disabled
@@ -443,7 +451,7 @@ b4_kickstart_template_defaults:
     selinux --disabled
           
     # System timezone
-    timezone Europe/London --utc
+    timezone {{ b4_node_os_locale_info.timezone | default('America/New_York') }}
     
     # Use text mode install
     text
@@ -635,6 +643,8 @@ b4_kickstart_template_os_profiles:
 #------------------------------------
 # 1.- OS Installer Manifesto
 #------------------------------------
+b4_node_manifesto_profiles: "{{ deploy['os_manifesto'][b4_node_os_installer] | default({}) }}" 
+b4_system_manifesto_profiles: "{{ os_manifesto[b4_node_os_installer] | default({}) }}" 
 b4_os_installer_manifesto:
   anaconda:
     template:  
@@ -643,17 +653,21 @@ b4_os_installer_manifesto:
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
     defaults:  "{{ b4_kickstart_template_defaults | default({}) }}"
-    profiles:  "{{ b4_kickstart_template_profiles | default({}) }}"
+    os_version:  "{{ b4_kickstart_template_os_profiles | default({}) }}"
+    system:   "{{ b4_system_manifesto_profiles | default({}) }}"
+    node:     "{{ b4_node_manifesto_profiles | default({}) }}"
     
   esxi:
     template:  
       - "manifesto/kickstart.j2"
     file:      
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
-    url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
-    defaults:  "{{ b4_kickstart_template_defaults | default({}) }}"
-    profiles:  "{{ b4_kickstart_template_profiles | default({}) }}"    
-    
+    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
+    defaults:   "{{ b4_kickstart_template_defaults | default({}) }}"
+    os_version: "{{ b4_kickstart_template_os_profiles | default({}) }}"    
+    system:   "{{ b4_system_manifesto_profiles | default({}) }}"
+    node:     "{{ b4_node_manifesto_profiles | default({}) }}"
+
   preseed:
     template:  
       - "manifesto/preseed.j2"
@@ -661,8 +675,10 @@ b4_os_installer_manifesto:
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
     defaults:  "{{ b4_preseed_template_defaults | default({}) }}"
-    profiles:  "{{ b4_preseed_template_profiles | default({}) }}"   
-    
+    os_version:  "{{ b4_preseed_template_os_profiles | default({}) }}"   
+    system:   "{{ b4_system_manifesto_profiles | default({}) }}"
+    node:     "{{ b4_node_manifesto_profiles | default({}) }}"
+  
   subsiquity:
     template:  
       - "manifesto/cloud-init/meta-data.j2"
@@ -672,7 +688,9 @@ b4_os_installer_manifesto:
       - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/user-data"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_enroll_node_name }}/meta-data"  
     defaults:  "{{ b4_subsiquity_template_defaults | default({}) }}"
-    profiles:  "{{ b4_subsiquity_template_profiles | default({}) }}"
+    os_version:  "{{ b4_subsiquity_template_os_profiles | default({}) }}"
+    system:   "{{ b4_system_manifesto_profiles | default({}) }}"
+    node:     "{{ b4_node_manifesto_profiles | default({}) }}"
     
   ignition:
     template:  
@@ -681,7 +699,9 @@ b4_os_installer_manifesto:
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
     url:       "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
     defaults:  "{{ b4_ignition_template_defaults | default({}) }}"
-    profiles:  "{{ b4_ignition_template_profiles | default({}) }}"
+    os_version:  "{{ b4_ignition_template_os_profiles | default({}) }}"
+    system:   "{{ b4_system_manifesto_profiles | default({}) }}"
+    node:     "{{ b4_node_manifesto_profiles | default({}) }}"
 
 b4_node_default_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_default_os_installer] }}"
 b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | default(b4_node_default_os_manifesto) }}"
