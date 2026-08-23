@@ -12,7 +12,7 @@
 #---------------------------------------
 # 1. Enroll Baremeral Nodes
 #---------------------------------------   
-- name: "B4 SETUP - Enroll: Assure Outband BMC Access to the Node" 
+- name: "B4 SETUP - 1.- Enroll: 4) Assure Outband BMC Access to the Node" 
   ignore_errors: yes
   block: 
     - ansible.builtin.include_role: 

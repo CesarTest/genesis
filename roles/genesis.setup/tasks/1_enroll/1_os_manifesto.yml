@@ -9,7 +9,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: 
+- name: "B4 SETUP - 1.- Enroll: 1) Rendering OS Installation Manifesto Files" 
   vars:
     # Manifesto Files
     b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
@@ -28,7 +28,7 @@
     #---------------------------------------
     # 1. Manifest Folder
     #---------------------------------------   
-    - name: "B4 SETUP - Enroll: Create Manifesto Folders"
+    - name: "B4 SETUP - 1.- Enroll: 1.1) Create Manifesto Folders"
       file:
          path: "{{ b4_folder | realpath }}"
          state: "directory"  
@@ -38,7 +38,7 @@
       loop_control:
         loop_var: "b4_folder" 
         
-    - name: "B4 SETUP - Enroll: Expose Manifesto Folder"
+    - name: "B4 SETUP - 1.- Enroll: 1.2) Expose Manifesto Folder"
       file:
         src:  "{{ b4_repo_manifesto_path }}"
         dest: "{{ b4_http_manifesto_path }}"   
@@ -47,7 +47,7 @@
     #---------------------------------------
     # 2. Manifest Rendering (KickStart, Cloud-Init, Ignition)
     #---------------------------------------
-    - name: "B4 SETUP - Enroll: Rendering OS Installation Manifest"
+    - name: "B4 SETUP - 1.- Enroll: 1.3) Rendering OS Installation Manifest"
       ansible.builtin.template:
         src:   "{{ b4_node_manifesto_src  | default(omit) }}"
         dest:  "{{ b4_node_manifesto_dest | default(omit)  }}"

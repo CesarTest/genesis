@@ -7,11 +7,11 @@
 
 - name: "B5 - DEPLOY - Set NIC for PXE Boot " 
 
-  #----------------------
+  #--------------------------------------------------------------------------  
   # 1.- Bifrost Role
-  #----------------------  
+  #--------------------------------------------------------------------------
   block: 
-    - name: "B5 - DEPLOY - Set NIC for PXE Boot"
+     - name: "B5 - DEPLOY - Set NIC for PXE Boot"
       openstack.cloud.baremetal_port:
         cloud: "bifrost"
         node:     "{{ uuid | default(omit) }}"
@@ -38,37 +38,6 @@
   # 2.- Command Line Fallback (Executed if the OpenStack native module fails)
   #---------------------------------------------------------------------------
   rescue:
-    - name: "B5 - DEPLOY - Set Target Boot Device through Bifrost CLI Fallback"
-      ansible.builtin.shell:
-        cmd: "{{ b5_cmd | default('ls') }}"
-      loop: "{{ b5_commands | default([]) }}"
-      loop_control:
-        loop_var: "b5_cmd"
-      vars:
-        b5_pxe_commands:
-          - |
-            . /opt/stack/bifrost/bin/activate
-            export OS_CLOUD=bifrost
-            PORT_UUID=$(baremetal port list --address {{ mac }} -f value -c UUID)
-            if [ ! -z "$PORT_UUID" ]; then baremetal port set --pxe-enabled $PORT_UUID; fi
-          - |
-            . /opt/stack/bifrost/bin/activate
-            export OS_CLOUD=bifrost
-            baremetal node boot device set --persistent {{ uuid }} pxe
-
-        b5_os_commands:
-          - |
-            . /opt/stack/bifrost/bin/activate
-            export OS_CLOUD=bifrost
-            baremetal node boot device set --persistent {{ uuid }} disk
-
-        b5_commands: "{{ (b5_deploy_boot_order | default('os') == 'pxe') | ternary(b5_pxe_commands, b5_os_commands) }}"
-
-  #----------------------
-  # 3.- Always - Bypass Bios and Hypervisors (such Proxmox)
-  #----------------------
-  always:
-
     - name: "B5 - DEPLOY - Remove partition table from discs (Bypass BIOS) to force network boot"
       ansible.builtin.command:
         cmd: "dd if=/dev/zero of=/dev/{{ b5_disk_type }} bs=512 count=100 conv=notrunc"

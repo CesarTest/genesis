@@ -7,6 +7,10 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
+
+#-----------------------
+# 1.- Clean Disks
+#-----------------------
 - name: "------------------> B5- DEPLOY BAREMETAL NODE <------------------" 
   when: 
     - b5_baremetal_vars_file is defined
@@ -16,47 +20,38 @@
     - b5_baremetal_vars_file | length > 0
     - lookup('ansible.builtin.file', b5_baremetal_vars_file, errors='ignore') is not none
   block:
-
-    #-----------------------
-    # 1.- Bifrost Data Model
-    #-----------------------
     - name: "B5 - DEPLOY - Cargar el modelo de datos guardado del nodo"
       ansible.builtin.include_vars:
         file: "{{ b5_baremetal_vars_file }}"
+    - ansible.builtin.include_tasks: "1_clean/1_partition_table.yml"
 
-    #-----------------------
-    # 2.- Deploy Instance 
-    #-----------------------
-    # => 2 1.- Stage 1: Clean - Wipe Disks
-    #- name: "B5 - DEPLOY - Stage 1: Clean - Wipe Disks"
-    #  ansible.builtin.include_tasks: "{{ b5_clean | default ('1_clean/1_wipedisks.yml') }}"
-    #  loop:
-    #     - "1_clean/1_wipedisks.yml"      
-    #  loop_control:
-    #    loop_var: "b5_clean" 
-
-    # =>  2.- Stage 2: Deploy - Unattended OS Installation	
-    - ansible.builtin.include_tasks: "2_deploy/1_boot_order.yml"
-      vars: 
-         b5_deploy_boot_order: "pxe"
-    - ansible.builtin.include_tasks: "2_deploy/2_instance.yml"
-    - ansible.builtin.pause:
-         seconds: 240
-      when: 
-         - b5_bios_machine|bool #or b5_proxmox_hypervisor|bool 
-    - ansible.builtin.include_tasks: "2_deploy/1_boot_order.yml"
-      vars: 
-         b5_deploy_boot_order: "os"
-         b5_skip_bios_workaround: yes
-
-    # =>  2.- Stage 3: Active - HeartBeat, Network Connection, Hardware Configuration	
-    #- name: "B5 - DEPLOY - Stage 3:  Active - HeartBeat, Network Connection, Hardware Configuration"
-    #  ansible.builtin.include_tasks: "{{ b5_active | default ('3_active/1_hearbeat.yml') }}"
-    #  loop:
-    #     - "3_active/1_hearbeat.yml"
-    #     - "3_active/2_hardware.yml"		 
-    #     - "3_active/3_network.yml"
-    #  loop_control:		 
-    #    loop_var: "b5_active"
-
+#-----------------------
+# 2.- Deploy Instance
+#-----------------------
+- name: "------------------> B5- DEPLOY BAREMETAL NODE <------------------" 
+  when: 
+    - b5_baremetal_vars_file is defined
+    - b5_baremetal_vars_file is not none
+    - b5_baremetal_vars_file is string
+    - b5_baremetal_vars_file is not mapping
+    - b5_baremetal_vars_file | length > 0
+    - lookup('ansible.builtin.file', b5_baremetal_vars_file, errors='ignore') is not none
+  block:
+    - name: "B5 - DEPLOY - Cargar el modelo de datos guardado del nodo"
+      ansible.builtin.include_vars:
+        file: "{{ b5_baremetal_vars_file }}"
+    - ansible.builtin.include_tasks: "2_deploy/1_instance.yml"
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+  
+    
+#-----------------------
+# 3.- Activate Instance
+#----------------------- 
+#- name: "B5 - DEPLOY - Stage 3:  Active - HeartBeat, Network Connection, Hardware Configuration"
+#  ansible.builtin.include_tasks: "{{ b5_active | default ('3_active/1_hearbeat.yml') }}"
+#  loop:
+#     - "3_active/1_hearbeat.yml"
+#     - "3_active/2_hardware.yml"		 
+#     - "3_active/3_network.yml"
+#  loop_control:		 
+#    loop_var: "b5_active"

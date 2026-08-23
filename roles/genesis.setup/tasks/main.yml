@@ -24,7 +24,7 @@
      ipv4_router:      "{{ b4_enroll_nic_provision_gateway | default(omit) }}" 
      boot_interface:   "{{ b4_node_boot_interface    | default('ipxe') }}"
      deploy_interface: "{{ b4_node_deploy_interface  | default('direct') }}"
-     management_interface: "{{ b4_node_management_interface  | default(driver) }}"
+     management_interface: "{{ b4_node_management_interface  | default('noop') }}"
      power_interface: "{{ b4_node_power_interface  | default(driver) }}"
      hardware_type: "{{ b4_node_hardware_type | default(driver) }}" 
      instance_info:    "{{ b4_node_instance_info | default(omit) }}"
@@ -36,16 +36,22 @@
   block:
 
     # => 2.1.- Stage 1: Enroll - Outband Control
-    - name: "B4 - SETUP - Stage 1: Enroll the Node - Outband Control"
-      ansible.builtin.include_tasks: "1_enroll/1_os_manifesto.yml"
+    #.................................
+    - ansible.builtin.include_tasks: "1_enroll/1_os_manifesto.yml"
     #- ansible.builtin.include_tasks: "1_enroll/2_config_drive.yml"
     - ansible.builtin.include_tasks: "1_enroll/3_delete.yml"
     - ansible.builtin.include_tasks: "1_enroll/4_outband.yml"
  
-    # => 2.2.- Stage 2: Manage - Inband Provision	
-    - name: "B4 - SETUP - Stage 2:  Manage the Node - Inband Provision"
-      ansible.builtin.include_tasks: "2_manage/1_inband.yml"
-    - ansible.builtin.include_tasks: "2_manage/2_lifecycle.yml"
-    - ansible.builtin.include_tasks: "2_manage/3_available.yml"
+    # => 2.2.- Stage 2: Manage - Inband Provision
+    #.................................
+    - ansible.builtin.include_tasks: "2_manage/1_inband.yml"
+    - ansible.builtin.include_tasks: "2_manage/2_enable_nics.yml"
+    #- ansible.builtin.include_tasks: "2_manage/3_boot_device.yml"
+    #- ansible.builtin.include_tasks: "2_manage/4_power_cycle.yml"
+    #- ansible.builtin.include_tasks: "2_manage/5_power_interface.yml"
+    - ansible.builtin.include_tasks: "2_manage/4_lifecycle.yml"
+      vars:
+        b4_lifecycle_instructions: "{{ b4_lifecycle_setup_api_call }}" 
+    - ansible.builtin.include_tasks: "2_manage/5_available.yml"
 
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

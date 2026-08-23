@@ -1,0 +1,79 @@
+---
+# genesis.setup 2_manage/2_enable_nics.yml
+#  - Agnostic Multi-NIC PXE Activation Core
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "B4 - SETUP - 2.- Manage: 2) Awake NICs & Force Boot Order"
+  when:
+    - uuid is defined
+    - mac is defined
+
+  #--------------------------------------------------------------------------  
+  # 1.- Bifrost Role
+  #--------------------------------------------------------------------------  
+  block:
+
+    - name: "B4 SETUP - 2.- Manage: 2.1) Setup Instance Information"
+      openstack.cloud.baremetal_node:
+        cloud: "bifrost"
+        uuid:  "{{ uuid | default(omit) }}"
+        state: present
+        nics:        "{{ nics | default([]) }}"
+        properties:  "{{ properties | default({}) }}"
+        driver:      "{{ driver | default('redfish') }}"
+        driver_info: "{{ driver_info | default({}) }}"
+  
+    - name: "B4 - SETUP - 2.- Manage: 2.2) Enable PXE in Provision NIC"
+      openstack.cloud.baremetal_port:
+        cloud: "bifrost"
+        node:    "{{ uuid }}"
+        address: "{{ mac | lower }}"
+        is_pxe_enabled: true   
+        state: present
+   
+  #--------------------------------------------------------------------------  
+  # 2.- Command Line Fallback (Executed if the OpenStack native module fails)
+  #---------------------------------------------------------------------------
+  rescue:
+    - name: "B4 - SETUP - 2.- Manage: 2.3) Awake NICs through Baremetal CLI Fallback"
+      ansible.builtin.shell:
+        cmd: "{{ b4_cmd }}"
+      loop: "{{ b4_commands | default([]) }}"
+      loop_control:
+        loop_var: "b4_cmd"
+      vars:
+        b4_commands:
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            baremetal node set {{ uuid | quote }} \
+              --driver {{ driver | default('redfish') | quote }} \
+              --extra nics={{ nics | to_json | quote }}
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            PORT_UUID=$(baremetal port list --address {{ mac | lower | quote }} -f value -c UUID)
+            if [ ! -z "$PORT_UUID" ] ; then baremetal port set --pxe-enabled $PORT_UUID; fi
+			
+  #--------------------------------------------------------------------------  
+  # 3.- Force PXE boot from CLI
+  #---------------------------------------------------------------------------			
+  always:
+    - name: "B4 - SETUP - 2.- Manage: 2.4) Set Persistent PXE boot for Ironic to update the node"
+      ansible.builtin.shell:
+        cmd: "{{ b4_cmd }}"
+      loop: "{{ b4_commands | default([]) }}"
+      loop_control:
+        loop_var: "b4_cmd"
+      vars:
+        b4_commands:
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            baremetal node boot device set --persistent {{ uuid | quote }} pxe
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            baremetal node boot device set --persistent {{ uuid | quote }} disk

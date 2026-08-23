@@ -29,7 +29,7 @@ enroll:
    capabilities: 
      boot_mode: "uefi" 
      secure_boot: false
-     boot_device: "os" # fix boot device... erase disk partitions an reboot to shoot pxe
+     boot_device: "disk" # fix boot device... erase disk partitions an reboot to shoot pxe
    properties:
      cpu_arch: "x86_64"
      ram: "8192"

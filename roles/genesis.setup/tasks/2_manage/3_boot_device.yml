@@ -1,0 +1,53 @@
+---
+# genesis.setup 2_manage/3_boot_device.yml
+#  - Force Boot Order (Strict Async Control & Automatic CLI Fallback)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "B4 - SETUP - 2.- Manage: 3) Set Disks as  First Boot Device"
+  when:
+    - uuid is defined
+    - mac is defined
+
+  #--------------------------------------------------------------------------  
+  # 1.- Bifrost Role
+  #--------------------------------------------------------------------------  
+  block:
+
+    - name: "B4 SETUP - 2.- Manage: 3.1) Setup Different Instance Interfaces"
+      openstack.cloud.baremetal_node:
+        cloud: "bifrost"
+        uuid:  "{{ uuid | default(omit) }}"
+        state: present
+        nics:        "{{ nics | default([]) }}"
+        properties:  "{{ properties | default({}) }}"
+        driver:      "{{ driver | default('redfish') }}"
+        driver_info: "{{ driver_info | default({}) }}"
+        boot_interface: "{{ boot_interface | default('ipxe') }}"
+        deploy_interface: "{{ deploy_interface  | default('direct') }}"
+        management_interface: "{{ management_interface | default('noop') }}"
+        power_interface: "{{power_interface      | default(driver) }}"
+
+  #--------------------------------------------------------------------------  
+  # 2.- Command Line Fallback (Executed if the OpenStack native module fails)
+  #---------------------------------------------------------------------------
+  rescue:
+    - name: "B4 - SETUP - 2.- Manage: 2.3) Awake NICs through Baremetal CLI Fallback"
+      ansible.builtin.shell:
+        cmd: "{{ b4_cmd }}"
+      loop: "{{ b4_commands | default([]) }}"
+      loop_control:
+        loop_var: "b4_cmd"
+      vars:
+        b4_commands:
+          - |
+            . /opt/stack/bifrost/bin/activate
+            export OS_CLOUD=bifrost
+            baremetal node set {{ uuid | quote }} \
+              --driver {{ driver | default('redfish') | quote }} \
+              --boot-interface {{ boot_interface | default('ipxe') | quote }} \
+              --deploy-interface {{ deploy_interface | default('direct') | quote }} \
+              --management-interface {{ management_interface | default('noop') | quote }} \
+              --power-interface {{ management_interface | default('redfish') | quote }} \
+              --extra nics={{ nics | to_json | quote }}

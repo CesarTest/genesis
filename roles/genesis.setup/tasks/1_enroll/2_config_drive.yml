@@ -9,7 +9,7 @@
 #---------------------------------------
 # 1. Create Config Drive with Manifesto 
 #---------------------------------------   
-- name: "B4 SETUP - Enroll: Create Ironic Config Drive"
+- name: "B4 SETUP - 1.- Enroll: 2) Create Ironic Config Drive"
   ansible.builtin.include_role:
     name: "{{ genesis_baremetal_configdrive.name }}"
   when: 

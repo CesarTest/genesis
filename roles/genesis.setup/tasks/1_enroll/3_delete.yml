@@ -7,7 +7,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "B4 SETUP - Enroll: Delete Node" 
+- name: "B4 SETUP - 1.- Enroll: 3) Delete Node" 
 
   #----------------------
   # 1.- Bifrost Role
@@ -26,7 +26,7 @@
   # 2.- Command Line	
   #----------------------
   rescue:
-    - name: "B4 SETUP - Enroll: Delete Node through Command Line"
+    - name: "B4 SETUP - 1.- Enroll: 3.1) Delete Node through Command Line"
       shell:
          cmd: "{{ command | default('ls') }}"
       vars:
@@ -45,7 +45,7 @@
   always: 
 
     # ==> 3.1. Symbolink Links Removal
-    - name: "B4 INFRA - AUDIT: Detect symlinks pointing to this instance"
+    - name: "B4 SETUP - 1.- Enroll: 3.2) Detect symlinks pointing to this instance"
       ansible.builtin.find:
         paths:
           - "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}"
@@ -53,7 +53,7 @@
         recurse: yes                   
       register: b4_detected_symlinks   
 
-    - name: "B4 INFRA - AUDIT: Gather deep stats of found links to extract targets"
+    - name: "B4 SETUP - 1.- Enroll: 3.3) Gather deep stats of found links to extract targets"
       ansible.builtin.stat:
         path: "{{ item.path }}"
       loop: "{{ b4_detected_symlinks.files | default([]) }}"
@@ -83,7 +83,7 @@
         - uuid in b4_symlink.stat.lnk_source
   
     # ==> 3.2. Instance Path
-    - name: "B4 INFRA - PURGE: Wipe the physical instance UUID directory cache"
+    - name: "B4 SETUP - 1.- Enroll: 3.4)  Wipe the physical instance UUID directory cache"
       ansible.builtin.file:
         path: "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}/{{ uuid }}"
         state: absent

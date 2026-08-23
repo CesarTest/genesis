@@ -1,10 +1,20 @@
 ---
 # genesis.setup 4_manage/3_available.yml
 #   - Leave Node in available State (ready to Deploy)
+#      - Force Ironic to Render PXE Files for check
+#      - Dump Bifrost Data Model to File
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
+
+#----------------------
+# 1.- Force Ironic to Render PXE File
+#----------------------  
+
+#----------------------
+# 2.- Dump Bifrost Data Model into File
+#---------------------- 
 - name: "B4 SETUP - Manage: Dump Bifrost Data Model to File"
   ansible.builtin.copy:
     dest: "{{ b4_baremetal_vars_file }}"
@@ -21,7 +31,7 @@
       ipv4_router: "{{ ipv4_router | default('') }}"
       boot_interface: "{{ boot_interface | default('ipxe') }}"
       deploy_interface: "{{ deploy_interface | default('direct') }}"
-      management_interface: "{{ management_interface | default('direct') }}"
+      management_interface: "{{ management_interface | default(driver) }}"
       instance_info: "{{ instance_info | default('') }}"
       provisioning_ipv4_address: "{{ provisioning_ipv4_address | default('') }}"
   when: 
