@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "B4 - SETUP - 2.- Manage: 3) Set Disks as  First Boot Device"
+- name: "B4 - SETUP - 2.- Manage: 3) Setup Instance"
   when:
     - uuid is defined
     - mac is defined
@@ -20,14 +20,14 @@
         cloud: "bifrost"
         uuid:  "{{ uuid | default(omit) }}"
         state: present
-        nics:        "{{ nics | default([]) }}"
-        properties:  "{{ properties | default({}) }}"
-        driver:      "{{ driver | default('redfish') }}"
+        nics:        "{{ nics        | default([]) }}"
+        properties:  "{{ properties  | default({}) }}"
+        driver:      "{{ driver      | default('redfish') }}"
         driver_info: "{{ driver_info | default({}) }}"
-        boot_interface: "{{ boot_interface | default('ipxe') }}"
-        deploy_interface: "{{ deploy_interface  | default('direct') }}"
+        boot_interface:       "{{ boot_interface       | default('ipxe') }}"
+        deploy_interface:     "{{ deploy_interface     | default('direct') }}"
         management_interface: "{{ management_interface | default('noop') }}"
-        power_interface: "{{power_interface      | default(driver) }}"
+        power_interface:      "{{power_interface       | default(driver) }}"
 
   #--------------------------------------------------------------------------  
   # 2.- Command Line Fallback (Executed if the OpenStack native module fails)

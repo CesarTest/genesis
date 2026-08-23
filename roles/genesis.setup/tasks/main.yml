@@ -45,10 +45,11 @@
     # => 2.2.- Stage 2: Manage - Inband Provision
     #.................................
     - ansible.builtin.include_tasks: "2_manage/1_inband.yml"
-    - ansible.builtin.include_tasks: "2_manage/2_enable_nics.yml"
-    #- ansible.builtin.include_tasks: "2_manage/3_boot_device.yml"
-    #- ansible.builtin.include_tasks: "2_manage/4_power_cycle.yml"
-    #- ansible.builtin.include_tasks: "2_manage/5_power_interface.yml"
+    - ansible.builtin.include_tasks: "2_manage/2_boot_order.yml"
+      when:
+        - b4_set_boot_order is defined
+        - b4_set_boot_order| bool  
+    - ansible.builtin.include_tasks: "2_manage/3_setup_instance.yml"
     - ansible.builtin.include_tasks: "2_manage/4_lifecycle.yml"
       vars:
         b4_lifecycle_instructions: "{{ b4_lifecycle_setup_api_call }}" 
