@@ -1,28 +1,32 @@
 ---
-# genesis.setup 2_manage/2_lifecycle.yml
+# genesis.setup 2_manage/4_lifecycle.yml
 #   - Configure Instance Properties
 #      - Map lifecycle data model into Ironic API
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-
-- name: "B4 SETUP - Manage: Instance Info"
+- name: "B4 SETUP - 2.- Manage: 4) Set Node Lifecycle Stages Particulars"
   ignore_errors: yes
+  when:
+    - b4_lifecycle_instructions is defined
+    - b4_lifecycle_instructions is not none
+    - b4_lifecycle_instructions is not string
+    - b4_lifecycle_instructions is not mapping
   vars:
-    b4_ironic_base_url: "http://{{ b4_url_genesis_ip | default('127.0.0.1') }}"
-    b4_ironic_port: "{{ b4_url_ironic_port | default(':6385') }}" 
+    b4_ironic_base_url: "http://127.0.0.1" # {{  b4_url_genesis_ip }}"
+    b4_ironic_port: "{{ b4_url_ironic_port | default(':6385') }}"
     b4_ironic_api_version: "{{ genesis_ironic_api_version | default('1.31') }}"
     b4_ironic_api_default_status: [200, 202, 204]
   block:
 
-    - name: "B4 SETUP - Manage: Instance Properties vía URI"
+    - name: "B4 SETUP - 2.- Manage: 4.1) Set Node Lifecycle Stages Particulars vía URI"
       ansible.builtin.uri:
         url:    "{{ b4_ironic_uri }}{{ lifecycle_stage.path | default('') }}"
         method: "{{ lifecycle_stage.method }}"
         body_format: json
         headers:
-          X-OpenStack-Ironic-API-Version: "{{ b4_ironic_api_version }}"  
+          X-OpenStack-Ironic-API-Version: "{{ b4_ironic_api_version }}"
         body: "{{ lifecycle_stage.body  | default(omit) }}"
         status_code: "{{ lifecycle_stage.status_code | default(b4_ironic_api_default_status) }}"
       register: b4_pipeline_results
@@ -30,7 +34,7 @@
         b4_ironic_base_path: "/v1/{{ lifecycle_stage.target | default('nodes') }}"
         b4_ironic_node_path: "{{ b4_ironic_base_path }}/{{ uuid | default(name) }}"
         b4_ironic_path: "{{ lifecycle_stage.target is defined | ternary(b4_ironic_base_path,b4_ironic_node_path,b4_ironic_node_path) }}"
-        b4_ironic_uri: "{{ b4_ironic_base_url }}{{ b4_ironic_port }}{{ b4_ironic_path }}"	     
+        b4_ironic_uri: "{{ b4_ironic_base_url }}{{ b4_ironic_port }}{{ b4_ironic_path }}"
       loop: "{{ b4_lifecycle_instructions | default([]) }}"
       loop_control:
-         loop_var: "lifecycle_stage"
+        loop_var: "lifecycle_stage"

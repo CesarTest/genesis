@@ -1,9 +1,9 @@
 ---
 # genesis.setup defaults
 #   - Stage 1 - Enroll the Node - Outband BMC
-#   - Stage 2 - Manage the Node - Inband Provision 
+#   - Stage 2 - Manage the Node - Inband Provision
 #     - Result: Instance Configure, Ready to Deploy
-#  
+#
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -28,10 +28,10 @@ genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 genesis_http_path: "{{ ironic_http_path | default('/var/lib/ironic/httpboot') | realpath }}"
 genesis_default_repos:
   os: "os"
-  manifesto: "manifesto" 
+  manifesto: "manifesto"
   components: "openstack"
   cloud: "dib"
-  ipa: "dib/files" 
+  ipa: "dib/files"
   repo: "mnt"
 
 # 4.- OS Definitions
@@ -52,13 +52,13 @@ genesis_os_definitions:
     ansible_distribution: "RedHat"
     installer: "anaconda"
     prefix: "ks_"
-    ext: ".ks" 
+    ext: ".ks"
 
   esxi:
-    ansible_distribution: "VMwareESXi" 
+    ansible_distribution: "VMwareESXi"
     installer: "esxi"
     prefix: "ks_"
-    ext: ".ks"     
+    ext: ".ks"
 
   ubuntu:
     ansible_distribution: "Ubuntu"
@@ -70,11 +70,11 @@ genesis_os_definitions:
     ansible_distribution: "Fedora CoreOS"
     installer: "ignition"
     prefix: "ignition_"
-    ext: ".ign"   
+    ext: ".ign"
 
   debian:
     ansible_distribution: "Debian"
-    installer: "preseed" 
+    installer: "preseed"
     ext: ".cfg"
 
   suse:
@@ -100,42 +100,42 @@ genesis_locale_matrix:
     keyboard: "es"
     lang: "es_ES.UTF-8"
     timezone: "Europe/Madrid"
-  
+
   fr:
     keyboard: "fr"                   # Teclado AZERTY francés nativo
     lang: "fr_FR.UTF-8"
     timezone: "Europe/Paris"
-  
+
   de:
     keyboard: "de"                   # Teclado QWERTZ alemán nativo
     lang: "de_DE.UTF-8"
     timezone: "Europe/Berlin"
-  
+
   it:
     keyboard: "it"
     lang: "it_IT.UTF-8"
     timezone: "Europe/Rome"
-  
+
   pt:
     keyboard: "pt"
     lang: "pt_PT.UTF-8"
     timezone: "Europe/Lisbon"
-  
+
   nl:
     keyboard: "nl"                   # Países Bajos
     lang: "nl_NL.UTF-8"
     timezone: "Europe/Amsterdam"
-  
+
   be:
     keyboard: "be"                   # Bélgica (Generalmente AZERTY belga)
     lang: "fr_BE.UTF-8"
     timezone: "Europe/Brussels"
-  
+
   ch:
     keyboard: "sg"                   # Suiza (Teclado Swiss-German/Swiss-French)
     lang: "de_CH.UTF-8"
     timezone: "Europe/Zurich"
-  
+
   uk:
     keyboard: "uk"                   # Reino Unido
     lang: "en_GB.UTF-8"
@@ -176,7 +176,7 @@ genesis_locale_matrix:
 # B4 - PATHS
 ######################################################
 # 1.- Paths
-b4_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+b4_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}"
 b4_os_images_subpath: "{{ b4_repos['os'] | default('os') }}"
 b4_os_mounted_repo_subpath: "{{ b4_repos['repo'] | default('mnt') }}"
 b4_os_manifesto_subpath: "{{ b4_repos['manifesto'] | default('manifesto') }}"
@@ -185,21 +185,21 @@ b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_os_manifesto_s
 b4_http_manifesto_path: "{{ genesis_http_path | realpath }}/{{ b4_os_manifesto_subpath }}"
 
 ######################################################
-#  BIFROST ROLES DEFINITION 
+#  BIFROST ROLES DEFINITION
 ######################################################
 b4_configdrive_roles:
-   - name: "bifrost-configdrives-dynamic"
- 
+  - name: "bifrost-configdrives-dynamic"
+
 b4_delete_roles:
-   - name: "ironic-delete-dynamic"
-   
+  - name: "ironic-delete-dynamic"
+
 b4_enroll_roles:
-   - name: "ironic-enroll-dynamic"
-   - name: "ironic-inspect-node"
-     condition: "{{ inspect_nodes | default('false') | bool }}" 
- 
+  - name: "ironic-enroll-dynamic"
+  - name: "ironic-inspect-node"
+    condition: "{{ inspect_nodes | default('false') | bool }}"
+
 b4_manage_roles: []
- 
+
 ######################################################
 # ENROLL PARTICULARS
 ######################################################
@@ -213,7 +213,7 @@ b4_url_genesis_gateway: "{{ b4_url_genesis_ipv4 | ansible.utils.ipaddr('last_usa
 b4_url_genesis_netmask: "{{ b4_url_genesis_ipv4 | ansible.utils.ipaddr('netmask') }}"
 b4_genesis_port:
   http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
-  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
+  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}"
   oci:   "{{ genesis_https_oci  | default(registry_port)     | default('5500') }}"
   ironic: "{{ genesis_ironic_port  | default(ironic_api_port)     | default('6385') }}"
 
@@ -223,7 +223,7 @@ b4_genesis_port:
 # 1.1.- Capture Nics Data
 b4_enroll_nics:      "{{ enroll['nics'] | default({}) }}"
 b4_enroll_node_inband_nics:  "{{ b4_enroll_nics['inband']  | default([]) }}"
-b4_enroll_node_outband_nics: "{{ b4_enroll_nics['outband'] | default([]) }}" 
+b4_enroll_node_outband_nics: "{{ b4_enroll_nics['outband'] | default([]) }}"
 b4_enroll_nics_list: "{{ b4_enroll_node_inband_nics + b4_enroll_node_outband_nics }}"
 
 # ---- Filter according to flag - provision: yes/true
@@ -252,96 +252,131 @@ b4_enroll_nic_provision_default_gateway: "{{ b4_url_genesis_ip | default(b4_enro
 b4_enroll_nic_provision_gateway: "{{ b4_enroll_nic_provision['gateway'] | default(b4_enroll_nic_provision_default_gateway, true) }}"
 
 # 1.4.- List of NICs for OpenStack Ansible Module
-b4_enroll_node_nics_raw: 
-  - mac: "{{ b4_enroll_nic_provision_mac | default(none) }}" 
+b4_enroll_node_nics_raw:
+  - mac: "{{ b4_enroll_nic_provision_mac | default(none) }}"
   - mac: "{{ b4_enroll_nic_bmc_mac       | default(none) }}"
 b4_enroll_node_nics: >-
   {{ b4_enroll_node_nics_raw 
      | rejectattr('mac', 'none') 
      | rejectattr('mac', 'undefined') 
      | default(omit) }}
- 
+
 #------------------
 # 2.- Out-Of-Band BMC Details (node -> inventory -> defaults)
 #------------------
-b4_enroll_node_name: "{{ enroll.name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
-b4_enroll_node_uuid: "{{ enroll.uuid | default('') }}" 
-b4_enroll_node_bmc_driver: "{{ enroll.driver  | default('redfish') }}" 
+b4_enroll_node_name: "{{ enroll.name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}"
+b4_enroll_node_uuid: "{{ enroll.uuid | default('') }}"
+b4_enroll_node_bmc_driver: "{{ enroll.driver  | default('redfish') }}"
 
-#------------------
-# 3.- Out-Of-Band BMC Credentials (node -> inventory -> defaults)
-#------------------
+#---------------------------------------------------------------------------
+# 3.- Out-Of-Band BMC Credentials Factory (node -> inventory -> defaults)
+#---------------------------------------------------------------------------
+# 3.1. Capture BMC credentials
+b4_enroll_node_bmc_credentials: "{{ enroll['bmc_credentials'] | default({}) }}"
+b4_enroll_default_node_id:      "{{ enroll['node_id']         | default('') }}"
+
+# 3.2. Defaults BMC credentials
 b4_enroll_default_bmc_credentials:
-   redfish:
-     ipv4: "{{ b4_enroll_nic_bmc_ip }}/{{ b4_enroll_nic_bmc_prefix }}"  
-     username: "root"
-     password: "calvin"
-     verify_ca: false 
-   ipmi:
-     ipv4: "{{ b4_enroll_nic_bmc_ip }}/{{ b4_enroll_nic_bmc_prefix }}"  
-     username: "root"
-     password: "calvin" 
-     priv_level: "ADMINISTRATOR"
-     port: 	"623"
-     cipher_suite: "17"
-b4_enroll_genesis_bmc_credentials: "{{ genesis_bmc_credentials[b4_enroll_node_bmc_driver] | default(b4_enroll_default_bmc_credentials) }}"
-b4_enroll_node_bmc_credentials: "{{ enroll.bmc_credentials[b4_enroll_node_bmc_driver] | default(b4_enroll_genesis_bmc_credentials) }}"
-b4_enroll_node_driver_info: "{{ enroll.driver_info |  default({}) }}"
-b4_enroll_default_node_id: "{{ b4_enroll_node_driver_info['node_id'] | default(b4_enroll_node_bmc_credentials['node_id']) | default(b4_enroll_genesis_bmc_credentials['node_id']) | default('') }}"
+  redfish:
+    ipv4: "{{ b4_enroll_nic_bmc_ip }}/{{ b4_enroll_nic_bmc_prefix }}"
+    username: "root"
+    password: "calvin"
+    verify_ca: false
+  idrac:
+    ipv4: "{{ b4_enroll_nic_bmc_ip }}/{{ b4_enroll_nic_bmc_prefix }}"
+    username: "root"
+    password: "calvin"
+    verify_ca: false
+    raid_config_backup: "none"
+  ilo:
+    ipv4: "{{ b4_enroll_nic_bmc_ip }}/{{ b4_enroll_nic_bmc_prefix }}"
+    username: "root"
+    password: "calvin"
+    deploy_iso: "http://{{ b4_url_genesis_ip | default('127.0.0.1') }}:{{ b4_url_genesis_port['http'] | default(8080) }}/os/agent.iso"
+  ipmi:
+    ipv4: "{{ b4_enroll_nic_bmc_ip }}/{{ b4_enroll_nic_bmc_prefix }}"
+    username: "root"
+    password: "calvin"
+    priv_level: "ADMINISTRATOR"
+    port: "623"
+    cipher_suite: "17"
 
-#------------------
-# 4.- Out-Of-Band BMC URLs (node -> inventory -> defaults)
-#------------------
-b4_enroll_node_bmc_protocol: "{{ b4_enroll_node_bmc_credentials['protocol'] | default(b4_enroll_genesis_bmc_credentials['protocol']) | default('https') }}"
-b4_enroll_node_bmc_ipv4: "{{ b4_enroll_node_bmc_credentials['ipv4'] | default(b4_enroll_genesis_bmc_credentials['ipv4']) | default(b4_enroll_nic_bmc_ipv4) | ansible.utils.ipaddr('address') }}"
-b4_enroll_node_bmc_port: "{{ b4_enroll_node_bmc_credentials['port'] | default(b4_enroll_genesis_bmc_credentials['port']) | default(omit) }}"
-b4_enroll_node_bmc_url: "{{b4_enroll_node_bmc_protocol }}://{{ b4_enroll_node_bmc_ipv4 }}{{  b4_enroll_node_bmc_port is not none | ternary(':'+b4_enroll_node_bmc_port,'','') }}"
+# 3.3. Inheritance => host_vars -> Inventory -> defaults -> empty
+b4_node_bmc_credentials_all_drivers: "{{ b4_enroll_node_bmc_credentials | default(genesis_bmc_credentials, true) | default(b4_enroll_default_bmc_credentials, true) | default({}) }}"
+
+# 3.4. Capture Node Driver Info
+b4_node_bmc_credentials: "{{ b4_node_bmc_credentials_all_drivers[b4_enroll_node_bmc_driver] | default({}) }}"
+b4_enroll_bmc_node_driver_info: "{{ enroll['driver_info'] | default(b4_node_bmc_credentials) | default({}) }}"
+
+#---------------------------------------------------------------------------
+# 4.- Out-Of-Band BMC URLs Generation
+#---------------------------------------------------------------------------
+b4_enroll_node_bmc_protocol: "{{ b4_enroll_bmc_node_driver_info['protocol'] | default('https') }}"
+b4_enroll_node_bmc_ipv4_raw: "{{ b4_enroll_bmc_node_driver_info['ipv4'] | default(b4_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
+b4_enroll_node_bmc_ipv4: "{{ b4_enroll_node_bmc_ipv4_raw | ansible.utils.ipaddr('address') }}"
+b4_enroll_node_bmc_port: "{{ b4_enroll_bmc_node_driver_info['port'] | default(none) }}"
+b4_enroll_node_bmc_url: "{{ b4_enroll_node_bmc_protocol }}://{{ b4_enroll_node_bmc_ipv4 }}{{ (b4_enroll_node_bmc_port is not none and b4_enroll_node_bmc_port | string | length > 0) | ternary(':' ~ b4_enroll_node_bmc_port, '') }}"
 b4_enroll_default_system_id: "/redfish/v1/Systems/{{ b4_enroll_default_node_id | default('') }}"
-b4_enroll_default_auth_type: "{{ b4_enroll_node_bmc_credentials['auth_type'] | default(b4_enroll_genesis_bmc_credentials['auth_type']) | default('') }}"
 
 #------------------
-# 5.- Out-Of-Band BMC driver Info
+# 5.- Out-Of-Band BMC Clean Steps (node -> inventory -> defaults)
+#------------------
+b4_default_clean_steps_list:
+  - erase_devices_metadata
+b4_clean_steps_list: "{{ clean['steps'] |  default(b4_default_clean_steps_list) }}"
+b4_clean_steps: |
+  [{% for step_name in b4_clean_steps_list | default([]) %}
+    {
+      "interface": "deploy",
+      "step": "{{ step_name }}",
+      "priority": {{ (loop.index0 + 1) * 10 }}
+    }{{ "," if not loop.last else "" }}
+  {% endfor %}]
+
+#------------------
+# 6.- Out-Of-Band BMC driver Info
 #------------------
 b4_enroll_node_bmc_driver_info:
   redfish:
-    redfish_address: "{{ b4_enroll_node_bmc_url }}"
-    redfish_username: "{{ b4_enroll_node_driver_info['redfish_username'] | default(b4_enroll_node_bmc_credentials['username']) | default(b4_enroll_genesis_bmc_credentials['username']) | default('root') }}"
-    redfish_password: "{{ b4_enroll_node_driver_info['redfish_password'] | default(b4_enroll_node_bmc_credentials['password']) | default(b4_enroll_genesis_bmc_credentials['password']) | default('calvin') }}"
-    redfish_verify_ca: "{{ b4_enroll_node_driver_info['redfish_verify_ca'] | default(b4_enroll_node_bmc_credentials['verify_ca']) | default(b4_enroll_genesis_bmc_credentials['verify_ca']) | default(false) }}"
-    redfish_system_id: "{{ b4_enroll_node_driver_info['redfish_system_id'] | default(b4_enroll_node_bmc_credentials['system_id']) | default(b4_enroll_genesis_bmc_credentials['system_id']) | default(b4_enroll_default_system_id) }}"
+    redfish_address:   "{{ b4_enroll_node_bmc_url | default('http://127.0.0.1:8000') }}"
+    redfish_username:  "{{ b4_enroll_bmc_node_driver_info['username']  | default('root') }}"
+    redfish_password:  "{{ b4_enroll_bmc_node_driver_info['password']  | default('calvin') }}"
+    redfish_verify_ca: "{{ b4_enroll_bmc_node_driver_info['verify_ca'] | default(true) }}"
+    redfish_system_id: "{{ b4_enroll_bmc_node_driver_info['system_id'] | default(b4_enroll_default_system_id) | default('') }}"
+  idrac:
+    idrac_address:   "{{ b4_enroll_node_bmc_ipv4 | default(b4_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
+    idrac_username:  "{{ b4_enroll_bmc_node_driver_info['username']  | default('root') }}"
+    idrac_password:  "{{ b4_enroll_bmc_node_driver_info['password']  | default('calvin') }}"
+    idrac_verify_ca: "{{ b4_enroll_bmc_node_driver_info['verify_ca'] | default(false) }}"
+    idrac_system_id: "{{ b4_enroll_bmc_node_driver_info['system_id'] | default('') }}"
+    idrac_raid_config_backup: "{{ b4_enroll_node_drivo['raid_config_backup'] | default('none') }}"
+  ilo:
+    ilo_address:    "{{ b4_enroll_node_bmc_ipv4 | default(b4_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
+    ilo_username:   "{{ b4_enroll_bmc_node_driver_info['username']   | default('root') }}"
+    ilo_password:   "{{ b4_enroll_bmc_node_driver_info['password']   | default('calvin') }}"
+    ilo_deploy_iso: "{{ b4_enroll_bmc_node_driver_info['deploy_iso'] | default('') }}"
+    ilo_system_id:  "{{ b4_enroll_bmc_node_driver_info['system_id']  | default('') }}"
   ipmi:
-    ipmi_address: "{{ b4_enroll_node_bmc_ipv4 }}"
-    ipmi_username:  "{{ b4_enroll_node_driver_info['ipmi_username'] | default(b4_enroll_node_bmc_credentials['username']) | default(b4_enroll_genesis_bmc_credentials['username']) | default('root') }}"
-    ipmi_password: "{{ b4_enroll_node_driver_info['ipmi_password'] | default(b4_enroll_node_bmc_credentials['password']) | default(b4_enroll_genesis_bmc_credentials['password']) | default('calvin') }}"
-    ipmi_priv_level: "{{ b4_enroll_node_driver_info['priv_level'] | default(b4_enroll_node_bmc_credentials['priv_level']) | default(b4_enroll_genesis_bmc_credentials['priv_level']) | default('ADMINISTRATOR') }}"
-    ipmi_port: "{{ b4_enroll_node_bmc_port | default('623') }}"
-    ipmi_cipher_suite: "{{  b4_enroll_node_driver_info['ipmi_cipher_suite'] | default(b4_enroll_node_bmc_credentials['cipher_suite']) | default(b4_enroll_genesis_bmc_credentials['cipher_suite']) | default('17') }}"
+    ipmi_address:    "{{ b4_enroll_node_bmc_ipv4 | default(b4_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
+    ipmi_port:       "{{ b4_enroll_node_bmc_port | default('623') }}"
+    ipmi_username:   "{{ b4_enroll_bmc_node_driver_info['username']   | default('root') }}"
+    ipmi_password:   "{{ b4_enroll_bmc_node_driver_info['password']   | default('calvin') }}"
+    ipmi_priv_level: "{{ b4_enroll_bmc_node_driver_info['priv_level'] | default('ADMINISTRATOR') }}"
+    ipmi_cipher_suite: "{{ b4_enroll_bmc_node_driver_info['cipher_suite'] | default('17') }}"
 
 #------------------
-# 6.- Properties (Corregido)
+# 7.- Properties
 #------------------
-b4_enroll_node_chassis_default_properties: 
-  cpus: 4              
-  cpu_arch: "x86_64" 
-  memory_mb: 4096      
-  local_gb: 32         
-  
-b4_enroll_node_chassis_properties_input: "{{ enroll['properties'] |  default(b4_enroll_node_chassis_default_properties) }}"
+b4_enroll_node_chassis_properties_input: "{{ enroll['properties'] |  default({}) }}"
 b4_enroll_node_chassis_capabilities: "{{ enroll['capabilities'] | default({}) }}"
-b4_enroll_node_chassis_type: "{{ (b4_enroll_node_chassis_capabilities.uefi | default(true)) | ternary('uefi','bios','uefi') }}"
 b4_enroll_node_chassis_capabilities_string: "{{ (b4_enroll_node_chassis_capabilities | length > 0) | ternary(b4_enroll_node_chassis_capabilities.items() | map('join', ':') | join(',') | lower, '') }}"
-b4_enroll_node_chassis_cpus: "{{ b4_enroll_node_chassis_properties_input['cpus'] | default(b4_enroll_node_chassis_default_properties['cpus']) | int }}"
-b4_enroll_node_chassis_cpu_arch: "{{ b4_enroll_node_chassis_properties_input['cpu_arch'] | default(b4_enroll_node_chassis_properties_input['arch'] | default(b4_enroll_node_chassis_default_properties['cpu_arch'])) }}"
-b4_enroll_node_chassis_memory_mb: "{{ b4_enroll_node_chassis_properties_input['memory_mb'] | default(b4_enroll_node_chassis_properties_input['ram'] | default(b4_enroll_node_chassis_default_properties['memory_mb'])) | int }}"
-b4_enroll_node_chassis_local_gb: "{{ b4_enroll_node_chassis_properties_input['local_gb'] | default(b4_enroll_node_chassis_properties_input['disk_size'] | default(b4_enroll_node_chassis_default_properties['local_gb'])) | int }}"
-b4_enroll_node_chassis_root_device: "{{ b4_enroll_node_chassis_properties_input['root_device'] | default(omit) }}"
 b4_enroll_node_chassis_properties:
-   cpus:         "{{ b4_enroll_node_chassis_cpus }}"
-   cpu_arch:     "{{ b4_enroll_node_chassis_cpu_arch }}"
-   memory_mb:    "{{ b4_enroll_node_chassis_memory_mb }}"
-   local_gb:     "{{ b4_enroll_node_chassis_local_gb }}"
-   root_device:  "{{ b4_enroll_node_chassis_root_device }}"
-   capabilities: "{{ b4_enroll_node_chassis_capabilities_string }}"
+  cpus:         "{{ b4_enroll_node_chassis_properties_input['cpus']         | default('4') }}"
+  cpu_arch:     "{{ b4_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
+  memory_mb:    "{{ b4_enroll_node_chassis_properties_input['memory_mb']    | default('4096') }}"
+  local_gb:     "{{ b4_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
+  root_device:  "{{ b4_enroll_node_chassis_properties_input['root_device']  | default({}) }}"
+  capabilities: "{{ b4_enroll_node_chassis_properties_input['capabilities'] | default(b4_enroll_node_chassis_capabilities_string)  }}"
 
 ######################################################
 # MANAGE STAGE PARTICULARS
@@ -351,46 +386,51 @@ b4_enroll_node_chassis_properties:
 # 0.- Bifrost Data Model Dump File
 #------------------
 b4_baremetal_fact_caching_connection: "{{ lookup('ansible.builtin.config', 'fact_caching_connection', plugin_type='cache', plugin_name='jsonfile', errors='ignore') }}"
-b4_baremetal_setup_vars_path: "{{ b5_baremetal_fact_caching_connection | default('/tmp', boolean=True) }}"
+b4_baremetal_setup_vars_path: "{{ b4_baremetal_fact_caching_connection | default('/tmp', boolean=True) }}"
 b4_baremetal_vars_filename: "genesis_{{ inventory_hostname }}.yml"
 b4_baremetal_vars_file: "{{ b4_baremetal_setup_vars_path }}/{{ b4_baremetal_vars_filename }}"
 
 #------------------
 # 1.- Inband Provision URLs
 #------------------
-b4_url_protocol: "http"
-b4_url_short_subpath:   "{{ b4_node_os | lower }}{{ b4_node_os_version | lower | replace('.', '') }}"
-b4_url_full_subpath:    "{{ b4_node_os }}/{{ b4_node_os_version }}"
-b4_url_genesis_port: "{{ b4_genesis_port[b4_url_protocol] is defined | ternary (':','','') }}{{ b4_genesis_port[b4_url_protocol] | default('') }}"
-b4_url_genesis_url: "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_genesis_port }}"
-b4_url_ironic_port: "{{ b4_genesis_port['ironic'] is defined | ternary (':','','') }}{{ b4_genesis_port['ironic'] | default('') }}"
-b4_url_ironic_url: "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_ironic_port }}"
+b4_url_protocol:      "http"
+b4_url_short_subpath: "{{ b4_node_os | lower }}{{ b4_node_os_version | lower | replace('.', '') }}"
+b4_url_full_subpath:  "{{ b4_node_os }}/{{ b4_node_os_version }}"
+b4_url_genesis_port:  "{{ b4_genesis_port[b4_url_protocol] is defined | ternary (':','','') }}{{ b4_genesis_port[b4_url_protocol] | default('') }}"
+b4_url_genesis_url:   "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_genesis_port }}"
+b4_url_ironic_port:   "{{ b4_genesis_port['ironic'] is defined | ternary (':','','') }}{{ b4_genesis_port['ironic'] | default('') }}"
+b4_url_ironic_url:    "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_ironic_port }}"
 
 #------------------
 # 2.- OS
 #------------------
+# 2.1.- Defaults
 b4_node_default_os: "{{ genesis_node_default_os | default('CentOS') }}"
 b4_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
 b4_node_default_os_arch: "x86_64"
 b4_node_default_os_profile: "none"
 b4_node_default_os_installer: "anaconda"
 b4_node_default_os_locale: "uk"
-b4_default_os_locale: "{{ genesis_locale_matrix['us'] }}" 
-b4_capture_node_os: "{{ deploy.os | default(os) | default({}) }}"
+b4_default_os_locale: "{{ genesis_locale_matrix['us'] }}"
+
+# 2.2.- OS Attributes
+b4_capture_node_os: "{{ deploy.os | default({}) }}"
 b4_capture_node_os_name:   "{{ b4_capture_node_os.name | default(b4_node_default_os) | lower }}"
 b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os_name] }}"
 b4_node_os:           "{{ b4_node_os_definitions['ansible_distribution'] | default('unknown') }}"
 b4_node_os_version:   "{{ b4_capture_node_os.version | default(b4_node_default_os_version) }}"
 b4_node_os_locale:    "{{ b4_capture_node_os.locale  | default(b4_node_default_os_locale) }}"
 b4_node_os_arch:      "{{ b4_capture_node_os.arch    | default(b4_node_default_os_arch) }}"
+
+# 2.3.- OS Manifesto Installer Attributes
 b4_node_os_profile:   "{{ b4_capture_node_os.profile | default(b4_node_default_os_profile) }}"
 b4_node_os_installer: "{{ b4_node_os_definitions['installer'] | default(b4_node_default_os_installer) | lower}}"
 b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] }}{{ b4_enroll_node_name }}{{ b4_node_os_definitions['ext'] }}"
 b4_node_os_iso_file: "{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
-b4_node_os_locale_info: "{{ genesis_locale_matrix[b4_node_os_locale] | default(b4_default_os_locale) }}" 
+b4_node_os_locale_info: "{{ genesis_locale_matrix[b4_node_os_locale] | default(b4_default_os_locale) }}"
 
 #------------------
-# 3.- Users 
+# 3.- Users
 #------------------
 b4_default_user_name: 'genesis'
 b4_default_user_password: ''
@@ -409,44 +449,44 @@ b4_netinstall_os_iso_url:          "{{ b4_netinstall_os_images_url }}/{{ b4_node
 #####################################################
 # OS_NATIVE: INSTALLERS TEMPLATES RENDERING
 #   TODO: Install definition API that abstracts installer particulars
-##################################################### 
+#####################################################
 
 #------------------------------------
 # 1.- Kickstart
 #------------------------------------
 # 1.0.- Change Bootorder with ipmitools
 b4_kickstart_postinstall_change_boot_order: |
-    # 1. ULTRA-ROBUST VIRTUAL MACHINE DETECTION (Fallback safe)
-    IS_VM=0
-    if [ -x /usr/bin/systemd-detect-virt ]; then
-        if /usr/bin/systemd-detect-virt -q; then IS_VM=1; fi
-    elif [ -f /sys/class/dmi/id/sys_vendor ]; then
-        SYS_VENDOR=$(cat /sys/class/dmi/id/sys_vendor | tr '[:upper:]' '[:lower:]')
-        if [[ "$SYS_VENDOR" =~ (qemu|kvm|vmware|virtualbox|xen|innotek|bochs) ]]; then IS_VM=1; fi
-    fi
-    if [ "$IS_VM" -eq 1 ]; then
-        echo "[INFO] VM environment verified. Skipping hardware IPMI boot management." >> /root/ks-post-ipmi.log
-    else
-        echo "[INFO] Bare Metal verified. Initializing IPMI kernel layers..." >> /root/ks-post-ipmi.log
-        
-        # 2. FORCE BACKEND MODULE LOADING IN CHROOT (Mandatory for RHEL 9 %post)
-        modprobe ipmi_msghandler 2>/dev/null
-        modprobe ipmi_si 2>/dev/null
-        modprobe ipmi_devintf 2>/dev/null
-        udevadm settle 2>/dev/null
-        
-        # 3. UEFI PERSISTENT BOOT ASSIGNMENT WITH classical FALLBACK
-        echo "[INFO] Applying persistent UEFI boot device ordering..." >> /root/ks-post-ipmi.log
-        if ! ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log; then
-            echo "[WARN] UEFI target failed. Forcing legacy bootdev fallback..." >> /root/ks-post-ipmi.log
-            if ! ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log; then
-                echo "[ERROR] Hard boot override rejected by BMC hardware." >> /root/ks-post-ipmi.log
-            fi
-        fi
-    fi
+  # 1. ULTRA-ROBUST VIRTUAL MACHINE DETECTION (Fallback safe)
+  IS_VM=0
+  if [ -x /usr/bin/systemd-detect-virt ]; then
+      if /usr/bin/systemd-detect-virt -q; then IS_VM=1; fi
+  elif [ -f /sys/class/dmi/id/sys_vendor ]; then
+      SYS_VENDOR=$(cat /sys/class/dmi/id/sys_vendor | tr '[:upper:]' '[:lower:]')
+      if [[ "$SYS_VENDOR" =~ (qemu|kvm|vmware|virtualbox|xen|innotek|bochs) ]]; then IS_VM=1; fi
+  fi
+  if [ "$IS_VM" -eq 1 ]; then
+      echo "[INFO] VM environment verified. Skipping hardware IPMI boot management." >> /root/ks-post-ipmi.log
+  else
+      echo "[INFO] Bare Metal verified. Initializing IPMI kernel layers..." >> /root/ks-post-ipmi.log
+  
+      # 2. FORCE BACKEND MODULE LOADING IN CHROOT (Mandatory for RHEL 9 %post)
+      modprobe ipmi_msghandler 2>/dev/null
+      modprobe ipmi_si 2>/dev/null
+      modprobe ipmi_devintf 2>/dev/null
+      udevadm settle 2>/dev/null
+  
+      # 3. UEFI PERSISTENT BOOT ASSIGNMENT WITH classical FALLBACK
+      echo "[INFO] Applying persistent UEFI boot device ordering..." >> /root/ks-post-ipmi.log
+      if ! ipmitool chassis bootdev disk options=persistent,efiboot 2>>/root/ks-post-ipmi.log; then
+          echo "[WARN] UEFI target failed. Forcing legacy bootdev fallback..." >> /root/ks-post-ipmi.log
+          if ! ipmitool chassis bootdev disk options=persistent 2>>/root/ks-post-ipmi.log; then
+              echo "[ERROR] Hard boot override rejected by BMC hardware." >> /root/ks-post-ipmi.log
+          fi
+      fi
+  fi
 
 # 1.1.- Storage Snippet according BIOS/UEFI
-b4_kickstart_storage_chassis_type: 
+b4_kickstart_storage_chassis_type:
   uefi: |
     bootloader
     part /boot/efi --fstype=efi --size=600
@@ -454,6 +494,7 @@ b4_kickstart_storage_chassis_type:
   bios: |
     bootloader --location=mbr
     part /boot --fstype=ext4 --size=1024
+b4_enroll_node_chassis_type: "{{ ('uefi' in (b4_enroll_node_chassis_capabilities.boot_mode | default('uefi') | string | lower)) | ternary('uefi', 'bios') }}"
 b4_kickstart_storage_snippet: "{{ b4_kickstart_storage_chassis_type[b4_enroll_node_chassis_type] | default(b4_kickstart_storage_chassis_type['uefi']) }}"
 
 # 1.2.- Default RHEL derivatives Kickstart
@@ -462,19 +503,25 @@ b4_kickstart_template_defaults:
     # Use Netinstall installation media
     url --url {{ b4_netinstall_os_mounted_repo_url }}/
 
-  system: |       
+  repos: |
+    {% if b4_os_version | default(9) | int >= 8 %}
+    repo --name="BaseOS" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/BaseOS/x86_64/os/" --install --gpgcheck=0 
+    repo --name="AppStream" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/AppStream/x86_64/os/" --install --gpgcheck=0
+    {% endif %}
+
+  system: |
     # System Language
     lang {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
-           
+    
     # System keyboard
     keyboard {{ b4_node_os_locale_info.keyboard | default('us') }}
-           
+    
     # Firewall configuration
     firewall --disabled
     
     # SELinux configuration
     selinux --disabled
-          
+    
     # System timezone
     timezone {{ b4_node_os_locale_info.timezone | default('America/New_York') }}
     
@@ -483,21 +530,21 @@ b4_kickstart_template_defaults:
     
     # Reboot after installation
     reboot	
- 
+
   auth: |
     authselect --profile=minimal
-   
+
   packages: |
     @core
 
   user: |
     # Root password 
     rootpw --iscrypted $1$HLvLgn43$n/B5bYQtDnht33ly  
-  
+
   network: |
     network --bootproto=static --ip={{ b4_enroll_nic_provision_ip | default('10.10.51.150') }} --netmask={{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }} --gateway={{ b4_url_genesis_ip | default('10.10.51.5') }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
 
-  storage: |	
+  storage: |
     {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('sda') %}
     {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'sda' %}{% endif %}
     
@@ -505,7 +552,7 @@ b4_kickstart_template_defaults:
     {% set fixed_mb = 19456 %}
     {% set pv_size = total_mb - fixed_mb - 512 %}
     {% set swap_size = (b4_enroll_node_chassis_properties.memory_mb | default(4096) | int / 2) | int %}
-      
+    
     # Partitions Configuration (100% Dynamic calculated from chassis properties)
     zerombr
     clearpart --all --initlabel
@@ -525,19 +572,36 @@ b4_kickstart_template_defaults:
 # 1.3.- Changes over Default Template according OS release
 b4_kickstart_template_os_profiles:
   "8":
-    auth: "authselect --useshadow --passalgo=sha512"  
-    logging: "logging --level=info"   
+    auth: "authselect --useshadow --passalgo=sha512"
+    logging: "logging --level=info"
     packages: |
       @core
       tar
       bzip2
 
   "7":
-    auth: "authselect --useshadow --passalgo=sha512"  
-    logging: "logging --level=info"   
+    auth: "auth --enableshadow --passalgo=sha512"
+    logging: "logging --level=info"
     packages: |
       @base
       @core
+    repos: ''
+    postinstall: |
+      echo "==> Enforcing persistent production repositories layout for legacy target..."
+      
+      # Purge default vendor repository profiles to avoid timeout conflicts
+      rm -f /etc/yum.repos.d/*.repo
+      
+      # Write clean, local-only repository target directly into the root filesystem
+      cat << 'EOF' > /etc/yum.repos.d/genesis-internal.repo
+      [genesis-legacy-base]
+      name=Genesis System Legacy Base OS Repository - Local Mirror
+      baseurl={{ b4_netinstall_os_mounted_repo_url }}/
+      enabled=1
+      gpgcheck=0
+      EOF
+      
+      echo "==> Legacy repository profile injected successfully."
 
 #------------------------------------
 # 2.- Cloud Init
@@ -552,14 +616,14 @@ b4_kickstart_template_os_profiles:
 #      password: '{{ b4_default_user_password }}'
 #    keyboard:
 #      layout: us
-#    locale: en_US.UTF-8   
+#    locale: en_US.UTF-8
 #  ssh: |
 #    allow-pw: true
 #    authorized-keys: []
 #    install-server: true
 #  logging: |
 #    remotes:
-#      log_serv: "*.* @@{{ b4_url_genesis_url }}:{{ genesis_rsyslog_port }}"     
+#      log_serv: "*.* @@{{ b4_url_genesis_url }}:{{ genesis_rsyslog_port }}"
 #  network: |
 #    network:
 #      version: 2
@@ -571,11 +635,11 @@ b4_kickstart_template_os_profiles:
 #          gateway4: {{ b4_enroll_nic_bmc_gateway }}
 #          match:
 #            macaddress: {{ b4_enroll_nic_bmc_mac }}
-#          set-name: eno1         
+#          set-name: eno1
 #  storage: |
 #    layout:
 #      name: lvm
-#      match: {} 
+#      match: {}
 #  packages: |
 #    # even set to no/false, geoip lookup still happens
 #    geoip: no
@@ -583,20 +647,20 @@ b4_kickstart_template_os_profiles:
 #    sources_list: |
 #      deb [trusted=yes] http://{{ b4_netinstall_os_mounted_repo_url }} ./
 #    packages:
-#     - ubuntu-desktop-minimal          
+#     - ubuntu-desktop-minimal
 #  preinstall: |
 #    - path: /run/tmpfiles.d/bootorder.sh
 #      content: |
 #        #!/bin/bash
 #        BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
 #        BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
-#        /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}     
+#        /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}
 #  postinstall: |
 #    - echo '{{ b4_default_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ b4_default_user_name }}
 #    - sed -i 's|^root:.:|root:{{ b4_root_user_password }}|' /target/etc/shadow
 #    - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
 #    - /bin/bash /run/tmpfiles.d/bootorder.sh
-#      
+#
 #------------------------------------
 # 3.- Preseeds
 #------------------------------------
@@ -608,71 +672,71 @@ b4_kickstart_template_os_profiles:
 
 
 ######################################################
-#  LIFECYCLE DEFINITION: DEPLOY STAGE 
-###################################################### 
+#  LIFECYCLE DEFINITION: DEPLOY STAGE
+######################################################
 
 #------------------------------------
 # 1.- OS Installer Manifesto
 #------------------------------------
-b4_node_manifesto_profiles: "{{ deploy['os_manifesto'][b4_node_os_installer] | default({}) }}" 
-b4_system_manifesto_profiles: "{{ genesis_os_manifesto[b4_node_os_installer] | default({}) }}" 
+b4_node_manifesto_profiles: "{{ deploy['os_manifesto'][b4_node_os_installer] | default({}) }}"
+b4_system_manifesto_profiles: "{{ genesis_os_manifesto[b4_node_os_installer] | default({}) }}"
 b4_os_installer_manifesto:
   anaconda:
-    template:  
+    template:
       - "manifesto/kickstart.j2"
-    file:      
+    file:
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
-    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
+    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}"
     defaults:   "{{ b4_kickstart_template_defaults | default({}) }}"
     os_version: "{{ b4_kickstart_template_os_profiles[b4_node_os_version] | default({}) }}"
     system:     "{{ b4_system_manifesto_profiles | default({}) }}"
     node:       "{{ b4_node_manifesto_profiles   | default({}) }}"
-    
+
   esxi:
-    template:  
+    template:
       - "manifesto/kickstart.j2"
-    file:      
+    file:
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
-    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
+    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}"
     defaults:   "{{ b4_kickstart_template_defaults | default({}) }}"
-    os_version: "{{ b4_kickstart_template_os_profiles[b4_node_os_version] | default({}) }}"    
+    os_version: "{{ b4_kickstart_template_os_profiles[b4_node_os_version] | default({}) }}"
     system:     "{{ b4_system_manifesto_profiles | default({}) }}"
     node:       "{{ b4_node_manifesto_profiles   | default({}) }}"
 
   preseed:
-    template:  
+    template:
       - "manifesto/preseed.j2"
-    file:      
+    file:
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
-    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
+    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}"
     defaults:   "{{ b4_preseed_template_defaults | default({}) }}"
-    os_version: "{{ b4_preseed_template_os_profiles[b4_node_os_version] | default({}) }}"   
+    os_version: "{{ b4_preseed_template_os_profiles[b4_node_os_version] | default({}) }}"
     system:     "{{ b4_system_manifesto_profiles | default({}) }}"
     node:       "{{ b4_node_manifesto_profiles | default({}) }}"
-  
+
   casper:
-    template:  
-      - "manifesto/cloud-init/meta-data.j2"
-      - "manifesto/cloud-init/user-data.j2"     
-    file:      
+    template:
+      - "manifesto/casper/meta-data.j2"
+      - "manifesto/casper/user-data.j2"
+    file:
       - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/meta-data"
       - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/user-data"
-    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_enroll_node_name }}/meta-data"  
+    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_enroll_node_name }}/meta-data"
     defaults:   "{{ b4_casper_template_defaults | default({}) }}"
     os_version: "{{ b4_casper_template_os_profiles[b4_node_os_version] | default({}) }}"
     system:     "{{ b4_system_manifesto_profiles | default({}) }}"
     node:       "{{ b4_node_manifesto_profiles | default({}) }}"
-    
+
   ignition:
-    template:  
-      - "manifesto/ignition.j2"    
-    file:      
+    template:
+      - "manifesto/ignition.j2"
+    file:
       - "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
-    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}" 
+    url:        "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}"
     defaults:   "{{ b4_ignition_template_defaults | default({}) }}"
     os_version: "{{ b4_ignition_template_os_profiles[b4_node_os_version] | default({}) }}"
     system:     "{{ b4_system_manifesto_profiles | default({}) }}"
-    node:       "{{ b4_node_manifesto_profiles | default({}) }}"
+    node:       "{{ b4_node_manifesto_profiles   | default({}) }}"
 
 b4_node_default_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_default_os_installer] }}"
 b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | default(b4_node_default_os_manifesto) }}"
@@ -691,7 +755,7 @@ b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | defa
 #      fetch vmlinuz/initrd.img)          'ifname' and 'none' token)        'ksdevice=net0' flag)
 b4_os_installer_bootloader_call:
   anaconda:
-    # SYSTEM COMPATIBILITY: 
+    # SYSTEM COMPATIBILITY:
     #  RHEL 7/8/9/10, Rocky Linux, AlmaLinux, CentOS Stream, Oracle Linux, Fedora.
     #
     # PARAMETERS BREAKDOWN & SINGLE-NIC ENFORCEMENT:
@@ -701,7 +765,7 @@ b4_os_installer_bootloader_call:
     #    and the base OS software packages.
     #
     # 2. ifname=net0:<MAC>:
-    #    HARDWARE ISOLATION: Binds the physical network interface matching the target 
+    #    HARDWARE ISOLATION: Binds the physical network interface matching the target
     #    provisioning MAC address to a predictable and fixed link name: 'net0'.
     #    This isolates the exact network card we want on multi-NIC physical servers.
     #    Note: Uses '=' instead of ':' to comply with strict Dracut parsing rules
@@ -715,25 +779,25 @@ b4_os_installer_bootloader_call:
     #    - Field 4: Subnet Netmask.
     #    - Field 5: Target node hostname.
     #    - Field 6: Interface name bound via 'ifname' ('net0').
-    #    - Field 7: Autoconf token set to 'none'. This completely kills implicit DHCP loops 
+    #    - Field 7: Autoconf token set to 'none'. This completely kills implicit DHCP loops
     #               globally, leaving all other non-matching interfaces inactive (DOWN).
     #
     # 4. nameserver:
-    #    Declares the primary DNS server (pointing to the Genesis infra node) 
+    #    Declares the primary DNS server (pointing to the Genesis infra node)
     #    allowing the kernel to resolve the HTTP URLs defined in 'inst.ks' and 'inst.repo'.
     #
     # 5. rd.neednet=1 & rd.net.timeout.carrier=10:
-    #    - 'rd.neednet=1' forces Dracut to keep the network subsystem active after the 
+    #    - 'rd.neednet=1' forces Dracut to keep the network subsystem active after the
     #      initial RAM disk execution, passing it fully functional to the real OS installer.
     #    - Timeout prevents infinite hanging if the physical switchport takes time to transition.
-    #   
+    #
     # 6. ksdevice=net0:
-    #    ANACONDA DHCP BLOCK: Forces Anaconda to inherit the 'net0' interface already 
-    #    configured by Dracut. Since the device contains an active static IP state inside 
+    #    ANACONDA DHCP BLOCK: Forces Anaconda to inherit the 'net0' interface already
+    #    configured by Dracut. Since the device contains an active static IP state inside
     #    the kernel, Anaconda cancels its own implicit DHCP broadcast sequences.
     #
     # 7. inst.ks.sendmac / rd.net.dhcp.retry=0:
-    #    - 'inst.ks.sendmac' passes the physical MAC address within the HTTP headers to the 
+    #    - 'inst.ks.sendmac' passes the physical MAC address within the HTTP headers to the
     #      Genesis server, anchoring Anaconda strictly to the 'net0' link.
     #    - 'rd.net.dhcp.retry=0' prevents network re-negotiation loops during stage transitions.
     # ==============================================================================
@@ -753,8 +817,8 @@ b4_os_installer_bootloader_call:
       inst.ks.sendmac
       inst.sshd
 
-  esxi:     
-    # SYSTEM COMPATIBILITY: 
+  esxi:
+    # SYSTEM COMPATIBILITY:
     #  VMware ESXi 7.x, 8.x, and Next-Gen 9.x architectures.
     #
     # PARAMETERS BREAKDOWN & SINGLE-NIC PERSISTENCE:
@@ -763,15 +827,15 @@ b4_os_installer_bootloader_call:
     #    Specifies the HTTP/HTTPS location of the automated ESXi Kickscript (ks.cfg).
     #
     # 2. netdevice=<MAC>:
-    #    HARDWARE ISOLATION (THE DHCP BLOCKER): Forces the VMkernel to use ONLY the physical 
-    #    network card matching the target provisioning MAC address. This completely overrides 
-    #    ESXi's default 'detect' probing routine, which otherwise broadcasts DHCP requests 
+    #    HARDWARE ISOLATION (THE DHCP BLOCKER): Forces the VMkernel to use ONLY the physical
+    #    network card matching the target provisioning MAC address. This completely overrides
+    #    ESXi's default 'detect' probing routine, which otherwise broadcasts DHCP requests
     #    across all available network ports on multi-NIC hardware.
     #
     # 3. ip / netmask / gateway / nameserver:
-    #    STATIC IP FORCE: Instructs the installer to bind these static credentials to the 
-    #    isolated interface immediately. Because 'netdevice' is combined with an explicit IP, 
-    #    the VMkernel tags this link as 'boot-critical', locking the physical driver state 
+    #    STATIC IP FORCE: Instructs the installer to bind these static credentials to the
+    #    isolated interface immediately. Because 'netdevice' is combined with an explicit IP,
+    #    the VMkernel tags this link as 'boot-critical', locking the physical driver state
     #    and preventing any interface reset during the transition to the installer engine.
     # ==============================================================================
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('mboot.c32') }}"
@@ -785,7 +849,7 @@ b4_os_installer_bootloader_call:
       nameserver={{ b4_url_genesis_ip | default('') }}
 
   casper:
-    # Ubuntu uses the 'casper' live boot framework (initramfs-tools). 
+    # Ubuntu uses the 'casper' live boot framework (initramfs-tools).
     #
     # SYSTEM COMPATIBILITY:
     # - Ubuntu Server: 20.04 LTS (Focal), 22.04 LTS (Jammy), 24.04 LTS (Noble), 26.04 LTS.
@@ -796,7 +860,7 @@ b4_os_installer_bootloader_call:
     #    Mounts the cloud-init ISO over HTTP into RAM and triggers the automated installer.
     #
     # 2. BOOTIF=01-<MAC>:
-    #    HARDWARE ISOLATION: The 'BOOTIF' variable (prefixed with the '01' hardware type token 
+    #    HARDWARE ISOLATION: The 'BOOTIF' variable (prefixed with the '01' hardware type token
     #    for Ethernet) tells Casper exactly which physical network interface must be used.
     #    Casper binds exclusively to this card and ignores all alternative ports.
     #
@@ -806,12 +870,12 @@ b4_os_installer_bootloader_call:
     #    Note: 'eth0' acts as the kernel interface placeholder matching the BOOTIF target.
     #
     # 4. layer2link=eth0:
-    #    PERSISTENT NETWORK LINK: Instructs Casper to lock the interface configuration 
-    #    in kernel space. It explicitly blocks the common Casper bug that flushes and resets 
+    #    PERSISTENT NETWORK LINK: Instructs Casper to lock the interface configuration
+    #    in kernel space. It explicitly blocks the common Casper bug that flushes and resets
     #    network links right before launching Subiquity, maintaining zero-down-state.
     # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
-    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"
     menu: >-
       root=ramfs
       url={{ b4_netinstall_os_iso_url }}
@@ -836,7 +900,7 @@ b4_os_installer_bootloader_call:
     #    Points to the JSON/Ignition payload deployed on the Genesis server.
     #
     # 2. ifname=net0:<MAC>:
-    #    HARDWARE ISOLATION: Binds the physical network interface matching the target 
+    #    HARDWARE ISOLATION: Binds the physical network interface matching the target
     #    provisioning MAC address to a predictable and fixed link name: 'net0'.
     #    This isolates the exact network card we want on multi-NIC physical servers.
     #    Note: Uses '=' instead of ':' to comply with strict Dracut parsing rules.
@@ -844,21 +908,21 @@ b4_os_installer_bootloader_call:
     # 3. ip=<client-ip>::<gateway>:<netmask>:<hostname>:<interface>:<autoconf>:
     #    DHCP DISABLEMENT & EXCLUSIVE STATIC IP: Forces Dracut to assign a static IP address
     #    to 'net0' using Dracut's positional, colon-separated format.
-    #    Setting the 7th field (autoconf) to 'none' completely kills implicit DHCP loops 
+    #    Setting the 7th field (autoconf) to 'none' completely kills implicit DHCP loops
     #    at the Dracut level globally, leaving all other non-matching interfaces inactive (DOWN).
     #
     # 4. nameserver:
-    #    Declares the primary DNS server (pointing to the Genesis infra node) 
+    #    Declares the primary DNS server (pointing to the Genesis infra node)
     #    allowing the kernel to resolve the Ignition JSON config URL path.
     #
     # 5. rd.neednet=1 & rd.net.timeout.carrier=10 & rd.net.dhcp.retry=0:
     #    PERSISTENT NETWORK LINK: Hard-locks the 'net0' network interface state in kernel space.
-    #    This acts as a strict kernel lock, completely forbidding Dracut from tearing down 
-    #    or resetting the network device when handing over execution control to the first-boot 
+    #    This acts as a strict kernel lock, completely forbidding Dracut from tearing down
+    #    or resetting the network device when handing over execution control to the first-boot
     #    Ignition configuration engine. Connectivity remains uninterrupted throughout the process.
     # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
-    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initramfs') }}"      
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initramfs') }}"
     menu: >-
       root=live:{{ b4_netinstall_os_mounted_repo_url | default('') }}/{{b4_node_os_installer_url_subpath | default('') }}
       ignition.config.url={{ b4_node_os_manifesto['url'] | default('') }}
@@ -870,7 +934,7 @@ b4_os_installer_bootloader_call:
       rd.net.timeout.carrier=10
       BOOTIF=01-{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}
 
-  preseed:  
+  preseed:
     # Debian relies on the traditional Debian Installer (d-i) network module (netcfg)
     # which uses an explicit key-value argument mapping instead of standard colon strings.
     #
@@ -885,21 +949,21 @@ b4_os_installer_bootloader_call:
     #    pointing to the raw flat-text Debian Preseed configuration deployment file.
     #
     # 2. interface=bootif & BOOTIF=01-<MAC>:
-    #    HARDWARE ISOLATION: Instructs netcfg to capture the exact physical network interface 
+    #    HARDWARE ISOLATION: Instructs netcfg to capture the exact physical network interface
     #    passed by the iPXE bootloader via the BOOTIF variable (prefixed with the '01' Ethernet token).
     #    This isolates the target provisioning card on multi-NIC hardware and drops probing on others.
     #
     # 3. netcfg/disable_dhcp=true & netcfg/confirm_static=true:
-    #    DHCP DISABLEMENT: Explicitly kills the automated DHCP discover background daemon 
+    #    DHCP DISABLEMENT: Explicitly kills the automated DHCP discover background daemon
     #    inside the d-i ecosystem, forcing the network stack to use the provided static properties.
     #
     # 4. netcfg/link_wait_timeout=10:
-    #    PERSISTENT NETWORK LINK: Hard-pins the interface state during the transition from 
-    #    the initial udeb network loader components to the core base-system debootstrap phase, 
+    #    PERSISTENT NETWORK LINK: Hard-pins the interface state during the transition from
+    #    the initial udeb network loader components to the core base-system debootstrap phase,
     #    preventing network link flushing or interfaces resets.
     # ...............................................................
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
-    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"
     menu: >-
       root=/dev/ram
       rw
@@ -917,18 +981,18 @@ b4_os_installer_bootloader_call:
       BOOTIF=01-{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}
 
 b4_node_default_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_node_default_os_installer] | default({}) }}"
-b4_node_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_node_os_installer] | default(b4_node_default_os_installer_bootloader_info) | default({}) }}" 
-  
+b4_node_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_node_os_installer] | default(b4_node_default_os_installer_bootloader_info) | default({}) }}"
+
 #------------------------------------
 # 3.- Deploy Interfaces Configuration
-#------------------------------------  
+#------------------------------------
 b4_node_os_installer_bootloader_menu: "{{ b4_node_os_installer_bootloader_info['menu'].split() | join(' ') }}"
 b4_deploy_interface_instance_info:
   default:
     instance_info:
       image_source: "{{ b4_netinstall_os_iso_url }}"
       kernel:       "{{ b4_node_os_installer_bootloader_info['kernel'] }}"
-      ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}" 
+      ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}"
   ramdisk:
     driver_info:
       pxe_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
@@ -946,41 +1010,41 @@ b4_deploy_interface_instance_info:
       ramdisk:      "{{ b4_node_os_installer_bootloader_info['initram'] }}"
       kernel_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
       image_type: "anaconda"
-  
+
 ######################################################
 # INSTANCE INFORMATION
-###################################################### 
+######################################################
 
 #------------------------------------
-# 1.- Driver Info
-#------------------------------------ 
+# 1.- Interfaces
+#------------------------------------
+# 1.1.- Infrastructure flat default values
+b4_node_default_boot_interface: "ipxe"
+b4_node_default_deploy_interface: "direct"
+b4_node_default_power_interface: "{{ b4_node_driver | default('redfish') }}"
+b4_node_default_management_interface: "noop"
+
+# 1.2.- Clean cascade capturing (Millimeter-precise fallbacks)
+b4_node_boot_interface:   "{{ deploy['boot_interface']   | default(b4_node_default_boot_interface) }}"
+b4_node_deploy_interface: "{{ deploy['deploy_interface']  | default(b4_node_default_deploy_interface) }}"
+b4_node_power_interface:   "{{ manage['power_interface']   | default(b4_node_default_power_interface) }}"
+b4_node_management_interface: "{{ manage['management_interface']  | default(b4_node_default_management_interface) }}"
+
+#------------------------------------
+# 2.- Driver Info
+#------------------------------------
 b4_node_driver_info_credentials: "{{ b4_enroll_node_bmc_driver_info[b4_enroll_node_bmc_driver] | default({}) }}"
 b4_node_driver_info_pxe: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface]['driver_info'] | default(b4_deploy_interface_instance_info['default']['driver_info']) | default({}) }}"
 b4_node_driver_info: "{{ b4_node_driver_info_credentials | combine(b4_node_driver_info_pxe) }}"
 
-#-----------------------------------------------------------------------------
-# 2.- Interfaces (Universal Genesis Data Model)
-#-----------------------------------------------------------------------------
-# 2.1.- Infrastructure flat default values  
-b4_node_default_boot_interface: "ipxe"
-b4_node_default_deploy_interface: "direct"
-
-# 2.2.- Clean cascade capturing (Millimeter-precise fallbacks)
-b4_node_boot_interface:   "{{ deploy['boot_interface']   | default(b4_node_default_boot_interface) }}"
-b4_node_deploy_interface: "{{ deploy['deploy_interface']  | default(b4_node_default_deploy_interface) }}"
-
-# 2.3.- Strict flat mirrors for API URI payload execution
-boot_interface:   "{{ b4_node_boot_interface }}"
-deploy_interface: "{{ b4_node_deploy_interface }}"
-
 #------------------------------------
 # 3.- Instance Info
-#------------------------------------ 
+#------------------------------------
 b4_node_instance_info: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface]['instance_info'] | default(b4_deploy_interface_instance_info['default']['instance_info']) | default({}) }}"
 
 #------------------------------------
 # 4.- Workarounds
-#------------------------------------ 
+#------------------------------------
 b4_proxmox_hypervisor: >-
   {{ b4_enroll_node_bmc_credentials.username is defined and	  
      b4_enroll_node_bmc_credentials.username is not none and
@@ -988,64 +1052,59 @@ b4_proxmox_hypervisor: >-
 
 #------------------------------------
 # 5.- API Calls
-#------------------------------------  
-b4_pxe_boot_device_api_call:
-  - method: "PATCH"
-    target: "ports"
-    path: "/{{ b4_enroll_nic_provision_mac | lower }}" 
-    body:
-      - op: "replace"
-        path: "/pxe_enabled"
-        value: true
+#------------------------------------
 
-  - method: "PUT"
-    path: "/management/boot_device"
-    body:
-      boot_device: "pxe"
-      persistent: true
-
-b4_disk_boot_device_api_call:
-  - method: "PUT"
-    path: "/management/boot_device"
-    body:
-      boot_device: "disk"
-      persistent: true		
-
-b4_lifecycle_setup_api_call:
-  # Stage 1 - Manage State
-  - method: "PUT"
-    path: "/states/provision"
-    body:
-      target: "manage"
-  
-  # Stage 1 - Enroll Properties 
-  - method: "PATCH"
-    body:
-      - op: "add"
-        path: "/properties"
-        value: "{{ properties | default({}) }}"
-  
-  # Stage 1 - Enroll Set Instance Information
-  - method: "PATCH"
-    body:
-      - op: "add"
-        path: "/instance_info"
-        value: "{{ instance_info | default({}) }}"
-  
-  # Stage 2 - Manage Properties - Transition to Manageable State
-  - method: "PUT"
-    path: "/states/provision"
-    body:
-      target: "provide"
-  
-  # Out-of-Band Power Management - Power Off Node
-  - method: "PUT"
-    path: "/states/power"
-    body:
-      target: "power off"
-  
-  # Verification Phase - Gather Current Instance Status
-  #     (Force render GRUB/iPXE files)
-  - method: "GET"
-    path: "/validate"
-  - method: "GET"
+# 5.1.- Set Lifecycle Stages Configurations
+b4_lifecycle_api_calls:
+  poweroff:
+    # Out-of-Band Power Management - Power Off Node
+    - method: "PUT"
+      path: "/states/power"
+      body:
+        target: "power off"
+    # Verification Phase - Gather Current Instance Status
+    #     (Force render GRUB/iPXE files)
+    - method: "GET"
+      path: "/validate"
+    - method: "GET"
+  setup:
+    # Instance Information
+    - method: "PATCH"
+      body:
+        - op: "add"
+          path: "/properties"
+          value: "{{ properties | default({}) }}"
+        - op: "add"
+          path: "/instance_info"
+          value: "{{ instance_info | default({}) }}"
+        - op: "add"
+          path: "/driver_info/clean_steps"
+          value: "{{ b4_clean_steps | from_yaml | default([]) }}"
+  boot_pxe:
+    - method: "PATCH"
+      target: "ports"
+      path: "/{{ b4_enroll_nic_provision_mac | lower }}"
+      body:
+        - op: "replace"
+          path: "/pxe_enabled"
+          value: true
+    - method: "PUT"
+      path: "/management/boot_device"
+      body:
+        boot_device: "pxe"
+        persistent: true
+  boot_disk:
+    - method: "PUT"
+      path: "/management/boot_device"
+      body:
+        boot_device: "disk"
+        persistent: true
+  render:
+    - method: "PUT"
+      path: "/states/provision"
+      body:
+        target: "manage"
+    - method: "PUT"
+      path: "/states/provision"
+      body:
+        target: "provide"

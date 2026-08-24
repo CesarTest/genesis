@@ -1,39 +1,39 @@
 ---
-# genesis.setup 2_manage/3_boot_device.yml
-#  - Force Boot Order (Strict Async Control & Automatic CLI Fallback)
+# genesis.setup 2_manage/3_power_interfaces.yml
+#  - Set Instance Interfaces: boot, deploy, management, power
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "B4 - SETUP - 2.- Manage: 3) Setup Instance"
+- name: "B4 - SETUP - 2.- Manage: 3) Set Instance Power Interfaces"
   when:
     - uuid is defined
     - mac is defined
 
-  #--------------------------------------------------------------------------  
+  #--------------------------------------------------------------------------
   # 1.- Bifrost Role
-  #--------------------------------------------------------------------------  
+  #--------------------------------------------------------------------------
   block:
 
     - name: "B4 SETUP - 2.- Manage: 3.1) Setup Different Instance Interfaces"
       openstack.cloud.baremetal_node:
         cloud: "bifrost"
         uuid:  "{{ uuid | default(omit) }}"
-        state: present
-        nics:        "{{ nics        | default([]) }}"
-        properties:  "{{ properties  | default({}) }}"
         driver:      "{{ driver      | default('redfish') }}"
         driver_info: "{{ driver_info | default({}) }}"
+        properties:  "{{ properties  | default({}) }}"
+        nics:        "{{ nics        | default([]) }}"
         boot_interface:       "{{ boot_interface       | default('ipxe') }}"
         deploy_interface:     "{{ deploy_interface     | default('direct') }}"
         management_interface: "{{ management_interface | default('noop') }}"
-        power_interface:      "{{power_interface       | default(driver) }}"
+        power_interface:      "{{ power_interface      | default(driver) }}"
+        state: present
 
-  #--------------------------------------------------------------------------  
+  #--------------------------------------------------------------------------
   # 2.- Command Line Fallback (Executed if the OpenStack native module fails)
   #---------------------------------------------------------------------------
   rescue:
-    - name: "B4 - SETUP - 2.- Manage: 2.3) Awake NICs through Baremetal CLI Fallback"
+    - name: "B4 - SETUP - 2.- Manage: 3.2) Awake NICs through Baremetal CLI Fallback"
       ansible.builtin.shell:
         cmd: "{{ b4_cmd }}"
       loop: "{{ b4_commands | default([]) }}"

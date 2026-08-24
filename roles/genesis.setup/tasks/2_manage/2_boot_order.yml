@@ -10,9 +10,9 @@
     - uuid is defined
     - mac is defined
 
-  #--------------------------------------------------------------------------  
+  #--------------------------------------------------------------------------
   # 1.- Bifrost Role
-  #--------------------------------------------------------------------------  
+  #--------------------------------------------------------------------------
   block:
 
     - name: "B4 SETUP - 2.- Manage: 2.1) Setup Instance Information"
@@ -20,20 +20,20 @@
         cloud: "bifrost"
         uuid:  "{{ uuid | default(omit) }}"
         state: present
-        nics:        "{{ nics | default([]) }}"
-        properties:  "{{ properties | default({}) }}"
-        driver:      "{{ driver | default('redfish') }}"
+        nics:        "{{ nics        | default([]) }}"
+        properties:  "{{ properties  | default({}) }}"
+        driver:      "{{ driver      | default('redfish') }}"
         driver_info: "{{ driver_info | default({}) }}"
-  
+
     - name: "B4 - SETUP - 2.- Manage: 2.2) Enable PXE in Provision NIC"
       openstack.cloud.baremetal_port:
         cloud: "bifrost"
         node:    "{{ uuid }}"
         address: "{{ mac | lower }}"
-        is_pxe_enabled: true   
+        is_pxe_enabled: true
         state: present
-   
-  #--------------------------------------------------------------------------  
+
+  #--------------------------------------------------------------------------
   # 2.- Command Line Fallback (Executed if the OpenStack native module fails)
   #---------------------------------------------------------------------------
   rescue:
@@ -56,10 +56,10 @@
             export OS_CLOUD=bifrost
             PORT_UUID=$(baremetal port list --address {{ mac | lower | quote }} -f value -c UUID)
             if [ ! -z "$PORT_UUID" ] ; then baremetal port set --pxe-enabled $PORT_UUID; fi
-			
-  #--------------------------------------------------------------------------  
+
+  #--------------------------------------------------------------------------
   # 3.- Force PXE boot from CLI
-  #---------------------------------------------------------------------------			
+  #---------------------------------------------------------------------------
   always:
     - name: "B4 - SETUP - 2.- Manage: 2.4) Set Persistent PXE boot for Ironic to update the node"
       ansible.builtin.shell:

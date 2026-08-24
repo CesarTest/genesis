@@ -14,6 +14,7 @@ roles/genesis.bifrost
 !roles/requirements.yml
 collections/ansible_collections
 .ansible
+.idea
 
 # Python
 *.pyc

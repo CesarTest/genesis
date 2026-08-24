@@ -1,0 +1,68 @@
+---
+# genesis.deploy 1_clean/1_disks.yml
+#  - Zero-Touch Provisioning Hardware Cleansing Execution Core
+#    - Block: Native OpenStack Ironic Action Clean (Zero-Script Goal)
+#    - Rescue: Raw Linux Kernel DD Mass Fallback & Native Reboot Bypass (Unified Shell)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "B5 - DEPLOY - 1.- Clean : 1) Wipe Disks"
+  when:
+    - uuid is defined
+  vars:
+    b5_clean_cycle:
+      - power: on
+        state: present
+        wait: true
+        timeout: 20
+      - action: clean
+        clean_steps: "{{ clean_steps | from_yaml }}"
+
+  #--------------------------------------------------------------------------
+  # 1.- Bifrost Role (Official Cleaning Trigger)
+  #--------------------------------------------------------------------------
+  block:
+
+    - name: "B5 - DEPLOY - 1.- Clean: 1) Trigger Automated Node Clean Action"
+      openstack.cloud.baremetal_node_action:
+        cloud: "bifrost"
+        uuid:  "{{ uuid }}"
+        action:      "{{ b5_node_action.action | default(omit) }}"
+        clean_steps: "{{ b5_node_action.clean_steps | default(omit) }}"
+        power:       "{{ b5_node_action.power | default(omit) }}"
+        state:       "{{ b5_node_action.state | default(omit) }}"
+        wait:        "{{ b5_node_action.wait  | default(omit) }}"
+        timeout:     "{{ b5_node_action.timeout | default(omit) }}"
+      async: 900
+      environment:
+        OS_CLOUD: "bifrost"
+      loop: "{{ b5_clean_cycle | default([]) }}"
+      loop_control:
+        loop_var: "b5_node_action"
+      delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+
+  #---------------------------------------------------------------------------
+  # 2.- Command Line Fallback (Executed ONLY if the OpenStack native module fails)
+  #---------------------------------------------------------------------------
+  rescue:
+    - name: "B5 - DEPLOY - 1.- Clean: 2) Raw Disk Zapping & Native OS Reboot via Unified Bash"
+      become: yes
+      ansible.builtin.shell:
+        cmd: |
+          echo "==> [FALLBACK] Initiating mass storage partition table signature zapping..."
+          
+          # RAW DESTRUCTION: Overwriting MBR/GPT/LVM metadata on all standard block devices
+          [ -b /dev/vda ] && dd if=/dev/zero of=/dev/vda bs=512 count=100 conv=notrunc 2>/dev/null || true
+          [ -b /dev/sda ] && dd if=/dev/zero of=/dev/sda bs=512 count=100 conv=notrunc 2>/dev/null || true
+          [ -b /dev/nvme0n1 ] && dd if=/dev/zero of=/dev/nvme0n1 bs=512 count=100 conv=notrunc 2>/dev/null || true
+          
+          echo "==> [FALLBACK] Raw block device cleansing completed successfully."
+          
+          # NATIVE LINUX KERNEL BYPASS: Forcing instant operating system reboot
+          echo "==> [REBOOT] Sending immediate force restart signal to the live Linux kernel..."
+          reboot -f
+      async: 10
+      poll: 0
+      register: b5_fallback_script_result
+      changed_when: "b5_fallback_script_result.rc == 0"

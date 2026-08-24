@@ -3,16 +3,15 @@
 #   - Node Lifecycle Stage 1 - Clean
 #   - Node Lifecycle Stage 2 - Deploy
 #   - Node Lifecycle Stage 3 - Active
-#  
+#
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
 
-#-----------------------
-# 1.- Clean Disks
-#-----------------------
-- name: "------------------> B5- DEPLOY BAREMETAL NODE <------------------" 
-  when: 
+#---------------------------------------------------------------------------
+# 0 - Atomic Data Model Rehydration Layout (Variables to Facts)
+#---------------------------------------------------------------------------
+- when:
     - b5_baremetal_vars_file is defined
     - b5_baremetal_vars_file is not none
     - b5_baremetal_vars_file is string
@@ -20,38 +19,57 @@
     - b5_baremetal_vars_file | length > 0
     - lookup('ansible.builtin.file', b5_baremetal_vars_file, errors='ignore') is not none
   block:
-    - name: "B5 - DEPLOY - Cargar el modelo de datos guardado del nodo"
+    - name: "B5 - DEPLOY - A) Read Ledger File into Isolated Memory Buffer"
       ansible.builtin.include_vars:
         file: "{{ b5_baremetal_vars_file }}"
-    - ansible.builtin.include_tasks: "1_clean/1_partition_table.yml"
+        name: "b5_rehydrated_data_buffer"
+
+    - name: "B5 - DEPLOY - B) Commit and Freeze Buffer into Persistent RAM Facts"
+      ansible.builtin.set_fact:
+        uuid:                      "{{ b5_rehydrated_data_buffer.uuid | default('') | string }}"
+        name:                      "{{ b5_rehydrated_data_buffer.name | default('') | string }}"
+        driver:                    "{{ b5_rehydrated_data_buffer.driver | default('redfish') | string }}"
+        driver_info:               "{{ b5_rehydrated_data_buffer.driver_info | default({}) }}"
+        nics:                      "{{ b5_rehydrated_data_buffer.nics | default([]) }}"
+        mac:                       "{{ b5_rehydrated_data_buffer.mac | default('') | string }}"
+        ipv4_address:              "{{ b5_rehydrated_data_buffer.ipv4_address | default('127.0.0.1') | string }}"
+        ipv4_subnet_mask:          "{{ b5_rehydrated_data_buffer.ipv4_subnet_mask | default('255.255.255.0') | string }}"
+        ipv4_router:               "{{ b5_rehydrated_data_buffer.ipv4_router | default('127.0.0.1') | string }}"
+        boot_interface:            "{{ b5_rehydrated_data_buffer.boot_interface | default('ipxe') | string }}"
+        deploy_interface:          "{{ b5_rehydrated_data_buffer.deploy_interface | default('direct') | string }}"
+        power_interface:           "{{ b5_rehydrated_data_buffer.power_interface | default('redfish') | string }}"
+        management_interface:      "{{ b5_rehydrated_data_buffer.management_interface | default('noop') | string }}"
+        instance_info:             "{{ b5_rehydrated_data_buffer.instance_info | default({}) }}"
+        provisioning_ipv4_address: "{{ b5_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
+        clean_steps: "{{ b5_rehydrated_data_buffer.clean_steps | default([]) }}"
+
+    - name: "B5 - DEPLOY - C) Dump Local File Content to Terminal (Pure Local Cat)"
+      ansible.builtin.debug:
+        msg: "{{ lookup('ansible.builtin.file', b5_baremetal_vars_file) | string }}"
+
+  delegate_to: localhost
+
+#-----------------------
+# 1.- Clean Disks
+#-----------------------
+- block:
+    - ansible.builtin.include_tasks: "1_clean/1_disks.yml"
 
 #-----------------------
 # 2.- Deploy Instance
 #-----------------------
-- name: "------------------> B5- DEPLOY BAREMETAL NODE <------------------" 
-  when: 
-    - b5_baremetal_vars_file is defined
-    - b5_baremetal_vars_file is not none
-    - b5_baremetal_vars_file is string
-    - b5_baremetal_vars_file is not mapping
-    - b5_baremetal_vars_file | length > 0
-    - lookup('ansible.builtin.file', b5_baremetal_vars_file, errors='ignore') is not none
-  block:
-    - name: "B5 - DEPLOY - Cargar el modelo de datos guardado del nodo"
-      ansible.builtin.include_vars:
-        file: "{{ b5_baremetal_vars_file }}"
+- block:
     - ansible.builtin.include_tasks: "2_deploy/1_instance.yml"
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
-  
-    
+
 #-----------------------
 # 3.- Activate Instance
-#----------------------- 
+#-----------------------
 #- name: "B5 - DEPLOY - Stage 3:  Active - HeartBeat, Network Connection, Hardware Configuration"
 #  ansible.builtin.include_tasks: "{{ b5_active | default ('3_active/1_hearbeat.yml') }}"
 #  loop:
 #     - "3_active/1_hearbeat.yml"
-#     - "3_active/2_hardware.yml"		 
+#     - "3_active/2_hardware.yml"
 #     - "3_active/3_network.yml"
-#  loop_control:		 
+#  loop_control:
 #    loop_var: "b5_active"

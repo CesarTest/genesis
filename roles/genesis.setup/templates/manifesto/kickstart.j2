@@ -35,6 +35,13 @@ BEWARE: Capturing Dict Values with for loop
       j2_input['system'] | default(none)
     ] 
 -%}
+{%- set repos_candidatos = [
+      j2_node_profiles[ks_model]['repos'] | default(none),
+      j2_system_profiles[ks_model]['repos'] | default(none),
+      j2_os_profiles[ks_model]['repos'] | default(none),
+      j2_input['repos'] | default(none)
+    ]
+-%}
 {%- set auth_candidatos = [
       j2_node_profiles[ks_model]['auth'] | default(none),
       j2_system_profiles[ks_model]['auth'] | default(none),
@@ -93,6 +100,7 @@ BEWARE: Capturing Dict Values with for loop
 -%}
 {%- set ks_preinstall = preins_candidatos   | select('string') | first | default('') -%}
 {%- set ks_system     = system_candidatos   | select('string') | first | default('') -%}
+{%- set ks_repos      = repos_candidatos    | select('string') | first | default('') -%}
 {%- set ks_auth       = auth_candidatos     | select('string') | first | default('') -%}
 {%- set ks_user       = user_candidatos     | select('string') | first | default('') -%}
 {%- set ks_ssh        = ssh_candidatos      | select('string') | first | default('') -%}
@@ -105,6 +113,7 @@ BEWARE: Capturing Dict Values with for loop
 {%-  set ks_sections = [  
         { "header": "# Installer",                        "content": ks_preinstall },
         { "header": "# Users",                            "content": ks_user     },
+        { "header": "# Users",                            "content": ks_repos     },
         { "header": "# SYSTEM",                           "content": ks_system   },
 		{ "header": "# System authorization information", "content": ks_auth     },	  
         { "header": "# SSH Keys",                         "content": ks_ssh      },	
