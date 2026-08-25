@@ -11,7 +11,7 @@
 - name: "B4 SETUP - Dump Bifrost Data Model to File"
   connection: local
   ansible.builtin.copy:
-    dest: "{{ b4_baremetal_vars_file }}"
+    dest: "{{ b4_datamodel_file }}"
     content: "{{ b4_data_model_content | to_nice_yaml(indent=2) }}"
   vars:
     b4_data_model_content:
@@ -33,5 +33,5 @@
       provisioning_ipv4_address: "{{ provisioning_ipv4_address | default('') }}" 
       clean_steps:   "{{ clean_steps | default([]) }}"
   when:
-    - b4_baremetal_vars_file is defined
-    - b4_baremetal_vars_file | length > 0
+    - b4_datamodel_file is defined
+    - b4_datamodel_file | length > 0

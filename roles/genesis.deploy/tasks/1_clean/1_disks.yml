@@ -8,48 +8,31 @@
 # SPDX-License-Identifier: Apache-2.0
 
 - name: "B5 - DEPLOY - 1.- Clean : 1) Wipe Disks" 
-  when:
-    - uuid is defined
-  vars: 
-    b5_clean_cycle:
-      - power: on
-        state: present
-        wait: true
-        timeout: 20
-      - action: clean
-        clean_steps: "{{ clean_steps | from_yaml }}"
-	
+  ignore_errors: yes 
+  
   #--------------------------------------------------------------------------  
-  # 1.- Bifrost Role (Official Cleaning Trigger)
+  # 1.- Machine Already Power On
   #--------------------------------------------------------------------------
   block:
-  
-    - name: "B5 - DEPLOY - 1.- Clean: 1) Trigger Automated Node Clean Action"
+ 
+    # 1.1.- Power On Machine
+    #.......................
+    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Executing node_action (Flipping chassis power state to ON)"
       openstack.cloud.baremetal_node_action:
-        cloud: "bifrost"
-        uuid:  "{{ uuid }}"
-        action:      "{{ b5_node_action.action | default(omit) }}"
-        clean_steps: "{{ b5_node_action.clean_steps | default(omit) }}"
-        power:       "{{ b5_node_action.power | default(omit) }}"
-        state:       "{{ b5_node_action.state | default(omit) }}"
-        wait:        "{{ b5_node_action.wait  | default(omit) }}"
-        timeout:     "{{ b5_node_action.timeout | default(omit) }}"
-      async: 900
-      environment:
-        OS_CLOUD: "bifrost"
-      loop: "{{ b5_clean_cycle | default([]) }}"
-      loop_control:
-        loop_var: "b5_node_action"
-      delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+        uuid: "{{ uuid | default('') }}"
+        deploy: false
+        power: "on"
+        state: present
+        timeout: 60
+        wait: true
+	
 
-  #---------------------------------------------------------------------------
-  # 2.- Command Line Fallback (Executed ONLY if the OpenStack native module fails)
-  #---------------------------------------------------------------------------
-  rescue:
-    - name: "B5 - DEPLOY - 1.- Clean: 2) Raw Disk Zapping & Native OS Reboot via Unified Bash"
+    # 1.2.- Wipe Disks
+    #....................... 
+    - name: "B5 - DEPLOY - 1.- Clean: 1.2) Raw Disk Zapping & Native OS Reboot via Unified Bash"
       become: yes
       
-      # 2.1.- Safe Perimeter Check: Prevent structural damage to the Genesis Orchestrator
+      # Safe Perimeter Check: Prevent structural damage to the Genesis Orchestrator
       when:
         - inventory_hostname != 'localhost'
         - inventory_hostname != '127.0.0.1'
@@ -57,24 +40,50 @@
         - inventory_hostname != (ansible_default_ipv4.address | default('127.0.0.1'))
         - inventory_hostname not in (ansible_all_ipv4_addresses | default(['127.0.0.1']))
 
-      # 2.2.- Destroy Storage Signature Blueprint (Strictly aligned syntax block)
+      # Destroy Storage Signature Blueprint (Strictly aligned syntax block)
       ansible.builtin.shell:
         cmd: |
           echo "==> [FALLBACK] Initiating mass storage partition table signature zapping..."
           
-          # RAW DESTRUCTION: Overwriting MBR/GPT/LVM metadata on all standard block devices
-          [ -b /dev/vda ] && dd if=/dev/zero of=/dev/vda bs=512 count=100 conv=notrunc 2>/dev/null || true
-          [ -b /dev/sda ] && dd if=/dev/zero of=/dev/sda bs=512 count=100 conv=notrunc 2>/dev/null || true
-          [ -b /dev/nvme0n1 ] && dd if=/dev/zero of=/dev/nvme0n1 bs=512 count=100 conv=notrunc 2>/dev/null || true
+          # DYNAMIC DESTRUCTION: Overwriting MBR/GPT/LVM metadata on ALL detected block devices
+          for dev in /sys/class/block/sd* /sys/class/block/vd* /sys/class/block/nvme*n1; do
+              if [ -b "/dev/${dev##*/}" ]; then
+                  echo "Zapping /dev/${dev##*/}"
+                  dd if=/dev/zero of="/dev/${dev##*/}" bs=512 count=100 conv=notrunc 2>/dev/null || true
+              fi
+          done
           
           echo "==> [FALLBACK] Raw block device cleansing completed successfully."
           
-          # NATIVE LINUX KERNEL BYPASS: Forcing instant operating system reboot
-          echo "==> [REBOOT] Sending immediate force restart signal to the live Linux kernel..."
-          reboot -f
+          # NETWORK-SAFE KERNEL BYPASS: Delay execution slightly to guarantee Ansible async payload delivery
+          echo "==> [REBOOT] Scheduling immediate hardware reset signal..."
+          ( sleep 2 && echo 1 > /proc/sys/system_filter/sysrq 2>/dev/null; echo b > /proc/sysrq-trigger ) &
+          exit 0
           
       # ASYNCHRONOUS FIRE ENGINE: Drop connection payload and proceed instantly without lag
-      async: 10
+      async: 30
       poll: 0
       register: b5_fallback_script_result
       changed_when: true
+
+  #---------------------------------------------------------------------------
+  # 2.- Machine Power Off => Force Cleaning Ironic Stage
+  #---------------------------------------------------------------------------
+  rescue:
+
+    - name: "B5 - DEPLOY - 1.- Clean: 1.3) Clean via Ironic API URI Calls"
+      ansible.builtin.include_tasks: "2_lifecycle.yml"
+      vars:
+        b5_lifecycle_instructions: "{{ b5_api_calls_list.api_calls | default([]) }}"
+      loop: 
+        - api_calls: "{{ b5_lifecycle_api_calls.poweron | default([]) }}"
+        - api_calls: "{{ b5_lifecycle_api_calls.clean   | default([]) }}"
+      loop_control:
+        loop_var: "b5_api_calls_list"
+      when: 
+        - b5_api_calls_list.api_calls is defined
+        - b5_api_calls_list.api_calls is not none
+        - b5_api_calls_list.api_calls is iterable
+        - b5_api_calls_list.api_calls is not string
+        - b5_api_calls_list.api_calls is not mapping
+        - b5_api_calls_list.api_calls | length > 0

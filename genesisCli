@@ -943,7 +943,6 @@ function updateInventory() {
 #===================================================
 addGenesisToHosts()  {
 
-   echo "Entra "
    # 1.- Add Genesis to Hosts
    local GENESIS_NAME="genesis.maas.lab"
    if [ -r "$GENESIS_HOSTS_TARGET_FILE" ; then
@@ -1133,22 +1132,29 @@ function trust_relationships() {
     # ACTIONS
     #---------------------------
 	
+	
 	# 1.- Load list of IP nodes
-    if [ -r "${LIST_OF_NODES_FILE}" ] ; then
+    echo "-----> Loading Nodes"
+    echo "${LOG_HEADER} -................. LIST_OF_NODES_FILE=[${LIST_OF_NODES_FILE}]"
+    echo "${LOG_HEADER} -... GENESIS_ANSIBLE_INVENTORY_SOURCE=[${GENESIS_ANSIBLE_INVENTORY_SOURCE}]"
+	if [ -r "${LIST_OF_NODES_FILE}" ] ; then
         . "${LIST_OF_NODES_FILE}" 2> /dev/null
     elif [ -r "${GENESIS_ANSIBLE_INVENTORY_SOURCE}" ] ; then
+	    echo "runAdHoc ' ' '--list-hosts' | sed '1d'"
 	    local INVENTORY_LIST=( $(runAdHoc ' ' '--list-hosts' | sed '1d') )
+        echo "${LOG_HEADER} -................. INVENTORY_LIST=[${INVENTORY_LIST[@]}]"
     fi
 	
 	# 2.- Detect Passwordless 
-	echo "NODES.... [${INVENTORY_LIST[@]}]"
+	echo "${LOG_HEADER} - NODES.... [${INVENTORY_LIST[@]}]"
     if [ -n "${INVENTORY_LIST}" ] ; then
        for NODE in "${INVENTORY_LIST[@]}" ; do
+	       echo "${LOG_HEADER} -passwordlessDetection ${NODE} ${USER} ${BAREMETAL_ROOT_PASSWORD}"
            passwordlessDetection "${NODE}" "${USER}" "${BAREMETAL_ROOT_PASSWORD}"
            OUT="$?"
        done
     else
-       echo -e "[genesisCli.trust_relationships] - ${COLOR[$YELLOW]} [WARN] - MISSING CONFIGURATION FILE: please try to SETUP iDAS before ${COLOR[$NC]}"
+       echo -e "[genesisCli.trust_relationships] - ${COLOR[$YELLOW]} [WARN] - MISSING CONFIGURATION FILE: please try to SETUP Genesis before ${COLOR[$NC]}"
        error "-r" "[genesisCli.trust_relationships] - ${GENESIS_ANSIBLE_INVENTORY_SOURCE}"
     fi	
     unset NODE INVENTORY_LIST LIST_OF_NODES_FILE
@@ -1761,7 +1767,7 @@ function buildCommand() {
 			    OPTIONS="${OPTIONS} -a '${ADHOC_CALL}'" 
 			 fi 	 
 		elif [ -n "${ADHOC_CALL}" ] ; then 
-		     OPTIONS="${OPTIONS} --list-hosts"		 
+		     OPTIONS="${OPTIONS} --list-hosts" 
 	    fi		
         if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"     ; fi
 		if [ -n "${FLUSH_CACHE}"    ] ; then OPTIONS="${OPTIONS} --flush-cache"     ; fi
@@ -1929,13 +1935,13 @@ function shootAdhoc() {
 
    # 0.- Trace Entry
    if [ ! -n "${ATARGET}" ] ; then  local ATARGET="all" ; fi
-   if [[ ! "${LOG}" == "/dev/null" ]] ; then
-      echo "[${TIMESTAMP}] :  ansible  ${OPTIONS} ${ATARGET}"
-   fi
+   #if [[ ! "${LOG}" == "/dev/null" ]] ; then
+   #   echo "[${TIMESTAMP}] :  ansible  ${OPTIONS} ${ATARGET}"
+   #fi
    
    # 1.- Shoot Ad-Hoc Command
    if   [ -x /opt/stack/bifrost/bin/ansible ] ; then
-        echo $OPTIONS
+        #echo $OPTIONS
         /opt/stack/bifrost/bin/ansible  ${OPTIONS} ${ATARGET}
    elif [ -x /usr/bin/ansible    ] ; then
         /usr/bin/ansible ${ATARGET} ${OPTIONS} 
@@ -2025,13 +2031,18 @@ function runPlaybook() {
 #  -Run diferent playbooks with the options captured
 #========================================================
 function runAdHoc() {
+   
    local ADHOC_MODULE="${1}"
    local ADHOC_CALL="${2}"
    local LOG="${3}"
+   
    if [ ! -n "${LOG}" ] ; then local LOG="/dev/null" ; fi  
    buildCommand
-   setupCommand
+
+   export ANSIBLE_CONFIG="${GENESIS_PROJECT_ANSIBLE_CFG}"
+   export ANSIBLE_INVENTORY="${GENESIS_ANSIBLE_INVENTORY_SOURCE}"
    shootCommand "${LOG}"
+   
    unset INVENTORY PTARGET SLOT VAULT EXTRA_VARS ADHOC_MODULE ADHOC_CALL
 }
 

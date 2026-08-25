@@ -1,18 +1,20 @@
 ---
 # genesis.setup main.yml
-#   - Node Lifecycle Stage 1 - Enroll
-#   - Node Lifecycle Stage 2 - Manage
-#  
+#   - Lifecycle Stages Definition - Overwrite default values
+#      B4) Genesis SETUP
+#         - B4.1) Enroll  - Out-Band BMC Connectivity Assurance
+#         - B4.2) Manage  - In-Band Connectivity Assurance
+#         - B4.3) Inspect - BMC/IPA Steps for Gathering Hardware Details
+#
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
 
-- name: "------------------> B4- SETUP BAREMETAL NODE <------------------" 
-  block:
-  
-    #-----------------------------------------------------------------------
-    # 1.- Bifrost Data Model (Hyper-Accelerated Eager Evaluation Fact Core)
-    #-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+# 1.- Bifrost Data Model (Hyper-Accelerated Eager Evaluation Fact Core)
+#-----------------------------------------------------------------------
+- block:
+   
     # 1.1.- Load Values as Persistent Static Values in Local Memory Cache
     - name: "B4 SETUP - A) Freeze Dynamic Model into Static RAM Facts"
       ansible.builtin.set_fact:  
@@ -34,22 +36,25 @@
         instance_info:    "{{ b4_node_instance_info | default({}) }}"
         provisioning_ipv4_address: "{{ b4_enroll_nic_provision_ip | default('127.0.0.1') }}"
         clean_steps:      "{{ b4_clean_steps | default([]) }}"
-      delegate_to: localhost
 
     # 1.2.- Render Values into a Persistent Audit Ledger File 
     - name: "B4 SETUP - B) Commit Frozen Data Model Layout into Ledger"
       ansible.builtin.include_tasks: "datamodel.yml"
-
+      vars: 
+        b4_datamodel_file: "{{ b4_baremetal_vars_file | default('/tmp/datamodel.txt') }}"
+ 
     # 1.3.- Dump File on Screen 
     - name: "B4 SETUP - C) Dump Local File Content to Terminal (Pure Local Cat)"
       ansible.builtin.debug:
         msg: "{{ lookup('ansible.builtin.file', b4_baremetal_vars_file) | string }}"
-      delegate_to: localhost
+   
+  delegate_to: localhost
 
-    #-----------------------
-    # 2.- Setup the Node in Ironic
-    #-----------------------
-
+#-----------------------------------------------------------------------
+# 2.- Setup the Node in Ironic
+#-----------------------------------------------------------------------
+- block:
+  
     # => 2.1.- Stage 1: Enroll - Outband Control
     #.................................
     - ansible.builtin.include_tasks: "1_enroll/1_os_manifesto.yml"
@@ -67,7 +72,7 @@
     - ansible.builtin.include_tasks: "2_manage/3_power_interfaces.yml"
     - ansible.builtin.include_tasks: "2_manage/4_lifecycle.yml"
       vars:
-        b4_lifecycle_instructions: "{{ b4_lifecycle_api_calls.setup | default([]) }}" 
+        b4_lifecycle_instructions: "{{ b4_lifecycle_api_calls.setup + b4_lifecycle_api_calls.poweroff }}" 
     - ansible.builtin.include_tasks: "2_manage/5_available.yml"
 
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

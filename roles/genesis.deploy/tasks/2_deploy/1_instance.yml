@@ -6,10 +6,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 - ansible.builtin.include_role:
-    name: "{{ genesis_baremetal_deploy.name }}"
+    name: "{{ b5_baremetal_deploy.name }}"
   when: 
-    - genesis_baremetal_deploy.name is defined
-    - genesis_baremetal_deploy.condition | default(true) | bool 
-  loop: "{{ genesis_baremetal_deploy_roles | default([]) }}"
+    - b5_baremetal_deploy.name is defined
+    - b5_baremetal_deploy.condition | default(true) | bool 
+  loop: "{{ b5_baremetal_deploy_roles | default([]) }}"
   loop_control:
-    loop_var: "genesis_baremetal_deploy"  
+    loop_var: "b5_baremetal_deploy"  

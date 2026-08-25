@@ -138,12 +138,14 @@ g3_ative_os_installer:
     checksum: "https://ubuntu.com"
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
+    mount: yes
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "x86_64.iso"  
     image: "https://fedoraproject.org"
     checksum: "{{ g3_local_checksum_url }}"
-    checksum_algorithm: "sha256"      
+    checksum_algorithm: "sha256"
+    mount: yes
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "vmlinuz"

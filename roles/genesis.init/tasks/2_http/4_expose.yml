@@ -30,7 +30,10 @@
         path:  "{{ http_exposure.repo }}"
         owner: "{{ g3_webserver_user | default(omit) }}"
         group: "{{ g3_webserver_group | default(omit) }}"
-        recurse: true
+        recurse: "{{ g3_avoid_loops_in_iso }}"
+      vars: 
+        g3_path_to_expose_is_mounted_iso: "{{ (g3_repo_mount_path | default('mnt') in http_exposure.repo) }}"
+        g3_avoid_loops_in_iso: "{{ g3_path_to_expose_is_mounted_iso | ternary(false, true, true) }}" 
       loop: "{{ g3_paths_to_expose | default([]) }}"
       loop_control:
         loop_var: "http_exposure"

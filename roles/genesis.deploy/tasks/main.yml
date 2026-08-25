@@ -1,8 +1,10 @@
 ---
 # genesis.deploy main.yml
-#   - Node Lifecycle Stage 1 - Clean
-#   - Node Lifecycle Stage 2 - Deploy
-#   - Node Lifecycle Stage 3 - Active
+#   - Lifecycle Stages Definition - Overwrite default values
+#      B5) Genesis DEPLOY
+#         - B5.4) Clean   - BMC/IPA Steps to wipe and setup physical disks (RAIDs, etc.)
+#         - B5.5) Deploy  - Install Operating System
+#         - B5.6) Active  - Hearbeat + HW Drivers + Tenant networks
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -23,6 +25,7 @@
       ansible.builtin.include_vars:
         file: "{{ b5_baremetal_vars_file }}"
         name: "b5_rehydrated_data_buffer"
+      delegate_to: localhost
 
     - name: "B5 - DEPLOY - B) Commit and Freeze Buffer into Persistent RAM Facts"
       ansible.builtin.set_fact:
@@ -41,26 +44,32 @@
         management_interface:      "{{ b5_rehydrated_data_buffer.management_interface | default('noop') | string }}"
         instance_info:             "{{ b5_rehydrated_data_buffer.instance_info | default({}) }}"
         provisioning_ipv4_address: "{{ b5_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
-        clean_steps: "{{ b5_rehydrated_data_buffer.clean_steps | default([]) }}"
+        clean_steps:               "{{ b5_rehydrated_data_buffer.clean_steps | default([]) }}"
 
     - name: "B5 - DEPLOY - C) Dump Local File Content to Terminal (Pure Local Cat)"
       ansible.builtin.debug:
         msg: "{{ lookup('ansible.builtin.file', b5_baremetal_vars_file) | string }}"
+      delegate_to: localhost
 
-  delegate_to: localhost
+  rescue:
+    - name: "B5 - DEPLOY - ABORT: Failure In Data Model Rehydration Process"
+      ansible.builtin.fail: 
+        msg: "CRITICAL: The Genesis system was unable to rehydrate the persistent local ledger file into RAM facts. Deploy pipeline aborted to prevent cleaning stage to start."
 
-#-----------------------
+#---------------------------------------------------------------------------
 # 1.- Clean Disks
-#-----------------------
-- block:
+#---------------------------------------------------------------------------
+- ignore_errors: yes
+  block:
     - ansible.builtin.include_tasks: "1_clean/1_disks.yml"
 
-#-----------------------
+#---------------------------------------------------------------------------
 # 2.- Deploy Instance
-#-----------------------
+#---------------------------------------------------------------------------
 - block:
     - ansible.builtin.include_tasks: "2_deploy/1_instance.yml"
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+
 
 #-----------------------
 # 3.- Activate Instance

@@ -1,0 +1,41 @@
+---
+# genesis.deploy 1_clean/2_lifecycle.yml
+#   - Configure Instance Properties
+#      - Map lifecycle data model into Ironic API
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "B5 DEPLOY - 1.- Clean: 2) Set Node Lifecycle Stages Particulars"
+  ignore_errors: yes
+  when: 
+    - b5_lifecycle_instructions is defined 
+    - b5_lifecycle_instructions is not none 
+    - b5_lifecycle_instructions is not string
+    - b5_lifecycle_instructions is not mapping
+  vars:
+    b5_ironic_base_url: "http://127.0.0.1" # {{  b5_url_genesis_ip }}"
+    b5_ironic_port: "{{ b5_url_ironic_port | default(':6385') }}" 
+    b5_ironic_api_version: "{{ genesis_ironic_api_version | default('1.31') }}"
+    b5_ironic_api_default_status: [200, 202, 204]
+  block:
+
+    - name: "B5 DEPLOY - 1.- Clean: 2) Set Node Lifecycle Stages Particulars vía URI"
+      ansible.builtin.uri:
+        url:    "{{ b5_ironic_uri }}{{ lifecycle_stage.path | default('') }}"
+        method: "{{ lifecycle_stage.method }}"
+        body_format: json
+        headers:
+          X-OpenStack-Ironic-API-Version: "{{ b5_ironic_api_version }}"  
+        body: "{{ lifecycle_stage.body  | default(omit) }}"
+        status_code: "{{ lifecycle_stage.status_code | default(b5_ironic_api_default_status) }}"
+      register: b5_pipeline_results
+      vars:
+        b5_ironic_base_path: "/v1/{{ lifecycle_stage.target | default('nodes') }}"
+        b5_ironic_node_path: "{{ b5_ironic_base_path }}/{{ uuid | default(name) }}"
+        b5_ironic_path: "{{ lifecycle_stage.target is defined | ternary(b5_ironic_base_path,b5_ironic_node_path,b5_ironic_node_path) }}"
+        b5_ironic_uri: "{{ b5_ironic_base_url }}{{ b5_ironic_port }}{{ b5_ironic_path }}"	     
+      loop: "{{ b5_lifecycle_instructions | default([]) }}"
+      loop_control:
+         loop_var: "lifecycle_stage"
+      delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

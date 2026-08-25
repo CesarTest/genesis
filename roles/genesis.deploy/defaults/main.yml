@@ -73,3 +73,40 @@ b5_proxmox_hypervisor: >-
 b5_proxmox_hypervisor_ip: "10.10.51.1"
 b5_proxmox_pxe_boot_order: "{{ capabilities.pxe_boot_order | default('net1;virtio0') }}"
 b5_proxmox_os_boot_order:  "{{ capabilities.os_boot_order | default('virtio0;net1') }}"
+
+######################################################
+#  NODE LIFE CYCLE
+######################################################
+b5_lifecycle_api_calls:
+  poweron:
+    - method: "PUT"
+      path: "/states/power"
+      body:
+        target: "power on"
+  clean:
+    - method: "PUT"
+      path: "/states/provision"
+      body:
+        target: "clean"
+        clean_steps: "{{ clean_steps | default({}) }}"
+  boot_pxe:
+    - method: "PATCH"
+      target: "ports"
+      path: "/{{ b4_enroll_nic_provision_mac | lower }}" 
+      body:
+        - op: "replace"
+          path: "/pxe_enabled"
+          value: true
+    - method: "PUT"
+      path: "/management/boot_device"
+      body:
+        boot_device: "pxe"
+        persistent: true   
+  boot_disk:   
+    - method: "PUT"
+      path: "/management/boot_device"
+      body:
+        boot_device: "disk"
+        persistent: true  
+
+ 

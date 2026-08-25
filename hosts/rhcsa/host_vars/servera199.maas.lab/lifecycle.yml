@@ -2,14 +2,18 @@
 # lifecycle.ymnl
 #
 #   - Lifecycle Stages Definition - Overwrite default values
-#     - 1) Enroll  - Out-Band BMC Connectivity Assurance
-#     - 2) Manage  - In-Band Connectivity Assurance
-#     - 3) Inspect - BMC/IPA Steps for Gathering Hardware Details
-#     - 4) Clean   - BMC/IPA Steps to wipe and setup physical disks (RAIDs, etc.)
-#     - 5) Deploy  - Install Operating System
-#     - 6) Active  - Hearbeat + Tenant networks
-#     - 7) Repair  - BMC/IPA Steps to Flash Hardware Firmwares
-#     - 8) Delete  - Un-enroll, remove the node
+#      B4) Genesis SETUP
+#         - B4.1) Enroll  - Out-Band BMC Connectivity Assurance
+#         - B4.2) Manage  - In-Band Connectivity Assurance
+#         - B4.3) Inspect - BMC/IPA Steps for Gathering Hardware Details
+#      B5) Genesis DEPLOY
+#         - B5.4) Clean   - BMC/IPA Steps to wipe and setup physical disks (RAIDs, etc.)
+#         - B5.5) Deploy  - Install Operating System
+#         - B5.6) Active  - Hearbeat + Tenant networks
+#      B6) Genesis PROVISION
+#         - B6.7) Strategy- Apply Integrated Bundles of Software Profiles
+#         - B6.8) Repair  - BMC/IPA Steps to Flash Hardware Firmwares
+#         - B6.9) Delete  - Un-enroll, remove the node
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -21,9 +25,8 @@
 enroll:
 
    # 1.1.- Out-of-Band BMC Information  
-   uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6"
-   driver_info:
-      node_id: "102"
+   uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6" # BIOS ID
+   node_id: "102"                               # BMC ID
 
    # 1.2.- Chassis Information
    capabilities: 
@@ -55,5 +58,5 @@ deploy:
    boot_interface:   "ipxe"
    deploy_interface: "ramdisk"
    os:
-     name: "CentOS"
-     version: "9"
+     name: "Ubuntu"
+     version: "24.04"
