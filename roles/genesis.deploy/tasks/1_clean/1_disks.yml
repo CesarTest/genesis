@@ -7,10 +7,10 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "B5 - DEPLOY - 1.- Clean : 1) Wipe Disks"
+- name: "B5 - DEPLOY - 1.- Clean : 1) Wipe Disks" 
   when:
     - uuid is defined
-  vars:
+  vars: 
     b5_clean_cycle:
       - power: on
         state: present
@@ -18,12 +18,12 @@
         timeout: 20
       - action: clean
         clean_steps: "{{ clean_steps | from_yaml }}"
-
-  #--------------------------------------------------------------------------
+	
+  #--------------------------------------------------------------------------  
   # 1.- Bifrost Role (Official Cleaning Trigger)
   #--------------------------------------------------------------------------
   block:
-
+  
     - name: "B5 - DEPLOY - 1.- Clean: 1) Trigger Automated Node Clean Action"
       openstack.cloud.baremetal_node_action:
         cloud: "bifrost"
@@ -48,6 +48,16 @@
   rescue:
     - name: "B5 - DEPLOY - 1.- Clean: 2) Raw Disk Zapping & Native OS Reboot via Unified Bash"
       become: yes
+      
+      # 2.1.- Safe Perimeter Check: Prevent structural damage to the Genesis Orchestrator
+      when:
+        - inventory_hostname != 'localhost'
+        - inventory_hostname != '127.0.0.1'
+        - inventory_hostname != (b5_url_genesis_ip | default('127.0.0.1'))
+        - inventory_hostname != (ansible_default_ipv4.address | default('127.0.0.1'))
+        - inventory_hostname not in (ansible_all_ipv4_addresses | default(['127.0.0.1']))
+
+      # 2.2.- Destroy Storage Signature Blueprint (Strictly aligned syntax block)
       ansible.builtin.shell:
         cmd: |
           echo "==> [FALLBACK] Initiating mass storage partition table signature zapping..."
@@ -62,7 +72,9 @@
           # NATIVE LINUX KERNEL BYPASS: Forcing instant operating system reboot
           echo "==> [REBOOT] Sending immediate force restart signal to the live Linux kernel..."
           reboot -f
+          
+      # ASYNCHRONOUS FIRE ENGINE: Drop connection payload and proceed instantly without lag
       async: 10
       poll: 0
       register: b5_fallback_script_result
-      changed_when: "b5_fallback_script_result.rc == 0"
+      changed_when: true

@@ -7,7 +7,7 @@
 
 #----------------------
 # 1.- Dump Bifrost Data Model into File
-#----------------------
+#---------------------- 
 - name: "B4 SETUP - Dump Bifrost Data Model to File"
   connection: local
   ansible.builtin.copy:
@@ -30,7 +30,7 @@
       management_interface: "{{ management_interface | default(driver) }}"
       power_interface: "{{ power_interface | default(driver) }}"
       instance_info: "{{ instance_info | default({}) }}"
-      provisioning_ipv4_address: "{{ provisioning_ipv4_address | default('') }}"
+      provisioning_ipv4_address: "{{ provisioning_ipv4_address | default('') }}" 
       clean_steps:   "{{ clean_steps | default([]) }}"
   when:
     - b4_baremetal_vars_file is defined
