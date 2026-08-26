@@ -81,48 +81,54 @@ g3_setup_webserver:
 #  G3 - OS IMAGES RESPOSITORIES
 ######################################################
 g3_extract_os_installer:
-  CentOS:
+  centos:
     - src: "images/pxeboot/vmlinuz"
       dest: "vmlinuz"
     - src: "images/pxeboot/initrd.img"
       dest: "initrd"
     - src: "images/install.img"
       dest: "install.img"
-  RedHat:
+  redhat:
     - src: "images/pxeboot/vmlinuz"
       dest: "vmlinuz"
     - src: "images/pxeboot/initrd.img"
       dest: "initrd"
     - src: "images/install.img"
       dest: "install.img" 
-  Rocky:
+  rocky:
     - src: "images/pxeboot/vmlinuz"
       dest: "vmlinuz"
     - src: "images/pxeboot/initrd.img"
       dest: "initrd"
     - src: "images/install.img"
       dest: "install.img" 
-  Ubuntu:
+  ubuntu:
     - src: "casper/vmlinuz"
       dest: "vmlinuz"
     - src: "casper/initrd"
       dest: "initrd"	
-#    - src: "casper/filesystem.squashfs"
-#      dest: "install.img"
-  Debian:
+  debian:
     - src: "install.amd/vmlinuz"
       dest: "vmlinuz"	
-    - src: "install.amd/initrd.gz"
+    - src: "install.amd/initrd"
       dest: "initrd"
-  SUSE:
+  suse: 
+    - src: "boot/vmlinuz"            
+      dest: "vmlinuz"
+    - src: "boot/initrd"              
+      dest: "initrd"   
+    - src: "boot/live.squashfs"       
+      dest: "install.img"
+  suse_old: 
     - src: "boot/x86_64/loader/linux"
       dest: "vmlinuz"
     - src: "boot/x86_64/loader/initrd"  
       dest: "initrd"   
     - src: "boot/x86_64/root"
-      dest: "install.img"
+      dest: "root"        
 
 g3_ative_os_installer:
+
   - distribution: "CentOS"
     distribution_version: "9"
     os_image_name: "x86_64.iso"
@@ -131,6 +137,7 @@ g3_ative_os_installer:
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
     mount: yes
+
   - distribution: "Ubuntu"
     distribution_version: "24.04"
     os_image_name: "x86_64.iso"
@@ -139,6 +146,7 @@ g3_ative_os_installer:
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
     mount: yes
+
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "x86_64.iso"  
@@ -146,12 +154,14 @@ g3_ative_os_installer:
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"
     mount: yes
+
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "vmlinuz"
     image: "https://fedoraproject.org"
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"
+
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "initramfs" 

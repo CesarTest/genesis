@@ -180,7 +180,7 @@ b4_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}"
 b4_os_images_subpath: "{{ b4_repos['os'] | default('os') }}"
 b4_os_mounted_repo_subpath: "{{ b4_repos['repo'] | default('mnt') }}"
 b4_os_manifesto_subpath: "{{ b4_repos['manifesto'] | default('manifesto') }}"
-b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_repo_os_images_subpath }}"
+b4_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ b4_os_images_subpath }}"
 b4_repo_manifesto_path: "{{ genesis_repo_path | realpath }}/{{ b4_os_manifesto_subpath }}"
 b4_http_manifesto_path: "{{ genesis_http_path | realpath }}/{{ b4_os_manifesto_subpath }}"
 
@@ -396,7 +396,7 @@ b4_baremetal_vars_file: "{{ b4_baremetal_setup_vars_path }}/{{ b4_baremetal_vars
 #------------------
 b4_url_protocol:      "http"
 b4_url_short_subpath: "{{ b4_node_os | lower }}{{ b4_node_os_version | lower | replace('.', '') }}"
-b4_url_full_subpath:  "{{ b4_node_os }}/{{ b4_node_os_version }}"
+b4_url_full_subpath:  "{{ b4_node_os | lower }}/{{ b4_node_os_version | lower }}"
 b4_url_genesis_port:  "{{ b4_genesis_port[b4_url_protocol] is defined | ternary (':','','') }}{{ b4_genesis_port[b4_url_protocol] | default('') }}"
 b4_url_genesis_url:   "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_url_genesis_port }}"
 b4_url_ironic_port:   "{{ b4_genesis_port['ironic'] is defined | ternary (':','','') }}{{ b4_genesis_port['ironic'] | default('') }}"
@@ -952,37 +952,6 @@ b4_os_installer_bootloader_call:
       inst.ks.sendmac
       inst.sshd
 
-  esxi:     
-    # SYSTEM COMPATIBILITY: 
-    #  VMware ESXi 7.x, 8.x, and Next-Gen 9.x architectures.
-    #
-    # PARAMETERS BREAKDOWN & SINGLE-NIC PERSISTENCE:
-    #
-    # 1. ks:
-    #    Specifies the HTTP/HTTPS location of the automated ESXi Kickscript (ks.cfg).
-    #
-    # 2. netdevice=<MAC>:
-    #    HARDWARE ISOLATION (THE DHCP BLOCKER): Forces the VMkernel to use ONLY the physical 
-    #    network card matching the target provisioning MAC address. This completely overrides 
-    #    ESXi's default 'detect' probing routine, which otherwise broadcasts DHCP requests 
-    #    across all available network ports on multi-NIC hardware.
-    #
-    # 3. ip / netmask / gateway / nameserver:
-    #    STATIC IP FORCE: Instructs the installer to bind these static credentials to the 
-    #    isolated interface immediately. Because 'netdevice' is combined with an explicit IP, 
-    #    the VMkernel tags this link as 'boot-critical', locking the physical driver state 
-    #    and preventing any interface reset during the transition to the installer engine.
-    # ==============================================================================
-    kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('mboot.c32') }}"
-    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('boot.cfg') }}"
-    menu: >-
-      ks={{ b4_node_os_manifesto['url'] }}
-      netdevice={{ b4_enroll_nic_provision_mac }}
-      ip={{ b4_enroll_nic_provision_ip }}
-      netmask={{ b4_enroll_nic_provision_netmask }}
-      gateway={{ b4_enroll_nic_provision_gateway}}
-      nameserver={{ b4_url_genesis_ip }}
-
   casper:
     # SYSTEM COMPATIBILITY:
     #  Ubuntu Server: 20.04 LTS (Focal), 22.04 LTS (Jammy), 24.04 LTS (Noble), 26.04 LTS.
@@ -1030,6 +999,130 @@ b4_os_installer_bootloader_call:
       panic=10
       BOOTIF=01-{{ b4_render_mac }}
       modules_to_load={{ b4_render_modules }}
+
+  autoyast:
+    # SYSTEM COMPATIBILITY: 
+    #  openSUSE Leap 16.0, SUSE Linux Enterprise Server (SLES) 16.0.
+    #
+    # PARAMETERS BREAKDOWN & SUSE 16 (AGAMA) ENFORCEMENT:
+    #
+    # 1. root=live:<URL>:
+    #    CRITICAL SUSE 16 CHANGE: Replaces the old 'install=' parameter. 
+    #    Instructs Dracut to stream and boot the Agama live installation installer environment.
+    #
+    # 2. autoyast=<URL>:
+    #    Points to your automated XML control file (AutoYaST profile) hosted on the Genesis web node.
+    #
+    # 3. ifname=<interface>:<MAC>:
+    #    HARDWARE ISOLATION: Locks the setup strictly to our target physical provisioning card.
+    #
+    # 4. ip=<client-ip>::<gateway>:<netmask>:<hostname>:<interface>:none
+    #    STATIC NETWORK INHERITANCE: Uses the unified Dracut positional structure.
+    #    Appending ':none' kills default DHCP broadcasts across all secondary NIC interfaces.
+    # ==============================================================================
+    kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"
+
+    # NEW ARCHITECTURE (SUSE 16+ / Agama / Dracut)
+    # Streams the full ISO/squashfs into RAM and uses positional static IP syntax.
+    menu: >-
+      root=live:{{ b4_render_ksroot }}
+      autoyast={{ b4_node_os_manifesto['url'] }}autoinst.xml
+      ifname={{ b4_render_ifname }}:{{ b4_enroll_nic_provision_mac }}
+      ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
+      nameserver={{ b4_url_genesis_ip }}
+      rd.neednet=1
+      rd.net.dhcp.retry=0
+      rd.net.timeout.carrier=10
+
+    # LEGACY ARCHITECTURE (SUSE 12 / 15 / linuxrc)
+    # Streams packages on-demand from an extracted repo tree and uses isolated arguments.
+    menu_old: >-
+      install={{ b4_netinstall_os_mounted_repo_url }}
+      autoyast={{ b4_node_os_manifesto['url'] }}autoinst.xml
+      ifcfg={{ b4_enroll_nic_provision_mac }}
+      hostip={{ b4_enroll_nic_provision_ip }}
+      netmask={{ b4_enroll_nic_provision_netmask }}
+      gateway={{ b4_enroll_nic_provision_gateway }}
+      nameserver={{ b4_url_genesis_ip }}
+      netwait=10
+      confirm=0
+
+  preseed:  
+    # Debian relies on the traditional Debian Installer (d-i) network module (netcfg)
+    # which uses an explicit key-value argument mapping instead of standard colon strings.
+    #
+    # SYSTEM COMPATIBILITY:
+    # - Debian GNU/Linux (Versions 10, 11, 12, and Next-Gen 13/14 architectures)
+    # - Devuan GNU+Linux (All modern sysvinit/openrc releases)
+    #
+    # PARAMETERS BREAKDOWN & SINGLE-NIC PERSISTENCE:
+    #
+    # 1. auto=true / priority=critical / url:
+    #    Bypasses non-essential configuration prompts and forces automated execution
+    #    pointing to the raw flat-text Debian Preseed configuration deployment file.
+    #
+    # 2. interface=bootif & BOOTIF=01-<MAC>:
+    #    HARDWARE ISOLATION: Instructs netcfg to capture the exact physical network interface 
+    #    passed by the iPXE bootloader via the BOOTIF variable (prefixed with the '01' Ethernet token).
+    #    This isolates the target provisioning card on multi-NIC hardware and drops probing on others.
+    #
+    # 3. netcfg/disable_dhcp=true & netcfg/confirm_static=true:
+    #    DHCP DISABLEMENT: Explicitly kills the automated DHCP discover background daemon 
+    #    inside the d-i ecosystem, forcing the network stack to use the provided static properties.
+    #
+    # 4. netcfg/link_wait_timeout=10:
+    #    PERSISTENT NETWORK LINK: Hard-pins the interface state during the transition from 
+    #    the initial udeb network loader components to the core base-system debootstrap phase, 
+    #    preventing network link flushing or interfaces resets.
+    # ...............................................................
+    kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
+    menu: >-
+      rw
+      auto=true
+      priority=critical
+      url={{ b4_node_os_manifesto['url'] }}
+      interface=bootif
+      netcfg/disable_dhcp=true
+      netcfg/get_ipaddress={{ b4_enroll_nic_provision_ip  }}
+      netcfg/get_netmask={{ b4_enroll_nic_provision_netmask  }}
+      netcfg/get_gateway={{ b4_enroll_nic_provision_gateway  }}
+      netcfg/get_nameservers={{ b4_url_genesis_ip }}
+      netcfg/confirm_static=true
+      netcfg/link_wait_timeout=10
+      BOOTIF=01-{{ b4_render_mac }}
+
+  esxi:     
+    # SYSTEM COMPATIBILITY: 
+    #  VMware ESXi 7.x, 8.x, and Next-Gen 9.x architectures.
+    #
+    # PARAMETERS BREAKDOWN & SINGLE-NIC PERSISTENCE:
+    #
+    # 1. ks:
+    #    Specifies the HTTP/HTTPS location of the automated ESXi Kickscript (ks.cfg).
+    #
+    # 2. netdevice=<MAC>:
+    #    HARDWARE ISOLATION (THE DHCP BLOCKER): Forces the VMkernel to use ONLY the physical 
+    #    network card matching the target provisioning MAC address. This completely overrides 
+    #    ESXi's default 'detect' probing routine, which otherwise broadcasts DHCP requests 
+    #    across all available network ports on multi-NIC hardware.
+    #
+    # 3. ip / netmask / gateway / nameserver:
+    #    STATIC IP FORCE: Instructs the installer to bind these static credentials to the 
+    #    isolated interface immediately. Because 'netdevice' is combined with an explicit IP, 
+    #    the VMkernel tags this link as 'boot-critical', locking the physical driver state 
+    #    and preventing any interface reset during the transition to the installer engine.
+    # ==============================================================================
+    kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('mboot.c32') }}"
+    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('boot.cfg') }}"
+    menu: >-
+      ks={{ b4_node_os_manifesto['url'] }}
+      netdevice={{ b4_enroll_nic_provision_mac }}
+      ip={{ b4_enroll_nic_provision_ip }}
+      netmask={{ b4_enroll_nic_provision_netmask }}
+      gateway={{ b4_enroll_nic_provision_gateway}}
+      nameserver={{ b4_url_genesis_ip }}
 
   ignition:
     # Ignition-based systems use Dracut for their initramfs infrastructure. Therefore, they
@@ -1079,50 +1172,6 @@ b4_os_installer_bootloader_call:
       rd.net.timeout.carrier=10
       BOOTIF=01-{{ b4_render_mac }}
 
-  preseed:  
-    # Debian relies on the traditional Debian Installer (d-i) network module (netcfg)
-    # which uses an explicit key-value argument mapping instead of standard colon strings.
-    #
-    # SYSTEM COMPATIBILITY:
-    # - Debian GNU/Linux (Versions 10, 11, 12, and Next-Gen 13/14 architectures)
-    # - Devuan GNU+Linux (All modern sysvinit/openrc releases)
-    #
-    # PARAMETERS BREAKDOWN & SINGLE-NIC PERSISTENCE:
-    #
-    # 1. auto=true / priority=critical / url:
-    #    Bypasses non-essential configuration prompts and forces automated execution
-    #    pointing to the raw flat-text Debian Preseed configuration deployment file.
-    #
-    # 2. interface=bootif & BOOTIF=01-<MAC>:
-    #    HARDWARE ISOLATION: Instructs netcfg to capture the exact physical network interface 
-    #    passed by the iPXE bootloader via the BOOTIF variable (prefixed with the '01' Ethernet token).
-    #    This isolates the target provisioning card on multi-NIC hardware and drops probing on others.
-    #
-    # 3. netcfg/disable_dhcp=true & netcfg/confirm_static=true:
-    #    DHCP DISABLEMENT: Explicitly kills the automated DHCP discover background daemon 
-    #    inside the d-i ecosystem, forcing the network stack to use the provided static properties.
-    #
-    # 4. netcfg/link_wait_timeout=10:
-    #    PERSISTENT NETWORK LINK: Hard-pins the interface state during the transition from 
-    #    the initial udeb network loader components to the core base-system debootstrap phase, 
-    #    preventing network link flushing or interfaces resets.
-    # ...............................................................
-    kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
-    initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
-    menu: >-
-      rw
-      auto=true
-      priority=critical
-      url={{ b4_node_os_manifesto['url'] }}
-      interface=bootif
-      netcfg/disable_dhcp=true
-      netcfg/get_ipaddress={{ b4_enroll_nic_provision_ip  }}
-      netcfg/get_netmask={{ b4_enroll_nic_provision_netmask  }}
-      netcfg/get_gateway={{ b4_enroll_nic_provision_gateway  }}
-      netcfg/get_nameservers={{ b4_url_genesis_ip }}
-      netcfg/confirm_static=true
-      netcfg/link_wait_timeout=10
-      BOOTIF=01-{{ b4_render_mac }}
 
 b4_node_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_node_os_installer] | default({}) }}" 
   

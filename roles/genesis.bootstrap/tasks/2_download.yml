@@ -19,8 +19,11 @@
   vars:
   
     # 1.- OS Particulars
-    g1_image_os_distro:         "{{ g1_image.distribution | default('RedHat') }}"
+    g1_image_os_distro:         "{{ g1_image.distribution | default('RedHat') | lower }}"
     g1_image_os_distro_version: "{{ g1_image.distribution_version | default('8') }}"
+    g1_deploy_os_path:   "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
+    g1_deploy_tftp_path:   "{{ g1_tftp_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
+    g1_deploy_mount_path:  "{{ g1_repo_mount_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"	
     
     # 2.- Image Name Default Values
     g1_deploy_image_url:          "{{ g1_image.image | default('')  }}"

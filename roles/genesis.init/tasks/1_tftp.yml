@@ -10,8 +10,11 @@
   vars:  
 
     # 1.- OS Particulars
-    g3_image_os_distro:         "{{ g3_image.distribution | default('RedHat') }}"
+    g3_image_os_distro:         "{{ g3_image.distribution | default('RedHat') | lower }}"
     g3_image_os_distro_version: "{{ g3_image.distribution_version | default('8') }}"
+    g3_deploy_os_path:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
+    g3_deploy_tftp_path:   "{{ g3_tftp_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
+    g3_deploy_mount_path:  "{{ g3_repo_mount_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
 
     # 2.- Image Name Default Values
     g3_deploy_image_default_name: "{{ g3_image.image | default('') | basename }}"
@@ -21,7 +24,8 @@
 
     # 3.- Ramdisk Files
     g3_iso_files:     "{{ g3_extract_os_installer[g3_image_os_distro] | default([]) }}"
-    g3_ramdisk_files: "{{ g3_iso_files | map(attribute='src') | list | default([]) }}"  
+    g3_ramdisk_files: "{{ g3_iso_files | map(attribute='src') | list | default([]) }}"
+	
 
   block: 
     - ansible.builtin.include_tasks: "1_tftp/1_folder.yml"

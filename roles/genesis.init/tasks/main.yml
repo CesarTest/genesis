@@ -17,22 +17,6 @@
   block:
 
     #---------------------------------------
-    # 0. Load Sources
-    #---------------------------------------  
-    - name: "G3 INIT - SOURCES : Ingesting sources.yml from inventory path"
-      ansible.builtin.include_vars:
-        file: "{{ inventory_dir | string }}/sources.yml"
-      ignore_errors: true
-
-    - name: "G3 INIT - SOURCES : Freezing verified source list into memory facts"
-      ansible.builtin.set_fact:
-        download_image_sources: "{{ genesis_download_images | default([]) }}"
-      when:
-        - genesis_sources_enabled is defined
-        - genesis_sources_enabled is not none
-        - genesis_sources_enabled | bool
-
-    #---------------------------------------
     # 1. PXE - TFTP: Upload Bootloader & OS Installers
     #---------------------------------------   
     - ansible.builtin.include_tasks: "1_tftp.yml"
