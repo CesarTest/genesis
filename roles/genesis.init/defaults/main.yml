@@ -133,7 +133,7 @@ g3_ative_os_installer:
     mount: yes
   - distribution: "Ubuntu"
     distribution_version: "24.04"
-    os_image_name: "amd64.iso"
+    os_image_name: "x86_64.iso"
     image: "https://ubuntu.com"
     checksum: "https://ubuntu.com"
     checksum_algorithm: "sha256"

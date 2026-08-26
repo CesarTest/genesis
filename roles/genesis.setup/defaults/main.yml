@@ -875,17 +875,18 @@ b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | defa
 #     ALLOWED (Inevitable)                BLOCKED!                         BLOCKED!
 #     (Temporary dynamic IP to           (Static anchoring via             (Direct inheritance via
 #      fetch vmlinuz/initrd.img)          'ifname' and 'none' token)        'ksdevice=net0' flag)
+
+# --> NIC Rendereing
+b4_render_ip: "{{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}:{{ b4_enroll_node_name }}"
+b4_render_mac: "{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}"
+b4_render_ifname: "net0"
+b4_render_modules: "r8125,r8168,r8169,e1000e,igb,ixgbe,i40e,ice,tg3,bnxt_en,bnx2x,mlx5_core,virtio_net,vmxnet3"
+
+# --> Source Installers Renderering
 b4_render_ksroot: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.install | default('install.img') }}"
 b4_render_ignroot: "{{ b4_render_ksroot }}"
-b4_render_casperds: "nocloud-net;s={{ b4_node_os_manifesto['url'] | default('') }}/"
-
-b4_render_ksip: "{{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}:{{ b4_enroll_node_name }}:net0:none"
-b4_render_casperip: "{{ b4_render_ksip }}"
-b4_render_ignip: "{{ b4_render_ksip }}" 
-
-b4_render_caspermac: "{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}"
-b4_render_ignmac: "{{ b4_render_caspermac }}"
-b4_render_premac: "{{ b4_render_caspermac }}"
+# Beware with \; => Required for PXE,iPXE... but not for GRUB
+b4_render_casperds: 'nocloud-net\;s={{ b4_node_os_manifesto["url"] | default("") }}'
 
 b4_os_installer_bootloader_call:
   anaconda:
@@ -894,27 +895,23 @@ b4_os_installer_bootloader_call:
     #
     # PARAMETERS BREAKDOWN & SINGLE-NIC ENFORCEMENT:
     #
-    # 1. inst.ks & inst.repo:
-    #    Instructs the Anaconda installer where to fetch the automated answer file (Kickstart)
-    #    and the base OS software packages.
+    # 1. root & inst.ks & inst.repo:
+    #    - 'root=live:...' maps the path to the live installer squashfs image (install.img).
+    #    - 'inst.ks' instructs Anaconda where to fetch the automated answer file (Kickstart).
+    #    - 'inst.repo' points to the base operating system package repository location.
     #
-    # 2. ifname=net0:<MAC>:
+    # 2. ifname=<interface>:<MAC>:
     #    HARDWARE ISOLATION: Binds the physical network interface matching the target 
-    #    provisioning MAC address to a predictable and fixed link name: 'net0'.
+    #    provisioning MAC address to a predictable and fixed link name ('net0' via b4_render_ifname).
     #    This isolates the exact network card we want on multi-NIC physical servers.
-    #    Note: Uses '=' instead of ':' to comply with strict Dracut parsing rules
     #
     # 3. ip=<client-ip>::<gateway>:<netmask>:<hostname>:<interface>:<autoconf>:
     #    DHCP DISABLEMENT & EXCLUSIVE STATIC IP: Forces Dracut to assign a static IP address
-    #    to 'net0' using Dracut's positional, colon-separated format:
-    #    - Field 1: Node static IP address.
-    #    - Field 2: Peer (Left blank).
-    #    - Field 3: Gateway IP (Left blank if local, or maps to default gateway).
-    #    - Field 4: Subnet Netmask.
-    #    - Field 5: Target node hostname.
-    #    - Field 6: Interface name bound via 'ifname' ('net0').
-    #    - Field 7: Autoconf token set to 'none'. This completely kills implicit DHCP loops 
-    #               globally, leaving all other non-matching interfaces inactive (DOWN).
+    #    to the custom interface ('net0') using Dracut's positional, colon-separated format:
+    #    - Field 1-5 (b4_render_ip): Handles Node IP, Gateway, Netmask, and Hostname layout.
+    #    - Field 6 (b4_render_ifname): The target interface bound via the 'ifname' parameter.
+    #    - Field 7 ('none'): This completely kills implicit DHCP loops globally, forcing 
+    #                        all other non-matching interfaces to remain inactive (DOWN).
     #
     # 4. nameserver:
     #    Declares the primary DNS server (pointing to the Genesis infra node) 
@@ -925,15 +922,19 @@ b4_os_installer_bootloader_call:
     #      initial RAM disk execution, passing it fully functional to the real OS installer.
     #    - Timeout prevents infinite hanging if the physical switchport takes time to transition.
     #   
-    # 6. ksdevice=net0:
-    #    ANACONDA DHCP BLOCK: Forces Anaconda to inherit the 'net0' interface already 
-    #    configured by Dracut. Since the device contains an active static IP state inside 
+    # 6. ksdevice=<interface>:
+    #    ANACONDA DHCP BLOCK: Forces Anaconda to inherit the interface already configured 
+    #    by Dracut ('net0'). Since the device contains an active static IP state inside 
     #    the kernel, Anaconda cancels its own implicit DHCP broadcast sequences.
     #
-    # 7. inst.ks.sendmac / rd.net.dhcp.retry=0:
+    # 7. inst.ks.sendmac & rd.net.dhcp.retry=0:
     #    - 'inst.ks.sendmac' passes the physical MAC address within the HTTP headers to the 
-    #      Genesis server, anchoring Anaconda strictly to the 'net0' link.
+    #      Genesis server, anchoring Anaconda strictly to the designated interface link.
     #    - 'rd.net.dhcp.retry=0' prevents network re-negotiation loops during stage transitions.
+    #
+    # 8. inst.sshd:
+    #    Enables the SSH daemon inside the Anaconda installer context to allow remote 
+    #    debugging during automated deployments.
     # ==============================================================================
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"
@@ -941,13 +942,13 @@ b4_os_installer_bootloader_call:
       root=live:{{ b4_render_ksroot }}
       inst.ks={{ b4_node_os_manifesto['url'] }}
       inst.repo={{ b4_netinstall_os_mounted_repo_url }}/
-      ifname=net0:{{ b4_enroll_nic_provision_mac }}
-      ip={{ b4_render_ksip }}
+      ifname={{ b4_render_ifname }}:{{ b4_enroll_nic_provision_mac }}
+      ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
       nameserver={{ b4_url_genesis_ip }}
       rd.neednet=1
       rd.net.dhcp.retry=0
       rd.net.timeout.carrier=10
-      ksdevice=net0
+      ksdevice={{ b4_render_ifname }}
       inst.ks.sendmac
       inst.sshd
 
@@ -983,42 +984,52 @@ b4_os_installer_bootloader_call:
       nameserver={{ b4_url_genesis_ip }}
 
   casper:
-    # Ubuntu uses the 'casper' live boot framework (initramfs-tools). 
-    #
     # SYSTEM COMPATIBILITY:
-    # - Ubuntu Server: 20.04 LTS (Focal), 22.04 LTS (Jammy), 24.04 LTS (Noble), 26.04 LTS.
+    #  Ubuntu Server: 20.04 LTS (Focal), 22.04 LTS (Jammy), 24.04 LTS (Noble), 26.04 LTS.
     #
     # PARAMETERS BREAKDOWN & SINGLE-NIC PERSISTENCE:
     #
-    # 1. url & autoinstall & ds=nocloud-net:
-    #    Mounts the cloud-init ISO over HTTP into RAM and triggers the automated installer.
+    # 1. boot=casper & netboot=url & url:
+    #    Mandatory flags that instruct the initial RAM disk (initramfs-tools) to bootstrap 
+    #    the live system environment and stream/cache the complete OS ISO into RAM via HTTP.
     #
-    # 2. BOOTIF=01-<MAC>:
-    #    HARDWARE ISOLATION: The 'BOOTIF' variable (prefixed with the '01' hardware type token 
-    #    for Ethernet) tells Casper exactly which physical network interface must be used.
-    #    Casper binds exclusively to this card and ignores all alternative ports.
+    # 2. autoinstall & ds=nocloud-net... & cloud-config-url=/dev/null:
+    #    - 'autoinstall' triggers the automated Subiquity installation engine.
+    #    - 'ds=nocloud-net;s=...' points to the local HTTP directory hosting the user-data/meta-data.
+    #    - 'cloud-config-url=/dev/null' bypasses external cloud seed lookups to prevent timeouts.
     #
-    # 3. ip=<client-ip>::<gateway>:<netmask>::<interface>:<method>:
-    #    CASPER DHCP BLOCK: Configures the static schema using Casper's string mapping.
-    #    Setting the final method token to 'off' completely disables fallback DHCP loops.
-    #    Note: 'eth0' acts as the kernel interface placeholder matching the BOOTIF target.
+    # 3. ip=<client-ip>::<gateway>:<netmask>:<hostname>::none & nameserver:
+    #    - Establishes early static networking using Casper's positional string format.
+    #    - Appending '::none' completely suppresses implicit DHCP loop fallback cycles.
+    #    - 'nameserver' exposes the Genesis infra node DNS to resolve the manifesto/ISO HTTP targets.
     #
-    # 4. layer2link=eth0:
-    #    PERSISTENT NETWORK LINK: Instructs Casper to lock the interface configuration 
-    #    in kernel space. It explicitly blocks the common Casper bug that flushes and resets 
-    #    network links right before launching Subiquity, maintaining zero-down-state.
-    # ...............................................................
+    # 4. BOOTIF=01-<MAC>:
+    #    HARDWARE ISOLATION: Forces Casper to bind its early network state strictly to the physical 
+    #    interface matching this MAC address. The '01' token acts as the standard ARP Ethernet hardware type.
+    #    This prevents predictive naming conflicts and prevents traffic allocation on wrong physical ports.
+    #
+    # 5. modules_to_load & Hardware Tuning:
+    #    - 'modules_to_load' forces early execution of missing storage/NIC modules to bypass 
+    #      device detection dropouts.
+    #    - 'rootdelay', 'boot_delay', and 'pci' stabilize controller reallocations on dense servers.
+    # ==============================================================================
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
     menu: >-
-      root=ramfs
+      boot=casper
+      netboot=url
       url={{ b4_netinstall_os_iso_url }}
+      cloud-config-url=/dev/null
       autoinstall
       ds={{ b4_render_casperds }}
-      ip={{ b4_render_casperip }}
-      layer2link=eth0
+      ip={{ b4_render_ip }}::none
       nameserver={{ b4_url_genesis_ip }}
-      BOOTIF=01-{{ b4_render_caspermac }}
+      rootdelay=20
+      boot_delay=1
+      pci=realloc
+      panic=10
+      BOOTIF=01-{{ b4_render_mac }}
+      modules_to_load={{ b4_render_modules }}
 
   ignition:
     # Ignition-based systems use Dracut for their initramfs infrastructure. Therefore, they
@@ -1060,13 +1071,13 @@ b4_os_installer_bootloader_call:
     menu: >-
       root=live:{{ b4_render_ignroot }}
       ignition.config.url={{ b4_node_os_manifesto['url'] }}
-      ifname=net0:{{ b4_enroll_nic_provision_mac }}
-      {{ b4_render_ignip }}
+      ifname={{ b4_render_ifname }}:{{ b4_enroll_nic_provision_mac }}
+      ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
       nameserver={{ b4_url_genesis_ip }}
       rd.neednet=1
       rd.net.dhcp.retry=0
       rd.net.timeout.carrier=10
-      BOOTIF=01-{{ b4_render_ignmac }}
+      BOOTIF=01-{{ b4_render_mac }}
 
   preseed:  
     # Debian relies on the traditional Debian Installer (d-i) network module (netcfg)
@@ -1099,7 +1110,6 @@ b4_os_installer_bootloader_call:
     kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
     initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"  
     menu: >-
-      root=/dev/ram
       rw
       auto=true
       priority=critical
@@ -1112,7 +1122,7 @@ b4_os_installer_bootloader_call:
       netcfg/get_nameservers={{ b4_url_genesis_ip }}
       netcfg/confirm_static=true
       netcfg/link_wait_timeout=10
-      BOOTIF=01-{{ b4_render_premac }}
+      BOOTIF=01-{{ b4_render_mac }}
 
 b4_node_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_node_os_installer] | default({}) }}" 
   
