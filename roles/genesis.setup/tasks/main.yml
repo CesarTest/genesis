@@ -14,7 +14,7 @@
 # 1.- Bifrost Data Model (Hyper-Accelerated Eager Evaluation Fact Core)
 #-----------------------------------------------------------------------
 - block:
-   
+
     # 1.1.- Load Values as Persistent Static Values in Local Memory Cache
     - name: "B4 SETUP - A) Freeze Dynamic Model into Static RAM Facts"
       ansible.builtin.set_fact:  
@@ -30,12 +30,13 @@
         ipv4_router:      "{{ b4_enroll_nic_provision_gateway | default('127.0.0.1') }}" 
         boot_interface:   "{{ b4_node_boot_interface | default('ipxe') }}"
         deploy_interface: "{{ b4_node_deploy_interface | default('direct') }}"
-        power_interface:  "{{ b4_node_power_interface | default(b4_enroll_node_bmc_driver) | default('redfish') }}"
-        management_interface: "{{ b4_node_management_interface | default('noop') }}"
-        hardware_type:    "{{ b4_node_hardware_type | default(b4_enroll_node_bmc_driver) | default('redfish') }}" 
         instance_info:    "{{ b4_node_instance_info | default({}) }}"
         provisioning_ipv4_address: "{{ b4_enroll_nic_provision_ip | default('127.0.0.1') }}"
-        clean_steps:      "{{ b4_clean_steps | default([]) }}"
+        power_interface:  "{{ b4_power_cycle.power_interface | default(b4_enroll_node_bmc_driver) | default('redfish') }}"
+        management_interface: "{{ b4_power_cycle.management_interface | default('noop') }}"
+        hardware_type:    "{{ b4_power_cycle.hardware_type | default(b4_enroll_node_bmc_driver) | default('redfish') }}" 
+        clean_steps:      "{{ b4_power_cycle.clean_steps | default([]) }}"
+        power_cycle:      "{{ b4_node_power_cycle_profile | default('manual') }}"  
 
     # 1.2.- Render Values into a Persistent Audit Ledger File 
     - name: "B4 SETUP - B) Commit Frozen Data Model Layout into Ledger"
@@ -69,7 +70,7 @@
       when: 
         - b4_set_boot_order is defined
         - b4_set_boot_order | bool
-    - ansible.builtin.include_tasks: "2_manage/3_power_interfaces.yml"
+    - ansible.builtin.include_tasks: "2_manage/3_power_cycle.yml"
     - ansible.builtin.include_tasks: "2_manage/4_lifecycle.yml"
       vars:
         b4_lifecycle_instructions: "{{ b4_lifecycle_api_calls.setup + b4_lifecycle_api_calls.poweroff }}" 

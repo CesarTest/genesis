@@ -45,6 +45,8 @@
         instance_info:             "{{ b5_rehydrated_data_buffer.instance_info | default({}) }}"
         provisioning_ipv4_address: "{{ b5_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
         clean_steps:               "{{ b5_rehydrated_data_buffer.clean_steps | default([]) }}"
+        power_cycle:               "{{ b5_rehydrated_data_buffer.power_cycle | default([]) }}"
+
 
     - name: "B5 - DEPLOY - C) Dump Local File Content to Terminal (Pure Local Cat)"
       ansible.builtin.debug:
@@ -61,7 +63,7 @@
 #---------------------------------------------------------------------------
 #- ignore_errors: yes
 #  block:
-#    - ansible.builtin.include_tasks: "1_clean/1_disks.yml"
+#    - ansible.builtin.include_tasks: "1_clean/1_manual.yml"
 
 #---------------------------------------------------------------------------
 # 2.- Deploy Instance
@@ -69,7 +71,8 @@
 - block:
     - ansible.builtin.include_tasks: "2_deploy/1_instance.yml"
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
-
+- block:
+    - ansible.builtin.include_tasks: "1_clean/1_manual.yml"
 
 #-----------------------
 # 3.- Activate Instance

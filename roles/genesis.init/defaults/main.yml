@@ -113,11 +113,11 @@ g3_extract_os_installer:
     - src: "install.amd/initrd"
       dest: "initrd"
   suse: 
-    - src: "boot/vmlinuz"            
+    - src: "boot/x86_64/loader/linux"
       dest: "vmlinuz"
-    - src: "boot/initrd"              
-      dest: "initrd"   
-    - src: "boot/live.squashfs"       
+    - src: "boot/x86_64/loader/initrd"
+      dest: "initrd"
+    - src: "LiveOS/squashfs.img"
       dest: "install.img"
   suse_old: 
     - src: "boot/x86_64/loader/linux"

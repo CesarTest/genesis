@@ -1,0 +1,61 @@
+---
+# genesis.deploy 1_clean/1_manual.yml
+#  - Power Cycle Manual
+#     - No BMC interactions, fixed boot order
+#     - Force PXE by cleaning disk partition table
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "B5 - DEPLOY - 1.- Clean : 1) Wipe Disks in Manual Power Cycle" 
+  ignore_errors: yes 
+
+  #--------------------------------------------------------------------------  
+  # 1.- Machine Already Power On
+  #--------------------------------------------------------------------------
+  block:
+ 
+    # 1.1.- Wipe Disks
+    #....................... 
+    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Raw Disk Zapping"
+      become: yes
+      ansible.builtin.shell:
+        cmd: |
+          ZAPPED_COUNT=0
+          for dev in /sys/class/block/sd* /sys/class/block/vd* /sys/class/block/nvme*n1; do
+              [ -e "$dev" ] || continue
+              if [ -b "/dev/${dev##*/}" ]; then
+                  dd if=/dev/zero of="/dev/${dev##*/}" bs=512 count=100 conv=notrunc 2>/dev/null
+                  ZAPPED_COUNT=$((ZAPPED_COUNT + 1))
+              fi
+          done
+          echo "TOTAL_ZAPPED:${ZAPPED_COUNT}"
+      async: 30
+      poll: 1   
+      register: b5_zap_result
+      changed_when: "'TOTAL_ZAPPED:0' not in b5_zap_result.stdout"
+
+    # 1.2.-Reboot
+    #....................... 
+    - name: "B5 - DEPLOY - 1.2) Trigger Hard Reset via Native Ansible Module"
+      become: yes
+      ansible.builtin.reboot:
+        reboot_timeout: 0        # (Fire & Forget)
+        msg: "Genesis Core Engine triggering automated deployment reset"
+      failed_when: false 
+      changed_when: false
+
+  #--------------------------------------------------------------------------  
+  # 2.- Conditions
+  #--------------------------------------------------------------------------  
+  when:
+    # Power Cycle Manual
+    - power_cycle is defined
+    - power_cycle is not none
+    - power_cycle is string
+    - "'manual' in (power_cycle | lower)" 
+    
+    # Connection Transport Hard-Lock (Anti-Local Execution)
+    - ansible_connection is defined
+    - ansible_connection != 'local'
+    - ansible_connection == 'ssh'
