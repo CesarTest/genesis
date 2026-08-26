@@ -59,9 +59,9 @@
 #---------------------------------------------------------------------------
 # 1.- Clean Disks
 #---------------------------------------------------------------------------
-- ignore_errors: yes
-  block:
-    - ansible.builtin.include_tasks: "1_clean/1_disks.yml"
+#- ignore_errors: yes
+#  block:
+#    - ansible.builtin.include_tasks: "1_clean/1_disks.yml"
 
 #---------------------------------------------------------------------------
 # 2.- Deploy Instance

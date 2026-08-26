@@ -17,7 +17,12 @@
  
     # 1.1.- Power On Machine
     #.......................
-    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Executing node_action (Flipping chassis power state to ON)"
+    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Power On via Ironic API URI Calls"
+      ansible.builtin.include_tasks: "2_lifecycle.yml"
+      vars:
+        b5_lifecycle_instructions: "b5_lifecycle_api_calls.poweron"
+ 
+    - name: "B5 - DEPLOY - 1.- Clean: 1.2) Power On Executing node_action openstack ansible module"
       openstack.cloud.baremetal_node_action:
         uuid: "{{ uuid | default('') }}"
         deploy: false
@@ -25,7 +30,6 @@
         state: present
         timeout: 60
         wait: true
-	
 
     # 1.2.- Wipe Disks
     #....................... 

@@ -15,17 +15,18 @@ all:
     
  hosts:  
    servera199.maas.lab:
+     ansible_host: 10.10.51.150
      ansible_user: cesar 
      ansible_become_pass: cesar
 
-   serverb199.maas.lab:
-     ansible_user: cesar 
-     ansible_become_pass: cesar
-
-   workstation199.maas.lab:
-     ansible_user: cesar 
-     ansible_become_pass: cesar
-
+ # serverb199.maas.lab:
+ #   ansible_user: cesar 
+ #   ansible_become_pass: cesar
+ # 
+ # workstation199.maas.lab:
+ #   ansible_user: cesar 
+ #   ansible_become_pass: cesar
+ # 
  #--------------------------------------------------------------------
  #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
  #--------------------------------------------------------------------

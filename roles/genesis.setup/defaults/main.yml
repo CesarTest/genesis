@@ -609,7 +609,7 @@ b4_kickstart_template_defaults:
 
 # 1.3.- Changes over Default Template according OS release
 b4_kickstart_template_os_profiles:
-  "7":
+  "7": &profile_rhel7
     auth: "auth --enableshadow --passalgo=sha512"
     logging: "logging --level=info"   
     packages: |
@@ -632,6 +632,111 @@ b4_kickstart_template_os_profiles:
       EOF
           
       echo "==> Legacy repository profile injected successfully."
+
+  # Typographical adapters 
+  7: *profile_rhel7
+
+#--------------------------------------------------------------------------
+# VMware ESXi Automated Installation Blueprint (Weasel Kickstart Core)
+#--------------------------------------------------------------------------
+b4_esxi_template_defaults:
+  preinstall: |
+    # Accept the VMware End User License Agreement natively
+    vmaccepteula
+
+  system: |
+    # Set host localization profile
+    keyboard {{ b4_node_os_locale_info.keyboard | default('US_Default') }}
+    
+    # Use text mode install interface
+    text
+    
+    # Reboot host automatically once Weasel finishes image layout deployment
+    reboot
+
+  user: |
+    # Enforces encrypted root authorization password symmetrically
+    rootpw --iscrypted {{ b4_root_user_password }}
+
+  network: |
+    # Connectivity setup mapping physical provision link natively to the first vmnic
+    network --bootproto=static --ip={{ b4_enroll_nic_provision_ip | default('10.10.51.150') }} --netmask={{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }} --gateway={{ b4_url_genesis_ip | default('10.10.51.5') }} --nameserver={{ b4_url_genesis_ip | default('10.10.51.5') }} --hostname={{ b4_enroll_node_name }} --device=vmnic0 --addvmportgroup=0
+
+  storage: |
+    {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('sda') %}
+    {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'firstdisk' %}{% endif %}
+    # Massive storage automated allocation erasing existing partitions
+    # Installs strictly on the targeted local block device overwriting old VMFS footprints
+    clearpart --firstlocaldisk --overwritevmfs
+    install --firstlocaldisk --overwritevmfs
+
+  postinstall: |
+    # ESXi Post-installation scripting engine driven by busybox environment
+    %post --interpreter=busybox
+    echo "==> [GENESIS] Injecting cryptographic out-of-band trust matrix..."
+    mkdir -p /etc/ssh/keys-root
+    chmod 700 /etc/ssh/keys-root
+    echo "{{ b4_provision_user_ssh_key }}" > /etc/ssh/keys-root/authorized_keys
+    chmod 600 /etc/ssh/keys-root/authorized_keys
+    echo "==> [GENESIS] Trust matrix successfully passed to ESXi hypervisor."
+
+#--------------------------------------------------------------------------
+# GÉNESIS OS PROFILES - HYPERVISOR MATRIX (ESXi 7 & ESXi 8 Structural Layout)
+#--------------------------------------------------------------------------
+b4_kickstart_template_os_profiles:
+  "esxi7": &profile_esxi7
+    auth: ""        # Omitido: ESXi no utiliza authselect de Red Hat
+    logging: ""     # Omitido: ESXi gestiona los logs internamente en syslog
+    packages: ""    # Omitido: ESXi se instala completo desde su ramdisk de fábrica
+    repos: ""       # Omitido: ESXi no consume repositorios RPM por HTTP durante el deploy
+    postinstall: |
+      # -------------------------------------------------------------------
+      # ESXi 7 Post-installation scripting engine driven by busybox environment
+      # -------------------------------------------------------------------
+      %post --interpreter=busybox
+      echo "==> [GENESIS] Initializing ESXi 7.x Post-Deployment Security Matrix..."
+      
+      # Enforces cryptographic out-of-band trust matrix for root profile
+      mkdir -p /etc/ssh/keys-root
+      chmod 700 /etc/ssh/keys-root
+      echo "{{ b4_provision_user_ssh_key }}" > /etc/ssh/keys-root/authorized_keys
+      chmod 600 /etc/ssh/keys-root/authorized_keys
+      
+      # ESXi 7 Specific Tuning: Enable SSH Service permanently on boot
+      vim-cmd hostsvc/enable_ssh
+      vim-cmd hostsvc/start_ssh
+      
+      echo "==> [GENESIS] ESXi 7.x identity and trust matrix passed successfully."
+
+  "esxi8": &profile_esxi8
+    auth: ""
+    logging: ""
+    packages: ""
+    repos: ""
+    postinstall: |
+      # -------------------------------------------------------------------
+      # ESXi 8.0 Post-installation scripting engine driven by busybox environment
+      # -------------------------------------------------------------------
+      %post --interpreter=busybox
+      echo "==> [GENESIS] Initializing ESXi 8.0 Production Security Matrix..."
+      
+      # Enforces cryptographic out-of-band trust matrix for root profile
+      mkdir -p /etc/ssh/keys-root
+      chmod 700 /etc/ssh/keys-root
+      echo "{{ b4_provision_user_ssh_key }}" > /etc/ssh/keys-root/authorized_keys
+      chmod 600 /etc/ssh/keys-root/authorized_keys
+      
+      # ESXi 8.0 Specific Tuning: Suppress shell configuration warnings inside vSphere Console
+      esxcli system settings advanced set -o /UserVars/SuppressShellWarning -i 1
+      
+      # Persistence: Enforce immediate backup of configuration states to NVRAM
+      /sbin/auto-backup.sh
+      
+      echo "==> [GENESIS] ESXi 8.0 identity and enterprise matrix passed successfully."
+
+  # Typographical adapters
+  esxi7: *profile_esxi7
+  esxi8: *profile_esxi8
 
 #------------------------------------
 # 2.- Casper Automated Autoinstall (Ubuntu Server Modern Blueprint)
@@ -771,12 +876,14 @@ b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | defa
 #     (Temporary dynamic IP to           (Static anchoring via             (Direct inheritance via
 #      fetch vmlinuz/initrd.img)          'ifname' and 'none' token)        'ksdevice=net0' flag)
 b4_render_ksroot: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.install | default('install.img') }}"
-b4_render_ksip: "{{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}:{{ b4_enroll_node_name }}:net0:none"
-b4_render_casperds: "nocloud-net;s={{ b4_node_os_manifesto['url'] | default('') }}/"
-b4_render_casperip: "{{ b4_render_ksip }}"
-b4_render_caspermac: "{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}"
 b4_render_ignroot: "{{ b4_render_ksroot }}"
+b4_render_casperds: "nocloud-net;s={{ b4_node_os_manifesto['url'] | default('') }}/"
+
+b4_render_ksip: "{{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}:{{ b4_enroll_node_name }}:net0:none"
+b4_render_casperip: "{{ b4_render_ksip }}"
 b4_render_ignip: "{{ b4_render_ksip }}" 
+
+b4_render_caspermac: "{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}"
 b4_render_ignmac: "{{ b4_render_caspermac }}"
 b4_render_premac: "{{ b4_render_caspermac }}"
 

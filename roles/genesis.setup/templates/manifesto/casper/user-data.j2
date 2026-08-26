@@ -1,217 +1,38 @@
-{#############################################################################
-#                    ANSIBLE GENERATED CASPER USER FILE 
-# ----------------------------------------------------------------------------
-# Author: Cesar Delgado
-# Date:   05/08/2026
-# Version: 1.0 
-#############################################################################} 
-{%- if j2_input is defined -%}
-{%-   if j2_input is not none -%}
-{%-      if j2_input is not string -%}
-{%-         if j2_input is mapping -%}
-{%-            if j2_input is iterable -%}
-{%-               if j2_input|length > 0 -%}
-{###############################
-         CAPTURE VALUES 
- ##############################}
-{%-  set casper_model = j2_profile | default('none') -%}
-
-{%- set preins_candidatos = [
-      j2_node_profiles[casper_model]['preinstall'] | default(none),
-      j2_system_profiles[casper_model]['preinstall'] | default(none),
-      j2_os_profiles[casper_model]['preinstall'] | default(none),
-      j2_input['preinstall'] | default(none)
-    ] 
--%}
-{%- set system_candidatos = [
-      j2_node_profiles[casper_model]['system'] | default(none),
-      j2_system_profiles[casper_model]['system'] | default(none),
-      j2_os_profiles[casper_model]['system'] | default(none),
-      j2_input['system'] | default(none)
-    ] 
--%}
-{%- set repos_candidatos = [
-      j2_node_profiles[casper_model]['repos'] | default(none),
-      j2_system_profiles[casper_model]['repos'] | default(none),
-      j2_os_profiles[casper_model]['repos'] | default(none),
-      j2_input['repos'] | default(none)
-    ]
--%}
-{%- set auth_candidatos = [
-      j2_node_profiles[casper_model]['auth'] | default(none),
-      j2_system_profiles[casper_model]['auth'] | default(none),
-      j2_os_profiles[casper_model]['auth'] | default(none),
-      j2_input['auth'] | default(none)
-    ] 
--%}
-{%- set network_candidatos = [
-      j2_node_profiles[casper_model]['network'] | default(none),
-      j2_system_profiles[casper_model]['network'] | default(none),
-      j2_os_profiles[casper_model]['network'] | default(none),
-      j2_input['network'] | default(none)
-    ] 
--%}
-{%- set packages_candidatos = [
-      j2_node_profiles[casper_model]['packages'] | default(none),
-      j2_system_profiles[casper_model]['packages'] | default(none),
-      j2_os_profiles[casper_model]['packages'] | default(none),
-      j2_input['packages'] | default(none)
-    ] 
--%}
-{%- set storage_candidatos = [
-      j2_node_profiles[casper_model]['storage'] | default(none),
-      j2_system_profiles[casper_model]['storage'] | default(none),
-      j2_os_profiles[casper_model]['storage'] | default(none),
-      j2_input['storage'] | default(none)
-    ] 
--%}
-{%- set postins_candidatos = [
-      j2_node_profiles[casper_model]['postinstall'] | default(none),
-      j2_system_profiles[casper_model]['postinstall'] | default(none),
-      j2_os_profiles[casper_model]['postinstall'] | default(none),
-      j2_input['postinstall'] | default(none)
-    ] 
--%}
-{%- set logging_candidatos = [
-      j2_node_profiles[casper_model]['logging'] | default(none),
-      j2_system_profiles[casper_model]['logging'] | default(none),
-      j2_os_profiles[casper_model]['logging'] | default(none),
-      j2_input['logging'] | default(none)
-    ] 
--%}
-{%- set casper_preinstall = preins_candidatos  | reject('none') | last | default([]) -%}
-{%- set casper_system     = system_candidatos  | reject('none') | last | default({}) -%}
-{%- set casper_repos      = repos_candidatos   | reject('none') | last | default([]) -%}
-{%- set casper_auth       = auth_candidatos    | reject('none') | last | default({}) -%}
-{%- set casper_network    = network_candidatos | reject('none') | last | default([]) -%}
-{%- set casper_packages   = packages_candidatos| reject('none') | last | default([]) -%} 
-{%- set casper_storage    = storage_candidatos | reject('none') | last | default([]) -%}  
-{%- set casper_postinstall= postins_candidatos | reject('none') | last | default([]) -%}
-{%- set casper_logging    = logging_candidatos | reject('none') | last | default({}) -%}  
-{###############################
-         RENDERING FILE
- ##############################}
 #cloud-config
 autoinstall:
   version: 1
-
-  # =========================================================================
-  # 1.- LOCALIZATION & IDENTITIES
-  # =========================================================================
-  locale: "{{ casper_system.locale | default('en_US.UTF-8') }}"
+  locale: en_US.UTF-8
   keyboard:
-    layout: "{{ casper_system.keyboard.layout | default('us') }}"
+    layout: us
   identity:
-    hostname: "{{ casper_system.identity.hostname }}"
-    username: "{{ casper_system.identity.username }}"
-    password: "{{ casper_system.identity.password }}"
-
-  # =========================================================================
-  # 2.- SECURITY & AUTHORIZED ACCESS KEYS
-  # =========================================================================
+    hostname: servera199
+    username: cesar
+    password: "$6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9"
   ssh:
     install-server: true
     authorized-keys:
-{% for key in casper_auth['authorized-keys'] | default([]) %}
-      - "{{ key }}"
-{% endfor %}
-
-  # =========================================================================
-  # 3.- TELEMETRY & ENGINE LOGGING
-  # =========================================================================
-{% if casper_logging.remotes is defined %}
-  logging:
-{{ casper_logging | to_nice_yaml(indent=4) | indent(4, true) }}
-{% endif %}
-
-  # =========================================================================
-  # 2.- CONNECTIVITY PROFILE (Universal Multi-NIC Loop Engine)
-  # =========================================================================
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
   network:
     network:
       version: 2
       ethernets:
-        {% for interface in casper_network if interface.ipv4 | string | trim != "" %}
-        eno{{ loop.index }}:
-          critical: {{ 'true' if loop.first else 'false' }}
+        eno1:
+          critical: true
           addresses:
-            - "{{ interface.ipv4 }}"
+            - 10.10.51.150/24
           match:
-            macaddress: "{{ interface.mac }}"
-          set-name: "eno{{ loop.index }}"
-          
-          {% if loop.first %}
-          gateway4: "{{ interface.gateway }}"
+            macaddress: "bc:24:11:7a:bd:68"
+          set-name: eno1
+          routes:
+            - to: default
+              via: 10.10.51.5
           nameservers:
             addresses:
-              - "{{ interface.nameserver | default('10.10.51.5') }}"
-          {% endif %}
-        {% endfor %}
-
-  # =========================================================================
-  # 5.- MIRROR SOFTWARE SOURCES
-  # =========================================================================
-  apt:
-    preserve_sources_list: false
-    primary:
-      - arches: [amd64, default]
-        uri: "{{ }}"
-    sources:
-      ubuntu-genesis-mirror:
-        source: |
-          deb http://10.10.51 noble main restricted universe multiverse
-          deb-src http://10.10.51 noble main restricted universe multiverse
+              - 10.10.51.5"
   source:
     id: ubuntu-server
     search_drivers: false
-{% if casper_repos | length > 0 %}
-    mirror: "{{ casper_repos | first }}"
-{% endif %}
-
-  # =========================================================================
-  # 6.- STORAGE DEFINITION (CORRECCIÓN: Mapeo dinámico desde la lista)
-  # =========================================================================
+    mirror: "http://10.10.51"
   storage:
     layout:
-      name: "{{ casper_storage[0].name | default('lvm') }}"
-
-  # =========================================================================
-  # 7.- COMPONENT DELIVERY SELECTION
-  # =========================================================================
-  packages:
-{% for pkg in casper_packages %}
-    - {{ pkg }}
-{% endfor %}
-
-  # =========================================================================
-  # 8.- LIFECYCLE SCRIPTS HANDSHAKE (Early & Late Commands Matrices)
-  # =========================================================================
-  early-commands:
-    - mkdir -p /run/tmpfiles.d
-{% for pre in casper_preinstall %}
-    - |
-      cat << 'EOF' > {{ pre.path }}
-      {{ pre.content | trim }}
-      EOF
-    - chmod +x {{ pre.path }}
-{% endfor %}
-
-  late-commands:
-{% for cmd in casper_postinstall %}
-    - - "sh"
-      - "-c"
-      - "{{ cmd }}"
-{% endfor %}
-
-{###############################
-              END
- ##############################}
-{%-             endif -%}
-{%-           endif -%}
-{%-         endif -%}
-{%-       endif -%}
-{%-    endif -%}
-{%- endif -%}
-{#############################################################################
-#                    ANSIBLE GENERATED CASPER USER FILE 
-#############################################################################} 
+      name: lvm

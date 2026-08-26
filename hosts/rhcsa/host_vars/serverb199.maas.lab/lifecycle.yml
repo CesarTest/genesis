@@ -45,12 +45,10 @@ enroll:
    nics:
      - mac: "BC:24:11:70:D8:B0"
        ipv4: "192.168.1.151" 
-       network_interface: "noop" # No-Operation = No network Setup
        pxe: yes
 	   
      - mac: "BC:24:11:E5:66:0C"
        ipv4: "10.10.10.151"
-       network_interface: "noop" # No-Operation = No network Setup
 
 #-----------------
 # 2.- Manage - Ensure In-Band Access to the Node

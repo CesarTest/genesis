@@ -1,0 +1,32 @@
+# Localization & Time
+d-i debian-installer/locale string en_US.UTF-8
+d-i keyboard-configuration/xkb-keymap select us
+d-i time/zone string UTC
+
+# Account Setup (User: cesar / Pass: cesardgm)
+d-i passwd/root-login boolean false
+d-i passwd/user-fullname string Cesar Delgado
+d-i passwd/username string cesar
+d-i passwd/user-password-crypted password $6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9
+
+# Storage - Automated Partitioning (Clear Disk)
+d-i partman-auto/method string lvm
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-md/device_remove_md boolean true
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nochanges boolean true
+
+# Package Selection & Post-Install (Sudo & SSH Key Matrix)
+tasksel tasksel/first multiselect standard
+d-i pkgsel/include string openssh-server sudo tar bzip2
+d-i preseed/late_command string \
+  in-target mkdir -p /home/cesar/.ssh; \
+  echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo" > /target/home/cesar/.ssh/authorized_keys; \
+  in-target chown -R cesar:cesar /home/cesar/.ssh; \
+  in-target chmod 700 /home/cesar/.ssh; \
+  in-target chmod 600 /home/cesar/.ssh/authorized_keys; \
+  echo "cesar ALL=(ALL) NOPASSWD:ALL" > /target/etc/sudoers.d/cesar; \
+  chmod 0440 /target/etc/sudoers.d/cesar
+d-i finish-install/reboot_in_progress note

@@ -1,0 +1,31 @@
+{
+  "ignition": {
+    "version": "3.3.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "name": "cesar",
+        "groups": [
+          "sudo",
+          "wheel"
+        ],
+        "sshAuthorizedKeys": [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
+        ]
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "path": "/etc/sudoers.d/cesar",
+        "mode": 420,
+        "overwrite": true,
+        "contents": {
+          "source": "data:,cesar%20ALL%3D(ALL)%20NOPASSWD%3AALL"
+        }
+      }
+    ]
+  }
+}

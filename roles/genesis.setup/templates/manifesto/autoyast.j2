@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<!DOCTYPE profile>
+<profile xmlns="http://suse.com" xmlns:config="http://suse.com">
+  <general>
+    <mode><confirm config:type="boolean">false</confirm></mode>
+  </general>
+  <networking>
+    <interfaces config:type="list">
+      <interface>
+        <bootproto>static</bootproto>
+        <device>eno1</device>
+        <ipaddr>10.10.51.150</ipaddr>
+        <netmask>255.255.255.0</netmask>
+        <startmode>auto</startmode>
+      </interface>
+    </interfaces>
+    <routing>
+      <ipv4_forward config:type="boolean">false</ipv4_forward>
+      <routes config:type="list">
+        <route>
+          <destination>default</destination>
+          <gateway>10.10.51.5</gateway>
+        </route>
+      </routes>
+    </routing>
+  </networking>
+  <partitioning config:type="list">
+    <drive>
+      <initialize config:type="boolean">true</initialize>
+      <use>all</use>
+    </drive>
+  </partitioning>
+  <users config:type="list">
+    <user>
+      <username>cesar</username>
+      <user_password>$6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9</user_password>
+      <encrypted config:type="boolean">true</encrypted>
+      <forename>Cesar</forename>
+      <groups config:type="list"><group>trusted</group></groups>
+    </user>
+  </users>
+  <scripts>
+    <post-scripts config:type="list">
+      <script>
+        <filename>genesis-ssh.sh</filename>
+        <interpreter>shell</interpreter>
+        <source><![CDATA[
+        mkdir -p /home/cesar/.ssh
+        echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo" > /home/cesar/.ssh/authorized_keys
+        chown -R cesar:cesar /home/cesar/.ssh
+        echo "cesar ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/cesar
+        ]]></source>
+      </script>
+    </post-scripts>
+  </scripts>
+</profile>

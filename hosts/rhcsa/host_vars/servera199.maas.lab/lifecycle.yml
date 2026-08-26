@@ -44,12 +44,10 @@ enroll:
      outband:
        - mac: "BC:24:11:28:C3:E2"
          ipv4: "10.10.41.150/24" 
-         network_interface: "noop" # No-Operation = No network Setup
      inband:  
        - provision: yes
          mac: "BC:24:11:7A:BD:68"
          ipv4: "10.10.51.150/24"
-         network_interface: "noop" # No-Operation = No network Setup 
 
 #-----------------
 # 5.- Deploy - Install Operating System
