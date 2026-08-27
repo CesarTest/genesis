@@ -4,14 +4,19 @@ autoinstall:
   locale: en_US.UTF-8
   keyboard:
     layout: us
+  
+  # 1. USUARIO PRINCIPAL CONVENCIONAL (VISIBLE)
   identity:
     hostname: servera199
-    username: cesar
+    username: genesis
     password: "$6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9"
+  
+  # Cerradura SSH inicial (se inyectará en 'genesis')
   ssh:
     install-server: true
     authorized-keys:
       - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
+  
   network:
     network:
       version: 2
@@ -28,7 +33,7 @@ autoinstall:
               via: 10.10.51.5
           nameservers:
             addresses:
-              - 10.10.51.5"
+              - 10.10.51.5
   source:
     id: ubuntu-server
     search_drivers: false
@@ -36,3 +41,35 @@ autoinstall:
   storage:
     layout:
       name: lvm
+
+  # GESTIÓN DE LOS 3 PERFILES (Ejecución tardía en disco)
+  late-commands:
+    # -------------------------------------------------------------
+    # USUARIO 1: genesis (Convencional, visible, sudo con clave)
+    # -------------------------------------------------------------
+    # Al crearse por 'identity', ya es visible por defecto. No necesita NOPASSWD.
+
+    # -------------------------------------------------------------
+    # USUARIO 2: root (Contraseña conocida desbloqueada)
+    # -------------------------------------------------------------
+    - curtin in-target -- chpasswd -e <<< 'root:$6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9'
+    - sed -i 's/root:\*/root:\$/g' /target/etc/shadow 
+
+    # -------------------------------------------------------------
+    # USUARIO 3: cesar (Aprovisionamiento, invisible, SSH-only, NOPASSWD)
+    # -------------------------------------------------------------
+    - curtin in-target -- useradd -m -s /bin/bash cesar
+    - curtin in-target -- usermod -p "!" cesar  # Bloquea login por contraseña tradicional
+    - echo 'cesar ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/cesar
+    - chmod 440 /target/etc/sudoers.d/cesar
+    
+    # Clonamos la llave SSH de 'genesis' a 'cesar' para Ansible
+    - mkdir -p /target/home/cesar/.ssh
+    - cp /target/home/genesis/.ssh/authorized_keys /target/home/cesar/.ssh/
+    - chown -R 1001:1001 /target/home/cesar/.ssh
+    - chmod 700 /target/home/cesar/.ssh
+    - chmod 600 /target/home/cesar/.ssh/authorized_keys
+
+    # Ocultar al usuario 'cesar' de la pantalla de Login del escritorio
+    - mkdir -p /target/var/lib/AccountsService/users/
+    - echo -e "[User]\nSystemAccount=true" > /target/var/lib/AccountsService/users/cesar

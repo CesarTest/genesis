@@ -12,7 +12,7 @@ all:
        username: "root@pam"
        password: "cesardgm"
        verify_ca: false
-	   
+  
  hosts:  
    servera199.maas.lab:
      ansible_host: 10.10.51.150

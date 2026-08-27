@@ -25,7 +25,6 @@
     # 3.- Ramdisk Files
     g3_iso_files:     "{{ g3_extract_os_installer[g3_image_os_distro] | default([]) }}"
     g3_ramdisk_files: "{{ g3_iso_files | map(attribute='src') | list | default([]) }}"
-	
 
   block: 
     - ansible.builtin.include_tasks: "1_tftp/1_folder.yml"

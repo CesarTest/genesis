@@ -750,47 +750,47 @@ b4_esxi_template_os_profiles:
 #------------------------------------
 # 2.- Casper Automated Autoinstall (Ubuntu Server Modern Blueprint)
 #------------------------------------
-#b4_casper_template_defaults:   
-#  system: 
-#    identity:
-#      hostname: "{{ b4_enroll_node_name }}"
-#      username: "{{ b4_provision_user_name }}"
-#      password: "{{ b4_provision_user_password }}"
-#    locale: "{{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}" 
-#    keyboard:
-#      layout: "{{ b4_node_os_locale_info.keyboard | default('us') }}"
-#  auth: 
-#    authorized-keys:
-#      - "{{ b4_provision_user_ssh_key }}" 
-#  logging: 
-#    remotes:
-#      log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
-#  network:
-#    - ipv4: "{{ b4_enroll_nic_provision_ipv4 }}"
-#      mac: "{{ b4_enroll_nic_provision_mac }}"
-#      gateway: "{{ b4_enroll_nic_provision_gateway }}"
-#    - ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
-#      mac: "{{ b4_enroll_nic_bmc_mac }}"
-#      gateway: "{{ b4_enroll_nic_bmc_gateway }}"
-#  packages: 
-#    - ubuntu-desktop-minimal
-#  repos:
-#    - "{{ b4_netinstall_os_mounted_repo_url }}"
-#  storage: 
-#    - name: lvm
-#      match: {} 
-#  preinstall: 
-#    - path: /run/tmpfiles.d/bootorder.sh
-#      content: |
-#        #!/bin/bash
-#        BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
-#        BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
-#        /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}    
-#  postinstall: 
-#    - echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ b4_provision_user_name }}
-#    - sed -i 's|^root:.:|root:{{ b4_root_user_password }}|' /target/etc/shadow
-#    - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
-#    - /bin/bash /run/tmpfiles.d/bootorder.sh 
+b4_casper_template_defaults:   
+  system: 
+    identity:
+      hostname: "{{ b4_enroll_node_name }}"
+      username: "{{ b4_provision_user_name }}"
+      password: "{{ b4_provision_user_password }}"
+    locale: "{{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}" 
+    keyboard:
+      layout: "{{ b4_node_os_locale_info.keyboard | default('us') }}"
+  auth: 
+    authorized-keys:
+      - "{{ b4_provision_user_ssh_key }}" 
+  logging: 
+    remotes:
+      log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
+  network:
+    - ipv4: "{{ b4_enroll_nic_provision_ipv4 }}"
+      mac: "{{ b4_enroll_nic_provision_mac }}"
+      gateway: "{{ b4_enroll_nic_provision_gateway }}"
+    - ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
+      mac: "{{ b4_enroll_nic_bmc_mac }}"
+      gateway: "{{ b4_enroll_nic_bmc_gateway }}"
+  packages: 
+    - ubuntu-desktop-minimal
+  repos:
+    - "{{ b4_netinstall_os_mounted_repo_url }}"
+  storage: 
+    - name: lvm
+      match: {} 
+  preinstall: 
+    - path: /run/tmpfiles.d/bootorder.sh
+      content: |
+        #!/bin/bash
+        BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
+        BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
+        /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}    
+  postinstall: 
+    - echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ b4_provision_user_name }}
+    - sed -i 's|^root:.:|root:{{ b4_root_user_password }}|' /target/etc/shadow
+    - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
+    - /bin/bash /run/tmpfiles.d/bootorder.sh 
       
 #------------------------------------
 # 3.- Preseeds
@@ -852,7 +852,7 @@ b4_os_installer_manifesto:
     file:      
       - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/meta-data"
       - "{{ b4_repo_manifesto_path }}/{{ b4_enroll_node_name }}/user-data"
-    url: "{{ b4_netinstall_os_manifesto_url }}/{{ b4_enroll_node_name }}/meta-data"  
+    url: "{{ b4_netinstall_os_manifesto_url }}/{{ b4_enroll_node_name }}/"  
     defaults:   "{{ b4_casper_template_defaults | default({}) }}"
     os_version: "{{ b4_casper_template_os_profiles[b4_node_os_version] | default({}) }}"
     system:     "{{ b4_system_manifesto_profiles }}"
@@ -917,7 +917,7 @@ b4_render_modules: "r8125,r8168,r8169,e1000e,igb,ixgbe,i40e,ice,tg3,bnxt_en,bnx2
 b4_render_ksroot: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.install | default('install.img') }}"
 b4_render_ignroot: "{{ b4_render_ksroot }}"
 # Beware with \; => Required for PXE,iPXE... but not for GRUB
-b4_render_casperds: 'nocloud-net\;s={{ b4_node_os_manifesto["url"] | default("") }}'
+b4_render_casperds: 'nocloud-net;s={{ b4_node_os_manifesto["url"] | default("") }}'
 
 b4_os_installer_bootloader_call:
   anaconda:

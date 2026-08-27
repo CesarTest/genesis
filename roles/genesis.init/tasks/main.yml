@@ -7,13 +7,6 @@
 #
 
 - name: "------------------> G3- INIT - Populate PXE Services <------------------" 
-  vars:
-  
-    # 1.- OS Deploy Paths   
-    g3_deploy_os_path:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
-    g3_deploy_tftp_path:   "{{ g3_tftp_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
-    g3_deploy_mount_path:  "{{ g3_repo_mount_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
-
   block:
 
     #---------------------------------------

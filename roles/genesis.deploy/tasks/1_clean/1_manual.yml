@@ -15,9 +15,16 @@
   #--------------------------------------------------------------------------
   block:
  
+    # 1.0.- Wait up to 3 minutes
+    #....................... 
+    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Wait up to 3 minutes"
+      ansible.builtin.wait_for_connection:
+        timeout: 180
+        delay: 10
+ 
     # 1.1.- Wipe Disks
     #....................... 
-    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Raw Disk Zapping"
+    - name: "B5 - DEPLOY - 1.- Clean: 1.2) Raw Disk Zapping"
       become: yes
       ansible.builtin.shell:
         cmd: |
@@ -37,7 +44,7 @@
 
     # 1.2.-Reboot
     #....................... 
-    - name: "B5 - DEPLOY - 1.2) Trigger Hard Reset via Native Ansible Module"
+    - name: "B5 - DEPLOY - 1.3) Trigger Hard Reset via Native Ansible Module"
       become: yes
       ansible.builtin.reboot:
         reboot_timeout: 0        # (Fire & Forget)
@@ -49,12 +56,6 @@
   # 2.- Conditions
   #--------------------------------------------------------------------------  
   when:
-    # Power Cycle Manual
-    - power_cycle is defined
-    - power_cycle is not none
-    - power_cycle is string
-    - "'manual' in (power_cycle | lower)" 
-    
     # Connection Transport Hard-Lock (Anti-Local Execution)
     - ansible_connection is defined
     - ansible_connection != 'local'
