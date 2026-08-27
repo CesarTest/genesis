@@ -135,7 +135,7 @@ genesis_locale_matrix:
     timezone: "Europe/Zurich"
   
   uk:
-    keyboard: "uk"                   # Reino Unido
+    keyboard: "gb"                   # Reino Unido
     lang: "en_GB.UTF-8"
     timezone: "Europe/London"
 
@@ -675,7 +675,7 @@ b4_casper_template_defaults:
   user: |
     users:
       - name: root
-        password: "$6$SaltGnsRhel24.04$/uJaaZimSHnsa49D51oJ.FtyMedsUPdXLYTH5b22tSl41exCHlMPx6sFsDe5Zyef0AS1Fc6gkcLeMJOzcSLGU0"
+        hashed_password: "{{ b4_root_user_password }}"
         lock_passwd: false
         shell: /bin/bash
   ssh: |

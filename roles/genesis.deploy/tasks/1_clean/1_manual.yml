@@ -21,10 +21,10 @@
     #....................... 
     - name: "B5 - DEPLOY - 1.- Clean: 1.1) Wait up to 3 minutes"
       ansible.builtin.wait_for:
-        host: "{{ ansible_host | default('10.10.51.150') }}"
+        host: "{{ ansible_host | default('localhost') }}"
         port: 22
         delay: 10
-        timeout: 180
+        timeout: "{{ b5_wipedisks_delay | default('300') }}"
         state: started
       delegate_to: localhost 
 
