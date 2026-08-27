@@ -1,75 +1,160 @@
+{#
+#############################################################################
+#                    ANSIBLE GENERATED CASPER USER-DATA FILE
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.0
+#############################################################################
+#}
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
+{# 
+###############################
+         CAPTURE VALUES
+###############################
+#}
+{%-  set blank = " " -%}
+{%-  set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%-  set casper_model    = j2_profile | default('none') -%}
+{%- set preins_candidatos = [
+      j2_node_profiles[casper_model]['preinstall']   | default(none),
+      j2_system_profiles[casper_model]['preinstall'] | default(none),
+      j2_os_profiles[casper_model]['preinstall']     | default(none),
+      j2_input['preinstall'] | default(none)
+    ]
+-%}
+{%- set system_candidatos = [
+      j2_node_profiles[casper_model]['system']   | default(none),
+      j2_system_profiles[casper_model]['system'] | default(none),
+      j2_os_profiles[casper_model]['system']     | default(none),
+      j2_input['system'] | default(none)
+    ]
+-%}
+{%- set identity_candidatos = [
+      j2_node_profiles[casper_model]['identity']   | default(none),
+      j2_system_profiles[casper_model]['identity'] | default(none),
+      j2_os_profiles[casper_model]['identity']     | default(none),
+      j2_input['identity'] | default(none)
+    ]
+-%}
+{%- set repos_candidatos = [
+      j2_node_profiles[casper_model]['repos']   | default(none),
+      j2_system_profiles[casper_model]['repos'] | default(none),
+      j2_os_profiles[casper_model]['repos']     | default(none),
+      j2_input['repos'] | default(none)
+    ]
+-%}
+{%- set auth_candidatos = [
+      j2_node_profiles[casper_model]['auth']   | default(none),
+      j2_system_profiles[casper_model]['auth'] | default(none),
+      j2_os_profiles[casper_model]['auth']     | default(none),
+      j2_input['auth'] | default(none)
+    ]
+-%}
+{%- set user_candidatos = [
+      j2_node_profiles[casper_model]['user']   | default(none),
+      j2_system_profiles[casper_model]['user'] | default(none),
+      j2_os_profiles[casper_model]['user']     | default(none),
+      j2_input['user'] | default(none)
+    ]
+-%}
+{%- set ssh_candidatos = [
+      j2_node_profiles[casper_model]['ssh']   | default(none),
+      j2_system_profiles[casper_model]['ssh'] | default(none),
+      j2_os_profiles[casper_model]['ssh']     | default(none),
+      j2_input['ssh'] | default(none)
+    ]
+-%}
+{%- set network_candidatos = [
+      j2_node_profiles[casper_model]['network']   | default(none),
+      j2_system_profiles[casper_model]['network'] | default(none),
+      j2_os_profiles[casper_model]['network']     | default(none),
+      j2_input['network'] | default(none)
+    ]
+-%}
+{%- set packages_candidatos = [
+      j2_node_profiles[casper_model]['packages']   | default(none),
+      j2_system_profiles[casper_model]['packages'] | default(none),
+      j2_os_profiles[casper_model]['packages']     | default(none),
+      j2_input['packages'] | default(none)
+    ]
+-%}
+{%- set storage_candidatos = [
+      j2_node_profiles[casper_model]['storage']   | default(none),
+      j2_system_profiles[casper_model]['storage'] | default(none),
+      j2_os_profiles[casper_model]['storage']     | default(none),
+      j2_input['storage'] | default(none)
+    ]
+-%}
+{%- set postins_candidatos = [
+      j2_node_profiles[casper_model]['postinstall']   | default(none),
+      j2_system_profiles[casper_model]['postinstall'] | default(none),
+      j2_os_profiles[casper_model]['postinstall']     | default(none),
+      j2_input['postinstall'] | default(none)
+    ]
+-%}
+{%- set logging_candidatos = [
+      j2_node_profiles[casper_model]['logging']   | default(none),
+      j2_system_profiles[casper_model]['logging'] | default(none),
+      j2_os_profiles[casper_model]['logging']     | default(none),
+      j2_input['logging'] | default(none)
+    ]
+-%}
+{# ========= 1.- EXTRACT WINNING CANDIDATES AS RAW STRINGS ========= #}
+{%- set casper_preinstall  = preins_candidatos   | reject('none') | first | default('') -%}
+{%- set casper_identity    = identity_candidatos | reject('none') | first | default('') -%}
+{%- set casper_system      = system_candidatos   | reject('none') | first | default('') -%}
+{%- set casper_repos       = repos_candidatos    | reject('none') | first | default('') -%}
+{%- set casper_user        = user_candidatos     | reject('none') | first | default('') -%}
+{%- set casper_ssh         = ssh_candidatos      | reject('none') | first | default('') -%}
+{%- set casper_network     = network_candidatos  | reject('none') | first | default('') -%}
+{%- set casper_packages    = packages_candidatos | reject('none') | first | default('') -%}
+{%- set casper_storage     = storage_candidatos  | reject('none') | first | default('') -%}
+{%- set casper_postinstall = postins_candidatos  | reject('none') | first | default('') -%}
+{%- set casper_logging     = logging_candidatos  | reject('none') | first | default('') -%}
+{# ========= 2.- CASPER SECTIONS DEFINITION WITH INTEGRATED SANITIZATION ========= #}
+{%- set casper_sections = [
+        { "header": " ",  "content": (casper_system   | default({})) | to_yaml | from_yaml , "indent": "2"},
+        { "header": "apt:",           "content": (casper_repos    | default({})) | to_yaml | from_yaml },
+        { "header": "identity:",      "content": (casper_identity | default({})) | to_yaml | from_yaml },
+        { "header": "ssh:",           "content": (casper_ssh      | default({})) | to_yaml | from_yaml },
+        { "header": "user-data:",     "content": (casper_user     | default({})) | to_yaml | from_yaml },
+        { "header": "network:",       "content": (casper_network  | default({})) | to_yaml | from_yaml },
+        { "header": "storage:",       "content": (casper_storage  | default({})) | to_yaml | from_yaml },
+        { "header": "packages:",      "content": (casper_packages | default([])) | to_yaml | from_yaml },
+        { "header": "late-commands:", "content": casper_postinstall | default('') }
+      ]
+-%}
+{#
+###############################
+        RENDERING FILE
+###############################
+#}
 #cloud-config
 autoinstall:
-  version: 1
-  locale: en_US.UTF-8
-  keyboard:
-    layout: us
-  
-  # 1. USUARIO PRINCIPAL CONVENCIONAL (VISIBLE)
-  identity:
-    hostname: servera199
-    username: genesis
-    password: "$6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9"
-  
-  # Cerradura SSH inicial (se inyectará en 'genesis')
-  ssh:
-    install-server: true
-    authorized-keys:
-      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
-  
-  network:
-    network:
-      version: 2
-      ethernets:
-        eno1:
-          critical: true
-          addresses:
-            - 10.10.51.150/24
-          match:
-            macaddress: "bc:24:11:7a:bd:68"
-          set-name: eno1
-          routes:
-            - to: default
-              via: 10.10.51.5
-          nameservers:
-            addresses:
-              - 10.10.51.5
-  source:
-    id: ubuntu-server
-    search_drivers: false
-    mirror: "http://10.10.51"
-  storage:
-    layout:
-      name: lvm
-
-  # GESTIÓN DE LOS 3 PERFILES (Ejecución tardía en disco)
-  late-commands:
-    # -------------------------------------------------------------
-    # USUARIO 1: genesis (Convencional, visible, sudo con clave)
-    # -------------------------------------------------------------
-    # Al crearse por 'identity', ya es visible por defecto. No necesita NOPASSWD.
-
-    # -------------------------------------------------------------
-    # USUARIO 2: root (Contraseña conocida desbloqueada)
-    # -------------------------------------------------------------
-    - curtin in-target -- chpasswd -e <<< 'root:$6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9'
-    - sed -i 's/root:\*/root:\$/g' /target/etc/shadow 
-
-    # -------------------------------------------------------------
-    # USUARIO 3: cesar (Aprovisionamiento, invisible, SSH-only, NOPASSWD)
-    # -------------------------------------------------------------
-    - curtin in-target -- useradd -m -s /bin/bash cesar
-    - curtin in-target -- usermod -p "!" cesar  # Bloquea login por contraseña tradicional
-    - echo 'cesar ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/cesar
-    - chmod 440 /target/etc/sudoers.d/cesar
-    
-    # Clonamos la llave SSH de 'genesis' a 'cesar' para Ansible
-    - mkdir -p /target/home/cesar/.ssh
-    - cp /target/home/genesis/.ssh/authorized_keys /target/home/cesar/.ssh/
-    - chown -R 1001:1001 /target/home/cesar/.ssh
-    - chmod 700 /target/home/cesar/.ssh
-    - chmod 600 /target/home/cesar/.ssh/authorized_keys
-
-    # Ocultar al usuario 'cesar' de la pantalla de Login del escritorio
-    - mkdir -p /target/var/lib/AccountsService/users/
-    - echo -e "[User]\nSystemAccount=true" > /target/var/lib/AccountsService/users/cesar
+{%- for section in casper_sections -%}
+{%-   if section.content is defined and section.content | string | length > 0 -%}
+{%-      if section.header | length > 0 %}
+{{ blank }}{{ blank }}{{ section.header }}{{ eol }}
+{%-      endif %}
+{%-      set id = section.indent | default('4') | int -%}
+{{ section.content | indent(id, first=true) }}
+{%-   endif -%}
+{%- endfor -%}
+{#
+###############################
+              END
+###############################
+#}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}

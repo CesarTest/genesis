@@ -11,59 +11,76 @@
 #
 
 #-----------------------------------------------------------------------
-# 1.- Bifrost Data Model (Hyper-Accelerated Eager Evaluation Fact Core)
+# 1.- Create Bifrost Data Model
 #-----------------------------------------------------------------------
 - block:
 
-    # 1.1.- Load Values as Persistent Static Values in Local Memory Cache
-    - name: "B4 SETUP - A) Freeze Dynamic Model into Static RAM Facts"
-      ansible.builtin.set_fact:  
-        uuid:        "{{ b4_enroll_node_uuid | default('') }}"
-        name:        "{{ b4_enroll_node_name | default('') }}" 
-        properties:  "{{ b4_enroll_node_chassis_properties | default({}) }}"
-        driver:      "{{ b4_enroll_node_bmc_driver | default('redfish') }}"
-        driver_info: "{{ b4_node_driver_info | default({}) }}"
-        nics:        "{{ b4_enroll_node_nics | default([]) }}"
-        mac:              "{{ b4_enroll_nic_provision_mac | default('') }}"	 
-        ipv4_address:     "{{ b4_enroll_nic_provision_ip | default('127.0.0.1') }}"
-        ipv4_subnet_mask: "{{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }}" 
-        ipv4_router:      "{{ b4_enroll_nic_provision_gateway | default('127.0.0.1') }}" 
-        boot_interface:   "{{ b4_node_boot_interface | default('ipxe') }}"
-        deploy_interface: "{{ b4_node_deploy_interface | default('direct') }}"
-        instance_info:    "{{ b4_node_instance_info | default({}) }}"
-        provisioning_ipv4_address: "{{ b4_enroll_nic_provision_ip | default('127.0.0.1') }}"
-        power_interface:  "{{ b4_power_cycle.power_interface | default(b4_enroll_node_bmc_driver) | default('redfish') }}"
-        management_interface: "{{ b4_power_cycle.management_interface | default('noop') }}"
-        hardware_type:    "{{ b4_power_cycle.hardware_type | default(b4_enroll_node_bmc_driver) | default('redfish') }}" 
-        clean_steps:      "{{ b4_power_cycle.clean_steps | default([]) }}"
-        power_cycle:      "{{ b4_node_power_cycle_profile | default('manual') }}"  
-
-    # 1.2.- Render Values into a Persistent Audit Ledger File 
-    - name: "B4 SETUP - B) Commit Frozen Data Model Layout into Ledger"
+    # 1.1.- Render Values into a Persistent Audit Ledger File 
+    - name: "B4 SETUP - A) Commit Data Model Layout into Ledger"
       ansible.builtin.include_tasks: "datamodel.yml"
       vars: 
         b4_datamodel_file: "{{ b4_baremetal_vars_file | default('/tmp/datamodel.txt') }}"
- 
-    # 1.3.- Dump File on Screen 
-    - name: "B4 SETUP - C) Dump Local File Content to Terminal (Pure Local Cat)"
+
+    # 1.2.- Dump File on Screen 
+    - name: "B4 SETUP - B) Dump Local File Content to Terminal (Pure Local Cat)"
       ansible.builtin.debug:
         msg: "{{ lookup('ansible.builtin.file', b4_baremetal_vars_file) | string }}"
-   
+  when:
+    - b4_baremetal_vars_file is defined
+    - b4_baremetal_vars_file is not none
+    - b4_baremetal_vars_file is string
+    - b4_baremetal_vars_file is not mapping
+    - b4_baremetal_vars_file | length > 0
   delegate_to: localhost
 
 #-----------------------------------------------------------------------
-# 2.- Setup the Node in Ironic
+# 2.- Load Bifrost Data Model
 #-----------------------------------------------------------------------
 - block:
-  
-    # => 2.1.- Stage 1: Enroll - Outband Control
+    - name: "B4 SETUP - C) Read Ledger File into Isolated Memory Buffer"
+      ansible.builtin.include_vars:
+        file: "{{ b4_baremetal_vars_file }}"
+        name: "b4_rehydrated_data_buffer"
+      delegate_to: localhost
+
+    - name: "B4 SETUP - D) Commit and Freeze Buffer into Persistent RAM Facts"
+      ansible.builtin.set_fact:
+        uuid:                      "{{ b4_rehydrated_data_buffer.uuid | default('') | string }}"
+        name:                      "{{ b4_rehydrated_data_buffer.name | default('') | string }}"
+        driver:                    "{{ b4_rehydrated_data_buffer.driver | default('redfish') | string }}"
+        driver_info:               "{{ b4_rehydrated_data_buffer.driver_info | default({}) }}"
+        nics:                      "{{ b4_rehydrated_data_buffer.nics | default([]) }}"
+        mac:                       "{{ b4_rehydrated_data_buffer.mac | default('') | string }}"
+        ipv4_address:              "{{ b4_rehydrated_data_buffer.ipv4_address | default('127.0.0.1') | string }}"
+        ipv4_subnet_mask:          "{{ b4_rehydrated_data_buffer.ipv4_subnet_mask | default('255.255.255.0') | string }}"
+        ipv4_router:               "{{ b4_rehydrated_data_buffer.ipv4_router | default('127.0.0.1') | string }}"
+        boot_interface:            "{{ b4_rehydrated_data_buffer.boot_interface | default('ipxe') | string }}"
+        deploy_interface:          "{{ b4_rehydrated_data_buffer.deploy_interface | default('direct') | string }}"
+        power_interface:           "{{ b4_rehydrated_data_buffer.power_interface | default('redfish') | string }}"
+        management_interface:      "{{ b4_rehydrated_data_buffer.management_interface | default('noop') | string }}"
+        instance_info:             "{{ b4_rehydrated_data_buffer.instance_info | default({}) }}"
+        provisioning_ipv4_address: "{{ b4_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
+        clean_steps:               "{{ b4_rehydrated_data_buffer.clean_steps | default([]) }}"
+        power_cycle:               "{{ b4_rehydrated_data_buffer.power_cycle | default([]) }}"
+ 
+  rescue:
+    - name: "B4 SETUP - ABORT: Failure In Data Model Rehydration Process"
+      ansible.builtin.fail: 
+        msg: "CRITICAL: The Genesis system was unable to rehydrate the persistent local ledger file into RAM facts. Deploy pipeline aborted to prevent cleaning stage to start."
+
+#-----------------------------------------------------------------------
+# 3.- Setup the Node in Ironic
+#-----------------------------------------------------------------------
+- block:
+ 
+    # => 3.1.- Stage 1: Enroll - Outband Control
     #.................................
     - ansible.builtin.include_tasks: "1_enroll/1_os_manifesto.yml"
     #- ansible.builtin.include_tasks: "1_enroll/2_config_drive.yml"
     - ansible.builtin.include_tasks: "1_enroll/3_delete.yml"
     - ansible.builtin.include_tasks: "1_enroll/4_outband.yml"
  
-    # => 2.2.- Stage 2: Manage - Inband Provision
+    # => 3.2.- Stage 2: Manage - Inband Provision
     #.................................
     - ansible.builtin.include_tasks: "2_manage/1_inband.yml"
     - ansible.builtin.include_tasks: "2_manage/2_boot_order.yml"

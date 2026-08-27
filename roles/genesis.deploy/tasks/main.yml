@@ -64,7 +64,8 @@
 #- ignore_errors: yes
 #  block:
 #    - ansible.builtin.include_tasks: "1_clean/1_manual.yml"
-
+#  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+ 
 #---------------------------------------------------------------------------
 # 2.- Deploy Instance
 #---------------------------------------------------------------------------

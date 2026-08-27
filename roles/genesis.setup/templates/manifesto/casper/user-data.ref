@@ -1,0 +1,88 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  
+  # 1. EVITAR CONEXIONES EXTERNAS A CANONICAL
+  refresh-installer:
+    update: false
+  
+  apt:
+    # even set to no/false, geoip lookup still happens
+    geoip: no
+    preserve_sources_list: false
+    sources_list: |
+      deb [trusted=yes] http://10.10.51.5:8080/mnt/ubuntu/24.04 main restricted
+
+  # 2. USUARIO PRINCIPAL CONVENCIONAL (VISIBLE EN ESCRITORIO)
+  identity:
+    hostname: servera199
+    username: genesis
+    password: "$6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9"
+  
+  # 3. CONFIGURACIÓN INDESTRUCTIBLE DE SSH (Habilita contraseñas)
+  ssh:
+    install-server: true
+    allow-pw: true             
+    password_auth: true        
+    authorized-keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
+  
+  # 4. DIRECCIONAMIENTO DE RED ESTÁTICA
+  network:
+    network:
+      version: 2
+      ethernets:
+        eno1:
+          critical: true
+          addresses:
+            - 10.10.51.150/24
+          match:
+            macaddress: "bc:24:11:7a:bd:68"
+          set-name: eno1
+          routes:
+            - to: default
+              via: 10.10.51.5
+          nameservers:
+            addresses:
+              - 10.10.51.5             
+  storage:
+    layout:
+      name: lvm
+
+  # 5. POST-CONFIGURACIÓN FINAL MEDIANTE SCRIPT BASH SEGURO
+  late-commands:
+    - |
+      cat << 'EOF' > /target/tmp/setup-users.sh
+      #!/bin/bash
+      
+      # A. BLINDAR AL USUARIO ROOT (Bloqueo de acceso directo externo)
+      usermod -p "!" root
+
+      # B. CREAR USUARIO OCULTO DE APROVISIONAMIENTO (cesar) CON IDs EN ORDEN
+      useradd -m -u 1001 -s /bin/bash cesar
+      usermod -p "!" cesar  # Bloquea clave en texto plano tradicional
+      echo 'cesar ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/cesar
+      chmod 440 /etc/sudoers.d/cesar
+      
+      # Inyección limpia de llave SSH para Ansible (Evita errores mecánicos de copia)
+      mkdir -p /home/cesar/.ssh
+      echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo" > /home/cesar/.ssh/authorized_keys
+      chown -R 1001:1001 /home/cesar/.ssh
+      chmod 700 /home/cesar/.ssh
+      chmod 600 /home/cesar/.ssh/authorized_keys
+
+      # Ocultar la cuenta 'cesar' de la pantalla física de bienvenida
+      mkdir -p /var/lib/AccountsService/users/
+      echo -e "[User]\nSystemAccount=true" > /var/lib/AccountsService/users/cesar
+
+      # C. REESCRITURA DE POLÍTICAS SSHD (Permite contraseñas a 'genesis' y limpia drop-ins)
+      sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+      echo "PermitRootLogin no" >> /etc/ssh/sshd_config
+      echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+      rm -f /etc/ssh/sshd_config.d/*.conf
+
+    - curtin in-target -- bash /tmp/setup-users.sh
+    - rm -f /target/tmp/setup-users.sh

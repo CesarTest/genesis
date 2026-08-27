@@ -422,9 +422,13 @@ b4_user_password_salt: "SaltGnsRhel{{ b4_node_os_version | default('8') }}"
 # 3.1.- Root User Particulars
 b4_root_user_plain_password: "{{ manage['user']['root'] | default(ansible_become_pass) | default('genesis') }}"
 
+# 3.2.- Main User Particulars
+b4_main_user_name: "{{ manage['user']['user'] | default(ansible_become_pass) | default('genesis') }}"
+b4_main_user_plain_password: "{{ manage['user']['password'] | default(ansible_become_pass) | default('genesis') }}"
+
 # 3.2.- Provision User Particulars
-b4_provision_user_name: "{{ manage['user']['name'] | default(ansible_user) | default('genesis') }}"
-b4_provision_user_plain_password: "{{ manage['user']['password'] | default(ansible_become_pass) | default('genesis') }}"
+b4_provision_user_name: "{{ manage['user']['admin'] | default(ansible_user) | default('genesis') }}"
+b4_provision_user_plain_password: "{{ manage['user']['provision'] | default(ansible_become_pass) | default('genesis') }}"
 b4_provision_user_groups: "{{ manage['user']['groups'] | default('wheel') }}"
 
 # 3.3.- Provision User SSH Key for Trust Relationship 
@@ -450,9 +454,11 @@ b4_provision_user_ssh_key: "{{ genesis_provision_user_ssh_key | default(b4_provi
 # 3.4.- Encrypted Passwords Generation Matrix
 b4_bash_hash_generation_cmd: 
   root: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_root_user_plain_password }}"
-  user: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_provision_user_plain_password }}"
+  user: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_main_user_plain_password }}"
+  admin: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_provision_user_plain_password }}"
 b4_root_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.root) }}"
-b4_provision_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.user) }}"
+b4_provision_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.admin) }}"
+b4_main_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.user) }}"
 
 #------------------
 # 4.- OS Installers URLs
@@ -618,7 +624,7 @@ b4_kickstart_template_defaults:
 
 # 1.3.- Changes over Default Template according OS release
 b4_kickstart_template_os_profiles:
-  "7": &profile_rhel7
+  "7": 
     auth: "auth --enableshadow --passalgo=sha512"
     logging: "logging --level=info"   
     packages: |
@@ -642,155 +648,112 @@ b4_kickstart_template_os_profiles:
           
       echo "==> Legacy repository profile injected successfully."
 
-  # Typographical adapters 
-  7: *profile_rhel7
-
-#--------------------------------------------------------------------------
-# VMware ESXi Automated Installation Blueprint (Weasel Kickstart Core)
-#--------------------------------------------------------------------------
-b4_esxi_template_defaults:
-  preinstall: |
-    # Accept the VMware End User License Agreement natively
-    vmaccepteula
-
-  system: |
-    # Set host localization profile
-    keyboard {{ b4_node_os_locale_info.keyboard | default('US_Default') }}
-    
-    # Use text mode install interface
-    text
-    
-    # Reboot host automatically once Weasel finishes image layout deployment
-    reboot
-
-  user: |
-    # Enforces encrypted root authorization password symmetrically
-    rootpw --iscrypted {{ b4_root_user_password }}
-
-  network: |
-    # Connectivity setup mapping physical provision link natively to the first vmnic
-    network --bootproto=static --ip={{ b4_enroll_nic_provision_ip | default('10.10.51.150') }} --netmask={{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }} --gateway={{ b4_url_genesis_ip | default('10.10.51.5') }} --nameserver={{ b4_url_genesis_ip | default('10.10.51.5') }} --hostname={{ b4_enroll_node_name }} --device=vmnic0 --addvmportgroup=0
-
-  storage: |
-    {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('sda') %}
-    {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'firstdisk' %}{% endif %}
-    # Massive storage automated allocation erasing existing partitions
-    # Installs strictly on the targeted local block device overwriting old VMFS footprints
-    clearpart --firstlocaldisk --overwritevmfs
-    install --firstlocaldisk --overwritevmfs
-
-  postinstall: |
-    # ESXi Post-installation scripting engine driven by busybox environment
-    %post --interpreter=busybox
-    echo "==> [GENESIS] Injecting cryptographic out-of-band trust matrix..."
-    mkdir -p /etc/ssh/keys-root
-    chmod 700 /etc/ssh/keys-root
-    echo "{{ b4_provision_user_ssh_key }}" > /etc/ssh/keys-root/authorized_keys
-    chmod 600 /etc/ssh/keys-root/authorized_keys
-    echo "==> [GENESIS] Trust matrix successfully passed to ESXi hypervisor."
-
-#--------------------------------------------------------------------------
-# GÉNESIS OS PROFILES - HYPERVISOR MATRIX (ESXi 7 & ESXi 8 Structural Layout)
-#--------------------------------------------------------------------------
-b4_esxi_template_os_profiles:
-  "esxi7": &profile_esxi7
-    auth: ""        # Omitido: ESXi no utiliza authselect de Red Hat
-    logging: ""     # Omitido: ESXi gestiona los logs internamente en syslog
-    packages: ""    # Omitido: ESXi se instala completo desde su ramdisk de fábrica
-    repos: ""       # Omitido: ESXi no consume repositorios RPM por HTTP durante el deploy
-    postinstall: |
-      # -------------------------------------------------------------------
-      # ESXi 7 Post-installation scripting engine driven by busybox environment
-      # -------------------------------------------------------------------
-      %post --interpreter=busybox
-      echo "==> [GENESIS] Initializing ESXi 7.x Post-Deployment Security Matrix..."
-      
-      # Enforces cryptographic out-of-band trust matrix for root profile
-      mkdir -p /etc/ssh/keys-root
-      chmod 700 /etc/ssh/keys-root
-      echo "{{ b4_provision_user_ssh_key }}" > /etc/ssh/keys-root/authorized_keys
-      chmod 600 /etc/ssh/keys-root/authorized_keys
-      
-      # ESXi 7 Specific Tuning: Enable SSH Service permanently on boot
-      vim-cmd hostsvc/enable_ssh
-      vim-cmd hostsvc/start_ssh
-      
-      echo "==> [GENESIS] ESXi 7.x identity and trust matrix passed successfully."
-
-  "esxi8": &profile_esxi8
-    auth: ""
-    logging: ""
-    packages: ""
-    repos: ""
-    postinstall: |
-      # -------------------------------------------------------------------
-      # ESXi 8.0 Post-installation scripting engine driven by busybox environment
-      # -------------------------------------------------------------------
-      %post --interpreter=busybox
-      echo "==> [GENESIS] Initializing ESXi 8.0 Production Security Matrix..."
-      
-      # Enforces cryptographic out-of-band trust matrix for root profile
-      mkdir -p /etc/ssh/keys-root
-      chmod 700 /etc/ssh/keys-root
-      echo "{{ b4_provision_user_ssh_key }}" > /etc/ssh/keys-root/authorized_keys
-      chmod 600 /etc/ssh/keys-root/authorized_keys
-      
-      # ESXi 8.0 Specific Tuning: Suppress shell configuration warnings inside vSphere Console
-      esxcli system settings advanced set -o /UserVars/SuppressShellWarning -i 1
-      
-      # Persistence: Enforce immediate backup of configuration states to NVRAM
-      /sbin/auto-backup.sh
-      
-      echo "==> [GENESIS] ESXi 8.0 identity and enterprise matrix passed successfully."
-
-  # Typographical adapters
-  esxi7: *profile_esxi7
-  esxi8: *profile_esxi8
-
 #------------------------------------
 # 2.- Casper Automated Autoinstall (Ubuntu Server Modern Blueprint)
 #------------------------------------
+b4_casper_gateway_definition: >-
+   {% if b4_node_os_version is defined and (b4_node_os_version | float) >= 22.04 -%}
+   routes:
+     - to: default
+       via: {{ b4_url_genesis_ip | default('10.10.51.5') }}
+   {%- else -%}
+   gateway4: {{ b4_url_genesis_ip | default('10.10.51.5') }}
+   {%- endif %}
+
 b4_casper_template_defaults:   
-  system: 
-    identity:
-      hostname: "{{ b4_enroll_node_name }}"
-      username: "{{ b4_provision_user_name }}"
-      password: "{{ b4_provision_user_password }}"
-    locale: "{{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}" 
+  system: |
+    version: 1
+    locale: {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
     keyboard:
-      layout: "{{ b4_node_os_locale_info.keyboard | default('us') }}"
-  auth: 
+      layout: {{ b4_node_os_locale_info.keyboard | default('us') }}
+    refresh-installer:
+      update: false
+  identity: |
+    hostname: {{ b4_enroll_node_name }}
+    username: {{ b4_main_user_name }}
+    password: "{{ b4_main_user_password }}"
+  user: |
+    users:
+      - name: root
+        password: "$6$SaltGnsRhel24.04$/uJaaZimSHnsa49D51oJ.FtyMedsUPdXLYTH5b22tSl41exCHlMPx6sFsDe5Zyef0AS1Fc6gkcLeMJOzcSLGU0"
+        lock_passwd: false
+        shell: /bin/bash
+  ssh: |
+    install-server: true
+    allow-pw: true             
+    password_auth: true        
     authorized-keys:
-      - "{{ b4_provision_user_ssh_key }}" 
-  logging: 
-    remotes:
-      log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
-  network:
-    - ipv4: "{{ b4_enroll_nic_provision_ipv4 }}"
-      mac: "{{ b4_enroll_nic_provision_mac }}"
-      gateway: "{{ b4_enroll_nic_provision_gateway }}"
-    - ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
-      mac: "{{ b4_enroll_nic_bmc_mac }}"
-      gateway: "{{ b4_enroll_nic_bmc_gateway }}"
-  packages: 
-    - ubuntu-desktop-minimal
-  repos:
-    - "{{ b4_netinstall_os_mounted_repo_url }}"
-  storage: 
-    - name: lvm
+      - "{{ b4_provision_user_ssh_key }}"
+  #logging: |
+  #  log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
+  network: |
+    version: 2
+    ethernets:
+      # Static deployment interface aliased globally as 'provision'
+      provision:
+        critical: true
+        addresses:
+          - {{ b4_enroll_nic_provision_ipv4 }}
+        match:
+          macaddress: "{{ b4_enroll_nic_provision_mac | default('') | lower }}"
+        set-name: provision
+        
+        routes:
+          - to: default
+            via: {{ b4_url_genesis_ip }}
+        
+        nameservers:
+          addresses:
+            - {{ b4_url_genesis_ip }}
+
+  repos: |
+    geoip: no
+    preserve_sources_list: false
+    sources_list: |
+      deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} main restricted
+  storage: |
+    layout:
+      name: lvm
       match: {} 
-  preinstall: 
-    - path: /run/tmpfiles.d/bootorder.sh
-      content: |
-        #!/bin/bash
-        BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
-        BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s '\n' ','|sed 's/.$//')
-        /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}    
-  postinstall: 
-    - echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/{{ b4_provision_user_name }}
-    - sed -i 's|^root:.:|root:{{ b4_root_user_password }}|' /target/etc/shadow
-    - sed -i 's|#PermitRootLogin prohibit-password|PermitRootLogin yes|' /target/etc/ssh/sshd_config
-    - /bin/bash /run/tmpfiles.d/bootorder.sh 
+  #preinstall: | 
+  #  - path: /run/tmpfiles.d/bootorder.sh
+  #    content: |
+  #      #!/bin/bash
+  #      BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
+  #      BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s #'\n' ','|sed 's/.$//')
+  #      /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}    
+  postinstall: |
+    - |
+      cat << 'EOF' > /target/tmp/setup-users.sh
+      #!/bin/bash
+      
+      # A. BLINDAR AL USUARIO ROOT (Bloqueo de acceso directo externo)
+      usermod -p "!" root
+      
+      # B. CREAR USUARIO OCULTO DE APROVISIONAMIENTO CON IDs EN ORDEN
+      useradd -m -u 1001 -s /bin/bash {{ b4_provision_user_name }}
+      usermod -p "!" {{ b4_provision_user_name }}  # Bloquea clave en texto plano tradicional
+      echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{{ b4_provision_user_name }}
+      chmod 440 /etc/sudoers.d/{{ b4_provision_user_name }}
+      
+      # Inyección limpia de llave SSH para Ansible (Evita errores mecánicos de copia)
+      mkdir -p /home/{{ b4_provision_user_name }}/.ssh
+      echo "{{ b4_provision_user_ssh_key }}" > /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
+      chown -R 1001:1001 /home/{{ b4_provision_user_name }}/.ssh
+      chmod 700 /home/{{ b4_provision_user_name }}/.ssh
+      chmod 600 /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
+      
+      # Ocultar la cuenta aprovisionamiento de la pantalla física de bienvenida
+      mkdir -p /var/lib/AccountsService/users/
+      echo -e "[User]\nSystemAccount=true" > /var/lib/AccountsService/users/cesar
+      
+      # C. REESCRITURA DE POLÍTICAS SSHD (Permite contraseñas a y limpia drop-ins)
+      sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+      echo "PermitRootLogin no" >> /etc/ssh/sshd_config
+      echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+      rm -f /etc/ssh/sshd_config.d/*.conf
+    - curtin in-target -- bash /tmp/setup-users.sh
+    - rm -f /target/tmp/setup-users.sh
       
 #------------------------------------
 # 3.- Preseeds
@@ -893,6 +856,15 @@ b4_os_installer_manifesto:
     
 b4_node_default_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_default_os_installer] }}"
 b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | default(b4_node_default_os_manifesto) }}"
+b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
+b4_node_manifesto_files:   "{{ b4_node_os_manifesto['file']     | default([]) }}"
+b4_node_default_manifesto_file: "{{ b4_repo_manifesto_path }}/{{ b4_node_name }}" 
+j2_profile:         "{{ b4_node_os_profile                 | default('None') }}"  
+j2_input:           "{{ b4_node_os_manifesto['defaults']   | default({})   }}"
+j2_os_profiles:     "{{ b4_node_os_manifesto['os_version'] | default({})   }}"
+j2_system_profiles: "{{ b4_node_os_manifesto['system']     | default({})   }}"
+j2_node_profiles:   "{{ b4_node_os_manifesto['node']       | default({})   }}"
+j2_hostname:        "{{ b4_enroll_node_name  | default('')   }}"
 
 #------------------------------------
 # 2.- OS Installer Call from Bootloader

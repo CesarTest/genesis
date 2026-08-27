@@ -10,19 +10,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 - name: "B4 SETUP - 1.- Enroll: 1) Rendering OS Installation Manifesto Files" 
-  vars:
-    # Manifesto Files
-    b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
-    b4_node_manifesto_files:   "{{ b4_node_os_manifesto['file']     | default([]) }}"
-    b4_node_default_manifesto_file: "{{ b4_repo_manifesto_path }}/{{ b4_node_name }}"
-    
-    # Manifesto Jinja2 Rendering Properties
-    j2_profile:    "{{ b4_node_os_profile               | default('None') }}"  
-    j2_input:      "{{ b4_node_os_manifesto['defaults'] | default({}) }}"
-    j2_os_profiles:     "{{ b4_node_os_manifesto['os_version']  | default({}) }}"
-    j2_system_profiles: "{{ b4_node_os_manifesto['system'] | default({}) }}"	
-    j2_node_profiles:   "{{ b4_node_os_manifesto['node'] | default({}) }}"
-
   block:
   
     #---------------------------------------

@@ -5,37 +5,17 @@
 # Date:   05/08/2026
 # Version: 1.0
 #############################################################################} 
-{%- if j2_input is defined -%}
-{%-   if j2_input is not none -%}
-{%-      if j2_input is not string -%}
-{%-         if j2_input is mapping -%}
-{%-            if j2_input is iterable -%}
-{%-               if j2_input|length > 0 -%}
-{###############################
-         CAPTURE VALUES 
- ##############################}
-{%-  set casper_model = j2_profile | default('none') -%}
-{%- set system_candidatos = [
-      j2_node_profiles[casper_model]['system'] | default(none),
-      j2_system_profiles[casper_model]['system'] | default(none),
-      j2_os_profiles[casper_model]['system'] | default(none),
-      j2_input['system'] | default({ 'hostname': 'genesis' })
-    ] 
--%}
-{%- set casper_system     = system_candidatos  | reject('none') | last | default({}) -%}
+{%- if j2_hostname is defined -%}
+{%-   if j2_hostname is not none -%}
 {###############################
          RENDERING FILE
  ##############################}
 # Cloud-init meta-data generated dynamically by Genesis Core Engine
-instance-id: "genesis-{{ casper_system.identity.hostname }}"
-local-hostname: "{{ casper_system.identity.hostname }}"
+instance-id: "genesis-{{ j2_hostname }}"
+local-hostname: "{{ j2_hostname }}"
 {###############################
               END
  ##############################}
-{%-             endif -%}
-{%-           endif -%}
-{%-         endif -%}
-{%-       endif -%}
 {%-    endif -%}
 {%- endif -%}
 {#############################################################################
