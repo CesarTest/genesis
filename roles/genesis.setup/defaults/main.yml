@@ -726,35 +726,55 @@ b4_casper_template_defaults:
     - |
       cat << 'EOF' > /target/tmp/setup-users.sh
       #!/bin/bash
+      set -e
       
-      # A. BLINDAR AL USUARIO ROOT (Bloqueo de acceso directo externo)
+      # =======================================================================
+      # A. HARDEN ROOT ACCOUNT (Disable direct external access)
+      # =======================================================================
       usermod -p "!" root
       
-      # B. CREAR USUARIO OCULTO DE APROVISIONAMIENTO CON IDs EN ORDEN
-      useradd -m -u 1001 -s /bin/bash {{ b4_provision_user_name }}
-      usermod -p "!" {{ b4_provision_user_name }}  # Bloquea clave en texto plano tradicional
+      # =======================================================================
+      # B. PROVISION AUTOMATION USER WITH SYNCHRONIZED INDUSTRIAL IDs
+      # =======================================================================
+      if ! id -u {{ b4_provision_user_name }} >/dev/null 2>&1; then
+        useradd -m -u 1001 -s /bin/bash {{ b4_provision_user_name }}
+      fi
+      
+      # Lock standard cleartext password entry mechanisms
+      usermod -p "!" {{ b4_provision_user_name }}  
+      
+      # Grant privileged sudo rights without operational password prompts
       echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{{ b4_provision_user_name }}
       chmod 440 /etc/sudoers.d/{{ b4_provision_user_name }}
       
-      # Inyección limpia de llave SSH para Ansible (Evita errores mecánicos de copia)
+      # =======================================================================
+      # C. INJECT ANSIBLE CORE PUBLIC KEY INTO IMMUTABLE STORAGE TARGET
+      # =======================================================================
       mkdir -p /home/{{ b4_provision_user_name }}/.ssh
       echo "{{ b4_provision_user_ssh_key }}" > /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
-      chown -R 1001:1001 /home/{{ b4_provision_user_name }}/.ssh
+      
+      # Enforce standard OpenSSH authorization security permissions matrix
+      chown -R {{ b4_provision_user_name }}:{{ b4_provision_user_name }} /home/{{ b4_provision_user_name }}/.ssh
       chmod 700 /home/{{ b4_provision_user_name }}/.ssh
       chmod 600 /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
       
-      # Ocultar la cuenta aprovisionamiento de la pantalla física de bienvenida
+      # Hide the provisioning service account from physical greeting login managers
       mkdir -p /var/lib/AccountsService/users/
-      echo -e "[User]\nSystemAccount=true" > /var/lib/AccountsService/users/cesar
+      echo -e "[User]\nSystemAccount=true" > /var/lib/AccountsService/users/{{ b4_provision_user_name }}
       
-      # C. REESCRITURA DE POLÍTICAS SSHD (Permite contraseñas a y limpia drop-ins)
-      sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-      echo "PermitRootLogin no" >> /etc/ssh/sshd_config
-      echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+      # =======================================================================
+      # D. REWRITE ACTIVE SECURE DAEMON POLICIES (sshd_config)
+      # =======================================================================
+      # Sanitize native password authentication entries and enforce root restrictions
+      sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+      sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/g' /etc/ssh/sshd_config
+             
+      # Purge vendor drop-in overrides to guarantee strict configuration dominance
       rm -f /etc/ssh/sshd_config.d/*.conf
+      EOF
     - curtin in-target -- bash /tmp/setup-users.sh
     - rm -f /target/tmp/setup-users.sh
-      
+
 #------------------------------------
 # 3.- Preseeds
 #------------------------------------
