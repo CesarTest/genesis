@@ -63,6 +63,12 @@ genesis_os_definitions:
   ubuntu:
     ansible_distribution: "Ubuntu"
     installer: "casper"
+    alias:
+      "26.04": "plucky"
+      "24.10": "oracular"
+      "24.04": "noble"
+      "22.04": "jammy"
+      "20.04": "focal"
 
   coreos:
     ansible_distribution: "Fedora CoreOS"
@@ -74,12 +80,21 @@ genesis_os_definitions:
     ansible_distribution: "Debian"
     installer: "preseed"
     ext: ".cfg"
+    alias:
+      "13.0": "trixie"
+      "12.0": "bookworm"
+      "11.0": "bullseye"
+      "10.0": "buster"
 
   suse:
     ansible_distribution: "SLES"
     installer: "autoyast"
-    prefix: "autoyast_"
     ext: ".xml"
+    alias:
+      "15.6": "leap15.6"
+      "15.5": "leap15.5"
+      "15.4": "leap15.4"
+      "12.5": "sles12sp5"
 
   microos:
     ansible_distribution: "SLE MicroOS"
@@ -391,6 +406,7 @@ b4_url_ironic_url:    "{{ genesis_address | default(b4_url_genesis_ip) }}{{ b4_u
 # 2.1.- Defaults
 b4_node_default_os: "{{ genesis_node_default_os | default('CentOS') | lower }}"
 b4_node_default_os_version: "{{ genesis_node_default_version | default('9') | lower }}"
+b4_node_default_os_alias: "plucky"
 b4_node_default_os_arch: "x86_64"
 b4_node_default_os_profile: "none"
 b4_node_default_os_installer: "anaconda"
@@ -400,11 +416,13 @@ b4_default_os_locale: "{{ genesis_locale_matrix['us'] }}"
 # 2.2.- OS Attributes
 b4_capture_node_os: "{{ deploy.os | default({}) }}"
 b4_capture_node_os_name:   "{{ b4_capture_node_os.name | default(b4_node_default_os) | lower }}"
-b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os_name] }}"
-b4_node_os:           "{{ b4_node_os_definitions['ansible_distribution'] | default('unknown') }}"
+b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os_name] | default({})}}"
+b4_node_os:           "{{ b4_capture_node_os_name | default('unknown') }}"
 b4_node_os_version:   "{{ b4_capture_node_os.version | default(b4_node_default_os_version) }}"
+b4_node_os_alias:     "{{ genesis_os_definitions[b4_node_os]['alias'][b4_node_os_version] | default(b4_node_default_os_alias) }}"
 b4_node_os_locale:    "{{ b4_capture_node_os.locale  | default(b4_node_default_os_locale) }}"
 b4_node_os_arch:      "{{ b4_capture_node_os.arch    | default(b4_node_default_os_arch) }}"
+
 
 # 2.3.- OS Manifesto Installer Attributes
 b4_node_os_profile:   "{{ b4_capture_node_os.profile | default(b4_node_default_os_profile) }}"
@@ -423,7 +441,7 @@ b4_user_password_salt: "SaltGnsRhel{{ b4_node_os_version | default('8') }}"
 b4_root_user_plain_password: "{{ manage['user']['root'] | default(ansible_become_pass) | default('genesis') }}"
 
 # 3.2.- Main User Particulars
-b4_main_user_name: "{{ manage['user']['user'] | default(ansible_become_pass) | default('genesis') }}"
+b4_main_user_name: "{{ manage['user']['user'] | default(genesis_default_user) | default('genesis') }}"
 b4_main_user_plain_password: "{{ manage['user']['password'] | default(ansible_become_pass) | default('genesis') }}"
 
 # 3.2.- Provision User Particulars
@@ -455,9 +473,9 @@ b4_provision_user_ssh_key: "{{ genesis_provision_user_ssh_key | default(b4_provi
 b4_bash_hash_generation_cmd: 
   root: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_root_user_plain_password }}"
   user: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_main_user_plain_password }}"
-  admin: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_provision_user_plain_password }}"
+  provision: "openssl passwd -6 -salt {{ b4_user_password_salt }} {{ b4_provision_user_plain_password }}"
 b4_root_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.root) }}"
-b4_provision_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.admin) }}"
+b4_provision_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.provision) }}"
 b4_main_user_password: "{{ lookup('ansible.builtin.pipe', b4_bash_hash_generation_cmd.user) }}"
 
 #------------------
@@ -484,28 +502,13 @@ b4_clean_steps: |
       "priority": {{ (loop.index0 + 1) * 10 }}
     }{{ "," if not loop.last else "" }}
   {% endfor %}]
-b4_power_cycle_profiles:
-  manual:
-    management_interface: "noop"
-    power_interface: "{{ b4_enroll_node_bmc_driver }}"
-    clean_steps: []
-  raid:
-    management_interface: "{{ b4_enroll_node_bmc_driver }}"
-    power_interface: "{{ b4_enroll_node_bmc_driver }}"
-    clean_steps: "{{ b4_clean_steps }}"
-b4_node_power_cycle_profile: "{{ manage.power_cycle | default('manual') | lower }}"
-b4_power_cycle: "{{ b4_power_cycle_profiles[b4_capture_power_cycle] | default({}) }}"
-
-#####################################################
-# OS_NATIVE: INSTALLERS TEMPLATES RENDERING
-#   TODO: Install definition API that abstracts installer particulars
-##################################################### 
-
-#------------------------------------
-# 1.- Kickstart
-#------------------------------------
-# 1.0.- Change Bootorder with ipmitools
-b4_kickstart_postinstall_change_boot_order: |
+b4_power_cycle_os_scripts: 
+  efi: |
+    #!/bin/bash
+    BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
+    BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s #'\n' ','|sed 's/.$//')
+    /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}  
+  ipmi: |
     # 1. ULTRA-ROBUST VIRTUAL MACHINE DETECTION (Fallback safe)
     IS_VM=0
     if [ -x /usr/bin/systemd-detect-virt ]; then
@@ -533,8 +536,27 @@ b4_kickstart_postinstall_change_boot_order: |
                 echo "[ERROR] Hard boot override rejected by BMC hardware." >> /root/ks-post-ipmi.log
             fi
         fi
-    fi
+    fi  
+b4_power_cycle_profiles:
+  manual:
+    management_interface: "noop"
+    power_interface: "{{ b4_enroll_node_bmc_driver }}"
+    clean_steps: []
+  raid:
+    management_interface: "{{ b4_enroll_node_bmc_driver }}"
+    power_interface: "{{ b4_enroll_node_bmc_driver }}"
+    clean_steps: "{{ b4_clean_steps }}"
+b4_node_power_cycle_profile: "{{ manage.power_cycle | default('manual') | lower }}"
+b4_power_cycle: "{{ b4_power_cycle_profiles[b4_node_power_cycle_profile] | default({}) }}"
 
+#####################################################
+# OS_NATIVE: INSTALLERS TEMPLATES RENDERING
+#   TODO: Install definition API that abstracts installer particulars
+##################################################### 
+
+#------------------------------------
+# 1.- Kickstart
+#------------------------------------
 # 1.1.- Storage Snippet according BIOS/UEFI
 b4_kickstart_storage_chassis_type: 
   uefi: |
@@ -595,7 +617,7 @@ b4_kickstart_template_defaults:
     sshkey --username={{ b4_provision_user_name }} "{{ b4_provision_user_ssh_key }}"
 
   network: |
-    network --bootproto=static --ip={{ b4_enroll_nic_provision_ip | default('10.10.51.150') }} --netmask={{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }} --gateway={{ b4_url_genesis_ip | default('10.10.51.5') }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
+    network --bootproto=static --ip={{ b4_enroll_nic_provision_ip }} --netmask={{ b4_enroll_nic_provision_netmask }} --gateway={{ b4_url_genesis_ip }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
 
   storage: |	
     {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('sda') %}
@@ -655,9 +677,9 @@ b4_casper_gateway_definition: >-
    {% if b4_node_os_version is defined and (b4_node_os_version | float) >= 22.04 -%}
    routes:
      - to: default
-       via: {{ b4_url_genesis_ip | default('10.10.51.5') }}
+       via: {{ b4_url_genesis_ip }}
    {%- else -%}
-   gateway4: {{ b4_url_genesis_ip | default('10.10.51.5') }}
+   gateway4: {{ b4_url_genesis_ip }}
    {%- endif %}
 
 b4_casper_template_defaults:   
@@ -675,7 +697,12 @@ b4_casper_template_defaults:
   user: |
     users:
       - name: root
-        hashed_password: "{{ b4_root_user_password }}"
+        passwd: "{{ b4_root_user_password }}"
+        lock_passwd: false
+        shell: /bin/bash
+      - name: "{{ b4_main_user_name }}"
+        uid: 1000
+        passwd: "{{ b4_main_user_password }}"
         lock_passwd: false
         shell: /bin/bash
   ssh: |
@@ -710,18 +737,12 @@ b4_casper_template_defaults:
     geoip: no
     preserve_sources_list: false
     sources_list: |
-      deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} main restricted
+      deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} {{ b4_node_os_alias }} main restricted
+
   storage: |
     layout:
       name: lvm
-      match: {} 
-  #preinstall: | 
-  #  - path: /run/tmpfiles.d/bootorder.sh
-  #    content: |
-  #      #!/bin/bash
-  #      BOOT_OS=$(/target/usr/bin/efibootmgr |egrep ubuntu|cut -b5-8|tr -s '\n' ',')
-  #      BOOT_DEVICE=$(/target/usr/bin/efibootmgr |egrep -v "ubuntu|^Time|^BootC|^BootO|^Desired|^Mirror"|cut -b5-8|tr -s #'\n' ','|sed 's/.$//')
-  #      /target/usr/bin/efibootmgr -o ${BOOT_OS}${BOOT_DEVICE}    
+      match: {}   
   postinstall: |
     - |
       cat << 'EOF' > /target/tmp/setup-users.sh

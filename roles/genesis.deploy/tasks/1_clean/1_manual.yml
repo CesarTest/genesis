@@ -19,12 +19,12 @@
  
     # 1.0.- Wait up to 3 minutes
     #....................... 
-    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Wait up to 3 minutes"
+    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Wait up to Clean Timeout seconds"
       ansible.builtin.wait_for:
         host: "{{ ansible_host | default('localhost') }}"
         port: 22
         delay: 10
-        timeout: "{{ b5_wipedisks_delay | default('300') }}"
+        timeout: "{{ b5_wipedisks_delay | default('180') | int }}"
         state: started
       delegate_to: localhost 
 

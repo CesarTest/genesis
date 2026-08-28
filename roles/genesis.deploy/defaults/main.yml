@@ -77,6 +77,7 @@ b5_proxmox_os_boot_order:  "{{ capabilities.os_boot_order | default('virtio0;net
 ######################################################
 #  NODE LIFE CYCLE
 ######################################################
+b5_wipedisks_delay: "{{ deploay['clean_timeout'] | default('500') }}"
 b5_lifecycle_api_calls:
   poweron:
     - method: "PUT"

@@ -30,10 +30,11 @@
       instance_info:    "{{ b4_node_instance_info | default({}) }}"
       provisioning_ipv4_address: "{{ b4_enroll_nic_provision_ip | default('127.0.0.1') }}"
       power_interface:  "{{ b4_power_cycle.power_interface | default(b4_enroll_node_bmc_driver) | default('redfish') }}"
-      management_interface: "{{ b4_power_cycle.management_interface | default(b4_enroll_node_bmc_driver) | default('noop') }}"
+      management_interface: "{{ b4_power_cycle['management_interface'] | default(b4_enroll_node_bmc_driver) | default('noop') }}"
       hardware_type:    "{{ b4_power_cycle.hardware_type | default(b4_enroll_node_bmc_driver) | default('redfish') }}" 
       clean_steps:      "{{ b4_power_cycle.clean_steps  | default([]) }}"
-      power_cycle:      "{{ b4_node_power_cycle_profile | default('manual') }}"
+      power_cycle:      "{{ b4_power_cycle | default({}) }}"
+      power_cycle_profile:   "{{ b4_node_power_cycle_profile | default('manual') | lower }}"
   when:
     - b4_datamodel_file is defined
     - b4_datamodel_file | length > 0

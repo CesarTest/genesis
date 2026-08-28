@@ -46,7 +46,7 @@
         provisioning_ipv4_address: "{{ b5_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
         clean_steps:               "{{ b5_rehydrated_data_buffer.clean_steps | default([]) }}"
         power_cycle:               "{{ b5_rehydrated_data_buffer.power_cycle | default([]) }}"
-
+        power_cycle_profile:       "{{ b5_rehydrated_data_buffer.power_cycle_profile | default([]) }}"
 
     - name: "B5 - DEPLOY - C) Dump Local File Content to Terminal (Pure Local Cat)"
       ansible.builtin.debug:
@@ -75,10 +75,10 @@
 - block:
     - ansible.builtin.include_tasks: "1_clean/1_manual.yml"
   when:
-    - power_cycle is defined
-    - power_cycle is not none
-    - power_cycle is string
-    - "'manual' in (power_cycle | lower)" 
+    - power_cycle_profile is defined
+    - power_cycle_profile is not none
+    - power_cycle_profile is string
+    - "'manual' in power_cycle_profile"
 
 #-----------------------
 # 3.- Activate Instance

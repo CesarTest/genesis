@@ -61,8 +61,9 @@
         instance_info:             "{{ b4_rehydrated_data_buffer.instance_info | default({}) }}"
         provisioning_ipv4_address: "{{ b4_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
         clean_steps:               "{{ b4_rehydrated_data_buffer.clean_steps | default([]) }}"
-        power_cycle:               "{{ b4_rehydrated_data_buffer.power_cycle | default([]) }}"
- 
+        power_cycle:               "{{ b4_rehydrated_data_buffer.power_cycle | default({})  }}"
+        power_cycle_profile:       "{{ b4_rehydrated_data_buffer.power_cycle_profile | default('') | string }}"
+
   rescue:
     - name: "B4 SETUP - ABORT: Failure In Data Model Rehydration Process"
       ansible.builtin.fail: 
@@ -84,9 +85,11 @@
     #.................................
     - ansible.builtin.include_tasks: "2_manage/1_inband.yml"
     - ansible.builtin.include_tasks: "2_manage/2_boot_order.yml"
-      when: 
-        - b4_set_boot_order is defined
-        - b4_set_boot_order | bool
+      when:
+        - power_cycle_profile is defined
+        - power_cycle_profile is not none
+        - power_cycle_profile is string
+        - not ("'manual' in power_cycle_profile") 
     - ansible.builtin.include_tasks: "2_manage/3_power_cycle.yml"
     - ansible.builtin.include_tasks: "2_manage/4_lifecycle.yml"
       vars:
