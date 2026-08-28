@@ -919,24 +919,10 @@ b4_autoyast_template_defaults:
     </services>
 
   network: |
-    <managed config:type="boolean">true</managed>
-    <dhcp_all config:type="boolean">false</dhcp_all>
-    
+    <dhcp_all config:type="boolean">false</dhcp_all>   
     <dns>
       <hostname>{{ b4_enroll_node_name }}</hostname>
     </dns>
-   
-    <routing>
-      <ipv4_forward config:type="boolean">false</ipv4_forward>
-      <routes config:type="list">
-        <route>
-          <destination>default</destination>
-          <gateway>{{ b4_url_genesis_ip }}</gateway>
-          <netmask>-</netmask>
-        </route>
-      </routes>
-    </routing>
-   
     <interfaces config:type="list">
       <interface>
         <method>manual</method> 
