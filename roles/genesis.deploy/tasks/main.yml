@@ -19,7 +19,6 @@
     - b5_baremetal_vars_file is string
     - b5_baremetal_vars_file is not mapping
     - b5_baremetal_vars_file | length > 0
-    - lookup('ansible.builtin.file', b5_baremetal_vars_file, errors='ignore') is not none
   block:
     - name: "B5 - DEPLOY - A) Read Ledger File into Isolated Memory Buffer"
       ansible.builtin.include_vars:

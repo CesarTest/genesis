@@ -19,7 +19,7 @@
     - name: "B4 SETUP - A) Commit Data Model Layout into Ledger"
       ansible.builtin.include_tasks: "datamodel.yml"
       vars: 
-        b4_datamodel_file: "{{ b4_baremetal_vars_file | default('/tmp/datamodel.txt') }}"
+        b4_datamodel_file: "{{ b4_baremetal_vars_file | default('/tmp/datamodel.json') }}"
 
     # 1.2.- Dump File on Screen 
     - name: "B4 SETUP - B) Dump Local File Content to Terminal (Pure Local Cat)"

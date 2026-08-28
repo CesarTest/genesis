@@ -13,9 +13,6 @@
 {%-               if j2_input|length > 0 -%}
 {###############################
          CAPTURE VALUES 
-BEWARE: Capturing Dict Values with for loop
-  - Append values in list
-  - Extract values from list[0]
  ##############################}
 {%-  set blank = " " -%}
 {%-  set eol = "\n" -%}
@@ -98,17 +95,17 @@ BEWARE: Capturing Dict Values with for loop
       j2_input['logging'] | default(none)
     ] 
 -%}
-{%- set ks_preinstall = preins_candidatos   | select('string') | first | default('') -%}
-{%- set ks_system     = system_candidatos   | select('string') | first | default('') -%}
-{%- set ks_repos      = repos_candidatos    | select('string') | first | default('') -%}
-{%- set ks_auth       = auth_candidatos     | select('string') | first | default('') -%}
-{%- set ks_user       = user_candidatos     | select('string') | first | default('') -%}
-{%- set ks_ssh        = ssh_candidatos      | select('string') | first | default('') -%}
-{%- set ks_network    = network_candidatos  | select('string') | first | default('') -%}
-{%- set ks_packages   = packages_candidatos | select('string') | first | default('') -%} 
-{%- set ks_storage    = storage_candidatos  | select('string') | first | default('') -%}  
-{%- set ks_postinstall= postins_candidatos  | select('string') | first | default('') -%}
-{%- set ks_logging    = logging_candidatos  | select('string') | first | default('') -%}  
+{%- set ks_preinstall  = preins_candidatos   | select | first | default('') -%}
+{%- set ks_system      = system_candidatos   | select | first | default('') -%}
+{%- set ks_repos       = repos_candidatos    | select | first | default('') -%}
+{%- set ks_auth        = auth_candidatos     | select | first | default('') -%}
+{%- set ks_user        = user_candidatos     | select | first | default('') -%}
+{%- set ks_ssh         = ssh_candidatos      | select | first | default('') -%}
+{%- set ks_network     = network_candidatos  | select | first | default('') -%}
+{%- set ks_packages    = packages_candidatos | select | first | default('') -%} 
+{%- set ks_storage     = storage_candidatos  | select | first | default('') -%}  
+{%- set ks_postinstall = postins_candidatos  | select | first | default('') -%}
+{%- set ks_logging     = logging_candidatos  | select | first | default('') -%}
 {#......... 2.- Kickstart Sections Definition ..... #}
 {%-  set ks_sections = [  
         { "header": "# Installer",                        "content": ks_preinstall },
@@ -127,23 +124,19 @@ BEWARE: Capturing Dict Values with for loop
 {###############################
          RENDERING FILE
  ##############################}
-#kickstart file for RHEL server
-#platform=x86, AMD64, or Intel EM64T
-#version=DEVEL
-{%-        for section in ks_sections -%}
-{%-           if section.content is defined -%}
-{%-             if section.content is not none -%}
-{%-                if section.content is string -%}
-{%-                  if section.content|length > 0 -%}
-{{ section.header  | default('') }}
-{{ section.content | default('') }}
-{{ section.end     | default(eol) }}
-{%-                  endif -%}
-{%-                endif -%}
-{%-              endif -%}
-{%-           endif -%}
-{%-        endfor -%}
-
+# ==============================================================================
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY                            
+# Generated dynamically by Genesis Core Engine Mesh                              
+# Deployment Context: Anaconda Kickstart / Automated OS Provisioning Profile    
+# Timestamp: 2026                                                                
+# ==============================================================================
+{%- for section in ks_sections -%}
+  {%- if section.content -%}
+{{ section.header | default('') }}
+{{ section.content }}
+{{ section.end | default(eol) }}
+  {%- endif -%}
+{%- endfor -%}
 {###############################
               END
  ##############################}

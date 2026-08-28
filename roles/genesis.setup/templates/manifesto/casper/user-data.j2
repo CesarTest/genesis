@@ -107,17 +107,17 @@
     ]
 -%}
 {# ========= 1.- EXTRACT WINNING CANDIDATES AS RAW STRINGS ========= #}
-{%- set casper_preinstall  = preins_candidatos   | reject('none') | first | default('') -%}
-{%- set casper_identity    = identity_candidatos | reject('none') | first | default('') -%}
-{%- set casper_system      = system_candidatos   | reject('none') | first | default('') -%}
-{%- set casper_repos       = repos_candidatos    | reject('none') | first | default('') -%}
-{%- set casper_user        = user_candidatos     | reject('none') | first | default('') -%}
-{%- set casper_ssh         = ssh_candidatos      | reject('none') | first | default('') -%}
-{%- set casper_network     = network_candidatos  | reject('none') | first | default('') -%}
-{%- set casper_packages    = packages_candidatos | reject('none') | first | default('') -%}
-{%- set casper_storage     = storage_candidatos  | reject('none') | first | default('') -%}
-{%- set casper_postinstall = postins_candidatos  | reject('none') | first | default('') -%}
-{%- set casper_logging     = logging_candidatos  | reject('none') | first | default('') -%}
+{%- set casper_preinstall  = preins_candidatos   | select | first | default('') -%}
+{%- set casper_identity    = identity_candidatos | select | first | default('') -%}
+{%- set casper_system      = system_candidatos   | select | first | default('') -%}
+{%- set casper_repos       = repos_candidatos    | select | first | default('') -%}
+{%- set casper_user        = user_candidatos     | select | first | default('') -%}
+{%- set casper_ssh         = ssh_candidatos      | select | first | default('') -%}
+{%- set casper_network     = network_candidatos  | select | first | default('') -%}
+{%- set casper_packages    = packages_candidatos | select | first | default('') -%}
+{%- set casper_storage     = storage_candidatos  | select | first | default('') -%}
+{%- set casper_postinstall = postins_candidatos  | select | first | default('') -%}
+{%- set casper_logging     = logging_candidatos  | select | first | default('') -%}
 {# ========= 2.- CASPER SECTIONS DEFINITION WITH INTEGRATED SANITIZATION ========= #}
 {%- set casper_sections = [
         { "header": " ",  "content": (casper_system   | default({})) | to_yaml | from_yaml , "indent": "2"},
@@ -137,6 +137,12 @@
 ###############################
 #}
 #cloud-config
+# ==============================================================================
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY                            
+# Generated dynamically by Genesis Core Engine Mesh                              
+# Deployment Context: Ubuntu Casper / Cloud-init Provisioning Profile            
+# Timestamp: 2026                                                                
+# ==============================================================================
 autoinstall:
 {%- for section in casper_sections -%}
 {%-   if section.content is defined and section.content | string | length > 0 -%}

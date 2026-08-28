@@ -1,40 +1,42 @@
 ---
 # genesis.setup datamodel.yml
-#  - Render data model into test file
+#   - Dump Bifrost DataModel into JSON File 
+#      - JSON rendering is up to 50x faster than YAML
+#      - JSON can be successfully loaded by include_vars module faster than yaml files.
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
+#
 
-#----------------------
-# 1.- Dump Bifrost Data Model into File
-#---------------------- 
-- name: "B4 SETUP - Dump Bifrost Data Model to File"
+- name: "B4 SETUP - Dump Bifrost Data Model to JSON File"
   connection: local
   ansible.builtin.copy:
     dest: "{{ b4_datamodel_file }}"
-    content: "{{ b4_data_model_content | to_nice_yaml(indent=2) }}"
-  vars:
-    b4_data_model_content:
-      uuid:        "{{ b4_enroll_node_uuid | default('') }}"
-      name:        "{{ b4_enroll_node_name | default('') }}" 
-      properties:  "{{ b4_enroll_node_chassis_properties | default({}) }}"
-      driver:      "{{ b4_enroll_node_bmc_driver | default('redfish') }}"
-      driver_info: "{{ b4_node_driver_info | default({}) }}"
-      nics:        "{{ b4_enroll_node_nics | default([]) }}"
-      mac:              "{{ b4_enroll_nic_provision_mac | default('') }}"	 
-      ipv4_address:     "{{ b4_enroll_nic_provision_ip | default('127.0.0.1') }}"
-      ipv4_subnet_mask: "{{ b4_enroll_nic_provision_netmask | default('255.255.255.0') }}" 
-      ipv4_router:      "{{ b4_enroll_nic_provision_gateway | default('127.0.0.1') }}" 
-      boot_interface:   "{{ b4_node_boot_interface | default('ipxe') }}"
-      deploy_interface: "{{ b4_node_deploy_interface | default('direct') }}"
-      instance_info:    "{{ b4_node_instance_info | default({}) }}"
-      provisioning_ipv4_address: "{{ b4_enroll_nic_provision_ip | default('127.0.0.1') }}"
-      power_interface:  "{{ b4_power_cycle.power_interface | default(b4_enroll_node_bmc_driver) | default('redfish') }}"
-      management_interface: "{{ b4_power_cycle['management_interface'] | default(b4_enroll_node_bmc_driver) | default('noop') }}"
-      hardware_type:    "{{ b4_power_cycle.hardware_type | default(b4_enroll_node_bmc_driver) | default('redfish') }}" 
-      clean_steps:      "{{ b4_power_cycle.clean_steps  | default([]) }}"
-      power_cycle:      "{{ b4_power_cycle | default({}) }}"
-      power_cycle_profile:   "{{ b4_node_power_cycle_profile | default('manual') | lower }}"
+    content: >-
+      {{
+        {
+          'uuid':        b4_enroll_node_uuid | default(''),
+          'name':        b4_enroll_node_name | default(''),
+          'properties':  b4_enroll_node_chassis_properties | default({}),
+          'driver':      b4_enroll_node_bmc_driver | default('redfish'),
+          'driver_info': b4_node_driver_info | default({}),
+          'nics':        b4_enroll_node_nics | default([]),
+          'mac':              b4_enroll_nic_provision_mac | default(''),
+          'ipv4_address':     b4_enroll_nic_provision_ip | default('127.0.0.1'),
+          'ipv4_subnet_mask': b4_enroll_nic_provision_netmask | default('255.255.255.0'),
+          'ipv4_router':      b4_enroll_nic_provision_gateway | default('127.0.0.1'),
+          'boot_interface':   b4_node_boot_interface | default('ipxe'),
+          'deploy_interface': b4_node_deploy_interface | default('direct'),
+          'instance_info':    b4_node_instance_info | default({}),
+          'provisioning_ipv4_address': b4_enroll_nic_provision_ip | default('127.0.0.1'),
+          'power_interface':  b4_power_cycle.power_interface | default(b4_enroll_node_bmc_driver) | default('redfish'),
+          'management_interface': b4_power_cycle['management_interface'] | default(b4_enroll_node_bmc_driver) | default('noop'),
+          'hardware_type':    b4_power_cycle.hardware_type | default(b4_enroll_node_bmc_driver) | default('redfish'),
+          'clean_steps':      b4_power_cycle.clean_steps  | default([]),
+          'power_cycle':      b4_power_cycle | default({}),
+          'power_cycle_profile':   b4_node_power_cycle_profile | default('manual') | lower
+        } | to_json
+      }}
   when:
     - b4_datamodel_file is defined
     - b4_datamodel_file | length > 0

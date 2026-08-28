@@ -23,7 +23,7 @@ genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 # Corregido: Añadidas comillas obligatorias en YAML
 b5_baremetal_fact_caching_connection: "{{ lookup('ansible.builtin.config', 'fact_caching_connection', plugin_type='cache', plugin_name='jsonfile', errors='ignore') }}"
 b5_baremetal_setup_vars_path: "{{ b5_baremetal_fact_caching_connection | default('/tmp', boolean=True) }}"
-b5_baremetal_vars_filename: "genesis_{{ inventory_hostname }}.yml"
+b5_baremetal_vars_filename: "genesis_{{ inventory_hostname }}.json"
 b5_baremetal_vars_file: "{{ b5_baremetal_setup_vars_path }}/{{ b5_baremetal_vars_filename }}"
 
 ######################################################
@@ -77,7 +77,6 @@ b5_proxmox_os_boot_order:  "{{ capabilities.os_boot_order | default('virtio0;net
 ######################################################
 #  NODE LIFE CYCLE
 ######################################################
-b5_wipedisks_delay: "{{ deploay['clean_timeout'] | default('500') }}"
 b5_lifecycle_api_calls:
   poweron:
     - method: "PUT"
