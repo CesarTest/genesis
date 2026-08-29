@@ -56,5 +56,5 @@ deploy:
    boot_interface:   "ipxe"
    deploy_interface: "ramdisk"
    os:
-     name: "Ubuntu"
-     version: "24.04"
+     name: "CentOS"
+     version: "9"

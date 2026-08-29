@@ -751,7 +751,7 @@ b4_kickstart_template_defaults:
  
   user: |
     rootpw --iscrypted {{ b4_root_user_password }}
-    user --name={{ b4_main_user_name }} --uid=1000 --groups={{ b4_main_user_groups }} --password={{ b4_main_user_password }} --iscrypted
+    user --name={{ b4_main_user_name }} --uid=1000 --password={{ b4_main_user_password }} --iscrypted
     user --name={{ b4_provision_user_name }} --uid=1001 --groups={{ b4_provision_user_groups }} --password={{ b4_provision_user_password }} --iscrypted
     sshkey --username={{ b4_provision_user_name }} "{{ b4_provision_user_ssh_key }}"
 
