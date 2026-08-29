@@ -1,15 +1,22 @@
 {
   "ignition": {
-    "version": "3.3.0"
+    "version": "3.4.0"
   },
   "passwd": {
     "users": [
       {
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
+        ]
+      },
+      {
         "name": "cesar",
         "groups": [
-          "sudo",
-          "wheel"
+          "wheel",
+          "sudo"
         ],
+        "shell": "/bin/bash",
         "sshAuthorizedKeys": [
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
         ]
@@ -19,11 +26,19 @@
   "storage": {
     "files": [
       {
-        "path": "/etc/sudoers.d/cesar",
+        "path": "/etc/hostname",
         "mode": 420,
         "overwrite": true,
         "contents": {
-          "source": "data:,cesar%20ALL%3D(ALL)%20NOPASSWD%3AALL"
+          "source": "data:,servera199"
+        }
+      },
+      {
+        "path": "/etc/NetworkManager/system-connections/provision.nmconnection",
+        "mode": 384,
+        "overwrite": true,
+        "contents": {
+          "source": "data:,%5Bconnection%5D%0Aid%3Dprovision%0Atype%3Dethernet%0A%0A%5Bethernet%5D%0Amac-address%3Dbc%3A24%3A11%3A7a%3Abd%3A68%0A%0A%5Bipv4%5D%0Amethod%3Dmanual%0Aaddress1%3D10.10.51.150%2F24%2C10.10.51.5%0Adns%3D10.10.51.5%3B"
         }
       }
     ]

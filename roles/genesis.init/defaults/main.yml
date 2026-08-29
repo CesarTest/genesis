@@ -127,13 +127,22 @@ g3_extract_os_installer:
     - src: "boot/x86_64/root"
       dest: "root"        
 
-g3_ative_os_installer:
+g3_native_os_installer:
+
+   #- distribution: "Rocky"
+   # distribution_version: "8"
+   # os_image_name: "x86_64.iso"
+   # image: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.10-x86_64-dvd1.iso"
+   # checksum: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/CHECKSUM"
+   # checksum_algorithm: "sha256"
+   # extract_ramdisk: yes
+   # mount: yes
 
   - distribution: "CentOS"
     distribution_version: "9"
     os_image_name: "x86_64.iso"
-    image: "https://centos.org"
-    checksum: "https://centos.org.SHA256SUM"
+    image: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso"
+    checksum: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso.SHA256SUM"
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
     mount: yes
@@ -141,31 +150,36 @@ g3_ative_os_installer:
   - distribution: "Ubuntu"
     distribution_version: "24.04"
     os_image_name: "x86_64.iso"
-    image: "https://ubuntu.com"
-    checksum: "https://ubuntu.com"
+    image: "https://releases.ubuntu.com/noble/ubuntu-24.04.4-live-server-amd64.iso"
+    checksum: "https://releases.ubuntu.com/noble/SHA256SUMS"
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
-    mount: yes
 
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "x86_64.iso"  
-    image: "https://fedoraproject.org"
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso"
     checksum: "{{ g3_local_checksum_url }}"
-    checksum_algorithm: "sha256"
-    mount: yes
+    checksum_algorithm: "sha256"      
 
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "vmlinuz"
-    image: "https://fedoraproject.org"
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-kernel.x86_64"
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"
 
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "initramfs" 
-    image: "https://fedoraproject.org"
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
+    checksum: "{{ g3_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    os_image_name: "install.img" 
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260802.3.1/x86_64/fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img"
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"
     
@@ -173,12 +187,12 @@ g3_cloud_os_installer:
   - distribution: "CentOS"
     distribution_version: "9"
     os_image_name: "partition.qcow2"
-    image: "https://centos.org"
-    checksum: "https://centos.org"
+    image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+    checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
     checksum_algorithm: "sha256"
 
 # Using bifrost internal variable name
-genesis_installers_download: "{{ g3_ative_os_installer + g3_cloud_os_installer }}"
+genesis_installers_download: "{{ g3_native_os_installer + g3_cloud_os_installer }}"
 download_image_sources: "{{ genesis_download_images | default(genesis_installers_download) | default([]) }}"
 
 ######################################################

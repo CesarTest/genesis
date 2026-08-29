@@ -48,6 +48,7 @@ genesis_local_checksum_file:
    8ffd0d0fc218eae95c578ec12839fe598d60f96de85fab63d424ad021ed1a62f *fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso
    360c3b6b4cc8a58807fca8ac6947c8ec578e482af52d2311ae99ef02fe9d8dc5 *fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img 
    b0389e187ed951727560f517d589f3daa2736dc34dc9aa245b986d72b6f6c3ee *fedora-coreos-44.20260707.3.1-live-kernel.x86_64
+   376a1025e24a9f36b0e5e8a2ee8ca8b2c30d29a06e61f0dfe7edf9a9c76ed77b *fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img
 
 # 6.- Default OS Names 
 genesis_default_os_image_name:
@@ -169,6 +170,13 @@ g1_native_os_installer:
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
     checksum: "{{ g1_local_checksum_url }}"
     checksum_algorithm: "sha256"
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    os_image_name: "install.img" 
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260802.3.1/x86_64/fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img"
+    checksum: "{{ g1_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+    
     
 g1_cloud_os_installer:
   - distribution: "CentOS"

@@ -17,6 +17,7 @@ genesis_local_checksum_file:
    8ffd0d0fc218eae95c578ec12839fe598d60f96de85fab63d424ad021ed1a62f *fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso
    360c3b6b4cc8a58807fca8ac6947c8ec578e482af52d2311ae99ef02fe9d8dc5 *fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img 
    b0389e187ed951727560f517d589f3daa2736dc34dc9aa245b986d72b6f6c3ee *fedora-coreos-44.20260707.3.1-live-kernel.x86_64
+   376a1025e24a9f36b0e5e8a2ee8ca8b2c30d29a06e61f0dfe7edf9a9c76ed77b *fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img
    3c0ace903c0a78b13a09d5649ffc4409370f6d8dab2a79fea310b20ac20a2ac2 *Leap-16.0-offline-installer-x86_64-Build178.27.install.iso
 genesis_local_checksum_url: "file://{{ genesis_local_checksum_file.path }}"
 
@@ -65,8 +66,14 @@ genesis_download_images:
     os_image_name: "initramfs" 
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
     checksum: "{{ genesis_local_checksum_url }}"
-    checksum_algorithm: "sha256"
 
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    os_image_name: "install.img" 
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260802.3.1/x86_64/fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img"
+    checksum: "{{ genesis_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+	
   #- distribution: "Debian"
   #  distribution_version: "13.6"
   #  os_image_name: "x86_64.iso"

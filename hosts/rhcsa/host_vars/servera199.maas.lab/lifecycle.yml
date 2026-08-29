@@ -56,5 +56,5 @@ deploy:
    boot_interface:   "ipxe"
    deploy_interface: "ramdisk"
    os:
-     name: "SuSE"
-     version: "16.0"
+     name: "CoreOS"
+     version: "44"
