@@ -11,7 +11,19 @@
 #
 - name: "B4 SETUP - 1.- Enroll: 1) Rendering OS Installation Manifesto Files" 
   block:
-  
+ 
+    #---------------------------------------
+    # 0. Data Model to Render
+    #---------------------------------------   
+    - name: "B4 SETUP - 1.- Enroll: 1.0) Freeze Template Rendering Data Model"
+      ansible.builtin.set_fact:
+        j2_profile:         "{{ b4_node_os_profile                 | default('None') }}"  
+        j2_input:           "{{ b4_node_os_manifesto['defaults']   | default({})   }}"
+        j2_os_profiles:     "{{ b4_node_os_manifesto['os_version'] | default({})   }}"
+        j2_system_profiles: "{{ b4_node_os_manifesto['system']     | default({})   }}"
+        j2_node_profiles:   "{{ b4_node_os_manifesto['node']       | default({})   }}"
+        j2_hostname:        "{{ b4_enroll_node_name  | default('')   }}"
+    
     #---------------------------------------
     # 1. Manifest Folder
     #---------------------------------------   

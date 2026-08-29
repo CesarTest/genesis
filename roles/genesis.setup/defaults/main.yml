@@ -1090,12 +1090,7 @@ b4_os_installer_manifesto:
 b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | default({}) }}"
 b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
 b4_node_manifesto_files:   "{{ b4_node_os_manifesto['file']     | default([]) }}"
-j2_profile:         "{{ b4_node_os_profile                 | default('None') }}"  
-j2_input:           "{{ b4_node_os_manifesto['defaults']   | default({})   }}"
-j2_os_profiles:     "{{ b4_node_os_manifesto['os_version'] | default({})   }}"
-j2_system_profiles: "{{ b4_node_os_manifesto['system']     | default({})   }}"
-j2_node_profiles:   "{{ b4_node_os_manifesto['node']       | default({})   }}"
-j2_hostname:        "{{ b4_enroll_node_name  | default('')   }}"
+
 
 #------------------------------------
 # 2.- OS Installer Call from Bootloader
