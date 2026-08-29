@@ -650,6 +650,35 @@ b4_os_postinstall_script: |
     # Execute vendor-specific services overrides (e.g. systemctl enablement for SUSE)
     {{ b4_os_post_install_bash_lines[b4_node_os | trim].extra_cmd }}
 
+b4_os_postinstall_networkmanager_script: |
+    # =======================================================================
+    # E. NATIVE NETWORKMANAGER INJECTION BLINDED STRICTLY BY HARDWARE MAC
+    # =======================================================================
+    # Purge any residual connections created by the installer to avoid routing loops
+    mkdir -p /etc/NetworkManager/system-connections/
+    rm -f /etc/NetworkManager/system-connections/*.nmconnection
+    rm -f /etc/NetworkManager/system-connections/*.conf
+    
+    cat << EOF > /etc/NetworkManager/system-connections/provision.nmconnection
+    [connection]
+    id=provision
+    type=ethernet
+    permissions=
+    
+    [ethernet]
+    mac-address={{ b4_enroll_nic_provision_mac | lower }}
+    
+    [ipv4]
+    method=manual
+    address1={{ b4_enroll_nic_provision_ip }}/{{ b4_enroll_nic_provision_netmask_cidr | default('24') }},{{ b4_enroll_nic_provision_gateway }}
+    dns={{ b4_url_genesis_ip }};
+    
+    [proxy]
+    EOF
+    
+    # Enforce strict NetworkManager secure file permissions Matrix
+    chmod 600 /etc/NetworkManager/system-connections/provision.nmconnection
+  
 #------------------------------------
 # 1.- Kickstart
 #------------------------------------
@@ -919,19 +948,9 @@ b4_autoyast_template_defaults:
     </services>
 
   network: |
-    <dhcp_all config:type="boolean">false</dhcp_all>   
     <dns>
       <hostname>{{ b4_enroll_node_name }}</hostname>
     </dns>
-    <interfaces config:type="list">
-      <interface>
-        <method>manual</method> 
-        <ipaddr>{{ b4_enroll_nic_provision_ip }}</ipaddr>
-        <netmask>{{ b4_enroll_nic_provision_netmask }}</netmask>
-        <gateway>{{ b4_url_genesis_ip }}</gateway>
-        <mac>{{ b4_enroll_nic_provision_mac }}</mac>
-      </interface>
-    </interfaces>
 
   postinstall: |
     <chroot-scripts config:type="list">
@@ -1090,7 +1109,6 @@ b4_os_installer_manifesto:
 b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | default({}) }}"
 b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
 b4_node_manifesto_files:   "{{ b4_node_os_manifesto['file']     | default([]) }}"
-
 
 #------------------------------------
 # 2.- OS Installer Call from Bootloader
@@ -1391,9 +1409,9 @@ b4_node_deploy_interface: "{{ deploy['deploy_interface']  | default(b4_node_defa
 b4_node_power_interface:   "{{ manage['power_interface']   | default(b4_node_default_power_interface) }}"
 b4_node_management_interface: "{{ manage['management_interface']  | default(b4_node_default_management_interface) }}"
 
-#***********************************************************************
-# MOVE TO datamodel.yml => FREEZE FACTS FOR PERFORMANCE
-#***********************************************************************
+######################################################
+# INSTANCE INFORMATION => MOVE TO datamodel.yml FOR PERFORMANCE
+###################################################### 
  
 #------------------------------------
 # 2.- Deploy Interfaces Configuration
