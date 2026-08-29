@@ -26,7 +26,7 @@
      # Image Source: URL Details
      deploy_image_upstream_url: "{{ g1_deploy_image_url  | default('') }}"
      deploy_image_checksum_url: "{{ g1_image.checksum   | default('') }}"
-     deploy_image_checksum_algorithm: "{{ g1_image.checksum_algorithm | default('') }}" 
+     deploy_image_checksum_algorithm: "{{ g1_image.checksum_algorithm | default(g1_default_checksum_algorithm) |default('sha256') }}" 
      
      # Image Destination: Path Details
      http_boot_folder: "{{ g1_image_os_local_folder }}"

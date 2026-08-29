@@ -63,9 +63,10 @@ genesis_download_images:
 
   - distribution: "CoreOS"
     distribution_version: "44"
-    os_image_name: "initramfs" 
+    os_image_name: "initrd" 
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
     checksum: "{{ genesis_local_checksum_url }}"
+    checksum_algorithm: "sha256"
 
   - distribution: "CoreOS"
     distribution_version: "44"
@@ -73,7 +74,7 @@ genesis_download_images:
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260802.3.1/x86_64/fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img"
     checksum: "{{ genesis_local_checksum_url }}"
     checksum_algorithm: "sha256"
-	
+
   #- distribution: "Debian"
   #  distribution_version: "13.6"
   #  os_image_name: "x86_64.iso"

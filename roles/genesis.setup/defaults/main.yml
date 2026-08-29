@@ -73,6 +73,7 @@ genesis_os_definitions:
   coreos:
     ansible_distribution: "Fedora CoreOS"
     installer: "ignition"
+    ramdisk: "initramfs"
     prefix: "ignition_"
     ext: ".ign"   
 
@@ -390,7 +391,7 @@ b4_enroll_node_chassis_properties:
    cpu_arch:     "{{ b4_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
    memory_mb:    "{{ b4_enroll_node_chassis_properties_input['memory_mb']    | default('4096') }}"
    local_gb:     "{{ b4_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
-   root_device:  "{{ b4_enroll_node_chassis_properties_input['root_device']  | default({}) }}"
+   root_device:  "{{ b4_enroll_node_chassis_properties_input['root_device']  | default('/dev/sda') }}"
    capabilities: "{{ b4_enroll_node_chassis_properties_input['capabilities'] | default(b4_enroll_node_chassis_capabilities_string)  }}"
 
 ######################################################
@@ -565,6 +566,7 @@ b4_power_cycle_profiles:
     clean_steps: "{{ b4_clean_steps }}"
 b4_node_power_cycle_profile: "{{ manage.power_cycle | default('manual') | lower }}"
 b4_power_cycle: "{{ b4_power_cycle_profiles[b4_node_power_cycle_profile] | default({}) }}"
+b4_render_disk: "{{ b4_enroll_node_chassis_properties.root_device | default('/dev/sda') }}"
 
 #####################################################
 # OS_NATIVE: INSTALLERS TEMPLATES RENDERING
@@ -1020,39 +1022,27 @@ b4_ignition_template_defaults:
       {
         "name": "core",
         "sshAuthorizedKeys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
+          "{{ b4_provision_user_ssh_key }}"
         ]
       },
       {
-        "name": "cesar",
+        "name": "{{ b4_provision_user_name }}",
         "groups": [
-          "wheel",
-          "sudo"
+          {{ b4_provision_user_groups | to_json }}
         ],
         "shell": "/bin/bash",
         "sshAuthorizedKeys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
+          "{{ b4_provision_user_ssh_key }}"
         ]
       }
     ]
   storage: |
-    "files": [
+    "disks": [
       {
-        "path": "/etc/hostname",
-        "mode": 420,
-        "overwrite": true,
-        "contents": {
-          "source": "data:,servera199"
-        }
-      },
-      {
-        "path": "/etc/NetworkManager/system-connections/provision.nmconnection",
-        "mode": 384,
-        "overwrite": true,
-        "contents": {
-          "source": "data:,%5Bconnection%5D%0Aid%3Dprovision%0Atype%3Dethernet%0A%0A%5Bethernet%5D%0Amac-address%3Dbc%3A24%3A11%3A7a%3Abd%3A68%0A%0A%5Bipv4%5D%0Amethod%3Dmanual%0Aaddress1%3D10.10.51.150%2F24%2C10.10.51.5%0Adns%3D10.10.51.5%3B"
-        }
+        "device": "{{ b4_render_disk }}",
+        "wipeTable": true
       }
+    ]
 
 ######################################################
 #  LIFECYCLE DEFINITION: DEPLOY STAGE 
@@ -1182,7 +1172,7 @@ b4_render_modules: "r8125,r8168,r8169,e1000e,igb,ixgbe,i40e,ice,tg3,bnxt_en,bnx2
 
 # --> Source Installers Renderering
 b4_render_ksroot: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.install | default('install.img') }}"
-b4_render_ignroot: "{{ b4_netinstall_os_mounted_repo_url }}"
+b4_render_ignroot: "{{ b4_render_ksroot }}"
 # Beware with \; => Required for PXE,iPXE... but not for GRUB
 b4_render_casperds: 'nocloud-net;s={{ b4_node_os_manifesto["url"] | default("") }}'
 
@@ -1190,7 +1180,7 @@ b4_render_casperds: 'nocloud-net;s={{ b4_node_os_manifesto["url"] | default("") 
 #.....................................
 # --> Kernel & InitRam
 b4_render_kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
-b4_render_initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.initram | default('initrd') }}"
+b4_render_initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.ramdisk | default('initrd') }}"
 
 # --> Menus
 # ==============================================================================
@@ -1240,13 +1230,18 @@ b4_render_menu_autoyast: >-
     copy_network=1
 
 b4_render_menu_ignition: >-
-    root=live:{{ b4_render_ignroot }}
+    coreos.live.rootfs_url={{ b4_render_ksroot }}
+    coreos.inst.install_dev={{ b4_render_disk }}
+    coreos.inst.image_url={{ b4_render_ksroot }}
+    coreos.inst.ignition_url={{ b4_node_os_manifesto['url'] }}
+    coreos.inst.force_wipe=1
     ignition.config.url={{ b4_node_os_manifesto['url'] }}
-    ifname={{ b4_render_ifname }}:{{ b4_enroll_nic_provision_mac }}
+    ignition.firstboot
+    ignition.platform.id=metal
     ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
+    ifname={{ b4_render_ifname }}:{{ b4_enroll_nic_provision_mac }}
     nameserver={{ b4_url_genesis_ip }}
     rd.neednet=1
-    rd.net.dhcp.retry=0
     rd.net.timeout.carrier=10
     BOOTIF=01-{{ b4_render_mac }}
 

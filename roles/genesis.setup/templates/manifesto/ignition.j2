@@ -1,46 +1,87 @@
+{#############################################################################
+#                    ANSIBLE GENERATED IGNITION FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   29/08/2026
+# Version: 1.0 
+#############################################################################} 
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
+{###############################
+         CAPTURE VALUES 
+ ##############################}
+{%- set blank = " " -%}
+{%- set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%- set ign_model = j2_profile | default('none') -%}
+{%- set system_candidatos = [
+      j2_node_profiles[ign_model]['system'] | default(none),
+      j2_system_profiles[ign_model]['system'] | default(none),
+      j2_os_profiles[ign_model]['system'] | default(none),
+      j2_input['system'] | default(none)
+    ] 
+-%}
+{%- set user_candidatos = [
+      j2_node_profiles[ign_model]['user'] | default(none),
+      j2_system_profiles[ign_model]['user'] | default(none),
+      j2_os_profiles[ign_model]['user'] | default(none),
+      j2_input['user'] | default(none)
+    ] 
+-%}
+{%- set storage_candidatos = [
+      j2_node_profiles[ign_model]['storage'] | default(none),
+      j2_system_profiles[ign_model]['storage'] | default(none),
+      j2_os_profiles[ign_model]['storage'] | default(none),
+      j2_input['storage'] | default(none)
+    ] 
+-%}
+{%- set ign_user     = user_candidatos     | select | first | default(none) -%}
+{%- set ign_storage  = storage_candidatos  | select | first | default(none) -%}  
+{%- set ign_system   = system_candidatos   | select | first | default(none) -%}
+{#......... 2.- Ignition Sections Definition ..... #}
+{%- set ign_sections = [  
+    { "header": "passwd", "content": ign_user   },
+    { "header": "storage", "content": ign_storage  },
+    { "header": "systemd", "content": ign_system  }
+  ]			  
+-%}
+{###############################
+         RENDERING FILE
+ ##############################}
+{#
+==============================================================================
+ AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY
+ Generated dynamically by Genesis Core Engine Mesh
+ Deployment Context: Ignition Automated OS Provisioning Profile
+ Timestamp: 2026
+==============================================================================
+#}
 {
   "ignition": {
     "version": "3.4.0"
-  },
-  "passwd": {
-    "users": [
-      {
-        "name": "core",
-        "sshAuthorizedKeys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
-        ]
-      },
-      {
-        "name": "cesar",
-        "groups": [
-          "wheel",
-          "sudo"
-        ],
-        "shell": "/bin/bash",
-        "sshAuthorizedKeys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo"
-        ]
-      }
-    ]
-  },
-  "storage": {
-    "files": [
-      {
-        "path": "/etc/hostname",
-        "mode": 420,
-        "overwrite": true,
-        "contents": {
-          "source": "data:,servera199"
-        }
-      },
-      {
-        "path": "/etc/NetworkManager/system-connections/provision.nmconnection",
-        "mode": 384,
-        "overwrite": true,
-        "contents": {
-          "source": "data:,%5Bconnection%5D%0Aid%3Dprovision%0Atype%3Dethernet%0A%0A%5Bethernet%5D%0Amac-address%3Dbc%3A24%3A11%3A7a%3Abd%3A68%0A%0A%5Bipv4%5D%0Amethod%3Dmanual%0Aaddress1%3D10.10.51.150%2F24%2C10.10.51.5%0Adns%3D10.10.51.5%3B"
-        }
-      }
-    ]
   }
+{%- for section in ign_sections -%}
+  {%- if section.content -%},
+  "{{ section.header }}": { 
+      {{ section.content | safe | trim | indent(width=6, first=true) }}
+   }
+  {%- endif -%}
+{%- endfor -%}
+{{ eol }} 
 }
+{###############################
+              END
+ ##############################}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED IGNITION FILE 
+#############################################################################}
