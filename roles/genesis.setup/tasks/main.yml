@@ -25,6 +25,7 @@
     - name: "B4 SETUP - B) Dump Local File Content to Terminal (Pure Local Cat)"
       ansible.builtin.debug:
         msg: "{{ lookup('ansible.builtin.file', b4_baremetal_vars_file) | string }}"
+
   when:
     - b4_baremetal_vars_file is defined
     - b4_baremetal_vars_file is not none
