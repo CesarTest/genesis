@@ -67,7 +67,7 @@
 {%- for section in ign_sections -%}
   {%- if section.content -%},
   "{{ section.header }}": { 
-      {{ section.content | safe | trim | indent(width=6, first=true) }}
+      {{ section.content | safe | trim | indent(width=6, first=false) }}
    }
   {%- endif -%}
 {%- endfor -%}

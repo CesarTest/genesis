@@ -56,5 +56,5 @@ deploy:
    boot_interface:   "ipxe"
    deploy_interface: "ramdisk"
    os:
-     name: "CoreOS"
-     version: "44"
+     name: "Ubuntu"
+     version: "24.04"

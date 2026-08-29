@@ -10,38 +10,35 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 - name: "B4 SETUP - 1.- Enroll: 1) Rendering OS Installation Manifesto Files" 
-  vars: 
-    j2_profile:         "{{ b4_node_os_profile                 | default('None') }}"  
-    j2_input:           "{{ b4_node_os_manifesto['defaults']   | default({})   }}"
-    j2_os_profiles:     "{{ b4_node_os_manifesto['os_version'] | default({})   }}"
-    j2_system_profiles: "{{ b4_node_os_manifesto['system']     | default({})   }}"
-    j2_node_profiles:   "{{ b4_node_os_manifesto['node']       | default({})   }}"
-    j2_hostname:        "{{ b4_enroll_node_name  | default('')   }}"
-  
   block:
    
     #---------------------------------------
     # 0. Log Entry
     #---------------------------------------   
-    - name: "B4 SETUP - 1.- Enroll: 1.0) Dump Manifesto Data Model"
-      ansible.builtin.debug:
-        var: b4_node_os_manifesto
+    - name: "B4 SETUP - 1.- Enroll: 1.0) Freeze Manifesto Data Model"
+      ansible.builtin.set_fact:
+        j2_profile:         "{{ b4_node_os_profile                 | default('None') }}"  
+        j2_input:           "{{ b4_node_os_manifesto['defaults']   | default({})   }}"
+        j2_os_profiles:     "{{ b4_node_os_manifesto['os_version'] | default({})   }}"
+        j2_system_profiles: "{{ b4_node_os_manifesto['system']     | default({})   }}"
+        j2_node_profiles:   "{{ b4_node_os_manifesto['node']       | default({})   }}"
+        j2_hostname:        "{{ b4_enroll_node_name  | default('')   }}" 
 
     #---------------------------------------
     # 1. Manifest Folder
     #---------------------------------------   
     - name: "B4 SETUP - 1.- Enroll: 1.1) Create Manifesto Folders"
       ansible.builtin.file:
-         path: "{{ b4_folder }}"
-         state: "directory"  
-         recurse: true
+        path: "{{ b4_folder }}"
+        state: "directory"  
+        recurse: true
       vars:
-         b4_folder: "{{ b4_file | string | dirname | default(omit) }}"
+        b4_folder: "{{ b4_file | string | dirname | default(omit) }}"
 
       loop: "{{ b4_node_manifesto_files | default([]) }}"
       loop_control:
         loop_var: "b4_file" 
-               
+
     #---------------------------------------
     # 2. Manifest Rendering (KickStart, Cloud-Init, Ignition, Preseed)
     #---------------------------------------
@@ -56,3 +53,14 @@
       loop_control:
         loop_var: "b4_node_manifesto_src"
         index_var: "b4_node_manifesto_dest_index"
+
+    #---------------------------------------
+    # 3. Render Post Install Scripts
+    #---------------------------------------
+    - name: "B4 SETUP - 1.- Enroll: 1.3) Rendering OS Installation PostInstall Scripts"
+      ansible.builtin.copy:
+        content: "{{ b4_script.content | default('') }}"
+        dest: "{{ b4_script.dest | default('')  }}"
+      loop: "{{ b4_os_postinstall_local_scripts_list | default([])}}"
+      loop_control:
+        loop_var: "b4_script"

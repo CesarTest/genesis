@@ -8,18 +8,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 - name: "B5 - DEPLOY - 1.- Clean : 1) Wipe Disks in Manual Power Cycle" 
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
-    b5_wipedisks_delay: "{{ power_cycle['clean_timeout'] | default('180') | int }}"
   ignore_errors: yes 
 
   #--------------------------------------------------------------------------  
-  # 1.- Machine Already Power On
+  # 1.- Wait to machine to be Ready
   #--------------------------------------------------------------------------
   block:
  
-    # 1.0.- Wait up to 3 minutes
-    #....................... 
+    - debug: 
+        msg: "b5_wipedisks_delay: {{ b5_wipedisks_delay }}"
+
     - name: "B5 - DEPLOY - 1.- Clean: 1.1) Wait up to Clean Timeout seconds"
       ansible.builtin.wait_for:
         host: "{{ ansible_host | default('localhost') }}"
@@ -27,7 +25,14 @@
         delay: 10
         timeout: "{{ b5_wipedisks_delay }}"
         state: started
-      delegate_to: localhost 
+  
+  delegate_to: localhost 
+
+
+  #--------------------------------------------------------------------------  
+  # 2.- Wipe Disks & Reboot
+  #--------------------------------------------------------------------------
+- block:
 
     # 1.1.- Wipe Disks (Optimizado: Sin async porque dd count=100 es instantáneo)
     #....................... 
@@ -57,11 +62,7 @@
       failed_when: false 
       changed_when: false
 
-  #--------------------------------------------------------------------------  
-  # 2.- Conditions
-  #--------------------------------------------------------------------------  
   when:
-    # Connection Transport Hard-Lock (Anti-Local Execution)
     - ansible_connection is defined
     - ansible_connection != 'local'
     - ansible_connection == 'ssh'

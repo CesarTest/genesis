@@ -36,23 +36,15 @@ genesis_default_repos:
 
 # 4.- OS Definitions
 genesis_os_definitions:
-  centos:
-    ansible_distribution: "CentOS"
-    installer: "anaconda"
-    prefix: "ks_"
-    ext: ".ks"
-
-  rocky:
-    ansible_distribution: "Rocky"
-    installer: "anaconda"
-    prefix: "ks_"
-    ext: ".ks"
-
-  redhat:
+  redhat: &redhat_keys
     ansible_distribution: "RedHat"
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks" 
+  centos: *redhat_keys
+  rocky: *redhat_keys
+  rhel: *redhat_keys
+  fedora: *redhat_keys
 
   esxi:
     ansible_distribution: "VMwareESXi" 
@@ -391,7 +383,7 @@ b4_enroll_node_chassis_properties:
    cpu_arch:     "{{ b4_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
    memory_mb:    "{{ b4_enroll_node_chassis_properties_input['memory_mb']    | default('4096') }}"
    local_gb:     "{{ b4_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
-   root_device:  "{{ b4_enroll_node_chassis_properties_input['root_device']  | default('/dev/sda') }}"
+   root_device:  "{{ b4_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
    capabilities: "{{ b4_enroll_node_chassis_properties_input['capabilities'] | default(b4_enroll_node_chassis_capabilities_string)  }}"
 
 ######################################################
@@ -577,110 +569,129 @@ b4_render_disk: "{{ b4_enroll_node_chassis_properties.root_device | default('/de
 #-------------------------
 # 1.- El Diccionario Maestro de Excepciones por Proveedor
 b4_os_post_install_bash_lines:
-  ubuntu:
+  # --- Debian Family ---
+  ubuntu: &post_ubuntu
     root_lock: 'usermod -p "!" root'
     user_add: 'useradd -m -u 1001 -s /bin/bash {{ b4_provision_user_name }}'
     user_lock: 'usermod -p "!" {{ b4_provision_user_name }}'
     ssh_chown: 'chown -R {{ b4_provision_user_name }}:{{ b4_provision_user_name }} /home/{{ b4_provision_user_name }}/.ssh'
     extra_cmd: 'echo "==> Ubuntu configuration completed."'
+  
+  debian: *post_ubuntu
 
-  redhat:
+  # --- RedHat Family ---
+  redhat: &post_redhat
     root_lock: 'usermod -p "*" root'
     user_add: 'useradd -m -u 1001 -s /bin/bash {{ b4_provision_user_name }}'
     user_lock: 'usermod -p "*" {{ b4_provision_user_name }}'
     ssh_chown: 'chown -R {{ b4_provision_user_name }}:{{ b4_provision_user_name }} /home/{{ b4_provision_user_name }}/.ssh'
     extra_cmd: 'echo "==> RedHat configuration completed."'
 
-  suse:
+  centos: *post_redhat
+  rocky: *post_redhat
+  rhel: *post_redhat
+  fedora: *post_redhat
+
+  # --- SUSE Family ---
+  suse: &post_suse
     root_lock: 'usermod -p "!" root'
     user_add: 'useradd -m -u 1001 -g users -s /bin/bash {{ b4_provision_user_name }}'
     user_lock: 'usermod -p "!" {{ b4_provision_user_name }}'
     ssh_chown: 'chown -R {{ b4_provision_user_name }}:users /home/{{ b4_provision_user_name }}/.ssh'
     extra_cmd: 'systemctl enable sshd.service || true'
 
+  opensuse: *post_suse
+
 # 2.- El Script Core Maestro Unificado
 b4_node_os_allow_passwords:     "{{ (deploy.login_password | default(true)  | bool) | ternary ('yes','no') }}"
 b4_node_os_allow_root_password: "{{ (deploy.root_password  | default(false) | bool) | ternary ('yes','no') }}"
 b4_os_postinstall_script: |
-    #!/bin/bash
-    set -e
-    
-    # =======================================================================
-    # A. HARDEN ROOT ACCOUNT (Disable direct external access)
-    # =======================================================================
-    {{ b4_os_post_install_bash_lines[b4_node_os | trim].root_lock }}
-    
-    # =======================================================================
-    # B. PROVISION AUTOMATION USER WITH SYNCHRONIZED INDUSTRIAL IDs
-    # =======================================================================
-    if ! id -u {{ b4_provision_user_name }} >/dev/null 2>&1; then
-      {{ b4_os_post_install_bash_lines[b4_node_os | trim].user_add }}
-    fi
-    
-    # Lock standard cleartext password entry mechanisms
-    {{ b4_os_post_install_bash_lines[b4_node_os | trim].user_lock }}  
-    
-    # Grant privileged sudo rights without operational password prompts
-    echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{{ b4_provision_user_name }}
-    chmod 440 /etc/sudoers.d/{{ b4_provision_user_name }}
-    
-    # =======================================================================
-    # C. INJECT ANSIBLE CORE PUBLIC KEY INTO IMMUTABLE STORAGE TARGET
-    # =======================================================================
-    mkdir -p /home/{{ b4_provision_user_name }}/.ssh
-    echo "{{ b4_provision_user_ssh_key }}" > /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
-    
-    # Enforce standard OpenSSH authorization security permissions matrix
-    {{ b4_os_post_install_bash_lines[b4_node_os | trim].ssh_chown }} 
-    chmod 700 /home/{{ b4_provision_user_name }}/.ssh
-    chmod 600 /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
-    
-    # Hide the provisioning service account from greeting managers
-    mkdir -p /var/lib/AccountsService/users/
-    echo -e "[User]\nSystemAccount=true" > /var/lib/AccountsService/users/{{ b4_provision_user_name }}
-    
-    # =======================================================================
-    # D. REWRITE ACTIVE SECURE DAEMON POLICIES (sshd_config)
-    # =======================================================================
-    # Sanitize native password authentication entries and enforce root restrictions
-    sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication {{ b4_node_os_allow_passwords }}/g' /etc/ssh/sshd_config
-    sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin {{ b4_node_os_allow_root_password }}/g' /etc/ssh/sshd_config
-           
-    # Purge vendor drop-in overrides to guarantee strict configuration dominance
-    rm -f /etc/ssh/sshd_config.d/*.conf
-    
-    # Execute vendor-specific services overrides (e.g. systemctl enablement for SUSE)
-    {{ b4_os_post_install_bash_lines[b4_node_os | trim].extra_cmd }}
+  #!/bin/bash
+  set -e
+  
+  # =======================================================================
+  # A. HARDEN ROOT ACCOUNT (Disable direct external access)
+  # =======================================================================
+  {{ b4_os_post_install_bash_lines[b4_node_os | trim].root_lock }}
+  
+  # =======================================================================
+  # B. PROVISION AUTOMATION USER WITH SYNCHRONIZED INDUSTRIAL IDs
+  # =======================================================================
+  if ! id -u {{ b4_provision_user_name }} >/dev/null 2>&1; then
+    {{ b4_os_post_install_bash_lines[b4_node_os | trim].user_add }}
+  fi
+  
+  # Lock standard cleartext password entry mechanisms
+  {{ b4_os_post_install_bash_lines[b4_node_os | trim].user_lock }}  
+  
+  # Grant privileged sudo rights without operational password prompts
+  echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{{ b4_provision_user_name }}
+  chmod 440 /etc/sudoers.d/{{ b4_provision_user_name }}
+  
+  # =======================================================================
+  # C. INJECT ANSIBLE CORE PUBLIC KEY INTO IMMUTABLE STORAGE TARGET
+  # =======================================================================
+  mkdir -p /home/{{ b4_provision_user_name }}/.ssh
+  echo "{{ b4_provision_user_ssh_key }}" > /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
+  
+  # Enforce standard OpenSSH authorization security permissions matrix
+  {{ b4_os_post_install_bash_lines[b4_node_os | trim].ssh_chown }} 
+  chmod 700 /home/{{ b4_provision_user_name }}/.ssh
+  chmod 600 /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
+  
+  # Hide the provisioning service account from greeting managers
+  mkdir -p /var/lib/AccountsService/users/
+  echo -e "[User]\nSystemAccount=true" > /var/lib/AccountsService/users/{{ b4_provision_user_name }}
+  
+  # =======================================================================
+  # D. REWRITE ACTIVE SECURE DAEMON POLICIES (sshd_config)
+  # =======================================================================
+  # Sanitize native password authentication entries and enforce root restrictions
+  sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication {{ b4_node_os_allow_passwords }}/g' /etc/ssh/sshd_config
+  sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin {{ b4_node_os_allow_root_password }}/g' /etc/ssh/sshd_config
+         
+  # Purge vendor drop-in overrides to guarantee strict configuration dominance
+  rm -f /etc/ssh/sshd_config.d/*.conf
+  
+  # Execute vendor-specific services overrides (e.g. systemctl enablement for SUSE)
+  {{ b4_os_post_install_bash_lines[b4_node_os | trim].extra_cmd }}
 
 b4_os_postinstall_networkmanager_script: |
-    # =======================================================================
-    # E. NATIVE NETWORKMANAGER INJECTION BLINDED STRICTLY BY HARDWARE MAC
-    # =======================================================================
-    # Purge any residual connections created by the installer to avoid routing loops
-    mkdir -p /etc/NetworkManager/system-connections/
-    rm -f /etc/NetworkManager/system-connections/*.nmconnection
-    rm -f /etc/NetworkManager/system-connections/*.conf
-    
-    cat << EOF > /etc/NetworkManager/system-connections/provision.nmconnection
-    [connection]
-    id=provision
-    type=ethernet
-    permissions=
-    
-    [ethernet]
-    mac-address={{ b4_enroll_nic_provision_mac | lower }}
-    
-    [ipv4]
-    method=manual
-    address1={{ b4_enroll_nic_provision_ip }}/{{ b4_enroll_nic_provision_netmask_cidr | default('24') }},{{ b4_enroll_nic_provision_gateway }}
-    dns={{ b4_url_genesis_ip }};
-    
-    [proxy]
-    EOF
-    
-    # Enforce strict NetworkManager secure file permissions Matrix
-    chmod 600 /etc/NetworkManager/system-connections/provision.nmconnection
+  # =======================================================================
+  # E. NATIVE NETWORKMANAGER INJECTION BLINDED STRICTLY BY HARDWARE MAC
+  # =======================================================================
+  # Purge any residual connections created by the installer to avoid routing loops
+  mkdir -p /etc/NetworkManager/system-connections/
+  rm -f /etc/NetworkManager/system-connections/*.nmconnection
+  rm -f /etc/NetworkManager/system-connections/*.conf
   
+  cat << EOF > /etc/NetworkManager/system-connections/provision.nmconnection
+  [connection]
+  id=provision
+  type=ethernet
+  permissions=
+  
+  [ethernet]
+  mac-address={{ b4_enroll_nic_provision_mac | lower }}
+  
+  [ipv4]
+  method=manual
+  address1={{ b4_enroll_nic_provision_ip }}/{{ b4_enroll_nic_provision_netmask_cidr | default('24') }},{{ b4_enroll_nic_provision_gateway }}
+  dns={{ b4_url_genesis_ip }};
+  
+  [proxy]
+  EOF
+  
+  # Enforce strict NetworkManager secure file permissions Matrix
+  chmod 600 /etc/NetworkManager/system-connections/provision.nmconnection
+    
+b4_postinstall_repo_filename: "{{ b4_repo_manifesto_path }}/{{ b4_node_os }}"
+b4_os_postinstall_local_scripts_list: 
+  - content: "{{ b4_os_postinstall_script | default('') }}"
+    dest: "{{ b4_postinstall_repo_filename }}-users.sh"		
+  - content: "{{ b4_os_postinstall_networkmanager_script | default('') }}"
+    dest: "{{ b4_postinstall_repo_filename }}-nm.sh"
+ 
 #------------------------------------
 # 1.- Kickstart
 #------------------------------------
@@ -740,7 +751,8 @@ b4_kickstart_template_defaults:
  
   user: |
     rootpw --iscrypted {{ b4_root_user_password }}
-    user --name={{ b4_provision_user_name }} --groups={{ b4_provision_user_groups }} --password={{ b4_provision_user_password }} --iscrypted
+    user --name={{ b4_main_user_name }} --uid=1000 --groups={{ b4_main_user_groups }} --password={{ b4_main_user_password }} --iscrypted
+    user --name={{ b4_provision_user_name }} --uid=1001 --groups={{ b4_provision_user_groups }} --password={{ b4_provision_user_password }} --iscrypted
     sshkey --username={{ b4_provision_user_name }} "{{ b4_provision_user_ssh_key }}"
 
   network: |
@@ -783,7 +795,11 @@ b4_kickstart_template_os_profiles:
       @core
     repos: ''
     postinstall: |
-      echo "==> Enforcing persistent production repositories layout for legacy target..."
+      {{ b4_os_postinstall_script }}
+      
+      # =======================================================================
+      # E. ENFORCING PERSISTENT REPOSITORIES LAYOUT (Legacy Systems)
+      # =======================================================================
       
       # Purge default vendor repository profiles to avoid timeout conflicts
       rm -f /etc/yum.repos.d/*.repo
@@ -821,9 +837,15 @@ b4_casper_template_defaults:
       update: false
   identity: |
     hostname: {{ b4_enroll_node_name }}
-    username: {{ b4_main_user_name }}
-    password: "{{ b4_main_user_password }}"
-  user: |
+    username: {{ b4_provision_user_name }}
+    password: "{{ b4_provision_user_password }}"
+  ssh: |
+    install-server: true
+    allow-pw: true             
+    password_auth: true        
+    authorized-keys:
+      - "{{ b4_provision_user_ssh_key }}"
+  user-data: |
     users:
       - name: root
         passwd: "{{ b4_root_user_password }}"
@@ -834,12 +856,11 @@ b4_casper_template_defaults:
         passwd: "{{ b4_main_user_password }}"
         lock_passwd: false
         shell: /bin/bash
-  ssh: |
-    install-server: true
-    allow-pw: true             
-    password_auth: true        
-    authorized-keys:
-      - "{{ b4_provision_user_ssh_key }}"
+      - name: "{{ b4_provision_user_name }}"
+        uid: 1001
+        passwd: "{{ b4_provision_user_password }}"
+        lock_passwd: false
+        shell: /bin/bash
   #logging: |
   #  log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
   network: |
@@ -868,15 +889,8 @@ b4_casper_template_defaults:
     sources_list: |
       deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} {{ b4_node_os_alias }} main restricted
 
-  storage: |
-    layout:
-      name: lvm
-      match: {}   
   postinstall: |
-    - |
-      cat << 'EOF' > /target/tmp/setup-users.sh
-      {{ b4_os_postinstall_script }}
-      EOF
+    - wget -O /target/tmp/setup-users.sh {{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os }}-users.sh
     - curtin in-target -- bash /tmp/setup-users.sh
     - rm -f /target/tmp/setup-users.sh
 
@@ -1036,13 +1050,18 @@ b4_ignition_template_defaults:
         ]
       }
     ]
-  storage: |
-    "disks": [
-      {
-        "device": "{{ b4_render_disk }}",
-        "wipeTable": true
-      }
-    ]
+  #storage: |
+  #  "files": [
+  #    {
+  #      "path": "/etc/NetworkManager/system-connections/provision.nmconnection",
+  #      "mode": 384,
+  #      "overwrite": true,
+  #      "contents": {
+  #        "source": "data:,%5Bconnection%5D%0Aid%3Dprovision%0Atype%3Dethernet%0A%0A%5Bethernet%5D%0Amac-address%3D{{ b4_enroll_nic_provision_mac }}%0A%0A%5Bipv4%5D%0Aaddress1%3D{{ b4_enroll_nic_provision_ipv4 }}%2C{{ b4_enroll_nic_provision_gateway }}%0Adns%3D{{ b4_url_genesis_ip }}%3B%0Amethod%3Dmanual%0A%0A%5Bipv6%5D%0Amethod%3Ddisabled"
+  #      }
+  #    }
+  #  ]
+
 
 ######################################################
 #  LIFECYCLE DEFINITION: DEPLOY STAGE 
@@ -1235,7 +1254,8 @@ b4_render_menu_ignition: >-
     coreos.inst.image_url={{ b4_render_ksroot }}
     coreos.inst.ignition_url={{ b4_node_os_manifesto['url'] }}
     coreos.inst.force_wipe=1
-    ignition.config.url={{ b4_node_os_manifesto['url'] }}
+    coreos.inst=yes
+    coreos.inst.reboot=true
     ignition.firstboot
     ignition.platform.id=metal
     ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
