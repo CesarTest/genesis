@@ -26,7 +26,12 @@ all:
  # workstation199.maas.lab:
  #   ansible_user: cesar 
  #   ansible_become_pass: cesar
- # 
+
+   proxmox:
+     ansible_host: 192.168.1.133
+     ansible_user: root 
+     ansible_become_pass: cesardgm
+
  #--------------------------------------------------------------------
  #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
  #--------------------------------------------------------------------
@@ -36,3 +41,6 @@ all:
        servera199.maas.lab:        
        #serverb199.maas.lab: 
        #workstation199.maas.lab:
+   hypervisor:
+     hosts:
+       proxmox:        

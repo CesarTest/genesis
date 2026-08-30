@@ -66,7 +66,7 @@ BAREMETAL_ROOT_PASSWORD="cesar" # Automatic ssh-copy-id
 
 # 2.3.- Genesis Playbooks
 REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
-SSH_MAP="6" ; GRAPHICS="7" ; NETWORK="8" ; NTP="9"   ; GATHER="10"
+T5_DEPLOY="6" ; T5_ACTIVE="7" ; T5_CLEAN="8" ; T4_ENROLL="9"   ; T4_MANAGE="10" ; T4_INSPECT="11"
 GENESIS_PLAYBOOKS=( \
 	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
 	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
@@ -74,26 +74,33 @@ GENESIS_PLAYBOOKS=( \
 	 "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
      "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
 	 "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/install_ssh_trustmap" \
-	 "${GENESIS_WORKING_PATH}/playbooks/install_graphics.yaml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/install_network.yaml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/install_ntp.yaml" \
-	 "${GENESIS_WORKING_PATH}/playbooks/gatheringStringConfigurations.yaml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
 )
 GENESIS_PLAYBOOKS_HEADER=( \
-        "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1_refresh.yml)${COLOR[$NC]}" \
-        "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2_create.yml)${COLOR[$NC]}" \
-        "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3_init.yml)${COLOR[$NC]}" \
-        "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4_setup.yml)${COLOR[$NC]}" \
-        "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5_deploy.yml)${COLOR[$NC]}" \
-        "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: node drivers and services installation (B6_provision.yml)${COLOR[$NC]}" \
-        "${COLOR[$NC]}[BAREMETAL] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}" \
-        "${COLOR[$NC]}[BAREMETAL] - GRAPHICS    : Install propietary 3er party driver${COLOR[$NC]}" \
-        "${COLOR[$NC]}[BAREMETAL] - NETWORK     : Install network configurations${COLOR[$NC]}" \
-        "${COLOR[$NC]}[BAREMETAL] - NTP         : Deploy NTP configuration${COLOR[$NC]}" \
-        "${COLOR[$NC]}[BAREMETAL] - GATHER BAREMETAL CONFIGURATIONS  : Fetch relevant configuration files from String${COLOR[$NC]}" \
+        "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1- genesis.yml)${COLOR[$NC]}" \
+        "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2- genesis.yml.yml)${COLOR[$NC]}" \
+        "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3- genesis.yml)${COLOR[$NC]}" \
+        "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4- baremetal.yml)${COLOR[$NC]}" \
+        "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5- baremetal.yml)${COLOR[$NC]}" \
+        "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: integrate into deployment strategy (B6- baremetal.yml)${COLOR[$NC]}" \
+        "${COLOR[$NC]}[BAREMETAL] - TEST DEPLOY : HW Certification of Deploy Stage(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST ACTIVE : HW Certification of Active Stage(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST CLEAN  : HW Certification of Clean Stage(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST ENROLL : HW Certification of Enroll Stage(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST MANAGE : HW Certification of Manage Stage(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST INSPECT: HW Certification of Inspect Stage(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE DEPLOY : Troubleshoot Deploy Stage(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ACTIVE : Troubleshoot Active Stage(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE CLEAN  : Troubleshoot Clean Stage(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ENROLL : Troubleshoot Enroll Stage(A4)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE MANAGE : Troubleshoot Manage Stage(A4)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE INSPECT: Troubleshoot Inspect Stage(A4)${COLOR[$NC]}" \
 )
-
 
 # 2.3.- Online Installation
 DHCP_NIC=0; DHCP_IP=1 ; DHCP_POOL_START=2 ; DHCP_POOL_END=3
@@ -139,16 +146,15 @@ function defineMenu() {
 	    0|"MAIN        : back to main menu")
 		      MENU_TEXT="INSTRUCTIONS: \n A.- Baremetal Nodes Installation Cycle: SETUP -> DEPLOY -> PROVISION \n B.- Genesis Node  Installation Cycle: REFRESH -> CREATE -> INIT \n C.- To Run Ironic Commands: . $HOME/env.sh ; baremetal node list \n ___________\n STATE TRANSITIONS MENU \n___________"
 		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
-                              "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1_refresh.yml)${COLOR[$NC]}" \
-                              "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2_create.yml)${COLOR[$NC]}" \
-                              "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3_init.yml)${COLOR[$NC]}" \
-                              "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4_setup.yml)${COLOR[$NC]}" \
-                              "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5_deploy.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1- genesis.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2- genesis.yml.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3- genesis.yml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4- baremetal.yml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5- baremetal.yml)${COLOR[$NC]}" \
                               "${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}" \
-                              "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: node drivers and services installation (B6_provision.yml)${COLOR[$NC]}" \
-                              "${COLOR[$NC]}[BAREMETAL] - TEST MENU: isolated functionality provisioning ${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: integrate into deployment strategy (B6- baremetal.yml)${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}"
                               "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
-                              "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}" \
                               "Exit" \
 		                   )
 	          PARAMETRO=(     "MENU" )
@@ -230,13 +236,13 @@ function defineMenu() {
 		     ;;
 
        5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")
-	         if [ ! -n "${TARGET}" ]    ; then local TARGET=''                       ; fi
+	         if [ ! -n "${TARGET}" ]    ; then local TARGET=''                     ; fi
 	         if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/deploy.log"  ; fi
 	         MENU_TEXT="(5)___________ ${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}"
 	         PARAMETRO=(  "TARGET"    "LOG_FILE" )
              VALOR_DEFECTO=(  "${TARGET}" "${LOG_FILE}"   )
-	         SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
-	                             "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
+	         SOLICITA_PARAMETRO=("-----> Target Machines   [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File          [${VALOR_DEFECTO[1]}]:" \
                                     )
              RETURNING_MENU="0"
              RUN_ACTION="5"
@@ -272,33 +278,39 @@ function defineMenu() {
               unset INVENTORY TARGET LOG_FILE
 		  ;;
 
+       8|"${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}")
+		      MENU_TEXT="CERTIFICATION TESTS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${RUTA_OPCIONES[1]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
 	    9|"${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}")
 		      MENU_TEXT="TROUBLESHOOTING TOOLS: ___________"
 		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
                               "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
-                              "${GENESIS_PLAYBOOKS_HEADER[${SSH_MAP}]}" \
-                              "${GENESIS_PLAYBOOKS_HEADER[${GRAPHICS}]}" \
-                              "${GENESIS_PLAYBOOKS_HEADER[${NETWORK}]}" \
-                              "${GENESIS_PLAYBOOKS_HEADER[${NTP}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}" \
                               "Exit" \
 		                   )
 	          PARAMETRO=(     "MENU" )
               VALOR_DEFECTO=( "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}"    )
 	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
-	          unset MENU
-              ;;
-
-
-       10|"${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}")
-		      MENU_TEXT="SOFT-CONFIGURATIONS TOOLS: ___________"
-		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
-                              "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}" \
-                              "${GENESIS_PLAYBOOKS_HEADER[${GATHER}]}" \
-                              "Exit" \
-		                   )
-	          PARAMETRO=(     "MENU" )
-              VALOR_DEFECTO=( "${COLOR[$NC]}[BAREMETAL] - SOFT-CONFIGURATIONS MENU: tools to help creating soft-configurations ${COLOR[$NC]}"    )
-	          SOLICITA_PARAMETRO=( "======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
 	          unset MENU
               ;;
 
@@ -313,131 +325,147 @@ function defineMenu() {
              exit 0
              ;;
 			 
-        12|"${GENESIS_PLAYBOOKS_HEADER[${LDAP}]}")
-	          if [ ! -n "${LDAP_TYPE}" ] ; then local LDAP_TYPE="idm"    ; fi	  
-	          if [ ! -n "${LDAP_GROUP_MACHINES}" ] ; then local LDAP_GROUP_MACHINES="iss_group" ; fi
-	          if [ ! -n "${LDAP_DATA}" ] ; then local LDAP_DATA="pv3"    ; fi				  
-	          if [ ! -n "${TAGS}"      ] ; then local TAGS="install,policies,user,group,role,privilege" ; fi
-			  if [ ! -n "${VAULT}"     ] ; then local VAULT="goteras"    ; fi			  
-	          if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
-	          if [ ! -n "${TARGET}"    ] ; then local TARGET=""                   ; fi
-	          if [ ! -n "${CALL_LOG}"  ] ; then local CALL_LOG="${HOME}/ldap.log" ; fi
-		      MENU_TEXT="(12)___________ ${GENESIS_PLAYBOOKS_HEADER[${LDAP}]}"
-	          PARAMETRO=(     "LDAP_TYPE" "LDAP_GROUP_MACHINES" "LDAP_DATA"  "TAGS" "VAULT" "INVENTORY"      "TARGET"     "CALL_LOG" )
-              VALOR_DEFECTO=( "${LDAP_TYPE}" "${LDAP_GROUP_MACHINES}" "${LDAP_DATA}" "${TAGS}" "${VAULT}" "${INVENTORY}"   "${TARGET}"  "${CALL_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> LDAP Service                    [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Target machine's group          [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> LDAP Data Model to Feed         [${VALOR_DEFECTO[2]}]:" \
-                                  "-----> Ldap Actions                    [${VALOR_DEFECTO[3]}]:" \
-                                  "-----> Vault Password                  [${VALOR_DEFECTO[4]}]:" \
-			                      "-----> Machine's Inventory full path   [${VALOR_DEFECTO[5]}]:" \
-	                              "-----> Target Machines                 [${VALOR_DEFECTO[6]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[7]}]:" \
-                                     )
+        12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")
+		      MENU_TEXT="(12)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_deploy.log"  ; fi
+	          PARAMETRO=(     "GENESIS_REFRESH" "LOG_FILE" )
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File              [${VALOR_DEFECTO[1]}]:" \
+                                 )
               RETURNING_MENU="8"
               RUN_ACTION="12"
-              unset LDAP_TYPE LDAP_GROUP_MACHINES LDAP_DATA TAGS VAULT INVENTORY TARGET CALL_LOG 
+              unset GENESIS_REFRESH LOG_FILE 
 		      ;;
 
-        13|"${GENESIS_PLAYBOOKS_HEADER[${TESTING}]}")
-              if [ ! -n "${GROUP_MACHINES}" ] ; then local GROUP_MACHINES="iss_group" ; fi
-	          if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
-	          if [ ! -n "${TARGET}" ]    ; then local TARGET=""                   ; fi
-	          if [ ! -n "${CALL_LOG}" ]   ; then local CALL_LOG="${HOME}/rabbitmq.log" ; fi
-		      MENU_TEXT="(13)___________ ${GENESIS_PLAYBOOKS_HEADER[${TESTING}]}"
-	          PARAMETRO=(     "GROUP_MACHINES" "INVENTORY"      "TARGET"     "CALL_LOG" )
-              VALOR_DEFECTO=( "${GROUP_MACHINES}" "${INVENTORY}"   "${TARGET}"  "${CALL_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> Target Machine's Group          [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Machine's Inventory full path   [${VALOR_DEFECTO[1]}]:" \
-	                              "-----> Target Machines                 [${VALOR_DEFECTO[2]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[3]}]:" \
-                                     )
+        13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")
+		      MENU_TEXT="(13)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_active.log"  ; fi
+	          PARAMETRO=(     "GENESIS_REFRESH" "LOG_FILE" )
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File              [${VALOR_DEFECTO[1]}]:" \
+                                 )
               RETURNING_MENU="8"
               RUN_ACTION="13"
-              unset GROUP_MACHINES INVENTORY TARGET CALL_LOG
+              unset GENESIS_REFRESH LOG_FILE 
 		      ;;			  
 			 
 
-        14|"${GENESIS_PLAYBOOKS_HEADER[${SSH_MAP}]}")
-	          if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
-	          if [ ! -n "${TARGET}" ]    ; then local TARGET=""                   ; fi
-	          if [ ! -n "${CALL_LOG}" ]   ; then local CALL_LOG="${HOME}/ssh.log" ; fi
-		      MENU_TEXT="(14)___________ ${GENESIS_PLAYBOOKS_HEADER[${SSH_MAP}]}"
-	          PARAMETRO=(     "INVENTORY"      "TARGET"     "CALL_LOG" )
-              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${CALL_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
-                                     )
+        14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")
+		      MENU_TEXT="(14)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_clean.log"  ; fi
+	          PARAMETRO=(     "GENESIS_REFRESH" "LOG_FILE" )
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
               RETURNING_MENU="8"
               RUN_ACTION="14"
-              unset INVENTORY TARGET CALL_LOG
+              unset GENESIS_REFRESH LOG_FILE 
 		      ;;
 
-        15|"${GENESIS_PLAYBOOKS_HEADER[${GRAPHICS}]}")
-	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
-	          if [ ! -n "${TARGET}" ]       ; then local TARGET=""                       ; fi
-	          if [ ! -n "${CALL_LOG}" ]     ; then local CALL_LOG="${HOME}/graphics.log" ; fi
-		      MENU_TEXT="(15)___________ ${GENESIS_PLAYBOOKS_HEADER[${GRAPHICS}]}"
-	          PARAMETRO=(     "INVENTORY"      "TARGET"     "CALL_LOG" )
-              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${CALL_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
-                                     )
+        15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")
+		      MENU_TEXT="(15)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_enroll.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
               RETURNING_MENU="8"
               RUN_ACTION="15"
-              unset INVENTORY TARGET CALL_LOG
+              unset GENESIS_REFRESH LOG_FILE 
               ;;
 
-       16|"${GENESIS_PLAYBOOKS_HEADER[${NETWORK}]}")
-	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
-	          if [ ! -n "${TARGET}" ]       ; then local TARGET=""                       ; fi
-	          if [ ! -n "${CALL_LOG}" ]      ; then local CALL_LOG="${HOME}/network.log" ; fi
- 		      MENU_TEXT="(16)___________ ${GENESIS_PLAYBOOKS_HEADER[${NETWORK}]}"
-	          PARAMETRO=(     "INVENTORY"      "TARGET"     "CALL_LOG" )
-              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${CALL_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
-                                    )
+       16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")
+ 		      MENU_TEXT="(16)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_manage.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
               RETURNING_MENU="8"
               RUN_ACTION="16"
-              unset INVENTORY TARGET CALL_LOG
+              unset GENESIS_REFRESH LOG_FILE 
               ;;
 
-       17|"${GENESIS_PLAYBOOKS_HEADER[${NTP}]}")
-	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
-	          if [ ! -n "${TARGET}" ]       ; then local TARGET=""                       ; fi
-	          if [ ! -n "${CALL_LOG}" ]      ; then local CALL_LOG="${HOME}/ntp.log"     ; fi
-		      MENU_TEXT="(17)___________ ${GENESIS_PLAYBOOKS_HEADER[${NTP}]}"
-	          PARAMETRO=(     "INVENTORY"      "TARGET"     "CALL_LOG" )
-              VALOR_DEFECTO=( "${INVENTORY}"   "${TARGET}"  "${CALL_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Target Machines                 [${VALOR_DEFECTO[1]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[2]}]:" \
-                                     )
+       17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}")
+		      MENU_TEXT="(17)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_inspect.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
               RETURNING_MENU="8"
               RUN_ACTION="17"
-              unset INVENTORY TARGET CALL_LOG
+              unset GENESIS_REFRESH LOG_FILE 
               ;;
 
-       22|"${GENESIS_PLAYBOOKS_HEADER[${GATHER}]}")
-	          if [ ! -n "${GATHERING_FOLDER}" ]   ; then local GATHERING_FOLDER="${genesis_CFGS_PATH}/gathering" ; fi
-	          if [ ! -n "${INVENTORY}" ]    ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi
-	          if [ ! -n "${TARGET}"        ]      ; then local TARGET=""                    ; fi
-	          if [ ! -n "${CALL_LOG}" ]      ; then local CALL_LOG="${HOME}/gathering.log"  ; fi
-		      MENU_TEXT="(22)___________ ${GENESIS_PLAYBOOKS_HEADER[${GATHER}]}"
-	          PARAMETRO=(     "INVENTORY"   "TARGET" "GATHERING_FOLDER"  "CALL_LOG" )
-              VALOR_DEFECTO=( "${INVENTORY}"  "${TARGET}" "${GATHERING_FOLDER}" "${CALL_LOG}" )
-	          SOLICITA_PARAMETRO=("-----> Machine's Inventory full path   [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Target Machines            [${VALOR_DEFECTO[1]}]:" \
-	                              "-----> Results Uploading Folder   [${VALOR_DEFECTO[2]}]:" \
-	                              "-----> Log File                   [${VALOR_DEFECTO[3]}]:" \
-                                     )
+       22|"${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}")
+		      MENU_TEXT="(22)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_deploy.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
               RETURNING_MENU="10"
               RUN_ACTION="22"
-              unset GATHERING_FOLDER INVENTORY  TARGET CALL_LOG
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       23|"${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}")
+		      MENU_TEXT="(23)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_active.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="10"
+              RUN_ACTION="23"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       24|"${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}")
+		      MENU_TEXT="(24)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_clean.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="10"
+              RUN_ACTION="24"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       25|"${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}")
+		      MENU_TEXT="(25)___________ ${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a4_enroll.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="10"
+              RUN_ACTION="25"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       26|"${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}")
+		      MENU_TEXT="(26)___________ ${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a4_manage.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="10"
+              RUN_ACTION="26"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}")
+		      MENU_TEXT="(27)___________ ${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a4_inspect.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="10"
+              RUN_ACTION="27"
+              unset GENESIS_REFRESH LOG_FILE 
               ;;
 
 	     [?])
@@ -1307,7 +1335,7 @@ function state_status() {
 	        local CHECK_CMD=( \
 			                   ' ' \
 			                )
-	   ;;	   
+	   ;;		   
     esac
 
     #---------------------------
@@ -1812,7 +1840,6 @@ function shootPlaybook() {
             echo "[${TIMESTAMP}] : /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
             /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
 			unset PLAYBOOK
-			state_status "${CALL}"
           fi   
        elif [ -x /usr/bin/ansible-playbook ] ; then
           if [ -n "${RUN_BACKGROUND}" ] ; then
@@ -1823,7 +1850,6 @@ function shootPlaybook() {
              echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
              /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
 			 unset PLAYBOOK 
-			 state_status "${CALL}"
           fi
        elif [ -x /usr/sbin/ansible-playbook ] ; then
           if [ -n "${RUN_BACKGROUND}" ] ; then
@@ -1834,7 +1860,6 @@ function shootPlaybook() {
              echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
              /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} 
 			 unset PLAYBOOK
-			 state_status "${CALL}"
           fi
 		  			
        elif [ -x /usr/bin/ansible-playbook-3 ] ; then
@@ -1846,7 +1871,6 @@ function shootPlaybook() {
              echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
              /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} 
 			 unset PLAYBOOK
-			 state_status "${CALL}"
           fi
 	   
        elif [ -x /usr/sbin/ansible-playbook-3 ] ; then
@@ -1858,7 +1882,6 @@ function shootPlaybook() {
             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
             /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}
 			unset PLAYBOOK
-			state_status "${CALL}"
           fi
        else
           echo "ANSIBLE INSTALLATION NOT FOUND: please try to REFRESH iDAS build installation (option 1)"
@@ -2051,6 +2074,19 @@ function runAdHoc() {
 ########################################################################################
 
 #========================================================
+#   Function: underConstruction
+#--------------------------------------------------------
+#   Warning Message: Under Construction 
+#========================================================
+function underConstruction() {
+   echo -e "${COLOR[$RED]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   echo -e "${COLOR[$SEA]}  UNDER CONSTRUCTION ${COLOR[$NC]}"
+   echo -e "${COLOR[$RED]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   echo -e  "  ---> Options not implemented yet are marked with grey color"
+   echo -e  "${COLOR[$RED]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+}
+
+#========================================================
 #   Function: 0_call
 #--------------------------------------------------------
 #   Basic playbook call without special context
@@ -2088,12 +2124,11 @@ function 0_call() {
 #========================================================
 #   Function: 1_refresh
 #--------------------------------------------------------
-#  - Remove iDAS files from /mnt
-#  - Untar iDAS build in /mnt
-#  - Remove iDAS packages
-#  - Create Yum Repositories for iDAS installation
-#  - Install iDAS RPM packages
-#  - Check Status "iDAS-1: Installed"
+#  - Prepare Local Machine
+#  - Bootstrap Ironic Target Machine
+#     - Download OpenStack Components
+#     - Create Local Repository from Internet
+#  - Check Status "G1: Genesis Refresh"
 #========================================================
 function 1_refresh() {
       
@@ -2106,7 +2141,8 @@ function 1_refresh() {
    # 2.- Call
    if [ ! -n "${ONLINE}" ] ; then
       #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}" 
-      0_call "${REFRESH}" 
+      0_call "${REFRESH}"
+	  state_status "${REFRESH}"
    fi  
    
    # 3.- Clean environment
@@ -2119,7 +2155,7 @@ function 1_refresh() {
 #========================================================
 #   Function: 2_create
 #--------------------------------------------------------
-#  - Load String Data Model
+#  - Load Baremetal Data Model
 #  - Run installPxe playbook
 #========================================================
 function 2_create() {
@@ -2144,7 +2180,8 @@ function 2_create() {
    # 2.- Call
    #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
    0_call "${CREATE}"
-      
+   state_status "${CREATE}"
+	  
    # 3.- Clean Environemnt
    unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
    
@@ -2152,7 +2189,6 @@ function 2_create() {
    echo -e "   BEWARE !!!! ====> Don't forget SETUP (option 4) iDAS"
    echo -e '......................................................................................................'
 }
-
 
 #========================================================
 #   Function: 3_init
@@ -2164,6 +2200,7 @@ function 3_init() {
 
    prepareImageCreation
    0_call "${INIT}" 
+   state_status "${INIT}"
    unset LOG_FILE  EXTRA_VARS
 }
 
@@ -2177,6 +2214,7 @@ function 4_setup() {
    updateInventory
    #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
    0_call "${SETUP}" 
+   state_status "${SETUP}"
    unset IRONIC_BAREMETAL_NODES LOG_FILE EXTRA_VARS
 }
 
@@ -2188,9 +2226,9 @@ function 4_setup() {
 function 5_deploy() {
    #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"      
    0_call "${DEPLOY}" 
+   state_status "${DEPLOY}"
    unset TARGET LOG_FILE EXTRA_VARS
 }
-
 
 #========================================================
 #   Function: 6_ansible
@@ -2214,41 +2252,8 @@ function 6_ansible() {
 function 7_provision() {
          
    0_call "${PROVISION}" 
+   state_status "${PROVISION}"
    unset TARGET LOG_FILE EXTRA_VARS
-}
-
-#========================================================
-#   Function: 8_plugins
-#--------------------------------------------------------
-#  - Shoot Plugins
-#========================================================
-function 8_plugins() {
-    local PLUGIN="${1}"
-	
-	# 1.- Install RPM
-	if [ ! -r "${GENESIS_PLAYBOOKS[${PLUGIN}]}" ] ; then
-       local  PACKAGES=( ${GENESIS_PLUGINS_RPM[${PLUGIN}]} )	
-       installDependencies
-	fi
-	
-	# 2.- Shoot Plugin
-	if [ -r "${GENESIS_PLAYBOOKS[${PLUGIN}]}" ] ; then 
-	   0_call "${PLUGIN}"
-	fi
-	
-	# 3.- Clean Environment 
-	unset LDAP_TYPE LDAP_GROUP_MACHINES LDAP_DATA TAGS VAULT INVENTORY TARGET LOG_FILE GROUP_MACHINES
-}
-
-#========================================================
-#   Function: 22_gathering
-#--------------------------------------------------------
-#  - Run gathering String configuration files
-#========================================================
-function 22_gathering() {
-   if [ -n "${GATHERING_FOLDER}" ] ; then local EXTRA_VARS="gathering_folder=${GATHERING_FOLDER}"   ; fi
-   0_call "${GATHER}"
-   unset EXTRA_VARS
 }
 
 #========================================================
@@ -2267,13 +2272,18 @@ function runActions() {
         5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")  5_deploy  ;;
         6|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}") 6_ansible ;;		
         7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}") 7_provision ;;
-        12|"${GENESIS_PLAYBOOKS_HEADER[${LDAP}]}")     8_plugins "${LDAP}"   ;;
-        13|"${GENESIS_PLAYBOOKS_HEADER[${TESTING}]}")  8_plugins "${TESTING}" ;;
-        14|"${GENESIS_PLAYBOOKS_HEADER[${SSH_MAP}]}")  0_call "${SSH_MAP}"   ;;
-        15|"${GENESIS_PLAYBOOKS_HEADER[${GRAPHICS}]}") 0_call "${GRAPHICS}"  ;;
-        16|"${GENESIS_PLAYBOOKS_HEADER[${NETWORK}]}")  0_call "${NETWORK}"   ;;
-        17|"${GENESIS_PLAYBOOKS_HEADER[${NTP}]}")      0_call "${NTP}"       ;;
-	    22|"${GENESIS_PLAYBOOKS_HEADER[${GATHER}]}")  22_gathering           ;;
+        12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")  0_call "${T5_DEPLOY}"  ;;
+        13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")  underConstruction ;;
+        14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")   underConstruction ;;
+        15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")  underConstruction ;;
+        16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")  underConstruction ;;
+        17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}") underConstruction ;;
+        22|"${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}")  underConstruction ;;
+        23|"${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}")  underConstruction ;;
+        24|"${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}")   underConstruction ;;
+        25|"${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}")  underConstruction ;;
+        26|"${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}")  underConstruction ;;
+        27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}") underConstruction ;;
     esac
 }
 
@@ -2358,7 +2368,8 @@ function startMenu() {
          # 1.1.- Interactive Menu 
          defineMenu	 
          deployMenu "${REEMPLAZA_LINEA_CNF}"
-
+         echo "................ RETURNING_MENU= [${RETURNING_MENU}]" 
+		 
          # 1.2.- Actions (menu = 2 loops: display + parameters, it must be avoided runAction twice)
          if [ -n "${RUN_ACTION}"     ] ; then runActions "${RUN_ACTION}" ; fi
          if [ -n "${RETURNING_MENU}" ] ; then MENU="${RETURNING_MENU}"   ; fi

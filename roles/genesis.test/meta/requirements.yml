@@ -1,0 +1,13 @@
+---
+# ==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Infrastructure Deployment (Testing Env)
+#  FILE:         Ansible Collections (Galaxy)
+#
+#  INSTALLATION COMMAND:
+#  ansible-galaxy collection install -r meta/requirements.yml
+# ==============================================================================
+
+collections:
+  - name: community.general
+    version: ">=9.0.0"

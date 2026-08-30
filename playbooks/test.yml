@@ -1,0 +1,28 @@
+---
+# genesis playbooks/baremetal.yml
+#  - Baremetal Nodes Life Cycle
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------
+#  GATHERING FACT
+#---------------------------------
+- name: "Gather facts on localhost"
+  hosts: localhost
+  become: no
+  gather_facts: yes
+ 
+#---------------------------------
+#  SETUP NODES
+#---------------------------------
+- hosts: "hypervisor"
+  become: no
+  gather_facts: no
+  pre_tasks:
+    - name: "B4 SETUP - Reset existing connection sockets"
+      ansible.builtin.meta: reset_connection
+  
+  roles: 
+    - role: "genesis.test"
+

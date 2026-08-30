@@ -1,0 +1,14 @@
+# ==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Infrastructure Deployment (Testing Env)
+#  FILE:         Python Dependencies (pip)
+#
+#  INSTALLATION COMMAND:
+#  pip install -r requirements.txt
+# ==============================================================================
+
+# Required to communicate with the Proxmox VE API via Ansible
+proxmoxer>=2.0.0
+
+# Required by proxmoxer to handle HTTPS requests and API tokens
+requests>=2.25.0

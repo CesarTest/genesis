@@ -15,9 +15,6 @@
   #--------------------------------------------------------------------------
   block:
  
-    - debug: 
-        msg: "b5_wipedisks_delay: {{ b5_wipedisks_delay }}"
-
     - name: "B5 - DEPLOY - 1.- Clean: 1.1) Wait up to Clean Timeout seconds"
       ansible.builtin.wait_for:
         host: "{{ ansible_host | default('localhost') }}"
@@ -61,6 +58,12 @@
         msg: "Genesis Core Engine triggering automated deployment reset"
       failed_when: false 
       changed_when: false
+
+  rescue:    
+    - name: "B5 - DEPLOY - 1.- Clean: 14) Reboot"
+      become: yes
+      ansible.builtin.shell:
+        cmd: "reboot"
 
   when:
     - ansible_connection is defined

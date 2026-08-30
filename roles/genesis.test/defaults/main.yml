@@ -1,0 +1,107 @@
+---
+# genesis.test defauls
+#   - Set Hypervisor Conditions
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+######################################################
+# ENROLL PARTICULARS
+######################################################
+
+#------------------
+# 1.- Genesis Node Nics Details
+#------------------
+t1_url_genesis_ipv4:    "{{ hostvars[groups['target'][0]]['dhcp_address'] | default('127.0.0.1/24') }}"
+t1_url_genesis_ip:      "{{ t1_url_genesis_ipv4 | ansible.utils.ipaddr('address') }}"
+t1_url_genesis_gateway: "{{ t1_url_genesis_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+t1_url_genesis_netmask: "{{ t1_url_genesis_ipv4 | ansible.utils.ipaddr('netmask') }}"
+t1_genesis_port:
+  http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
+  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
+  oci:   "{{ genesis_https_oci  | default(registry_port)     | default('5500') }}"
+  ironic: "{{ genesis_ironic_port  | default(ironic_api_port)     | default('6385') }}"
+
+#------------------
+# 2.- Out-Of-Band BMC Details (node -> inventory -> defaults)
+#------------------
+t1_enroll_node_name: "{{ enroll.name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
+t1_enroll_node_uuid: "{{ enroll.uuid | default('') }}" 
+t1_enroll_node_bmc_driver: "{{ enroll.driver  | default('redfish') }}" 
+
+#---------------------------------------------------------------------------
+# 2.- Out-Of-Band BMC Credentials Factory (node -> inventory -> defaults)
+#---------------------------------------------------------------------------
+# 2.1. Capture BMC credentials
+t1_enroll_node_bmc_credentials: "{{ enroll['bmc_credentials'] | default({}) }}"
+t1_enroll_default_node_id:      "{{ enroll['node_id']         | default('') }}"
+
+# 2.2. Defaults BMC credentials
+t1_ilo_deploy_iso: "http://{{ t1_url_genesis_ip | default('127.0.0.1') }}:{{ t1_url_genesis_port['http'] | default(8080) }}/os/agent.iso"
+t1_enroll_default_bmc_credentials:
+  redfish:
+    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}"
+    username: "root"
+    password: "calvin"
+    verify_ca: false 
+  idrac:
+    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}" 
+    username: "root"
+    password: "calvin"
+    verify_ca: false 
+    raid_config_backup: "none"
+  ilo:
+    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}"
+    username: "root"
+    password: "calvin"
+    deploy_iso: "{{ t1_ilo_deploy_iso }}"
+  ipmi:
+    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}"  
+    username: "root"
+    password: "calvin" 
+    priv_level: "ADMINISTRATOR"
+    port: "623"
+    cipher_suite: "17"
+
+# 3.3. Inheritance => host_vars -> Inventory -> defaults -> empty
+t1_node_bmc_credentials_all_drivers: "{{ t1_enroll_node_bmc_credentials | default(genesis_bmc_credentials, true) | default(t1_enroll_default_bmc_credentials, true) | default({}) }}"
+
+# 3.4. Capture Node Driver Info
+t1_node_bmc_credentials: "{{ t1_node_bmc_credentials_all_drivers[t1_enroll_node_bmc_driver] | default({}) }}" 
+t1_enroll_bmc_node_driver_info: "{{ enroll['driver_info'] | default(t1_node_bmc_credentials) | default({}) }}"
+
+#---------------------------------------------------------------------------
+# 4.- Out-Of-Band BMC URLs Generation 
+#---------------------------------------------------------------------------
+t1_enroll_node_bmc_protocol: "{{ t1_enroll_bmc_node_driver_info['protocol'] | default('https') }}"
+t1_enroll_node_bmc_ipv4_raw: "{{ t1_enroll_bmc_node_driver_info['ipv4']     | default(t1_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
+t1_enroll_node_bmc_ipv4: "{{ t1_enroll_node_bmc_ipv4_raw | ansible.utils.ipaddr('address') }}"
+t1_enroll_node_bmc_port: "{{ t1_enroll_bmc_node_driver_info['port'] | default(none) }}"
+t1_enroll_node_bmc_url: "{{ t1_enroll_node_bmc_protocol }}://{{ t1_enroll_node_bmc_ipv4 }}{{ (t1_enroll_node_bmc_port is not none and t1_enroll_node_bmc_port | string | length > 0) | ternary(':' ~ t1_enroll_node_bmc_port, '') }}"
+t1_enroll_default_system_id: "/redfish/v1/Systems/{{ t1_enroll_default_node_id | default('') }}"
+
+#------------------
+# 7.- Properties 
+#------------------
+t1_enroll_node_chassis_properties_input: "{{ enroll['properties'] |  default({}) }}"
+t1_enroll_node_chassis_capabilities: "{{ enroll['capabilities'] | default({}) }}"
+t1_enroll_node_chassis_capabilities_string: "{{ (t1_enroll_node_chassis_capabilities | length > 0) | ternary(t1_enroll_node_chassis_capabilities.items() | map('join', ':') | join(',') | lower, '') }}"
+t1_enroll_node_chassis_properties:
+   cpus:         "{{ t1_enroll_node_chassis_properties_input['cpus']         | default('4') }}"
+   cpu_arch:     "{{ t1_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
+   memory_mb:    "{{ t1_enroll_node_chassis_properties_input['memory_mb']    | default('4096') }}"
+   local_gb:     "{{ t1_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
+   root_device:  "{{ t1_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
+   capabilities: "{{ t1_enroll_node_chassis_properties_input['capabilities'] | default(t1_enroll_node_chassis_capabilities_string)  }}"
+
+
+######################################################
+# HYPERVISOR CREDENTIALS
+#####################################################
+# 1.. Values Mapping
+t1_hypervisor_api_node: "{{ hostvars[groups['hypervisors'][0]]['ansible_host'] }}"
+t1_hypervisor_api_user:  "{{ b4_enroll_bmc_node_driver_info['username']  | default('root') }}"
+t1_hypervisor_api_password: "{{ b4_enroll_bmc_node_driver_info['password'] | default(omit) }}"
+t1_hypervisor_api_token: "{{ b4_enroll_bmc_node_driver_info['token'] | default(omit) }}"
+t1_hypervisor_api_validate_certs: false
+
