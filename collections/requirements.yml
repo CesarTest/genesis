@@ -14,5 +14,6 @@
 
 collections:
   - name: community.general
+  - name: community.proxmox
   - name: fedora.linux_system_roles
   - name: robertdebock.roles

@@ -1,0 +1,73 @@
+---
+# genesis.test 1_hypervisor/proxmox.yml
+#  - Working Conditions on Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T1 - TESTING ENVIRONMENT: Proxmox Testing User Provisioning"
+  vars: 
+    t1_node_add_user_script: "{{ t1_hypervisor_add_user_script[t1_hypervisor] | default('') }}"
+
+
+  #-----------------------------------------------------------------------
+  # 1.- Create Users
+  #-----------------------------------------------------------------------
+  block:
+    - name: "T1 - CLI PROVISION: Check if user already exists in Proxmox"
+      become: true
+      ansible.builtin.shell: "{{ t1_node_add_user_script }}"
+      register: t1_proxmox_script_result
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T1 - CLI PROVISION: Show user provisioning success status"
+      ansible.builtin.debug:
+        msg: |
+          ======================================================================
+            SUCCESS: PROXMOX USER PROVISIONING COMPLETED
+          ======================================================================
+            The Proxmox initialization script completed successfully.
+            
+            EXECUTION DETAILS:
+            - Target User Account : {{ ansible_user | default('root') }}
+            - Hypervisor Node     : {{ t1_hypervisor_node }}
+            - Script Output Status: {{ t1_proxmox_script_result.stdout_lines | last | default('OK') }}
+          ======================================================================
+      when: 
+        - t1_proxmox_script_result.rc is defined
+        - t1_proxmox_script_result.rc == 0
+      delegate_to: localhost
+
+  #-----------------------------------------------------------------------
+  # 2.- Failed
+  #-----------------------------------------------------------------------
+  rescue:
+
+    - name: "T1 - CLI PROVISION: Handle user provisioning failure"
+      ansible.builtin.fail:
+        msg: |
+          ======================================================================
+            CRITICAL ERROR: PROXMOX USER PROVISIONING SCRIPT FAILED
+          ======================================================================
+            The connection to the host works, but the Bash script failed 
+            to execute. This is usually caused by one of these 3 simple reasons:
+            
+            1. THE SCRIPT IS EMPTY (Hypervisor nor Supported)
+               The node name '{{ t1_hypervisor }}' might not match the key 
+               defined inside the 't1_hypervisor_add_user_script' dictionary.
+               --> Result: Ansible tried to run a blank command.
+            
+            2. INSUFFICIENT PERMISSIONS (Sudo Missing)
+               The user needs root privileges to run 'pveum' commands.
+               If you are not logging in as root, the 'become: true' directive 
+               will fail if 'sudo' is not installed or configured on Proxmox.
+             
+            3. PROXMOX CLUSTER IS LOCKED (Read-Only Filesystem)
+               Proxmox database (/etc/pve) becomes Read-Only if the node loses 
+               quorum or the 'pve-cluster' service is frozen.
+               --> Result: The system cannot update or add new users.
+            
+            Current Parameters:
+            - Hypervisor Node Name: {{ t1_hypervisor_node | default('NOT DEFINED') }}
+          ======================================================================
+      delegate_to: localhost

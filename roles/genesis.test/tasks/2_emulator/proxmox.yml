@@ -1,0 +1,71 @@
+---
+# genesis.test 2_emulator/proxmox.yml
+#  -Install RedFish Emukator in Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#-----------------------------------------------------------------------
+# 1.- Upload Tarball Emulator
+#-----------------------------------------------------------------------
+- block:
+
+    - name: "T1 - TEST ENVIRONMENT 2.- REDFISH EMULATOR: 1) Ensure unzip is installed on Proxmox"
+      become: true
+      ansible.builtin.package:
+        name: 
+        - unzip
+        - python3 
+        - python3-pip 
+        - python3-venv 
+        - git 
+        - jq
+        state: present
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T1 - TEST ENVIRONMENT - 2.- REDFISH EMULATOR: 2) Upload tarball to Proxmox via SSH"
+      become: true
+      ansible.builtin.copy:
+        src:  "{{ t1_proxmox_redfish_local_tarball }}"
+        dest: "{{ t1_proxmox_redfish_remote_tarball }}"
+        mode: "0644"
+      register: t1_upload_result
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T1 - TEST ENVIRONMENT 2.- REDFISH EMULATOR: 3) Ensure target directory exists"
+      become: true
+      ansible.builtin.file:
+        path: "/opt/pve-redfish"
+        state: directory
+        mode: "0755"
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T1 - TEST ENVIRONMENT 2.- REDFISH EMULATOR: 4) Untar tarball"
+      become: true
+      ansible.builtin.unarchive:
+        src: "{{ t1_proxmox_redfish_remote_tarball }}"
+        dest: "{{ t1_proxmox_redfish_remote_path }}"
+        remote_src: true
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+#-----------------------------------------------------------------------
+# 2.- Install Emulator
+#-----------------------------------------------------------------------
+- block:
+
+  - name: "T1 - TEST ENVIRONMENT 2.- REDFISH EMULATOR: 5) Run install script"
+    become: true
+    ansible.builtin.shell: "{{ t1_proxmox_redfish_remote_path }}/scripts/install.sh --version v0.2.1 --yes"
+    register: t1_redfish_script_result
+    delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+
+#-----------------------------------------------------------------------
+# 3.- Install HTTPS Certificates
+#-----------------------------------------------------------------------
+
+
+#-----------------------------------------------------------------------
+# 4.- Validate RedFish Connectivity with Test Credentials
+#-----------------------------------------------------------------------
+

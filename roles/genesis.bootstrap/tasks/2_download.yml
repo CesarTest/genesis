@@ -41,16 +41,26 @@
      loop_var: "g1_image"
 
 #---------------------------------------
-# 3. IPA
+# 3. Tarballs
+#--------------------------------------- 
+- name: "G1 - BOOTSTRAP - 2.- Download: 4) Tarballs"
+  ansible.builtin.include_tasks: "2_download/3_tarball.yml"
+  vars:
+    g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
+    g1_proxmox_default_tarball_name: "{{ proxmox_download_url | basename }}" 
+    g1_proxmox_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ proxmox_download_name | default(g1_proxmox_default_tarball_name) }}"
+    g1_tarball_download:
+     - url:  "{{ oras_download_url }}"
+       dest: "{{ g1_oras_dest_path }}"
+       checksum: "sha256:{{ oras_checksum }}"
+     - url: "{{ proxmox_download_url }}"
+       dest: "{{ g1_proxmox_dest_path }}"
+	   
+#---------------------------------------
+# 4. IPA
 #--------------------------------------- 
 - name: "G1 - BOOTSTRAP - 2.- Download: 3) IPA (Ironic Python Agent) for Cloud OS Installation"
-  ansible.builtin.include_tasks: "2_download/3_ipa.yml"
+  ansible.builtin.include_tasks: "2_download/4_ipa.yml"
   loop: "{{ ipa_image_sources | default([]) }}"
   loop_control:
      loop_var: "g1_ipa_image"
-
-#---------------------------------------
-# 4. ORAS
-#--------------------------------------- 
-- name: "G1 - BOOTSTRAP - 2.- Download: 4) ORAS"
-  ansible.builtin.include_tasks: "2_download/4_oras.yml"

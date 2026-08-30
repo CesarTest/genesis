@@ -5,15 +5,20 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "PASO 1 - Hello World"
-  ansible.builtin.debug:
-    msg:
-      - "====================================================="
-      - "  GENESIS SYSTEM - HYPERVISOR PROVISIONING MATRIX   "
-      - "====================================================="
-      - "  t1_hypervisor_api_node: {{ t1_hypervisor_api_node | default('VARIABLE IS EMPTY / NOT DEFINED') }}"
-      - "  t1_hypervisor_api_user: {{ t1_hypervisor_api_user | default('VARIABLE IS EMPTY / NOT DEFINED') }}"
-      - "  t1_hypervisor_api_password: {{ t1_hypervisor_api_password | default('VARIABLE IS EMPTY / NOT DEFINED') }}"
-      - "  t1_hypervisor_api_token: {{ t1_hypervisor_api_token | default('VARIABLE IS EMPTY / NOT DEFINED') }}"
-      - "  t1_hypervisor_api_validate_certs: {{ t1_hypervisor_api_validate_certs | default('VARIABLE IS EMPTY / NOT DEFINED') }}"
-      - "====================================================="
+#-----------------------------------------------------------------------
+# 1.- Create Bundle of Virtual Machines
+#-----------------------------------------------------------------------
+- vars: 
+    ansible_user: "{{ t1_hypervisor_user }}"
+  block:
+    - ansible.builtin.include_tasks: "environment.yml"
+  when:
+    - t1_hypervisor_node is defined
+    - t1_hypervisor_node is not none
+    - t1_refresh_environment is defined
+    - t1_refresh_environment is not none
+    - t1_refresh_environment | bool
+
+#-----------------------------------------------------------------------
+# 2.- Run Stage Tests
+#-----------------------------------------------------------------------

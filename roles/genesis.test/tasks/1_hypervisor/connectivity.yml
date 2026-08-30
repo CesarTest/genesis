@@ -1,0 +1,57 @@
+---
+# genesis.test 1_hypervisor/connectivity.yml
+#  - Unattended OS installation
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T1 - TESTING ENVIRONMENT: Proxmox Ansible Connection Check"
+  vars:
+    ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    t1_hypervisor_node_ip: "{{ hostvars[t1_hypervisor_node]['ansible_host'] }}"
+  block:
+  
+    - name: "T1- 1.- TESTING ENVIRONMENT: 1) Remove old SSH host fingerprint to avoid conflicts"
+      ansible.builtin.known_hosts:
+        name: "{{ t1_hypervisor_node }}"
+        state: absent
+      delegate_to: localhost
+
+    - name: "T1- 1.- TESTING ENVIRONMENT: 3) Proxmox Ansible Connection Check"
+      ansible.builtin.ping:
+      register: t1_proxmox_probe_result
+      delegate_to: "{{ t1_hypervisor_node_ip | default('localhost') }}"
+      ignore_unreachable: true
+
+    - name: "T1- 1.- TESTING ENVIRONMENT: Handle connection failure"
+      ansible.builtin.fail:
+        msg: |
+          ======================================================================
+            CRITICAL ERROR: HYPERVISOR SSH CONNECTION OR AUTHENTICATION FAILED
+          ======================================================================
+            Ansible was unable to establish an SSH session with the Proxmox host.
+            This is usually caused by one of the following two scenarios:
+            
+            SCENARIO 1: MISSING SSH TRUST RELATIONSHIP (SSH Keys not authorized)
+            The target user exists, but your local public key is not allowed.
+            --> FIX: Run the following command manually to copy your SSH key:
+                ssh-copy-id -o StrictHostKeyChecking=no {{ ansible_user | default('root') }}@{{ t1_hypervisor_node_ip }}
+            
+            SCENARIO 2: NON-EXISTENT INVENTORY USER OR MISCONFIGURATION
+            The user configured in your inventory ('{{ ansible_user | default('root') }}') 
+            does not exist as a valid Linux system account on the Proxmox host.
+            --> FIX A: Fix it in your inventory file by changing the parameter:
+                ansible_user=<correct_existing_user>
+            --> FIX B: Log in as root to the hypervisor and create the missing user:
+                useradd -m -s /bin/bash {{ ansible_user | default('root') }}
+                mkdir -p /home/{{ ansible_user | default('root') }}/.ssh
+                # Don't forget to grant appropriate sudoers permissions if needed.
+          
+            Additional parameters check:
+            - Target Node IP/Inventory Name : {{ t1_hypervisor_node_ip }}
+            - Target Inventory User: {{ ansible_user | default('root') }}
+          ======================================================================
+      when: 
+        - t1_proxmox_probe_result.unreachable is defined
+        - t1_proxmox_probe_result.unreachable
+      delegate_to: localhost

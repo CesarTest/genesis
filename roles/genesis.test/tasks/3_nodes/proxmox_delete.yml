@@ -1,0 +1,22 @@
+---
+# genesis.test 3_nodes/proxmox_delete.yml
+#  -Install RedFish Emukator in Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 2) Delete VM"
+  block:
+
+    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 2.1) Force purge targeted VM ID from Proxmox"
+      community.proxmox.proxmox_kvm:
+        api_host: "127.0.0.1"
+        api_user:     "{{ t1_hypervisor_api_user     | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        node:         "{{ t1_hypervisor_api_hostname | default(omit) }}"
+        vmid:         "{{ t1_enroll_default_node_id  | default(omit) }}"
+        state: absent
+        force: true
+      register: t2_kvm_purge_result
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"

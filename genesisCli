@@ -88,18 +88,18 @@ GENESIS_PLAYBOOKS_HEADER=( \
         "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4- baremetal.yml)${COLOR[$NC]}" \
         "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5- baremetal.yml)${COLOR[$NC]}" \
         "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: integrate into deployment strategy (B6- baremetal.yml)${COLOR[$NC]}" \
-        "${COLOR[$NC]}[BAREMETAL] - TEST DEPLOY : HW Certification of Deploy Stage(T5- test.yml)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - TEST ACTIVE : HW Certification of Active Stage(T5- test.yml)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - TEST CLEAN  : HW Certification of Clean Stage(T5- test.yml)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - TEST ENROLL : HW Certification of Enroll Stage(T4- test.yml)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - TEST MANAGE : HW Certification of Manage Stage(T4- test.yml)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - TEST INSPECT: HW Certification of Inspect Stage(T4- test.yml)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE DEPLOY : Troubleshoot Deploy Stage(A5)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ACTIVE : Troubleshoot Active Stage(A5)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE CLEAN  : Troubleshoot Clean Stage(A5)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ENROLL : Troubleshoot Enroll Stage(A4)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE MANAGE : Troubleshoot Manage Stage(A4)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE INSPECT: Troubleshoot Inspect Stage(A4)${COLOR[$NC]}" \
+        "${COLOR[$NC]}[BAREMETAL] - TEST DEPLOY : OS Installation with Expected Conditions(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST ACTIVE : HW Drivers & OS Profile(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST CLEAN  : Wipe Disks(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST ENROLL : Outband Connectivity, BMC Autehtications(RedFish/iLO/iDRAC/IPMI), TLS Certificates Manager(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST MANAGE : Inband Connectivity,Power Cycle,Mantainance & Repair Cycles(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST INSPECT: BMC versus Ramdisk Hardware Detection(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE DEPLOY : PXE, OS Conditions(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ACTIVE : Drivers, Graphics, Trust Relationships(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE CLEAN  : BMC & Inband Wipe Disks(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ENROLL : BMC Conectivity & Authentication(A4)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE MANAGE : Power Cycle, Firmware Updates(A4)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE INSPECT: IPA tooling(A4)${COLOR[$NC]}" \
 )
 
 # 2.3.- Online Installation

@@ -835,6 +835,8 @@ b4_casper_template_defaults:
       layout: {{ b4_node_os_locale_info.keyboard | default('us') }}
     refresh-installer:
       update: false
+    package_update: false
+    package_upgrade: false
   identity: |
     hostname: {{ b4_enroll_node_name }}
     username: {{ b4_provision_user_name }}
@@ -882,13 +884,14 @@ b4_casper_template_defaults:
         nameservers:
           addresses:
             - {{ b4_url_genesis_ip }}
-
   repos: |
     geoip: no
     preserve_sources_list: false
+    fallback: offline
     sources_list: |
       deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} {{ b4_node_os_alias }} main restricted
-
+    snaps:
+      proxy: http://127.0.0.1:0
   postinstall: |
     - wget -O /target/tmp/setup-users.sh {{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os }}-users.sh
     - curtin in-target -- bash /tmp/setup-users.sh
@@ -1296,6 +1299,7 @@ b4_render_menu_casper: >-
     netboot=url
     url={{ b4_netinstall_os_iso_url }}
     cloud-config-url=/dev/null
+    cloud-init=disabled
     autoinstall
     ds={{ b4_render_casperds }}
     ip={{ b4_render_ip }}::none

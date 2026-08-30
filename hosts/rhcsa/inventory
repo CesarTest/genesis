@@ -29,7 +29,7 @@ all:
 
    proxmox:
      ansible_host: 192.168.1.133
-     ansible_user: root 
+     ansible_user: root
      ansible_become_pass: cesardgm
 
  #--------------------------------------------------------------------

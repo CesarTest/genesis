@@ -5,12 +5,16 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
+
 ######################################################
 # ENROLL PARTICULARS
 ######################################################
 
+genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
 #------------------
-# 1.- Genesis Node Nics Details
+# 0.- Genesis Node Nics Details
 #------------------
 t1_url_genesis_ipv4:    "{{ hostvars[groups['target'][0]]['dhcp_address'] | default('127.0.0.1/24') }}"
 t1_url_genesis_ip:      "{{ t1_url_genesis_ipv4 | ansible.utils.ipaddr('address') }}"
@@ -23,6 +27,50 @@ t1_genesis_port:
   ironic: "{{ genesis_ironic_port  | default(ironic_api_port)     | default('6385') }}"
 
 #------------------
+# 1.- Nics Details, extract BMC and Provision NICs
+#------------------
+# 1.1.- Capture Nics Data
+t1_enroll_nics:      "{{ enroll['nics'] | default({}) }}"
+t1_enroll_node_inband_nics:  "{{ t1_enroll_nics['inband']  | default([]) }}"
+t1_enroll_node_outband_nics: "{{ t1_enroll_nics['outband'] | default([]) }}" 
+t1_enroll_nics_list: "{{ t1_enroll_node_inband_nics + t1_enroll_node_outband_nics }}"
+
+# ---- Filter according to flag - provision: yes/true
+t1_enroll_default_provision: "{{ t1_enroll_nics_list | selectattr('provision', 'defined') | selectattr('provision', 'equalto', true) | list }}"
+
+# ---- NIC selection from list (BMC y Provisión)
+t1_enroll_nic_bmc:   "{{ t1_enroll_node_outband_nics[0] | default(t1_enroll_default_provision[0] | default({})) }}"
+t1_enroll_nic_provision: "{{ t1_enroll_default_provision[0] | default(t1_enroll_node_inband_nics[0] | default(t1_enroll_nic_bmc | default(t1_enroll_nics_list[0] | default({})))) }}"
+
+# 1.2.- BMC NIC Particulars
+t1_enroll_nic_bmc_mac:     "{{ t1_enroll_nic_bmc['mac'] | default('') | lower }}"
+t1_enroll_nic_bmc_ipv4:    "{{ t1_enroll_nic_bmc['ipv4'] | default('127.0.0.1/24')  }}"
+t1_enroll_nic_bmc_ip:      "{{ t1_enroll_nic_bmc_ipv4  | ansible.utils.ipaddr('address') }}"
+t1_enroll_nic_bmc_netmask: "{{ t1_enroll_nic_bmc_ipv4  | ansible.utils.ipaddr('netmask') }}"
+t1_enroll_nic_bmc_prefix:  "{{ t1_enroll_nic_bmc_ipv4  | ansible.utils.ipaddr('prefix') }}"
+t1_enroll_nic_bmc_default_gateway: "{{ t1_enroll_nic_provision_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+t1_enroll_nic_bmc_gateway: "{{ t1_enroll_nic_bmc['gateway'] | default(t1_enroll_nic_bmc_default_gateway) }}"
+
+# 1.3.- Provision NIC Particulars
+t1_enroll_nic_provision_mac:     "{{ t1_enroll_nic_provision['mac'] | default('') | lower }}"
+t1_enroll_nic_provision_ipv4:    "{{ t1_enroll_nic_provision['ipv4'] | default('127.0.0.1/24')  }}"
+t1_enroll_nic_provision_ip:      "{{ t1_enroll_nic_provision_ipv4  | ansible.utils.ipaddr('address') }}"
+t1_enroll_nic_provision_netmask: "{{ t1_enroll_nic_provision_ipv4  | ansible.utils.ipaddr('netmask') }}"
+t1_enroll_nic_provision_prefix:  "{{ t1_enroll_nic_provision_ipv4  | ansible.utils.ipaddr('prefix') }}"
+t1_enroll_nic_provision_default_gateway: "{{ t1_url_genesis_ip | default(t1_enroll_nic_provision_ipv4 | ansible.utils.ipaddr('last_usable'), true) }}"
+t1_enroll_nic_provision_gateway: "{{ t1_enroll_nic_provision['gateway'] | default(t1_enroll_nic_provision_default_gateway, true) }}"
+
+# 1.4.- List of NICs for OpenStack Ansible Module
+t1_enroll_node_nics_raw: 
+  - mac: "{{ t1_enroll_nic_provision_mac | default(none) }}" 
+  - mac: "{{ t1_enroll_nic_bmc_mac       | default(none) }}"
+t1_enroll_node_nics: >-
+  {{ t1_enroll_node_nics_raw 
+     | rejectattr('mac', 'none') 
+     | rejectattr('mac', 'undefined') 
+     | default(omit) }}
+ 
+#------------------
 # 2.- Out-Of-Band BMC Details (node -> inventory -> defaults)
 #------------------
 t1_enroll_node_name: "{{ enroll.name | default(hostname) | default(inventory_hostname_short) | default(inventory_hostname) | default(ansible_hostname) | default('nohost') }}" 
@@ -30,45 +78,20 @@ t1_enroll_node_uuid: "{{ enroll.uuid | default('') }}"
 t1_enroll_node_bmc_driver: "{{ enroll.driver  | default('redfish') }}" 
 
 #---------------------------------------------------------------------------
-# 2.- Out-Of-Band BMC Credentials Factory (node -> inventory -> defaults)
+# 3.- Out-Of-Band BMC Credentials Factory (node -> inventory -> defaults)
 #---------------------------------------------------------------------------
-# 2.1. Capture BMC credentials
+# 3.1. Capture BMC credentials
 t1_enroll_node_bmc_credentials: "{{ enroll['bmc_credentials'] | default({}) }}"
 t1_enroll_default_node_id:      "{{ enroll['node_id']         | default('') }}"
 
-# 2.2. Defaults BMC credentials
+# 3.2. Defaults BMC credentials
 t1_ilo_deploy_iso: "http://{{ t1_url_genesis_ip | default('127.0.0.1') }}:{{ t1_url_genesis_port['http'] | default(8080) }}/os/agent.iso"
-t1_enroll_default_bmc_credentials:
-  redfish:
-    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}"
-    username: "root"
-    password: "calvin"
-    verify_ca: false 
-  idrac:
-    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}" 
-    username: "root"
-    password: "calvin"
-    verify_ca: false 
-    raid_config_backup: "none"
-  ilo:
-    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}"
-    username: "root"
-    password: "calvin"
-    deploy_iso: "{{ t1_ilo_deploy_iso }}"
-  ipmi:
-    ipv4: "{{ t1_enroll_nic_bmc_ipv4 }}"  
-    username: "root"
-    password: "calvin" 
-    priv_level: "ADMINISTRATOR"
-    port: "623"
-    cipher_suite: "17"
 
 # 3.3. Inheritance => host_vars -> Inventory -> defaults -> empty
 t1_node_bmc_credentials_all_drivers: "{{ t1_enroll_node_bmc_credentials | default(genesis_bmc_credentials, true) | default(t1_enroll_default_bmc_credentials, true) | default({}) }}"
 
 # 3.4. Capture Node Driver Info
 t1_node_bmc_credentials: "{{ t1_node_bmc_credentials_all_drivers[t1_enroll_node_bmc_driver] | default({}) }}" 
-t1_enroll_bmc_node_driver_info: "{{ enroll['driver_info'] | default(t1_node_bmc_credentials) | default({}) }}"
 
 #---------------------------------------------------------------------------
 # 4.- Out-Of-Band BMC URLs Generation 
@@ -79,6 +102,13 @@ t1_enroll_node_bmc_ipv4: "{{ t1_enroll_node_bmc_ipv4_raw | ansible.utils.ipaddr(
 t1_enroll_node_bmc_port: "{{ t1_enroll_bmc_node_driver_info['port'] | default(none) }}"
 t1_enroll_node_bmc_url: "{{ t1_enroll_node_bmc_protocol }}://{{ t1_enroll_node_bmc_ipv4 }}{{ (t1_enroll_node_bmc_port is not none and t1_enroll_node_bmc_port | string | length > 0) | ternary(':' ~ t1_enroll_node_bmc_port, '') }}"
 t1_enroll_default_system_id: "/redfish/v1/Systems/{{ t1_enroll_default_node_id | default('') }}"
+
+#------------------
+# 5.- Out-Of-Band BMC driver Info
+#------------------
+t1_enroll_bmc_node_driver_info: "{{ enroll['driver_info'] | default(t1_node_bmc_credentials) | default({}) }}"
+
+t1_node_bmc_driver_info: "{{ t1_enroll_node_bmc_driver_info[t1_enroll_node_bmc_driver] | default({}) }}"
 
 #------------------
 # 7.- Properties 
@@ -94,14 +124,63 @@ t1_enroll_node_chassis_properties:
    root_device:  "{{ t1_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
    capabilities: "{{ t1_enroll_node_chassis_properties_input['capabilities'] | default(t1_enroll_node_chassis_capabilities_string)  }}"
 
+t1_enroll_node_chassis_type: "{{ ('uefi' in (t1_enroll_node_chassis_capabilities.boot_mode | default('uefi') | string | lower)) | ternary('uefi', 'bios') }}"
 
 ######################################################
 # HYPERVISOR CREDENTIALS
-#####################################################
-# 1.. Values Mapping
-t1_hypervisor_api_node: "{{ hostvars[groups['hypervisors'][0]]['ansible_host'] }}"
-t1_hypervisor_api_user:  "{{ b4_enroll_bmc_node_driver_info['username']  | default('root') }}"
-t1_hypervisor_api_password: "{{ b4_enroll_bmc_node_driver_info['password'] | default(omit) }}"
-t1_hypervisor_api_token: "{{ b4_enroll_bmc_node_driver_info['token'] | default(omit) }}"
+######################################################
+# 1.. Hypervisor Properties
+t1_refresh_environment: "{{ genesis_refresh_environment | default(true) | bool }}"
+t1_hypervisor: "{{ genesis_hypervisor | default('proxmox') }}"
+t1_hypervisor_node: "{{ genesis_hypervisor_node | default(hostvars[groups['hypervisor'][0]]['ansible_host']) | default('') }}"
+t1_hypervisor_user: "{{ hostvars[t1_hypervisor_node]['ansible_user'] | default('root') }}"
+
+# 2.. Hypervisor API
+t1_hypervisor_api_node: "{{ t1_hypervisor_node }}"
+t1_hypervisor_api_user:  "{{ t1_enroll_bmc_node_driver_info['username']  | default('root') }}"
+t1_hypervisor_api_password: "{{ t1_enroll_bmc_node_driver_info['password'] | default(omit) }}"
+t1_hypervisor_api_token: "{{ t1_enroll_bmc_node_driver_info['token'] | default(omit) }}"
 t1_hypervisor_api_validate_certs: false
 
+t1_hypervisor_add_user_script: 
+  proxmox: |
+    #!/bin/bash
+    set -e
+    
+    TARGET_USER="{{ t1_hypervisor_api_user }}"
+    TARGET_PASS="{{ t1_hypervisor_api_password }}"
+     
+    echo "Checking if user $TARGET_USER exists in Proxmox database..."
+    if pveum user list | grep -q "$TARGET_USER"; then
+       echo "STATUS: User $TARGET_USER already exists. Skipping creation."
+       exit 0
+    else
+       echo "STATUS: User $TARGET_USER missing. Provisioning account..."
+       pveum user add "$TARGET_USER" --password "$TARGET_PASS" --comment "Automated via Genesis Unified Bash Script"
+       
+       echo "STATUS: Granting Administrator privileges on '/'..."
+       pveum acl modify / --user "$TARGET_USER" --role Administrator
+       echo "STATUS: User $TARGET_USER successfully provisioned."
+    fi
+
+t1_proxmox_redfish_tarball_name: "proxmox-redfish.zip"
+t1_proxmox_redfish_local_tarball: "{{ genesis_repo_path | default('') }}/openstack/{{ t1_proxmox_redfish_tarball_name }}"
+t1_proxmox_redfish_remote_path: "/tmp/proxmox-redfish" 
+t1_proxmox_redfish_remote_tarball: "/tmp/{{ t1_proxmox_redfish_tarball_name }}"
+t1_proxmox_storage: "local-lvm"
+t1_proxmox_provision_bridge: "provision"
+t1_proxmox_bmc_bridge: "redfish"
+t1_proxmox_boot_type:
+  uefi: 
+    bios: ovmf
+    machine: q35
+    efidisk:
+      storage: "{{ t1_proxmox_storage }}"
+      format: "qcow2"
+      efitype: "4m"
+      pre_enrolled_keys: false
+  bios: 
+    bios: default
+    machine: i440fx
+t1_proxmox_node_default_boot: "{{ t1_proxmox_boot_type['uefi'] | default({}) }}"
+t1_proxmox_node_boot: "{{ t1_proxmox_boot_type[t1_enroll_node_chassis_type] | default(t1_proxmox_node_default_boot) }}"

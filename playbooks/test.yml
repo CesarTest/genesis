@@ -1,6 +1,6 @@
 ---
-# genesis playbooks/baremetal.yml
-#  - Baremetal Nodes Life Cycle
+# genesis playbooks/test.yml
+#  - Baremetal Nodes Life Cycle Certification Testing
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -14,15 +14,13 @@
   gather_facts: yes
  
 #---------------------------------
-#  SETUP NODES
+#  TEST NODES
 #---------------------------------
-- hosts: "hypervisor"
+- hosts: "baremetal"
   become: no
   gather_facts: no
-  pre_tasks:
-    - name: "B4 SETUP - Reset existing connection sockets"
-      ansible.builtin.meta: reset_connection
-  
   roles: 
     - role: "genesis.test"
-
+      vars:
+        genesis_hypervisor: "proxmox"
+        genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"

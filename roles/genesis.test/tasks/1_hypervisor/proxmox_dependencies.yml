@@ -1,0 +1,35 @@
+---
+# genesis.test 1_hypervisor/proxmox_dependendcies.yml
+#  - Working Conditions on Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T1 - TESTING ENVIRONMENT: Proxmox Testing User Provisioning"
+  block:
+
+    - name: "T1 - TEST ENVIRONMENT: Proxmox Dependencies"
+      become: true
+      ansible.builtin.package:
+        name: 
+        - python3 
+        - python3-pip 
+        - python3-venv
+        - python3-pip
+        - python3-setuptools
+        - unzip
+        - git 
+        - jq
+        state: present
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+
+    - name: "T2 - TESTING ENVIRONMENT: Proxmox Dependencies"
+      become: true
+      ansible.builtin.pip:
+        name: 
+          - "proxmoxer>=2.3.0"
+          - "requests"
+        state: present
+        extra_args: "--break-system-packages"
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"

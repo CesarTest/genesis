@@ -1,0 +1,25 @@
+---
+# genesis.test environment.yml
+#   - Set Hypervisor Conditions
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#-----------------------------------------------------------------------
+# 1.- Hypervisor Working Environment Check
+#-----------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_tasks: "1_hypervisor/connectivity.yml"
+    - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_dependencies.yml"
+    - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_users.yml"
+    - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_facts.yml"
+    #- ansible.builtin.include_tasks: "2_emulator/proxmox.yml"
+    #- ansible.builtin.include_tasks: "2_emulator/sushy.yml"
+
+#-----------------------------------------------------------------------
+# 2.- Refresh Testing Environment
+#-----------------------------------------------------------------------
+- block:
+    #- ansible.builtin.include_tasks: "3_nodes/{{ t1_hypervisor }}_network.yml"
+    - ansible.builtin.include_tasks: "3_nodes/{{ t1_hypervisor }}_delete.yml"
+    - ansible.builtin.include_tasks: "3_nodes/{{ t1_hypervisor }}_create.yml"

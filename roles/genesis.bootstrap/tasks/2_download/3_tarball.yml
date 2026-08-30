@@ -1,0 +1,16 @@
+---
+# genesis.bootstrap 5_oras.yml
+#   - Download ORAS registry from Internet
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "G1 - BOOTSTRAP - 2.- Download ORAS: - 4) Download ORAS tarball"
+  get_url:
+     url:      "{{ g1_tarball.url      | default(omit) }}"
+     dest:     "{{ g1_tarball.dest     | default(omit) }}"
+     checksum: "{{ g1_tarball.checksum | default(omit) }}"
+     mode: '0644'
+  loop: "{{ g1_tarball_download | default([]) }}"
+  loop_control:
+    loop_var: "g1_tarball"
