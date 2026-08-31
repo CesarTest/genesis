@@ -13,12 +13,16 @@
   connection: local
   vars:
     bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
-    genesis_repo_path: "{{ playbook_dir }}/../repo"      
+    genesis_repo_path: "{{ playbook_dir }}/../repo"   
+  pre_tasks:
+    - ansible.builtin.set_fact:
+        genesis_refresh_install: "{{ genesis_reinstall | default(true) | bool }}"
+
   roles:
     - role: "genesis.bootstrap"
       when: 
-      - not (skip_install | default(false) | bool)
-      - (genesis_stage is not defined)  or  (genesis_stage=='G1') 
+        - genesis_refresh_install
+        - (genesis_stage is not defined)  or  (genesis_stage=='G1') 
       
 #---------------------------------------
 # G2 - CREATE + G3 INIT: Spawn Genesis Node
@@ -33,6 +37,9 @@
   # 2.1. Pre-Tasks: Prepare Bifrost Python Virtual Environment 
   #--------------------------------------- 
   pre_tasks:
+    - ansible.builtin.set_fact:
+        genesis_refresh_install: "{{ genesis_reinstall | default(true) | bool }}"
+
     - name: install pip (and venv) to system
       package:
         name: "{{ packages | select | list }}"
@@ -63,13 +70,13 @@
     # ----> G2: Create
     - role: "genesis.create"
       when: 
-        - not (skip_install | default(false) | bool)
+        - genesis_refresh_install
         - (genesis_stage is not defined)  or  (genesis_stage=='G2')   
  
     # ----> G3: Init
     - role: "genesis.init"
       when: 
-        - not (skip_install | default(false) | bool)
+        - genesis_refresh_install
         - (genesis_stage is not defined)  or  (genesis_stage=='G3')          
  
   # 2.3. Bifrost Environment

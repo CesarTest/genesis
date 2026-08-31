@@ -1,6 +1,84 @@
 ---
 # genesis.test 3_nodes/proxmox_network.yml
-#  -Install RedFish Emukator in Hypervisor
+#  - Dynamically Ensure Provision and RedFish Networks are present on Hypervisor
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
+
+- name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 1) Network Creation"
+  block:
+
+    #-----------------------------------------------------------------------
+    # 1.- Bridges Creation via Proxmox SDN (Environment Level)
+    #-----------------------------------------------------------------------
+    - name: "T2 - NETWORK: 1.1) Ensure Provision and Redfish VNETs are present in Proxmox cluster"
+      community.proxmox.proxmox_vnet:
+        api_host: "127.0.0.1"
+        api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        vnet: "{{ t1_proxmox_bridge }}"
+        zone: "localnetwork"
+        tag: "{{ t1_proxmox_vnet_tag | default(omit) }}"
+        state: present
+      loop: 
+        - "{{ t1_proxmox_bmc_bridge | default('redfish') }}"
+        - "{{ t1_proxmox_provision_bridge | default('provision') }}"
+      loop_control:
+        loop_var: "t1_proxmox_bridge"
+      register: t2_network_provision_api
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T2 - NETWORK: 1.2) Apply staged SDN environment changes across the cluster"
+      community.proxmox.proxmox_vnet:
+        api_host: "127.0.0.1"
+        api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        state: reload
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      when: t2_network_provision_api is changed
+
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- Bridges Creation via CLI
+    #-----------------------------------------------------------------------  
+    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: RESCUE) Probe existing networking states on Hypervisor"
+      become: true
+      ansible.builtin.shell: "ls /sys/class/net/{{ item }} 2>/dev/null"
+      register: t2_network_cli_probes
+      failed_when: false
+      changed_when: false
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      loop:
+        - "{{ t1_proxmox_provision_bridge | default('provision') }}"
+        - "{{ t1_proxmox_bmc_bridge | default('redfish') }}"
+
+    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: RESCUE) Inyect configuration for Provision and Redfish bridges in interfaces file"
+      become: true
+      ansible.builtin.blockinfile:
+        path: /etc/network/interfaces
+        marker: "# {mark} ANSIBLE MANAGED GENESIS BRIDGES"
+        block: |
+          iface {{ t1_proxmox_provision_bridge | default('provision') }} inet manual
+                  bridge-ports none
+                  bridge-stp off
+                  bridge-fd 0
+         
+          iface {{ t1_proxmox_bmc_bridge | default('redfish') }} inet manual
+                  bridge-ports none
+                  bridge-stp off
+                  bridge-fd 0
+      register: t2_network_file_modification
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      when: t2_network_cli_probes is failed
+
+    - name: "T2 - NETWORK: RESCUE) Reload Proxmox networking sub-system to apply changes in live"
+      become: true
+      ansible.builtin.shell: |
+        ifup {{ t1_proxmox_provision_bridge | default('provision') }} 2>/dev/null || true
+        ifup {{ t1_proxmox_bmc_bridge | default('redfish') }} 2>/dev/null || true
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      when: t2_network_file_modification is changed

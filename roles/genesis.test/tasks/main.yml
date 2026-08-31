@@ -17,8 +17,13 @@
     - t1_hypervisor_node is not none
     - t1_refresh_environment is defined
     - t1_refresh_environment is not none
-    - t1_refresh_environment | bool
+    - t1_refresh_environment
 
 #-----------------------------------------------------------------------
 # 2.- Run Stage Tests
 #-----------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_role: 
+        name: "genesis.setup"
+    - ansible.builtin.include_role: 
+        name: "genesis.deploy"

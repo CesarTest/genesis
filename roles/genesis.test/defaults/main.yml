@@ -9,9 +9,9 @@
 ######################################################
 # ENROLL PARTICULARS
 ######################################################
-
 genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+t1_refresh_environment: "{{ genesis_refresh_environment | default(true) | bool }}"
 
 #------------------
 # 0.- Genesis Node Nics Details
@@ -130,7 +130,6 @@ t1_enroll_node_chassis_type: "{{ ('uefi' in (t1_enroll_node_chassis_capabilities
 # HYPERVISOR CREDENTIALS
 ######################################################
 # 1.. Hypervisor Properties
-t1_refresh_environment: "{{ genesis_refresh_environment | default(true) | bool }}"
 t1_hypervisor: "{{ genesis_hypervisor | default('proxmox') }}"
 t1_hypervisor_node: "{{ genesis_hypervisor_node | default(hostvars[groups['hypervisor'][0]]['ansible_host']) | default('') }}"
 t1_hypervisor_user: "{{ hostvars[t1_hypervisor_node]['ansible_user'] | default('root') }}"

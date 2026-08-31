@@ -783,7 +783,7 @@ b4_kickstart_template_defaults:
     logvol /home --fstype=ext4 --name=LogVol03    --vgname=VolGroup00 --size=4096 --grow
     logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }}
 
-  postinstall: "{{ b4_os_postinstall_script }}" 
+  #postinstall: "{{ b4_os_postinstall_script }}" 
 
 # 1.3.- Changes over Default Template according OS release
 b4_kickstart_template_os_profiles:
@@ -835,8 +835,6 @@ b4_casper_template_defaults:
       layout: {{ b4_node_os_locale_info.keyboard | default('us') }}
     refresh-installer:
       update: false
-    package_update: false
-    package_upgrade: false
   identity: |
     hostname: {{ b4_enroll_node_name }}
     username: {{ b4_provision_user_name }}
@@ -847,7 +845,7 @@ b4_casper_template_defaults:
     password_auth: true        
     authorized-keys:
       - "{{ b4_provision_user_ssh_key }}"
-  user-data: |
+  user: |
     users:
       - name: root
         passwd: "{{ b4_root_user_password }}"
@@ -863,39 +861,38 @@ b4_casper_template_defaults:
         passwd: "{{ b4_provision_user_password }}"
         lock_passwd: false
         shell: /bin/bash
-  #logging: |
-  #  log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
-  network: |
-    version: 2
-    ethernets:
-      # Static deployment interface aliased globally as 'provision'
-      provision:
-        critical: true
-        addresses:
-          - {{ b4_enroll_nic_provision_ipv4 }}
-        match:
-          macaddress: "{{ b4_enroll_nic_provision_mac | default('') | lower }}"
-        set-name: provision
-        
-        routes:
-          - to: default
-            via: {{ b4_url_genesis_ip }}
-        
-        nameservers:
-          addresses:
-            - {{ b4_url_genesis_ip }}
   repos: |
     geoip: no
     preserve_sources_list: false
-    fallback: offline
     sources_list: |
-      deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} {{ b4_node_os_alias }} main restricted
-    snaps:
-      proxy: http://127.0.0.1:0
+      deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} ./
   postinstall: |
-    - wget -O /target/tmp/setup-users.sh {{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os }}-users.sh
+    - | 
+      cat << 'EOF' > /target/tmp/setup-users.sh
+      {{ b4_os_postinstall_script | indent(2, first=false) }}
+      EOF
     - curtin in-target -- bash /tmp/setup-users.sh
     - rm -f /target/tmp/setup-users.sh
+  network: |
+    version: 2
+    ethernets:
+      {{ b4_render_ifname }}:
+        critical: true
+        addresses:
+          - "{{ b4_enroll_nic_provision_ipv4 }}"
+        match:
+          macaddress: "{{ b4_enroll_nic_provision_mac }}"
+        set-name: "{{ b4_render_ifname }}"
+        nameservers:
+          addresses:
+            - "{{ b4_url_genesis_ip }}"
+  #storage: |
+  #  layout:
+  #    name: lvm
+  #    match: {}
+  #logging: |
+  #  log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
+ 
 
 #------------------------------------
 # 3.- AutoYast
@@ -983,7 +980,7 @@ b4_autoyast_template_defaults:
       </script>
     </chroot-scripts>
 
-b4_kickstart_template_os_profiles:
+b4_autoyast_template_os_profiles:
   "12.3": &autoyast_legacy
     software: |
       <products config:type="list">
@@ -1071,99 +1068,7 @@ b4_ignition_template_defaults:
 ###################################################### 
 
 #------------------------------------
-# 1.- OS Installer Manifesto
-#------------------------------------
-b4_node_manifesto_profiles: "{{ deploy['os_manifesto'][b4_node_os_installer] | default({}) }}" 
-b4_system_manifesto_profiles: "{{ genesis_os_manifesto[b4_node_os_installer] | default({}) }}" 
-b4_os_manifesto_profiles: "{{ b4_kickstart_template_os_profiles[b4_node_os_version] | default({}) }}"
-b4_render_manifesto_file: "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
-b4_render_manifesto_url: "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}"
-b4_os_installer_manifesto:
-  anaconda:
-    template:  
-      - "manifesto/kickstart.j2"
-    file:      
-      - "{{ b4_render_manifesto_file }}"
-    url:        "{{ b4_render_manifesto_url }}" 
-    defaults:   "{{ b4_kickstart_template_defaults  | default({}) }}"
-    os_version: "{{ b4_os_manifesto_profiles }}"
-    system:     "{{ b4_system_manifesto_profiles }}"
-    node:       "{{ b4_node_manifesto_profiles   }}"
-
-  casper:
-    template:  
-      - "manifesto/casper/meta-data.j2"
-      - "manifesto/casper/user-data.j2"     
-    file:      
-      - "{{ b4_render_manifesto_file }}/meta-data"
-      - "{{ b4_render_manifesto_file }}/user-data"
-    url: "{{ b4_render_manifesto_url }}/"  
-    defaults:   "{{ b4_casper_template_defaults  | default({}) }}"
-    os_version: "{{ b4_os_manifesto_profiles }}"
-    system:     "{{ b4_system_manifesto_profiles }}"
-    node:       "{{ b4_node_manifesto_profiles   }}"
-
-  autoyast:
-    template:  
-      - "manifesto/autoyast.j2"    
-    file:      
-      - "{{ b4_render_manifesto_file }}"
-    url:        "{{ b4_render_manifesto_url }}" 
-    defaults:   "{{ b4_autoyast_template_defaults  | default({}) }}"
-    os_version: "{{ b4_os_manifesto_profiles }}"
-    system:     "{{ b4_system_manifesto_profiles }}"
-    node:       "{{ b4_node_manifesto_profiles   }}"
-
-  esxi:
-    template:  
-      - "manifesto/kickstart.j2"
-    file:      
-      - "{{ b4_render_manifesto_file }}"
-    url:        "{{ b4_render_manifesto_url }}" 
-    defaults:   "{{ b4_kickstart_template_defaults  | default({}) }}"
-    os_version: "{{ b4_os_manifesto_profiles }}"
-    system:     "{{ b4_system_manifesto_profiles }}"
-    node:       "{{ b4_node_manifesto_profiles   }}"
-
-  preseed:
-    template:  
-      - "manifesto/preseed.j2"
-    file:      
-      - "{{ b4_render_manifesto_file }}"
-    url:        "{{ b4_render_manifesto_url }}" 
-    defaults:   "{{ b4_preseed_template_defaults  | default({}) }}"
-    os_version: "{{ b4_os_manifesto_profiles }}"
-    system:     "{{ b4_system_manifesto_profiles }}"
-    node:       "{{ b4_node_manifesto_profiles   }}"
-    
-  ignition:
-    template:  
-      - "manifesto/ignition.j2"    
-    file:      
-      - "{{ b4_render_manifesto_file }}"
-    url:        "{{ b4_render_manifesto_url }}" 
-    defaults:   "{{ b4_ignition_template_defaults | default({}) }}"
-    os_version: "{{ b4_os_manifesto_profiles }}"
-    system:     "{{ b4_system_manifesto_profiles }}"
-    node:       "{{ b4_node_manifesto_profiles   }}"
-
-  microos:
-    template:  
-      - "manifesto/microos.j2"    
-    file: 
-      - "{{ b4_render_manifesto_file }}/script"
-    url:        "{{ b4_render_manifesto_url }}/script" 
-    defaults:   "{{ b4_microos_template_defaults | default({}) }}"
-    os_version: "{{ b4_os_manifesto_profiles }}"
-    system:     "{{ b4_system_manifesto_profiles  }}"
-    node:       "{{ b4_node_manifesto_profiles    }}"
-    
-b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | default({}) }}"
-b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
-b4_node_manifesto_files:   "{{ b4_node_os_manifesto['file']     | default([]) }}"
-
-#------------------------------------
-# 2.- OS Installer Call from Bootloader
+# 1.- OS Installer Call from Bootloader
 #------------------------------------
 # SINGLE INTERFACE ENFORCEMENT & STATIC IP CONFIGURATION
 #  - Multi-NIC race condition during PXE boot.
@@ -1299,10 +1204,9 @@ b4_render_menu_casper: >-
     netboot=url
     url={{ b4_netinstall_os_iso_url }}
     cloud-config-url=/dev/null
-    cloud-init=disabled
     autoinstall
     ds={{ b4_render_casperds }}
-    ip={{ b4_render_ip }}::none
+    ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
     nameserver={{ b4_url_genesis_ip }}
     rootdelay=20
     boot_delay=1
@@ -1383,6 +1287,98 @@ b4_os_installer_bootloader_call:
     kernel:  "{{ b4_render_kernel }}"
     initram: "{{ b4_render_initram }}"
     menu:    "{{ b4_render_menu_microos }}"
+
+#------------------------------------
+# 2.- OS Installer Manifesto
+#------------------------------------
+b4_node_manifesto_profiles: "{{ deploy['os_manifesto'][b4_node_os_installer] | default({}) }}" 
+b4_system_manifesto_profiles: "{{ genesis_os_manifesto[b4_node_os_installer] | default({}) }}" 
+b4_os_manifesto_profiles: "{{ b4_kickstart_template_os_profiles[b4_node_os_version] | default({}) }}"
+b4_render_manifesto_file: "{{ b4_repo_manifesto_path }}/{{ b4_node_os_manifesto_file }}"
+b4_render_manifesto_url: "{{ b4_netinstall_os_manifesto_url }}/{{ b4_node_os_manifesto_file }}"
+b4_os_installer_manifesto:
+  anaconda:
+    template:  
+      - "manifesto/kickstart.j2"
+    file:      
+      - "{{ b4_render_manifesto_file }}"
+    url:        "{{ b4_render_manifesto_url }}" 
+    defaults:   "{{ b4_kickstart_template_defaults  | default({}) }}"
+    os_version: "{{ b4_os_manifesto_profiles }}"
+    system:     "{{ b4_system_manifesto_profiles }}"
+    node:       "{{ b4_node_manifesto_profiles   }}"
+
+  casper:
+    template:  
+      - "manifesto/casper/meta-data.j2"
+      - "manifesto/casper/user-data.j2"     
+    file:      
+      - "{{ b4_render_manifesto_file }}/meta-data"
+      - "{{ b4_render_manifesto_file }}/user-data"
+    url: "{{ b4_render_manifesto_url }}/"  
+    defaults:   "{{ b4_casper_template_defaults  | default({}) }}"
+    os_version: "{{ b4_os_manifesto_profiles }}"
+    system:     "{{ b4_system_manifesto_profiles }}"
+    node:       "{{ b4_node_manifesto_profiles   }}"
+
+  autoyast:
+    template:  
+      - "manifesto/autoyast.j2"    
+    file:      
+      - "{{ b4_render_manifesto_file }}"
+    url:        "{{ b4_render_manifesto_url }}" 
+    defaults:   "{{ b4_autoyast_template_defaults  | default({}) }}"
+    os_version: "{{ b4_os_manifesto_profiles }}"
+    system:     "{{ b4_system_manifesto_profiles }}"
+    node:       "{{ b4_node_manifesto_profiles   }}"
+
+  esxi:
+    template:  
+      - "manifesto/kickstart.j2"
+    file:      
+      - "{{ b4_render_manifesto_file }}"
+    url:        "{{ b4_render_manifesto_url }}" 
+    defaults:   "{{ b4_kickstart_template_defaults  | default({}) }}"
+    os_version: "{{ b4_os_manifesto_profiles }}"
+    system:     "{{ b4_system_manifesto_profiles }}"
+    node:       "{{ b4_node_manifesto_profiles   }}"
+
+  preseed:
+    template:  
+      - "manifesto/preseed.j2"
+    file:      
+      - "{{ b4_render_manifesto_file }}"
+    url:        "{{ b4_render_manifesto_url }}" 
+    defaults:   "{{ b4_preseed_template_defaults  | default({}) }}"
+    os_version: "{{ b4_os_manifesto_profiles }}"
+    system:     "{{ b4_system_manifesto_profiles }}"
+    node:       "{{ b4_node_manifesto_profiles   }}"
+    
+  ignition:
+    template:  
+      - "manifesto/ignition.j2"    
+    file:      
+      - "{{ b4_render_manifesto_file }}"
+    url:        "{{ b4_render_manifesto_url }}" 
+    defaults:   "{{ b4_ignition_template_defaults | default({}) }}"
+    os_version: "{{ b4_os_manifesto_profiles }}"
+    system:     "{{ b4_system_manifesto_profiles }}"
+    node:       "{{ b4_node_manifesto_profiles   }}"
+
+  microos:
+    template:  
+      - "manifesto/microos.j2"    
+    file: 
+      - "{{ b4_render_manifesto_file }}/script"
+    url:        "{{ b4_render_manifesto_url }}/script" 
+    defaults:   "{{ b4_microos_template_defaults | default({}) }}"
+    os_version: "{{ b4_os_manifesto_profiles }}"
+    system:     "{{ b4_system_manifesto_profiles  }}"
+    node:       "{{ b4_node_manifesto_profiles    }}"
+    
+b4_node_os_manifesto: "{{ b4_os_installer_manifesto[b4_node_os_installer] | default({}) }}"
+b4_os_manifesto_templates: "{{ b4_node_os_manifesto['template'] | default([]) }}"
+b4_node_manifesto_files:   "{{ b4_node_os_manifesto['file']     | default([]) }}"
 
 #------------------------------------
 # 3.- API Calls

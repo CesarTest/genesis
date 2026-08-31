@@ -1,14 +1,9 @@
 ---
-# genesis playbooks/test.yml
-#  - Baremetal Nodes Life Cycle Certification Testing
+# genesis playbooks/hypervisor.yml
+#  - Preprare Hypervisor for Genesis deployment
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-
-#---------------------------------
-# PREPARE GENESIS NODE
-#--------------------------------
-- import_playbook: "genesis.yml"
 
 #---------------------------------
 #  GATHERING FACT
@@ -21,16 +16,15 @@
 #---------------------------------
 #  TEST NODES
 #--------------------------------
-- hosts: "baremetal"
+- hosts: "hypervisor"
   become: no
   gather_facts: no
   pre_tasks:
     - name: "GENESIS API: Cast global string variables to native booleans"
       ansible.builtin.set_fact:
-        genesis_refresh_environment: "{{ genesis_refresh_testenv | default(false) | bool }}"
+        genesis_hypervisor: "{{ target_hypervisor | default(inventory_name) | default('proxmox') }}"
 
   roles: 
     - role: "genesis.test"
       vars:
-        genesis_hypervisor: "proxmox"
         genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"

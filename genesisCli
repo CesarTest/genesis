@@ -91,7 +91,7 @@ GENESIS_PLAYBOOKS_HEADER=( \
         "${COLOR[$NC]}[BAREMETAL] - TEST DEPLOY : OS Installation with Expected Conditions(T5- test.yml)${COLOR[$NC]}" \
         "${COLOR[$SILVER]}[BAREMETAL] - TEST ACTIVE : HW Drivers & OS Profile(T5- test.yml)${COLOR[$NC]}" \
         "${COLOR[$SILVER]}[BAREMETAL] - TEST CLEAN  : Wipe Disks(T5- test.yml)${COLOR[$NC]}" \
-        "${COLOR[$SILVER]}[BAREMETAL] - TEST ENROLL : Outband Connectivity, BMC Autehtications(RedFish/iLO/iDRAC/IPMI), TLS Certificates Manager(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST ENROLL : Outband Connectivity, BMC Authentications(RedFish/iLO/iDRAC/IPMI), TLS Certificates Manager(T4- test.yml)${COLOR[$NC]}" \
         "${COLOR[$SILVER]}[BAREMETAL] - TEST MANAGE : Inband Connectivity,Power Cycle,Mantainance & Repair Cycles(T4- test.yml)${COLOR[$NC]}" \
         "${COLOR[$SILVER]}[BAREMETAL] - TEST INSPECT: BMC versus Ramdisk Hardware Detection(T4- test.yml)${COLOR[$NC]}" \
         "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE DEPLOY : PXE, OS Conditions(A5)${COLOR[$NC]}" \
@@ -330,9 +330,13 @@ function defineMenu() {
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_deploy.log"  ; fi
 	          PARAMETRO=(     "GENESIS_REFRESH" "LOG_FILE" )
               VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File              [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
+
               RETURNING_MENU="8"
               RUN_ACTION="12"
               unset GENESIS_REFRESH LOG_FILE 
@@ -341,11 +345,13 @@ function defineMenu() {
         13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")
 		      MENU_TEXT="(13)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_active.log"  ; fi
-	          PARAMETRO=(     "GENESIS_REFRESH" "LOG_FILE" )
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+             PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File              [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
+
               RETURNING_MENU="8"
               RUN_ACTION="13"
               unset GENESIS_REFRESH LOG_FILE 
@@ -355,10 +361,11 @@ function defineMenu() {
         14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")
 		      MENU_TEXT="(14)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_clean.log"  ; fi
-	          PARAMETRO=(     "GENESIS_REFRESH" "LOG_FILE" )
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+             PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
               RETURNING_MENU="8"
               RUN_ACTION="14"
@@ -368,10 +375,13 @@ function defineMenu() {
         15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")
 		      MENU_TEXT="(15)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_enroll.log"  ; fi
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
+
               RETURNING_MENU="8"
               RUN_ACTION="15"
               unset GENESIS_REFRESH LOG_FILE 
@@ -380,9 +390,11 @@ function defineMenu() {
        16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")
  		      MENU_TEXT="(16)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_manage.log"  ; fi
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
               RETURNING_MENU="8"
               RUN_ACTION="16"
@@ -392,9 +404,11 @@ function defineMenu() {
        17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}")
 		      MENU_TEXT="(17)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_inspect.log"  ; fi
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
               RETURNING_MENU="8"
               RUN_ACTION="17"
@@ -404,10 +418,12 @@ function defineMenu() {
        22|"${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}")
 		      MENU_TEXT="(22)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_deploy.log"  ; fi
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
+
               RETURNING_MENU="10"
               RUN_ACTION="22"
               unset GENESIS_REFRESH LOG_FILE 
@@ -415,9 +431,10 @@ function defineMenu() {
        23|"${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}")
 		      MENU_TEXT="(23)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_active.log"  ; fi
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
               RETURNING_MENU="10"
               RUN_ACTION="23"
@@ -426,9 +443,10 @@ function defineMenu() {
        24|"${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}")
 		      MENU_TEXT="(24)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_clean.log"  ; fi
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+ 			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
               RETURNING_MENU="10"
               RUN_ACTION="24"
@@ -1799,7 +1817,11 @@ function buildCommand() {
 	    fi		
         if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"     ; fi
 		if [ -n "${FLUSH_CACHE}"    ] ; then OPTIONS="${OPTIONS} --flush-cache"     ; fi
-        if [ -n "${EXTRA_VARS}"     ] ; then OPTIONS="${OPTIONS} -e ${EXTRA_VARS}"  ; fi	
+        if [ -n "${EXTRA_VARS}"     ] ; then
+		   local EXTRA_VARS_ARRAY=( $(echo "${EXTRA_VARS}" | sed 's/#/\n/g') )
+		   local EXTRA_VARS_ANSIBLE="$(printf " -e %s" "${EXTRA_VARS_ARRAY[@]}")"
+		   OPTIONS="${OPTIONS} ${EXTRA_VARS_ANSIBLE}"  
+		fi	
         if [ -n "${TAGS}"           ] ; then OPTIONS="${OPTIONS} --tags ${TAGS}"  ; fi
         if [ -n "${VAULT}"          ] ; then
              vaultPass "/tmp/"
@@ -2257,6 +2279,47 @@ function 7_provision() {
 }
 
 #========================================================
+#   Function: 8_test
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 8_test() {
+
+   #--------------------
+   #  LOCAL ENVIRONMENT
+   #--------------------
+   # 1.- Capture Local Environment
+   local TEST_CYCLE="${1:-0}"
+   
+   # 2.- Set Shoot Conditions
+   local REFRESH_INSTALL=no
+   local REFRESH_ENVIRONMENT=no
+   
+   local GENESIS_REFRESH_NORM=$(echo "${GENESIS_REFRESH}" | tr '[:upper:]' '[:lower:]')
+   case "${GENESIS_REFRESH_NORM}" in
+    y|yes|si|s|true|1)
+        local REFRESH_INSTALL=yes
+        ;;
+   esac
+
+   local BAREMETAL_REFRESH_NORM=$(echo "${BAREMETAL_REFRESH}" | tr '[:upper:]' '[:lower:]')
+   case "${BAREMETAL_REFRESH_NORM}" in
+    y|yes|si|s|true|1)
+        local REFRESH_ENVIRONMENT=yes
+        ;;
+    esac
+	
+   # 3.- Prepare Playbook Call
+   EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}" 
+
+   #--------------------
+   #   ACTIONS
+   #--------------------
+   0_call "${TEST_CYCLE}" 
+   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH
+}
+
+#========================================================
 #   Function: runActions
 #--------------------------------------------------------
 #  Execute Menu actions
@@ -2272,7 +2335,7 @@ function runActions() {
         5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")  5_deploy  ;;
         6|"${COLOR[$SILVER]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}") 6_ansible ;;		
         7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}") 7_provision ;;
-        12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")  0_call "${T5_DEPLOY}"  ;;
+        12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")  8_test "${T5_DEPLOY}"  ;;
         13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")  underConstruction ;;
         14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")   underConstruction ;;
         15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")  underConstruction ;;

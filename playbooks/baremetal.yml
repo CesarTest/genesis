@@ -29,6 +29,7 @@
     ironic_http_path:   "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
 
   pre_tasks:
+
     - name: "B4 SETUP - Reset existing connection sockets"
       ansible.builtin.meta: reset_connection
   

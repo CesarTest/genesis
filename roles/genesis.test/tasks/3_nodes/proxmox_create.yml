@@ -6,79 +6,69 @@
 # SPDX-License-Identifier: Apache-2.0
 
 #-----------------------------------------------------------------------
-# 1.- Create Virtual Machine
+# 1.- Virtual Machine Specs
+#-----------------------------------------------------------------------
+- name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.1) Display VM Creation Spec"
+  ansible.builtin.debug:
+    msg: |
+      ======================================================================
+        GENESIS INFRASTRUCTURE MATRIX - BAREMETAL PARAMETERS DETAILED
+      ======================================================================
+        API CONNECTION PROPERTIES:
+        - API Host       : 127.0.0.1 (Local Loopback)
+        - API User       : {{ t1_hypervisor_api_user | default('OMIT / ROOT') }}
+        - Target PVE Node: {{ t1_hypervisor_api_hostname }}
+        - TLS Validation : false
+        
+        VIRTUAL MACHINE IDENTITY:
+        - Target VMID    : {{ t1_enroll_default_node_id | default('201') }}
+        - VM Name        : {{ t1_enroll_node_name | default('servera199') }}
+        - Execution Mode : Fresh Baremetal Emulation
+        
+        FIRMWARE & MOTHERBOARD EMULATION:
+        - UUID           : {{ t1_enroll_node_uuid }}
+        - Boot/BIOS Type : {{ t1_proxmox_node_boot.bios | upper }}
+        - Motherboard    : {{ t1_proxmox_node_boot.machine | upper }}
+        
+        BAREMETAL PROVISIONING SPECS:
+        - Alloc vCPUs    : {{ t1_enroll_node_chassis_properties.cpus | default('OMIT') }}
+        - CPU Type Emul  : host (Passthrough Physical CPU flags)
+        - Alloc RAM (MB) : {{ t1_enroll_node_chassis_properties.memory_mb | default('OMIT') }}
+        - Storage Pool   : {{ t1_proxmox_storage | default('local') }}
+        - Disk Controller: virtio-scsi-single (High-Performance Dedicated Queues)
+        - Allocation Size: {{ t1_enroll_node_chassis_properties.local_gb | default('OMIT') }} GB (discard=on)
+        
+        NETWORK EMBEDDED TOPOLOGY (e1000 GENERIC INTEL):
+        - Interface net0 : Bridge={{ t1_proxmox_provision_bridge | default('vmbr0') }} | MAC={{ t1_enroll_nic_provision_mac | default('AUTOMATIC') }}
+        - Interface net1 : Bridge={{ t1_proxmox_bmc_bridge | default('vmbr0') }} | MAC={{ t1_enroll_nic_bmc_mac | default('AUTOMATIC') }}
+      ======================================================================
+  delegate_to: localhost
+
+#-----------------------------------------------------------------------
+# 2.- Create Virtual Machine
 #-----------------------------------------------------------------------
 - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3) Create VM"
   block:
 
-    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.1) Display VM Creation Spec"
-      ansible.builtin.debug:
-        msg: |
-          ======================================================================
-            GENESIS INFRASTRUCTURE MATRIX - BAREMETAL PARAMETERS DETAILED
-          ======================================================================
-            API CONNECTION PROPERTIES:
-            - API Host       : 127.0.0.1 (Local Loopback)
-            - API User       : {{ t1_hypervisor_api_user | default('OMIT / ROOT') }}
-            - Target PVE Node: {{ t1_hypervisor_api_hostname }}
-            - TLS Validation : false
-            
-            VIRTUAL MACHINE IDENTITY:
-            - Target VMID    : {{ t1_enroll_default_node_id | default('OMIT') }}
-            - VM Name        : {{ t1_enroll_node_name | default('OMIT') }}
-            - Execution Mode : Fresh Baremetal Emulation
-            
-            FIRMWARE & MOTHERBOARD EMULATION:
-            - Boot/BIOS Type : {{ t1_proxmox_node_boot.bios | upper }}
-            - Motherboard    : {{ t1_proxmox_node_boot.machine | upper }}
-            - EFI Storage    : {{ 'INJECTED (local-lvm)' if t1_proxmox_node_boot.efidisk != 'omit' else 'OMITTED (Legacy Mode)' }}
-            
-            BAREMETAL PROVISIONING SPECS:
-            - Alloc vCPUs    : {{ t1_enroll_node_chassis_properties.cpus | default('OMIT') }}
-            - CPU Type Emul  : host (Passthrough Physical CPU flags)
-            - Alloc RAM (MB) : {{ t1_enroll_node_chassis_properties.memory_mb | default('OMIT') }}
-            - Storage Pool   : {{ t1_proxmox_storage | default('local-lvm') }}
-            - Disk Controller: virtio-scsi-single (High-Performance Dedicated Queues)
-            - Allocation Size: {{ t1_enroll_node_chassis_properties.local_gb | default('OMIT') }} GB (discard=on)
-            
-            NETWORK EMBEDDED TOPOLOGY (e1000 GENERIC INTEL):
-            - Interface net0 : Bridge={{ t1_proxmox_provision_bridge | default('vmbr0') }} | MAC={{ t1_enroll_nic_provision_mac | default('AUTOMATIC') }}
-            - Interface net1 : Bridge={{ t1_proxmox_bmc_bridge | default('vmbr0') }} | MAC={{ t1_enroll_nic_bmc_mac | default('AUTOMATIC') }}
-            
-            AUTOMATED BOOT ORDER CONFIGURATION:
-            - Boot Sequence  : Primary Hard Disk (scsi0) -> Network PXE (net0) -> Network PXE (net1)
-            - Compiled Flag  : order=scsi0;net0;net1
-            - Task Timeout   : 300 seconds
-          ======================================================================
-      delegate_to: localhost
-
-    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.2) Clone fresh VM from template with custom specs"
+    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.1) Create VM with BareMetal Specs"
       community.proxmox.proxmox_kvm:
-        # API Connection properties (Using local loopback via delegated host)
         api_host: "127.0.0.1"
         api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
         api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
         validate_certs: false
         node: "{{ t1_hypervisor_api_hostname }}" 
-        
-        # Target Virtual Machine identity definition
-        vmid: "{{ t1_enroll_default_node_id | default(omit) }}"
-        name: "{{ t1_enroll_node_name | default(omit) }}"
+        vmid: "{{ t1_enroll_default_node_id | default(201) }}"
+        name: "{{ t1_enroll_node_name | default('servera199') }}"
         full: true
         state: present
-        
-        # High-Performance Baremetal CPU and Memory emulation specs
         cpu: host
         cores: "{{ t1_enroll_node_chassis_properties.cpus | default(omit) }}"
         memory: "{{ t1_enroll_node_chassis_properties.memory_mb | default(omit) }}"
         bios: "{{ t1_proxmox_node_boot.bios }}"
         machine: "{{ t1_proxmox_node_boot.machine }}"
-
-        # Storage controller and SCSI disk allocation layout
         scsihw: virtio-scsi-single
         scsi:
           scsi0: "{{ t1_proxmox_storage | default('local') }}:{{ t1_enroll_node_chassis_properties.local_gb | default(32) }},discard=on,iothread=1,cache=writeback"
-        # Network: BMC & Provision NICs		  
         net:
           net0: "model=e1000,bridge={{ t1_proxmox_provision_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_provision_mac }}"
           net1: "model=e1000,bridge={{ t1_proxmox_bmc_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_bmc_mac }}"
@@ -87,11 +77,12 @@
       register: t2_kvm_clone_result
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
  
-    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.3) Inject permanent EFI storage volume into existing VM via qm CLI"
+    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.2) Inject permanent EFI storage volume into existing VM via qm CLI"
       become: true
       ansible.builtin.shell: |
         qm set {{ t1_enroll_default_node_id | default(201) }} \
-          -efidisk0 {{ t1_proxmox_storage | default('local-lvm') }}:0,format=raw,pre-enrolled-keys=0
+          --smbios1 "uuid={{ t1_enroll_node_uuid }}" \
+          --efidisk0 {{ t1_proxmox_storage | default('local') }}:0,format=raw,pre-enrolled-keys=0
       register: t2_kvm_efi_inject_result
       changed_when: t2_kvm_efi_inject_result.rc == 0
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
@@ -99,6 +90,35 @@
         - t2_kvm_clone_result is succeeded
         - (t1_proxmox_node_boot.bios | default('ovmf')) == 'ovmf'
 
+  rescue:
 
+    - name: "T1 - TESTING ENVIRONMENT 3.- Nodes: 3.1) RESCUE - Create VM with BareMetal Specs by CLI"
+      become: true
+      ansible.builtin.shell: |
+        qm create {{ t1_enroll_default_node_id }} \
+          --name "{{ ansible_host | default(t1_enroll_node_name) }}" \
+          --cpu host --cores {{ t1_enroll_node_chassis_properties.cpus }} \
+          --memory {{ t1_enroll_node_chassis_properties.memory_mb }} \
+          --bios {{ t1_proxmox_node_boot.bios }} \
+          --smbios1 "uuid={{ t1_enroll_node_uuid }}" \
+          --machine {{ t1_proxmox_node_boot.machine }} \
+          --scsihw virtio-scsi-single \
+          --scsi0 "{{ t1_proxmox_storage | default('local') }}:{{ t1_enroll_node_chassis_properties.local_gb }},discard=on,iothread=1,cache=writeback" \
+          --net0 "e1000,bridge={{ t1_proxmox_provision_bridge }},macaddr={{ t1_enroll_nic_provision_mac }}" \
+          --net1 "e1000,bridge={{ t1_proxmox_bmc_bridge }},macaddr={{ t1_enroll_nic_bmc_mac }}" \
+          --boot "order=scsi0;net0;net1"
+      register: t1_kvm_cli_create_result
+      changed_when: t1_kvm_cli_create_result.rc == 0
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
-
+    - name: "T1 - TESTING ENVIRONMENT 3.- Nodes: 3.2) RESCUE - Inject permanent EFI storage volume via CLI"
+      become: true
+      ansible.builtin.shell: |
+        qm set {{ t1_enroll_default_node_id | default(201) }} \
+          --efidisk0 {{ t1_proxmox_storage | default('local') }}:0,format=raw,pre-enrolled-keys=0
+      register: t1_kvm_cli_efi_result
+      changed_when: t1_kvm_cli_efi_result.rc == 0
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      when: 
+        - t1_kvm_cli_create_result is succeeded
+        - (t1_proxmox_node_boot.bios | default('ovmf')) == 'ovmf'

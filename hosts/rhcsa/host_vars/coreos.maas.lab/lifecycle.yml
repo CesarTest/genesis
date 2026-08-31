@@ -24,37 +24,40 @@
 #-----------------
 enroll:
 
-   # 1.1.- Out-of-Band BMC Information  
-   uuid: "c6c53f30-bc69-4bbb-b7df-05f1900e2fe6" # BIOS ID
-   node_id: "201"                               # BMC ID
+   # 1.1.- Out-of-Band BMC Information       
+   uuid: "de305d54-75b4-431b-adb2-eb6b9e546013"
+   driver: "redfish"
+   node_id: "106"
 
    # 1.2.- Chassis Information
+   name: "{{ inventory_hostname_short }}"
    capabilities: 
      boot_mode: "uefi" 
      secure_boot: false
-     boot_device: "disk" # fix boot device... erase disk partitions an reboot to shoot pxe
    properties:
      cpu_arch: "x86_64"
-     ram: "8192"
+     ram: "4096"
      disk_size: "32"
      cpus: "4"  
 
    # 1.3.- Network Devices Description    
    nics:
      outband:
-       - mac: "BC:24:11:28:C3:E2"
-         ipv4: "10.10.41.150/24" 
-     inband:  
-       - provision: yes
-         mac: "BC:24:11:7A:BD:68"
-         ipv4: "10.10.51.150/24"
+       - mac: "BC:24:11:3F:E9:A8"
+         ipv4: "10.10.41.154/24" 
+         network_interface: "noop" # No-Operation = No network Setup
+         pxe: yes
+     inband:
+       - mac: "BC:24:11:3F:D5:15"
+         ipv4: "{{ ansible_host }}/24"
+         network_interface: "noop" # No-Operation = No network Setup
 
 #-----------------
-# 5.- Deploy - Install Operating System
+# 5.- Deploy Stage
 #-----------------
 deploy:   
    boot_interface:   "ipxe"
    deploy_interface: "ramdisk"
    os:
-     name: "Ubuntu"
-     version: "24.04"
+     name: "{{ os_name }}"
+     version: "{{ os_version }}"
