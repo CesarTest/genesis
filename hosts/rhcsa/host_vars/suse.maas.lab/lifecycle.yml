@@ -45,12 +45,10 @@ enroll:
      outband:
        - mac: "BC:24:11:70:D8:B0"
          ipv4: "10.10.41.151/24" 
-         network_interface: "noop" # No-Operation = No network Setup
-         pxe: yes
      inband:  
-       - mac: "BC:24:11:E5:66:0C"
+       - provision: yes
+         mac: "BC:24:11:E5:66:0C"
          ipv4: "{{ ansible_host }}/24"
-         network_interface: "noop" # No-Operation = No network Setup
  
 #-----------------
 # 5.- Deploy - Install Operating System

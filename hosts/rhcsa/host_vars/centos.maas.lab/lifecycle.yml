@@ -46,11 +46,11 @@ enroll:
        - mac: "BC:24:11:3F:E9:A7"
          ipv4: "10.10.41.152/24" 
          network_interface: "noop" # No-Operation = No network Setup
-         pxe: yes
      inband:
        - mac: "BC:24:11:3F:D5:14"
          ipv4: "{{ ansible_host }}/24"
          network_interface: "noop" # No-Operation = No network Setup
+         provision: yes
 
 #-----------------
 # 5.- Deploy Stage

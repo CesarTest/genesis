@@ -114,15 +114,21 @@ t1_node_bmc_driver_info: "{{ t1_enroll_node_bmc_driver_info[t1_enroll_node_bmc_d
 # 7.- Properties 
 #------------------
 t1_enroll_node_chassis_properties_input: "{{ enroll['properties'] |  default({}) }}"
-t1_enroll_node_chassis_capabilities: "{{ enroll['capabilities'] | default({}) }}"
-t1_enroll_node_chassis_capabilities_string: "{{ (t1_enroll_node_chassis_capabilities | length > 0) | ternary(t1_enroll_node_chassis_capabilities.items() | map('join', ':') | join(',') | lower, '') }}"
+t1_enroll_node_chassis_capabilities_input: "{{ enroll['capabilities'] | default({}) }}"
+t1_enroll_node_chassis_capabilities_string: "{{ (t1_enroll_node_chassis_capabilities_input | length > 0) | ternary(t1_enroll_node_chassis_capabilities_input.items() | map('join', ':') | join(',') | lower, '') }}"
+t1_enroll_node_chassis_cpus: "{{ t1_enroll_node_chassis_properties_input['cpus']         | default('4') }}"
+t1_enroll_node_chassis_cpu_arch: "{{ t1_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
+t1_enroll_node_chassis_memory_mb: "{{ t1_enroll_node_chassis_properties_input['memory_mb']    | default(t1_enroll_node_chassis_properties_input['ram'] ) | default('4096') }}"
+t1_enroll_node_chassis_local_gb: "{{ t1_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
+t1_enroll_node_chassis_root_device: "{{ t1_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
+t1_enroll_node_chassis_capabilities: "{{ t1_enroll_node_chassis_properties_input['capabilities'] | default(t1_enroll_node_chassis_capabilities_string)  }}"
 t1_enroll_node_chassis_properties:
-   cpus:         "{{ t1_enroll_node_chassis_properties_input['cpus']         | default('4') }}"
-   cpu_arch:     "{{ t1_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
-   memory_mb:    "{{ t1_enroll_node_chassis_properties_input['memory_mb']    | default('4096') }}"
-   local_gb:     "{{ t1_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
-   root_device:  "{{ t1_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
-   capabilities: "{{ t1_enroll_node_chassis_properties_input['capabilities'] | default(t1_enroll_node_chassis_capabilities_string)  }}"
+   cpus:         "{{ t1_enroll_node_chassis_cpus         }}"
+   cpu_arch:     "{{ t1_enroll_node_chassis_cpu_arch     }}"
+   memory_mb:    "{{ t1_enroll_node_chassis_memory_mb    }}"
+   local_gb:     "{{ t1_enroll_node_chassis_local_gb     }}"
+   root_device:  "{{ t1_enroll_node_chassis_root_device  }}"
+   capabilities: "{{ t1_enroll_node_chassis_capabilities }}"
 
 t1_enroll_node_chassis_type: "{{ ('uefi' in (t1_enroll_node_chassis_capabilities.boot_mode | default('uefi') | string | lower)) | ternary('uefi', 'bios') }}"
 

@@ -110,7 +110,7 @@ g3_extract_os_installer:
   debian:
     - src: "install.amd/vmlinuz"
       dest: "vmlinuz"	
-    - src: "install.amd/initrd"
+    - src: "install.amd/initrd.gz"
       dest: "initrd"
   suse: 
     - src: "boot/x86_64/loader/linux"

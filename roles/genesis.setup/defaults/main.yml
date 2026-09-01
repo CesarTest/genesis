@@ -376,15 +376,21 @@ b4_enroll_node_bmc_driver_info:
 # 7.- Properties 
 #------------------
 b4_enroll_node_chassis_properties_input: "{{ enroll['properties'] |  default({}) }}"
-b4_enroll_node_chassis_capabilities: "{{ enroll['capabilities'] | default({}) }}"
-b4_enroll_node_chassis_capabilities_string: "{{ (b4_enroll_node_chassis_capabilities | length > 0) | ternary(b4_enroll_node_chassis_capabilities.items() | map('join', ':') | join(',') | lower, '') }}"
+b4_enroll_node_chassis_capabilities_input: "{{ enroll['capabilities'] | default({}) }}"
+b4_enroll_node_chassis_capabilities_string: "{{ (b4_enroll_node_chassis_capabilities_input | length > 0) | ternary(t1_enroll_node_chassis_capabilities_input.items() | map('join', ':') | join(',') | lower, '') }}"
+b4_enroll_node_chassis_cpus: "{{ b4_enroll_node_chassis_properties_input['cpus']         | default('4') }}"
+b4_enroll_node_chassis_cpu_arch: "{{ b4_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
+b4_enroll_node_chassis_memory_mb: "{{ b4_enroll_node_chassis_properties_input['memory_mb']    | default(b4_enroll_node_chassis_properties_input['ram'] ) | default('4096') }}"
+b4_enroll_node_chassis_local_gb: "{{ b4_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
+b4_enroll_node_chassis_root_device: "{{ b4_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
+b4_enroll_node_chassis_capabilities: "{{ b4_enroll_node_chassis_properties_input['capabilities'] | default(b4_enroll_node_chassis_capabilities_string)  }}"
 b4_enroll_node_chassis_properties:
-   cpus:         "{{ b4_enroll_node_chassis_properties_input['cpus']         | default('4') }}"
-   cpu_arch:     "{{ b4_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
-   memory_mb:    "{{ b4_enroll_node_chassis_properties_input['memory_mb']    | default('4096') }}"
-   local_gb:     "{{ b4_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
-   root_device:  "{{ b4_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
-   capabilities: "{{ b4_enroll_node_chassis_properties_input['capabilities'] | default(b4_enroll_node_chassis_capabilities_string)  }}"
+   cpus:         "{{ b4_enroll_node_chassis_cpus         }}"
+   cpu_arch:     "{{ b4_enroll_node_chassis_cpu_arch     }}"
+   memory_mb:    "{{ b4_enroll_node_chassis_memory_mb    }}"
+   local_gb:     "{{ b4_enroll_node_chassis_local_gb     }}"
+   root_device:  "{{ b4_enroll_node_chassis_root_device  }}"
+   capabilities: "{{ b4_enroll_node_chassis_capabilities }}"
 
 ######################################################
 # MANAGE STAGE PARTICULARS
@@ -1297,18 +1303,19 @@ b4_render_menu_casper: >-
     modules_to_load={{ b4_render_modules }}
 
 b4_render_menu_preseed: >-
-    rw
     auto=true
     priority=critical
     url={{ b4_node_os_manifesto['url'] }}
-    interface=bootif
-    netcfg/disable_dhcp=true
-    netcfg/get_ipaddress={{ b4_enroll_nic_provision_ip  }}
-    netcfg/get_netmask={{ b4_enroll_nic_provision_netmask  }}
-    netcfg/get_gateway={{ b4_enroll_nic_provision_gateway  }}
+    interface=auto
+    netcfg/disable_autoconfig=true
+    netcfg/use_dhcp=false
+    netcfg/get_ipaddress={{ b4_enroll_nic_provision_ip }}
+    netcfg/get_netmask={{ b4_enroll_nic_provision_netmask }}
+    netcfg/get_gateway={{ b4_enroll_nic_provision_gateway }}
     netcfg/get_nameservers={{ b4_url_genesis_ip }}
     netcfg/confirm_static=true
     netcfg/link_wait_timeout=10
+    netcfg/choose_interface={{ b4_enroll_nic_provision_mac }}
     BOOTIF=01-{{ b4_render_mac }}
 
 b4_render_menu_esxi: >-

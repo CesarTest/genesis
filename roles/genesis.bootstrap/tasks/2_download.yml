@@ -24,7 +24,7 @@
     g1_deploy_os_path:   "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
     g1_deploy_tftp_path:   "{{ g1_tftp_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
     g1_deploy_mount_path:  "{{ g1_repo_mount_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"	
-    
+ 
     # 2.- Image Name Default Values
     g1_deploy_image_url:          "{{ g1_image.image | default('')  }}"
     g1_deploy_image_default_name: "{{ g1_deploy_image_url | basename }}"
@@ -55,7 +55,7 @@
        checksum: "sha256:{{ oras_checksum }}"
      - url: "{{ proxmox_download_url }}"
        dest: "{{ g1_proxmox_dest_path }}"
-	   
+ 
 #---------------------------------------
 # 4. IPA
 #--------------------------------------- 
