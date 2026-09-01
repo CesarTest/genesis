@@ -23,20 +23,18 @@
     - name: "T1 - CLI PROVISION: Show user provisioning success status"
       ansible.builtin.debug:
         msg: |
-          ======================================================================
-            SUCCESS: PROXMOX USER PROVISIONING COMPLETED
-          ======================================================================
-            The Proxmox initialization script completed successfully.
-            
-            EXECUTION DETAILS:
-            - Target User Account : {{ ansible_user | default('root') }}
-            - Hypervisor Node     : {{ t1_hypervisor_node }}
-            - Script Output Status: {{ t1_proxmox_script_result.stdout_lines | last | default('OK') }}
-          ======================================================================
+          --- SUCCESS: USER PROVISIONING COMPLETED ---
+          The Proxmox initialization script completed successfully.
+          
+          Execution Details:
+          User Account:  {{ ansible_user | default('root') }}
+          Target Node:   {{ t1_hypervisor_node | default('NOT_DEFINED') }}
+          Script Status: {{ t1_proxmox_script_result.stdout_lines | last | default('OK') }}
       when: 
         - t1_proxmox_script_result.rc is defined
         - t1_proxmox_script_result.rc == 0
       delegate_to: localhost
+
 
   #-----------------------------------------------------------------------
   # 2.- Failed
@@ -46,28 +44,20 @@
     - name: "T1 - CLI PROVISION: Handle user provisioning failure"
       ansible.builtin.fail:
         msg: |
-          ======================================================================
-            CRITICAL ERROR: PROXMOX USER PROVISIONING SCRIPT FAILED
-          ======================================================================
-            The connection to the host works, but the Bash script failed 
-            to execute. This is usually caused by one of these 3 simple reasons:
-            
-            1. THE SCRIPT IS EMPTY (Hypervisor nor Supported)
-               The node name '{{ t1_hypervisor }}' might not match the key 
-               defined inside the 't1_hypervisor_add_user_script' dictionary.
-               --> Result: Ansible tried to run a blank command.
-            
-            2. INSUFFICIENT PERMISSIONS (Sudo Missing)
-               The user needs root privileges to run 'pveum' commands.
-               If you are not logging in as root, the 'become: true' directive 
-               will fail if 'sudo' is not installed or configured on Proxmox.
-             
-            3. PROXMOX CLUSTER IS LOCKED (Read-Only Filesystem)
-               Proxmox database (/etc/pve) becomes Read-Only if the node loses 
-               quorum or the 'pve-cluster' service is frozen.
-               --> Result: The system cannot update or add new users.
-            
-            Current Parameters:
-            - Hypervisor Node Name: {{ t1_hypervisor_node | default('NOT DEFINED') }}
-          ======================================================================
+          --- CRITICAL ERROR: PROXMOX USER PROVISIONING FAILED ---
+          The connection works, but the user creation script failed to execute.
+          
+          Possible Causes:
+          
+          1. SCRIPT IS EMPTY (Hypervisor Not Supported)
+             The node name may not match the key inside 't1_hypervisor_add_user_script'.
+          
+          2. INSUFFICIENT PERMISSIONS (Sudo Missing)
+             The user needs root privileges. Ensure 'become: true' works or 'sudo' is installed.
+          
+          3. PROXMOX CLUSTER LOCKED (Read-Only /etc/pve)
+             The cluster might have lost quorum or 'pve-cluster' service is frozen.
+          
+          --- Debug Context ---
+          Hypervisor Node: {{ t1_hypervisor_node | default('NOT_DEFINED') }}
       delegate_to: localhost

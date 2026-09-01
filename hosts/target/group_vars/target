@@ -25,16 +25,19 @@ dhcp_provider: "dnsmasq"
 #inventory_dhcp_static_ip: true
 #inventory_dns: true
 
-# - DHCP IP range
-dhcp_ipv4:    "{{ genesis_nics.inband.ip | default(genesis_nics.outband.ip) | default(genesis_nics.internet.ip) | default('10.10.51.5/24') }}"
-dhcp_address: "{{ dhcp_ipv4       |  ansible.utils.ipaddr('address') }}"
+# - DHCP IP range base (Baremetal Nodes + 2)
+dhcp_ipv4_default: '10.10.51.5/24'
+dhcp_ipv4:    "{{ genesis_nics.inband.ip | default(genesis_nics.outband.ip) | default(genesis_nics.internet.ip) | default(dhcp_ipv4_default) }}"
+dhcp_address:     "{{ dhcp_ipv4 | ansible.utils.ipaddr('address') }}"
 dhcp_static_mask: "{{ dhcp_ipv4 | ansible.utils.ipaddr('netmask') }}"
 dhcp_prefix:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('prefix') }}"
 dhcp_subnet:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('network') }}"
 dhcp_subnet_cidr: "{{ dhcp_ipv4 | ansible.utils.ipaddr('network/prefix') }}"
-dhcp_subnet_num_ip: "{{ dhcp_subnet_cidr | ansible.utils.ipaddr('size') }}"
-dhcp_pool_start: "{{ dhcp_subnet | ansible.utils.ipmath(dhcp_subnet_num_ip | int-10)  }}"
-dhcp_pool_end:   "{{ dhcp_subnet | ansible.utils.ipmath(dhcp_subnet_num_ip | int-2)  }}"
+dhcp_raw_node_count: "{{ groups['baremetal'] | default([]) | length }}" # Number of Baremetal Nodees
+dhcp_range_size:  "{{ (dhcp_raw_node_count | int > 0) | ternary(dhcp_raw_node_count | int + 2, 10) }}"
+dhcp_last_usable: "{{ dhcp_subnet_cidr | ansible.utils.ipaddr('last_usable') }}"
+dhcp_pool_end:    "{{ dhcp_last_usable | ansible.utils.ipmath(-1) }}"
+dhcp_pool_start:  "{{ dhcp_last_usable | ansible.utils.ipmath(-1 * dhcp_range_size | int) }}"
 
 # password to use between services
 noauth_mode: true

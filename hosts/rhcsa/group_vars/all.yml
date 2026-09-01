@@ -81,7 +81,7 @@ genesis_download_images:
     image: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso"
     checksum: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/SHA256SUMS"
     checksum_algorithm: "sha256"
-    extract_ramdisk: yes
+    netinstall_ramdisk: yes
     mount: yes
 
   - distribution: "SuSE"

@@ -1,16 +1,43 @@
 ---
-# genesis.bootstrap 5_oras.yml
+# genesis.bootstrap 5_tarball.yml
 #   - Download ORAS registry from Internet
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "G1 - BOOTSTRAP - 2.- Download ORAS: - 4) Download ORAS tarball"
+- name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 4.1) Download Source Code"
   get_url:
      url:      "{{ g1_tarball.url      | default(omit) }}"
      dest:     "{{ g1_tarball.dest     | default(omit) }}"
      checksum: "{{ g1_tarball.checksum | default(omit) }}"
+     owner:    "{{ansible_user | default('ironic') }}"
+     group:    "{{ansible_user | default('ironic') }}"
      mode: '0644'
   loop: "{{ g1_tarball_download | default([]) }}"
   loop_control:
     loop_var: "g1_tarball"
+
+- name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 4.2) Untar Source Code"
+  ansible.builtin.unarchive:
+    src:  "{{ g1_tarball_src           | default(omit) }}"
+    dest: "{{ g1_image_os_local_folder | default(omit) }}"
+    owner: "{{ansible_user | default('ironic') }}"
+    group: "{{ansible_user | default('ironic') }}"
+    remote_src: true
+    mode: "a+rX"
+    extra_opts:
+      - '--no-same-owner'       
+      - '--no-same-permissions'
+  vars:
+    g1_tarball_filename: "{{ g1_tarball.url | default('')  | basename }}"
+    g1_tarball_src:      "{{ g1_image_os_local_folder }}/{{ g1_tarball_filename }}"
+  loop: "{{ g1_tarball_download | default([]) }}"
+  loop_control:
+    loop_var: "g1_tarball"
+  when: 
+    - g1_unzip_tarball is defined
+    - g1_unzip_tarball is not none
+    - g1_unzip_tarball | bool
+    - g1_tarball.dest is defined
+    - g1_tarball.dest is not none
+    - g1_tarball.dest | length > 0

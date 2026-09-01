@@ -35,6 +35,38 @@ genesis_default_repos:
   cloud: "dib"
   ipa: "dib/files" 
  
+genesis_os_definitions:
+  ubuntu:
+    ansible_distribution: "Ubuntu"
+    alias:
+      "26": "plucky"
+      "24": "oracular"
+      "24": "noble"
+      "22": "jammy"
+      "20": "focal"
+
+  debian:
+    ansible_distribution: "Debian"
+    alias:
+      "13": "trixie"
+      "12": "bookworm"
+      "11": "bullseye"
+      "10": "buster"
+
+  suse:
+    ansible_distribution: "openSUSE"
+    alias:
+      "16": "openSUSE_Leap"      
+      "15": "openSUSE"          
+      "12": "SLES"      
+
+  sles:
+    ansible_distribution: "SLES"    
+    alias:
+      "16": "SLES"                
+      "15": "SUSE_SLE"
+      "12": "SLES"     
+ 
 # 4.- Bifrost Root Paths
 git_root: "{{ genesis_repo_path | realpath }}/openstack"
 git_url_root: https://opendev.org
@@ -57,6 +89,11 @@ genesis_default_os_image_name:
   img: "partition.img"
   raw: "wholedisk.raw" 
   iso:  "netboot.iso"
+
+g1_os_netinstaller_url:
+   debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+
+
  
 ######################################################
 # G1 BOOTSTRAP DETAILS

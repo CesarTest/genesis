@@ -19,23 +19,28 @@
   vars:
   
     # 1.- OS Particulars
-    g1_image_os_distro:         "{{ g1_image.distribution | default('RedHat') | lower }}"
+    g1_image_os_distro:         "{{ g1_image.distribution         | default('RedHat') | lower }}"
     g1_image_os_distro_version: "{{ g1_image.distribution_version | default('8') }}"
+    g1_image_os_distro_arch:    "{{ g1_image.distribution_arch    | default('amd64') | lower }}"
+    g1_image_os_distro_version_main: "{{ g1_image_os_distro_version | string | split('.') | first }}"
+    g1_image_os_netinstaller_url_pattern: "{{ g1_os_netinstaller_url[g1_image_os_distro] | default('') }}"
+    g1_image_os_distro_alias: "{{ genesis_os_definitions[g1_image_os_distro]['alias'][g1_image_os_distro_version_main] | default('') }}"
+    g1_image_os_netinstaller_url_arch: "{{ g1_image_os_netinstaller_url_pattern | replace('[ARCH]', g1_image_os_distro_arch) }}"
+    g1_image_os_netinstaller_url: "{{ g1_image_os_netinstaller_url_arch | replace('[ALIAS]', g1_image_os_distro_alias) }}"
     g1_deploy_os_path:   "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
     g1_deploy_tftp_path:   "{{ g1_tftp_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
-    g1_deploy_mount_path:  "{{ g1_repo_mount_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"	
  
     # 2.- Image Name Default Values
     g1_deploy_image_url:          "{{ g1_image.image | default('')  }}"
     g1_deploy_image_default_name: "{{ g1_deploy_image_url | basename }}"
     g1_deploy_image_default_ext:  "{{ g1_deploy_image_default_name | ansible.builtin.splitext | last }}"
     g1_default_os_image_name:     "{{ genesis_default_os_image_name[g1_deploy_image_default_ext] |  default(g1_deploy_image_default_name) }}" 
-    g1_deploy_image_name: "{{ g1_image.os_image_name | default(g1_default_os_image_name) }}" 
+    g1_deploy_image_name: "{{ g1_image.os_image_name | default(g1_default_os_image_name) | lower }}" 
    
     # 3.- Download Folders
     g1_image_os_default_local_path: "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
     g1_image_os_local_folder: "{{ image_src.local_folder | default(g1_image_os_default_local_path) | realpath }}"
-   
+  
   loop: "{{ download_image_sources | default([]) }}"
   loop_control:
      loop_var: "g1_image"

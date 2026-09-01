@@ -5,30 +5,85 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-#---------------------------------------
-# 1. Prepare Local Folders
-#--------------------------------------- 
-- name: "G1 - BOOTSTRAP - 2.- Download OS:  2.1) Create OS Local Folder"
-  file: 
-    path: "{{ g1_image_os_local_folder }}"
-    state: directory
-    recurse: true
-    owner: "{{ansible_user | default('ironic') }}"
-    group: "{{ansible_user | default('ironic') }}"
-    mode: "775"
+- vars:
+    # Image Source: URL Details
+    deploy_image_upstream_url: "{{ g1_deploy_image_url  | default('') }}"
+    deploy_image_checksum_url: "{{ g1_image.checksum   | default('') }}"
+    deploy_image_checksum_algorithm: "{{ g1_image.checksum_algorithm | default(g1_default_checksum_algorithm) |default('sha256') }}" 
+    
+    # Image Destination: Path Details
+    http_boot_folder: "{{ g1_image_os_local_folder }}"
+    deploy_image_filename: "{{ g1_deploy_image_name }}"
+    deploy_image: "{{ http_boot_folder }}/{{ deploy_image_filename }}"
 
-#---------------------------------------
-# 2. Download Images
-#--------------------------------------- 
-- name: "G1 - BOOTSTRAP - 2.- Download OS: 2.2) Download OS Images"
-  include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_deployment_image.yml"
-  vars:
-     # Image Source: URL Details
-     deploy_image_upstream_url: "{{ g1_deploy_image_url  | default('') }}"
-     deploy_image_checksum_url: "{{ g1_image.checksum   | default('') }}"
-     deploy_image_checksum_algorithm: "{{ g1_image.checksum_algorithm | default(g1_default_checksum_algorithm) |default('sha256') }}" 
+  block:
+
+   #---------------------------------------
+   # 0. Log Image Download Properties
+   #--------------------------------------- 
+   - name: "G1 - BOOTSTRAP - 2.- Download OS:  2.0) Dump Download Properties"
+     ansible.builtin.debug:
+       msg: |
+         --- 1. OS Particulars ---
+         Distro:       {{ g1_image_os_distro | default('[g1_image_os_distro is NOT DEFINED]') }}
+         Version:      {{ g1_image_os_distro_version | default('[g1_image_os_distro_version is NOT DEFINED]') }}
+         Major Ver:    {{ g1_image_os_distro_version_main | default('[g1_image_os_distro_version_main is NOT DEFINED]') }}
+         Arch:         {{ g1_image_os_distro_arch | default('[g1_image_os_distro_arch is NOT DEFINED]') }}
+         Alias:        {{ g1_image_os_distro_alias | default('[g1_image_os_distro_alias is NOT DEFINED]') }}
+         
+         --- Provision Paths ---
+         OS Path:      {{ g1_deploy_os_path | default('[g1_deploy_os_path is NOT DEFINED]') }}
+         TFTP Path:    {{ g1_deploy_tftp_path | default('[g1_deploy_tftp_path is NOT DEFINED]') }}
+         
+         --- Netinstaller URLs ---
+         Pattern:      {{ g1_image_os_netinstaller_url_pattern | default('[g1_image_os_netinstaller_url_pattern is NOT DEFINED]') }}
+         Arch URL:     {{ g1_image_os_netinstaller_url_arch | default('[g1_image_os_netinstaller_url_arch is NOT DEFINED]') }}
+         Final URL:    {{ g1_image_os_netinstaller_url | default('[g1_image_os_netinstaller_url is NOT DEFINED]') }}
+         
+         --- 2. Image Naming ---
+         Image URL:    {{ g1_deploy_image_url | default('[g1_deploy_image_url is NOT DEFINED]') }}
+         Basename:     {{ g1_deploy_image_default_name | default('[g1_deploy_image_default_name is NOT DEFINED]') }}
+         Extension:    {{ g1_deploy_image_default_ext | default('[g1_deploy_image_default_ext is NOT DEFINED]') }}
+         Default Name: {{ g1_default_os_image_name | default('[g1_default_os_image_name is NOT DEFINED]') }}
+         Final Name:   {{ g1_deploy_image_name | default('[g1_deploy_image_name is NOT DEFINED]') }}
+         
+         --- 3. Download Folders ---
+         Default Path: {{ g1_image_os_default_local_path | default('[g1_image_os_default_local_path is NOT DEFINED]') }}
+         Dest Folder:  {{ g1_image_os_local_folder | default('[g1_image_os_local_folder is NOT DEFINED]') }}
      
-     # Image Destination: Path Details
-     http_boot_folder: "{{ g1_image_os_local_folder }}"
-     deploy_image_filename: "{{ g1_deploy_image_name }}"
-     deploy_image: "{{ http_boot_folder }}/{{ deploy_image_filename }}"
+   #---------------------------------------
+   # 1. Prepare Local Folders
+   #--------------------------------------- 
+   - name: "G1 - BOOTSTRAP - 2.- Download OS:  2.1) Create OS Local Folder"
+     file: 
+       path: "{{ g1_image_os_local_folder }}"
+       state: directory
+       recurse: true
+       owner: "{{ansible_user | default('ironic') }}"
+       group: "{{ansible_user | default('ironic') }}"
+       mode: "775"
+  
+   #---------------------------------------
+   # 2. Download Images
+   #--------------------------------------- 
+   - name: "G1 - BOOTSTRAP - 2.- Download OS: 2.2) Download OS Images"
+     include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_deployment_image.yml"
+ 
+   #--------------------------------------- 
+   # 3. Download Images
+   #--------------------------------------- 
+   - name: "G1 - BOOTSTRAP - 2.- Download OS: 2.3) Download NetInstall Bootloader"
+     include_tasks: "3_tarball.yml"
+     vars:
+       g1_unzip_tarball: yes
+       g1_tarball_download:
+        - url:  "{{ g1_image_os_netinstaller_url | default(omit) }}"
+          dest: "{{ g1_image_os_local_folder     | default(omit) }}"
+     when:
+       - g1_image.netinstall_ramdisk is defined
+       - g1_image.netinstall_ramdisk is not none
+       - g1_image.netinstall_ramdisk | bool
+       - g1_image_os_netinstaller_url is defined
+       - g1_image_os_netinstaller_url is not none
+       - g1_image_os_netinstaller_url is string
+       - g1_image_os_netinstaller_url | length > 0
