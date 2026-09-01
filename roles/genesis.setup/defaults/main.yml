@@ -547,6 +547,15 @@ b4_power_cycle_os_scripts:
         fi
     fi  
 b4_power_cycle_profiles:
+  fake:
+    #driver: "fake-hardware" 
+    power_interface: "fake" 
+    management_interface: "fake" 
+    boot_interface: "fake" 
+    deploy_interface: "fake"
+    inspect_interface: "fake"
+    clean_steps: []
+    clean_timeout: 650  
   manual:
     management_interface: "noop"
     power_interface: "{{ b4_enroll_node_bmc_driver }}"
@@ -606,9 +615,6 @@ b4_os_post_install_bash_lines:
 b4_node_os_allow_passwords:     "{{ (deploy.login_password | default(true)  | bool) | ternary ('yes','no') }}"
 b4_node_os_allow_root_password: "{{ (deploy.root_password  | default(false) | bool) | ternary ('yes','no') }}"
 b4_os_postinstall_script: |
-  #!/bin/bash
-  set -e
-  
   # =======================================================================
   # A. HARDEN ROOT ACCOUNT (Disable direct external access)
   # =======================================================================
@@ -676,7 +682,7 @@ b4_os_postinstall_networkmanager_script: |
   
   [ipv4]
   method=manual
-  address1={{ b4_enroll_nic_provision_ip }}/{{ b4_enroll_nic_provision_netmask_cidr | default('24') }},{{ b4_enroll_nic_provision_gateway }}
+  address1={{ b4_enroll_nic_provision_ipv4 }},{{ b4_enroll_nic_provision_gateway }}
   dns={{ b4_url_genesis_ip }};
   
   [proxy]
@@ -684,7 +690,101 @@ b4_os_postinstall_networkmanager_script: |
   
   # Enforce strict NetworkManager secure file permissions Matrix
   chmod 600 /etc/NetworkManager/system-connections/provision.nmconnection
+
+b4_postinstall_netplan_script: |  
+  # ==========================================
+  # GENESIS NETWORK CONFIGURATION
+  # ==========================================
     
+  # STEP 1: Resolve Interface Name From MAC
+  # ------------------------------------------
+  TARGET_MAC="{{ b4_enroll_nic_provision_mac | lower }}"
+  
+  # Find the interface name that matches the target MAC address
+  PRIMARY_IFACE=$(ip -o link show | grep -i "$TARGET_MAC" | awk -F': ' '{print $2}')
+  
+  # Fallback mechanism if the MAC is not found or is empty
+  if [ -z "$PRIMARY_IFACE" ]; then
+      PRIMARY_IFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -v 'lo' | head -n1)
+  fi
+  
+  # If everything fails, fallback to standard generic name
+  if [ -z "$PRIMARY_IFACE" ]; then
+      PRIMARY_IFACE="eth0"
+  fi
+  
+  # STEP 2: Apply OS-Specific Configuration
+  # ------------------------------------------
+  if [ -d "/etc/netplan" ]; then
+      # --- UBUNTU METHOD (Netplan YAML) ---
+      # Purge any installer-generated configuration files to prevent conflicts
+      rm -rf /etc/netplan/*
+      
+      # Generate a clean, lightweight DHCP Netplan profile matching the interface by MAC
+      cat <<EOF > /etc/netplan/01-genesis-network.yaml
+  network:
+    version: 2
+    renderer: networkd
+    ethernets:
+      ${PRIMARY_IFACE}:
+        match:
+          macaddress: "${TARGET_MAC}"
+        dhcp4: true
+        optional: true
+  EOF
+      # Secure permissions required by Netplan
+      chmod 600 /etc/netplan/01-genesis-network.yaml
+  else
+      # --- DEBIAN METHOD (Classic /etc/network/interfaces) ---
+      # Completely overwrite with bare-minimum loopback and DHCP configuration
+      cat <<EOF > /etc/network/interfaces
+  auto lo
+  iface lo inet loopback
+  auto ${PRIMARY_IFACE}
+  iface ${PRIMARY_IFACE} inet dhcp
+  EOF
+  fi
+
+b4_os_postinstall_apt_script: |
+  # ==========================================
+  # GENESIS REPOSITORY CONFIGURATION
+  # ==========================================
+  GENESIS_URL="{{ b4_netinstall_os_mounted_repo_url }}"
+  
+  # STEP 1: Clear all existing repository configurations
+  # ------------------------------------------
+  
+  # 1. Clear the main traditional repository configuration file
+  if [ -f "/etc/apt/sources.list" ]; then
+      echo "# Repositories disabled by Genesis" > /etc/apt/sources.list
+  fi
+  
+  # 2. Purge all auxiliary repository files inside sources.list.d (handles modern DEB822 formats)
+  if [ -d "/etc/apt/sources.list.d" ]; then
+      rm -rf /etc/apt/sources.list.d/*
+  fi
+  
+  # STEP 2: Populate with the most universal syntax (legacy format)
+  # ------------------------------------------
+  
+  # Dynamically detect the Ubuntu release codename (e.g., noble, jammy, focal)
+  UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || grep "VERSION_CODENAME=" /etc/os-release | cut -d= -f2)
+  
+  # Fallback to 'stable' if the codename detection fails for some reason
+  if [ -z "$UBUNTU_CODENAME" ]; then
+      UBUNTU_CODENAME="stable"
+  fi
+  
+  # Inject the legacy single-line syntax using the dynamic codename.
+  # The [trusted=yes] flag bypasses GPG key verification for local network deployments.
+  echo "deb [trusted=yes] ${GENESIS_URL} ${UBUNTU_CODENAME} main restricted universe multiverse" >> /etc/apt/sources.list
+  
+  # STEP 3: Final Cache Refresh
+  # ------------------------------------------
+  # Force APT to flush previous metadata and fetch exclusively from the Genesis network source
+  apt-get clean
+  apt-get update -o Acquire::Languages="none"
+
 b4_postinstall_repo_filename: "{{ b4_repo_manifesto_path }}/{{ b4_node_os }}"
 b4_os_postinstall_local_scripts_list: 
   - content: "{{ b4_os_postinstall_script | default('') }}"
@@ -713,12 +813,6 @@ b4_kickstart_template_defaults:
     # Use Netinstall installation media
     url --url {{ b4_netinstall_os_mounted_repo_url }}/
 
-  repos: |
-    {% if b4_os_version | default(9) | int >= 8 %}
-    repo --name="BaseOS" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/BaseOS/" --install 
-    repo --name="AppStream" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/AppStream/" --install
-    {% endif %}
-  
   system: |       
     # System Language
     lang {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
@@ -740,21 +834,29 @@ b4_kickstart_template_defaults:
     
     # Reboot after installation
     reboot	
- 
+
   auth: |
     authselect --useshadow --passalgo=sha512
+ 
+  user: |
+    rootpw --iscrypted {{ b4_root_user_password }}
+    user --name={{ b4_main_user_name }} --uid=1001 --password={{ b4_main_user_password }} --iscrypted
+    user --name={{ b4_provision_user_name }} --uid=1000 --groups={{ b4_provision_user_groups }} --password={{ b4_provision_user_password }} --iscrypted
+
+  ssh: |
+    sshkey --username={{ b4_provision_user_name }} "{{ b4_provision_user_ssh_key }}"
+
+  repos: |
+    {% if b4_os_version | default(9) | int >= 8 %}
+    repo --name="BaseOS" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/BaseOS/" --install 
+    repo --name="AppStream" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/AppStream/" --install
+    {% endif %}
 
   packages: |
     @core
     tar
     bzip2
  
-  user: |
-    rootpw --iscrypted {{ b4_root_user_password }}
-    user --name={{ b4_main_user_name }} --uid=1000 --password={{ b4_main_user_password }} --iscrypted
-    user --name={{ b4_provision_user_name }} --uid=1001 --groups={{ b4_provision_user_groups }} --password={{ b4_provision_user_password }} --iscrypted
-    sshkey --username={{ b4_provision_user_name }} "{{ b4_provision_user_ssh_key }}"
-
   network: |
     network --bootproto=static --ip={{ b4_enroll_nic_provision_ip }} --netmask={{ b4_enroll_nic_provision_netmask }} --gateway={{ b4_url_genesis_ip }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
 
@@ -781,9 +883,7 @@ b4_kickstart_template_defaults:
     # 3. Third: Logical Volumes inside the Volume Group
     volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
     logvol /home --fstype=ext4 --name=LogVol03    --vgname=VolGroup00 --size=4096 --grow
-    logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }}
-
-  #postinstall: "{{ b4_os_postinstall_script }}" 
+    logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }} 
 
 # 1.3.- Changes over Default Template according OS release
 b4_kickstart_template_os_profiles:
@@ -795,8 +895,7 @@ b4_kickstart_template_os_profiles:
       @core
     repos: ''
     postinstall: |
-      {{ b4_os_postinstall_script }}
-      
+      #!/bin/bash
       # =======================================================================
       # E. ENFORCING PERSISTENT REPOSITORIES LAYOUT (Legacy Systems)
       # =======================================================================
@@ -818,33 +917,24 @@ b4_kickstart_template_os_profiles:
 #------------------------------------
 # 2.- Casper Automated Autoinstall (Ubuntu Server Modern Blueprint)
 #------------------------------------
-b4_casper_gateway_definition: >-
-   {% if b4_node_os_version is defined and (b4_node_os_version | float) >= 22.04 -%}
-   routes:
-     - to: default
-       via: {{ b4_url_genesis_ip }}
-   {%- else -%}
-   gateway4: {{ b4_url_genesis_ip }}
-   {%- endif %}
-
-b4_casper_template_defaults:   
-  system: |
+b4_casper_template_defaults:
+  preinstall: |
     version: 1
+#    packages: []
+#    snaps: []
+
+  system: |
     locale: {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
     keyboard:
       layout: {{ b4_node_os_locale_info.keyboard | default('us') }}
     refresh-installer:
       update: false
+
   identity: |
     hostname: {{ b4_enroll_node_name }}
     username: {{ b4_provision_user_name }}
     password: "{{ b4_provision_user_password }}"
-  ssh: |
-    install-server: true
-    allow-pw: true             
-    password_auth: true        
-    authorized-keys:
-      - "{{ b4_provision_user_ssh_key }}"
+
   user: |
     users:
       - name: root
@@ -852,48 +942,35 @@ b4_casper_template_defaults:
         lock_passwd: false
         shell: /bin/bash
       - name: "{{ b4_main_user_name }}"
-        uid: 1000
         passwd: "{{ b4_main_user_password }}"
         lock_passwd: false
         shell: /bin/bash
-      - name: "{{ b4_provision_user_name }}"
-        uid: 1001
-        passwd: "{{ b4_provision_user_password }}"
-        lock_passwd: false
-        shell: /bin/bash
+
+  ssh: |
+    install-server: true
+    allow-pw: true             
+    password_auth: true        
+    authorized-keys:
+      - "{{ b4_provision_user_ssh_key }}"
+
   repos: |
     geoip: no
     preserve_sources_list: false
     sources_list: |
-      deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} ./
+      deb [trusted=yes] {{ b4_netinstall_os_mounted_repo_url }} {{ b4_node_os_alias }} main restricted
+
   postinstall: |
     - | 
       cat << 'EOF' > /target/tmp/setup-users.sh
-      {{ b4_os_postinstall_script | indent(2, first=false) }}
+      #!/bin/bash
+      {{ b4_os_postinstall_apt_script  | indent(2, first=false) }}
+      {{ b4_postinstall_netplan_script | indent(2, first=false) }}
       EOF
     - curtin in-target -- bash /tmp/setup-users.sh
     - rm -f /target/tmp/setup-users.sh
-  network: |
-    version: 2
-    ethernets:
-      {{ b4_render_ifname }}:
-        critical: true
-        addresses:
-          - "{{ b4_enroll_nic_provision_ipv4 }}"
-        match:
-          macaddress: "{{ b4_enroll_nic_provision_mac }}"
-        set-name: "{{ b4_render_ifname }}"
-        nameservers:
-          addresses:
-            - "{{ b4_url_genesis_ip }}"
-  #storage: |
-  #  layout:
-  #    name: lvm
-  #    match: {}
   #logging: |
   #  log_serv: "*.* @@{{ b4_url_genesis_ip }}:{{ genesis_rsyslog_port | default('514') }}"     
  
-
 #------------------------------------
 # 3.- AutoYast
 #------------------------------------
@@ -906,6 +983,19 @@ b4_autoyast_provision_user_groups: >-
    </groups>
    {% endif %}
 b4_autoyast_template_defaults:
+  preinstall: |
+    <products config:type="list">
+      <product>{{ b4_node_os_alias }}</product>
+    </products>
+    <repositories config:type="list">
+      <repository>
+        <name>Local-Base-Repo</name>
+        <alias>local_base_repo</alias>
+        <media_url>{{ b4_netinstall_os_mounted_repo_url }}/install/</media_url>
+        <base_url config:type="boolean">true</base_url>
+      </repository>
+    </repositories>
+
   system: |
     <system_settings>
        <timezone>
@@ -919,19 +1009,6 @@ b4_autoyast_template_defaults:
     <keyboard>
        <keymap>{{ b4_node_os_locale_info.keyboard | default('us') }}</keymap>
     </keyboard>
-
-  software: |
-    <products config:type="list">
-      <product>{{ b4_node_os_alias }}</product>
-    </products>
-    <repositories config:type="list">
-      <repository>
-        <name>Local-Base-Repo</name>
-        <alias>local_base_repo</alias>
-        <media_url>{{ b4_netinstall_os_mounted_repo_url }}/install/</media_url>
-        <base_url config:type="boolean">true</base_url>
-      </repository>
-    </repositories>
 
   user: |
     <user>
@@ -951,6 +1028,9 @@ b4_autoyast_template_defaults:
       <fullname>{{ b4_provision_user_name | title }}</fullname>
       <user_password>{{ b4_provision_user_password }}</user_password>
       <encrypted config:type="boolean">true</encrypted>
+      <authorized_keys config:type="list">
+        <authorized_key>{{ b4_provision_user_ssh_key }}</authorized_key>
+      </authorized_keys>
       <shell>/bin/bash</shell>
       {{ b4_autoyast_provision_user_groups | default('') }}
     </user>
@@ -975,7 +1055,7 @@ b4_autoyast_template_defaults:
         <chrooted config:type="boolean">true</chrooted>
         <interpreter_path>/bin/bash</interpreter_path>
         <source><![CDATA[
-    {{ b4_os_postinstall_script }}
+    {{ b4_os_postinstall_networkmanager_script }}
         ]]></source>
       </script>
     </chroot-scripts>
@@ -1013,7 +1093,8 @@ b4_autoyast_template_os_profiles:
             <chrooted config:type="boolean">true</chrooted>
             <interpreter>shell</interpreter>
             <source><![CDATA[
-      {{ b4_os_postinstall_script }}
+      #!/bin/bash
+      {{ b4_os_postinstall_networkmanager_script }}
             ]]></source>
           </script>
         </listentry>
@@ -1206,7 +1287,7 @@ b4_render_menu_casper: >-
     cloud-config-url=/dev/null
     autoinstall
     ds={{ b4_render_casperds }}
-    ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
+    ip={{ b4_render_ip }}::none
     nameserver={{ b4_url_genesis_ip }}
     rootdelay=20
     boot_delay=1

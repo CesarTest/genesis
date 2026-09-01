@@ -33,13 +33,6 @@
       j2_input['system'] | default(none)
     ] 
 -%}
-{%- set software_candidatos = [
-      j2_node_profiles[amanda_model]['software'] | default(none),
-      j2_system_profiles[amanda_model]['software'] | default(none),
-      j2_os_profiles[amanda_model]['software'] | default(none),
-      j2_input['software'] | default(none)
-    ]
--%}
 {%- set auth_candidatos = [
       j2_node_profiles[amanda_model]['auth'] | default(none),
       j2_system_profiles[amanda_model]['auth'] | default(none),
@@ -97,7 +90,7 @@
     ] 
 -%}
 {%- set yast_system      = system_candidatos   | select | first | default('') -%}
-{%- set yast_software    = software_candidatos | select | first | default('') -%}
+{%- set yast_preins      = preins_candidatos   | select | first | default('') -%}
 {%- set yast_user        = user_candidatos     | select | first | default('') -%}
 {%- set yast_ssh         = ssh_candidatos      | select | first | default('') -%}
 {%- set yast_network     = network_candidatos  | select | first | default('') -%}
@@ -106,7 +99,7 @@
 {%- set yast_logging     = logging_candidatos  | select | first | default('') -%}
 {#......... 2.- AutoYaST Sections Definition ..... #}
 {%- set yast_sections = [  
-    { "header": "<software>", "end": "</software>", "content": yast_software },
+    { "header": "<software>", "end": "</software>", "content": yast_preins },
     { "header": " ", "content": yast_system, "indent": 2 },
     { "header": "<users config:type='list'>", "end": "</users>", "content": yast_user },
     { "header": "<services-manager>", "end": "</services-manager>", "content": yast_ssh },

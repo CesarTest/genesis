@@ -75,13 +75,14 @@ genesis_download_images:
     checksum: "{{ genesis_local_checksum_url }}"
     checksum_algorithm: "sha256"
 
-  #- distribution: "Debian"
-  #  distribution_version: "13.6"
-  #  os_image_name: "x86_64.iso"
-  #  image: "https://debian-cd.repulsive.eu/current/amd64/iso-cd/debian-13.6.0-amd64-netinst.iso"
-  #  checksum: "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/SHA512SUMS"
-  #  checksum_algorithm: "sha512"
-  #  extract_ramdisk: yes
+  - distribution: "Debian"
+    distribution_version: "13.6"
+    os_image_name: "x86_64.iso"
+    image: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso"
+    checksum: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/SHA512SUMS"
+    checksum_algorithm: "sha512"
+    extract_ramdisk: yes
+    mount: yes
 
   - distribution: "SuSE"
     distribution_version: "16.0"

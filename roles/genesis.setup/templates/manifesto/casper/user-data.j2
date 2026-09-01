@@ -120,7 +120,8 @@
 {%- set casper_logging     = logging_candidatos  | select | first | default('') -%}
 {# ========= 2.- CASPER SECTIONS DEFINITION WITH INTEGRATED SANITIZATION ========= #}
 {%- set casper_sections = [
-        { "header": " ",  "content": (casper_system   | default({})) | to_yaml | from_yaml , "indent": "2"},
+        { "header": " ", "content": (casper_preinstall| default({})) | to_yaml | from_yaml , "indent": "2"},
+        { "header": " ", "content": (casper_system    | default({})) | to_yaml | from_yaml , "indent": "2"},
         { "header": "apt:",           "content": (casper_repos    | default({})) | to_yaml | from_yaml },
         { "header": "identity:",      "content": (casper_identity | default({})) | to_yaml | from_yaml },
         { "header": "ssh:",           "content": (casper_ssh      | default({})) | to_yaml | from_yaml },
