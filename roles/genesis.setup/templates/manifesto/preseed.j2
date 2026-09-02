@@ -1,32 +1,155 @@
-# Localization & Time
-d-i debian-installer/locale string en_US.UTF-8
-d-i keyboard-configuration/xkb-keymap select us
-d-i time/zone string UTC
+{#############################################################################
+#                    ANSIBLE GENERATED PRESEED FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.1
+#############################################################################} 
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
+{###############################
+         CAPTURE VALUES 
+ ##############################}
+{%-  set blank = " " -%}
+{%-  set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%-  set preseed_model    = j2_profile | default('none') -%}
 
-# Account Setup (User: cesar / Pass: cesardgm)
-d-i passwd/root-login boolean false
-d-i passwd/user-fullname string Cesar Delgado
-d-i passwd/username string cesar
-d-i passwd/user-password-crypted password $6$rounds=4096$genesis$p4S6Y6V5t1RUXD8rXmFk5M7R.WkHlP9yNqCgUxz0v5s/eF3K8E2jX7q1f9z5t6v8u1x9c3b4n5m6l7k8j9
+{%- set preins_candidatos = [
+      j2_node_profiles[preseed_model]['preinstall'] | default(none),
+      j2_system_profiles[preseed_model]['preinstall'] | default(none),
+      j2_os_profiles[preseed_model]['preinstall'] | default(none),
+      j2_input['preinstall'] | default(none)
+    ] 
+-%}
+{%- set system_candidatos = [
+      j2_node_profiles[preseed_model]['system'] | default(none),
+      j2_system_profiles[preseed_model]['system'] | default(none),
+      j2_os_profiles[preseed_model]['system'] | default(none),
+      j2_input['system'] | default(none)
+    ] 
+-%}
+{%- set network_candidatos = [
+      j2_node_profiles[preseed_model]['network'] | default(none),
+      j2_system_profiles[preseed_model]['network'] | default(none),
+      j2_os_profiles[preseed_model]['network'] | default(none),
+      j2_input['network'] | default(none)
+    ] 
+-%}
+{%- set repos_candidatos = [
+      j2_node_profiles[preseed_model]['repos'] | default(none),
+      j2_system_profiles[preseed_model]['repos'] | default(none),
+      j2_os_profiles[preseed_model]['repos'] | default(none),
+      j2_input['repos'] | default(none)
+    ]
+-%}
+{%- set auth_candidatos = [
+      j2_node_profiles[preseed_model]['auth'] | default(none),
+      j2_system_profiles[preseed_model]['auth'] | default(none),
+      j2_os_profiles[preseed_model]['auth'] | default(none),
+      j2_input['auth'] | default(none)
+    ] 
+-%}
+{%- set user_candidatos = [
+      j2_node_profiles[preseed_model]['user'] | default(none),
+      j2_system_profiles[preseed_model]['user'] | default(none),
+      j2_os_profiles[preseed_model]['user'] | default(none),
+      j2_input['user'] | default(none)
+    ] 
+-%}
+{%- set ssh_candidatos = [
+      j2_node_profiles[preseed_model]['ssh'] | default(none),
+      j2_system_profiles[preseed_model]['ssh'] | default(none),
+      j2_os_profiles[preseed_model]['ssh'] | default(none),
+      j2_input['ssh'] | default(none)
+    ] 
+-%}
+{%- set storage_candidatos = [
+      j2_node_profiles[preseed_model]['storage'] | default(none),
+      j2_system_profiles[preseed_model]['storage'] | default(none),
+      j2_os_profiles[preseed_model]['storage'] | default(none),
+      j2_input['storage'] | default(none)
+    ] 
+-%}
+{%- set packages_candidatos = [
+      j2_node_profiles[preseed_model]['packages'] | default(none),
+      j2_system_profiles[preseed_model]['packages'] | default(none),
+      j2_os_profiles[preseed_model]['packages'] | default(none),
+      j2_input['packages'] | default(none)
+    ] 
+-%}
+{%- set postins_candidatos = [
+      j2_node_profiles[preseed_model]['postinstall'] | default(none),
+      j2_system_profiles[preseed_model]['postinstall'] | default(none),
+      j2_os_profiles[preseed_model]['postinstall'] | default(none),
+      j2_input['postinstall'] | default(none)
+    ] 
+-%}
+{%- set logging_candidatos = [
+      j2_node_profiles[preseed_model]['logging'] | default(none),
+      j2_system_profiles[preseed_model]['logging'] | default(none),
+      j2_os_profiles[preseed_model]['logging'] | default(none),
+      j2_input['logging'] | default(none)
+    ] 
+-%}
 
-# Storage - Automated Partitioning (Clear Disk)
-d-i partman-auto/method string lvm
-d-i partman-lvm/device_remove_lvm boolean true
-d-i partman-md/device_remove_md boolean true
-d-i partman-partitioning/confirm_write_new_label boolean true
-d-i partman/choose_partition select finish
-d-i partman/confirm boolean true
-d-i partman/confirm_nochanges boolean true
+{%- set preseed_preinstall  = preins_candidatos   | select('string') | first | default('') -%}
+{%- set preseed_system      = system_candidatos   | select('string') | first | default('') -%}
+{%- set preseed_network     = network_candidatos  | select('string') | first | default('') -%}
+{%- set preseed_repos       = repos_candidatos    | select('string') | first | default('') -%}
+{%- set preseed_auth        = auth_candidatos     | select('string') | first | default('') -%}
+{%- set preseed_user        = user_candidatos     | select('string') | first | default('') -%}
+{%- set preseed_ssh         = ssh_candidatos      | select('string') | first | default('') -%}
+{%- set preseed_storage     = storage_candidatos  | select('string') | first | default('') -%}  
+{%- set preseed_packages    = packages_candidatos | select('string') | first | default('') -%} 
+{%- set preseed_postinstall = postins_candidatos  | select('string') | first | default('') -%}
+{%- set preseed_logging     = logging_candidatos  | select('string') | first | default('') -%}
 
-# Package Selection & Post-Install (Sudo & SSH Key Matrix)
-tasksel tasksel/first multiselect standard
-d-i pkgsel/include string openssh-server sudo tar bzip2
-d-i preseed/late_command string \
-  in-target mkdir -p /home/cesar/.ssh; \
-  echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMLeUbawucLN+B+Ilbsw/np4b2a/upqAF66MaPWgA05p Cesar@Tuxedo" > /target/home/cesar/.ssh/authorized_keys; \
-  in-target chown -R cesar:cesar /home/cesar/.ssh; \
-  in-target chmod 700 /home/cesar/.ssh; \
-  in-target chmod 600 /home/cesar/.ssh/authorized_keys; \
-  echo "cesar ALL=(ALL) NOPASSWD:ALL" > /target/etc/sudoers.d/cesar; \
-  chmod 0440 /target/etc/sudoers.d/cesar
-d-i finish-install/reboot_in_progress note
+{#......... 2.- Preseed Correct Sequential Order Lifecycle ..... #}
+{%-  set preseed_sections = [  
+        { "header": "# ------> Installer & Initialization",  "content": preseed_preinstall },
+        { "header": "# ------> System Localization",         "content": preseed_system     },
+        { "header": "# ------> Network Information",         "content": preseed_network    },
+        { "header": "# ------> Mirror Repositories",         "content": preseed_repos      },
+        { "header": "# ------> System Authorization Info",   "content": preseed_auth       },	  
+        { "header": "# ------> Users & Passwords",           "content": preseed_user       },
+        { "header": "# ------> SSH Keys",                    "content": preseed_ssh        },	
+        { "header": "# ------> Installation Logging Level",  "content": preseed_logging    },
+        { "header": "# ------> Partitions & Storage Layout", "content": preseed_storage    }, 
+        { "header": "# ------> Packages & Task Selection",   "content": preseed_packages   },
+        { "header": "# ------> Post Install & Execution",    "content": preseed_postinstall }
+      ]			  
+-%}
+{###############################
+         RENDERING FILE
+ ##############################}
+# ==============================================================================
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY                            
+# Generated dynamically by Genesis Core Engine Mesh                              
+# Deployment Context: Preseed Debian / Automated OS Provisioning Profile    
+# Timestamp: 2026                                                                
+# ==============================================================================
+{{ eol }}
+{%- for section in preseed_sections -%}
+  {%- if section.content and section.content | trim | length > 0 -%}
+{{ section.header | default('') }}
+{{ section.content }}
+{{ section.end | default(eol) }}
+  {%- endif -%}
+{%- endfor -%}
+{###############################
+              END
+ ##############################}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED PRESEED FILE 
+#############################################################################}

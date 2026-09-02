@@ -8,9 +8,18 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+
 #------------------
 # 1.- Freeze Instance Information in Facts for Performance
 #------------------
+# 1.0.- Log Instance Info
+- name: "B4 SETUP - Data Model -  Verify resolved OS installer definition"
+  ansible.builtin.debug:
+    msg: |
+      --- OS Definition Profile ---
+      b4_node_os_definitions: {{ b4_node_os_definitions | default('NOT_DEFINED') | to_nice_json }}
+      b4_node_os_installer:   [{{ b4_node_os_installer | default('NOT_DEFINED') }}]
+
 # 1.1.- Bootloader Information
 - name: "B4 SETUP - Data Model - Freeze Bootloader Instance Data"
   ansible.builtin.set_fact:

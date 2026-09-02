@@ -36,11 +36,13 @@ genesis_default_repos:
 
 # 4.- OS Definitions
 genesis_os_definitions:
+
   redhat: &redhat_keys
     ansible_distribution: "RedHat"
     installer: "anaconda"
     prefix: "ks_"
     ext: ".ks" 
+
   centos: *redhat_keys
   rocky: *redhat_keys
   rhel: *redhat_keys
@@ -62,13 +64,6 @@ genesis_os_definitions:
       "24.04": "noble"      
       "22.04": "jammy"      
       "20.04": "focal"      
-
-  coreos:
-    ansible_distribution: "Fedora CoreOS"
-    installer: "ignition"
-    ramdisk: "initramfs"
-    prefix: "ignition_"
-    ext: ".ign"   
 
   debian:
     ansible_distribution: "Debian"
@@ -103,7 +98,7 @@ genesis_os_definitions:
 
   suse:
     ansible_distribution: "openSUSE"
-    installer: "autoyast"
+    installer: "amanda"
     ext: ".xml"
     prefix: "autoyast_"
     alias:
@@ -122,11 +117,11 @@ genesis_os_definitions:
 
   sles:
     ansible_distribution: "SLES"    
-    installer: "autoyast"
+    installer: "amanda"
     ext: ".xml"
     prefix: "autoyast_"
     alias:
-      "16": &sles_16 "SLES"                
+      "16": &sles_16 "SLES"          
       "15": &sles_15 "SUSE_SLE"
       "12": &sles_12 "SLES"
       "15.0": *sles_15
@@ -143,11 +138,24 @@ genesis_os_definitions:
       "12.4": *sles_12
       "12.5": *sles_12
       "16.0": *sles_16
-  
+ 
+  coreos:
+    ansible_distribution: "Fedora CoreOS"
+    installer: "ignition"
+    ramdisk: "initramfs"
+    prefix: "ignition_"
+    ext: ".ign"
+ 
   microos:
     ansible_distribution: "openSuSE MicroOS"
     installer: "uos"
     prefix: "uos_"
+    ext: ".xml"
+ 
+  ubcore:
+    ansible_distribution: "Ubuntu Core"
+    installer: "ubcore"
+    prefix: "ubcore_"
     ext: ".xml"
 
 # 4.- OS Locale Definitions
@@ -470,17 +478,30 @@ b4_default_os_locale: "{{ genesis_locale_matrix['us'] }}"
 # 2.2.- OS Attributes
 b4_capture_node_os: "{{ deploy.os | default({}) }}"
 b4_capture_node_os_name:   "{{ b4_capture_node_os.name | default(b4_node_default_os) | lower }}"
+
+# 2.3.- OS Definitions
 b4_node_os_definitions: "{{ genesis_os_definitions[b4_capture_node_os_name] | default({})}}"
 b4_node_os:           "{{ b4_capture_node_os_name | default('unknown') }}"
 b4_node_os_version:   "{{ b4_capture_node_os.version | default(b4_node_default_os_version) }}"
+b4_node_os_version_main: "{{ b4_node_os_version | split('.') | first }}"
 b4_node_os_alias:     "{{ genesis_os_definitions[b4_node_os]['alias'][b4_node_os_version] | default(b4_node_default_os_alias) }}"
 b4_node_os_locale:    "{{ b4_capture_node_os.locale  | default(b4_node_default_os_locale) }}"
 b4_node_os_arch:      "{{ b4_capture_node_os.arch    | default(b4_node_default_os_arch) }}"
 
-
 # 2.3.- OS Manifesto Installer Attributes
 b4_node_os_profile:   "{{ b4_capture_node_os.profile | default(b4_node_default_os_profile) }}"
-b4_node_os_installer: "{{ b4_node_os_definitions['installer'] | default(b4_node_default_os_installer) | lower }}"
+b4_node_os_installer_capture: "{{ b4_node_os_definitions['installer'] | default(b4_node_default_os_installer) | string | lower | trim }}"
+
+# SuSE Installer: amanda vs. autoyast
+b4_node_os_installer_eval: >-
+  {%- if 'amanda' in b4_node_os_installer_capture and 
+         b4_node_os_version_main | int < 16 -%}
+    autoyast
+  {%- else -%}
+    {{ b4_node_os_installer_capture }}
+  {%- endif -%}
+
+b4_node_os_installer: "{{ b4_node_os_installer_eval | default('') | string | trim }}"
 b4_node_os_manifesto_file: "{{ b4_node_os_definitions['prefix'] | default('') }}{{ b4_enroll_node_name }}{{ b4_node_os_definitions['ext'] | default('') }}"
 b4_node_os_iso_file: "{{ b4_node_os_iso | default(b4_node_os_arch + '.iso') }}"
 b4_node_os_locale_info: "{{ genesis_locale_matrix[b4_node_os_locale] | default(b4_default_os_locale) }}" 
@@ -600,12 +621,11 @@ b4_power_cycle_profiles:
     deploy_interface: "fake"
     inspect_interface: "fake"
     clean_steps: []
-    clean_timeout: 650  
   manual:
     management_interface: "noop"
     power_interface: "{{ b4_enroll_node_bmc_driver }}"
     clean_steps: []
-    clean_timeout: 650 
+    clean_timeout: 10 
   raid:
     management_interface: "{{ b4_enroll_node_bmc_driver }}"
     power_interface: "{{ b4_enroll_node_bmc_driver }}"
@@ -646,19 +666,22 @@ b4_render_disk: "{{ b4_enroll_node_chassis_properties.root_device | default('/de
 b4_render_ip: "{{ b4_enroll_nic_provision_ip }}::{{ b4_enroll_nic_provision_gateway }}:{{ b4_enroll_nic_provision_netmask }}:{{ b4_enroll_node_name }}"
 b4_render_mac: "{{ b4_enroll_nic_provision_mac | default('') | lower | replace(':', '-') }}"
 b4_render_ifname: "net0"
-b4_render_modules: "r8125,r8168,r8169,e1000e,igb,ixgbe,i40e,ice,tg3,bnxt_en,bnx2x,mlx5_core,virtio_net,vmxnet3"
 
 # --> Source Installers Renderering
 b4_render_ksroot: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.install | default('install.img') }}"
 b4_render_ignroot: "{{ b4_render_ksroot }}"
 # Beware with \; => Required for PXE,iPXE... but not for GRUB
 b4_render_casperds: 'nocloud-net;s={{ b4_node_os_manifesto["url"] | default("") }}'
+b4_render_modules_casper: "r8125,r8168,r8169,e1000e,igb,ixgbe,i40e,ice,tg3,bnxt_en,bnx2x,mlx5_core,virtio_net,vmxnet3"
+b4_render_presubpath: "/{{ b4_os_mounted_repo_subpath }}/{{ b4_url_full_subpath }}"
+b4_render_modules_preseed: "sd_mod,scsi_mod,mpt3sas,megaraid_sas,hpsa,virtio_blk"
 
 # 2.2- Menu Rendering
 #.....................................
 # --> Kernel & InitRam
 b4_render_kernel:  "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.kernel | default('vmlinuz') }}"
 b4_render_initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.ramdisk | default('initrd') }}"
+
 
 # --> Menus
 # ==============================================================================
@@ -692,7 +715,7 @@ b4_render_menu_anaconda: >-
     inst.ks.sendmac
     inst.sshd
 
-b4_render_menu_autoyast: >-
+b4_render_menu_amanda: >-
     root=live:{{ b4_render_ksroot }}
     inst.install_url={{ b4_netinstall_os_mounted_repo_url }}/install/
     inst.auto={{ b4_node_os_manifesto['url'] }}
@@ -733,6 +756,15 @@ b4_render_menu_microos: >-
     rd.neednet=1
     rd.net.dhcp.retry=0
 
+b4_render_menu_ubcore: >-
+    root=live:{{ b4_render_ksroot }}
+    combustion.url={{ b4_node_os_manifesto['url'] }}
+    ifname={{ b4_render_ifname }}:{{ b4_enroll_nic_provision_mac }}
+    ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
+    nameserver={{ b4_url_genesis_ip }}
+    rd.neednet=1
+    rd.net.dhcp.retry=0
+
 # ==============================================================================
 # FAMILY 2: CASPER ENVIRONMENT AND LEGACY DEBIAN-INSTALLER TRADITION
 # SYSTEMS: Ubuntu Server (Subiquity), Debian (Preseed), VMware (ESXi Hypervisor), Old YaST.
@@ -764,21 +796,25 @@ b4_render_menu_casper: >-
     pci=realloc
     panic=10
     BOOTIF=01-{{ b4_render_mac }}
-    modules_to_load={{ b4_render_modules }}
+    modules_to_load={{ b4_render_modules_casper }}
 
 b4_render_menu_preseed: >-
-    mirror_http_hostname={{ b4_url_ironic_url }}
-    mirror_http_directory=_{{ b4_os_mounted_repo_subpath | replace('/', '_') }}_{{ b4_url_full_subpath | replace('/', '_') }}_
+    auto-install_enable=true
     url={{ b4_node_os_manifesto['url'] }}
-    interface={{ b4_enroll_nic_provision_mac }}
-    netcfg_interface={{ b4_render_ifname }}
-    ip={{ b4_render_ip }}:{{ b4_render_ifname }}:none
-    netcfg.get_nameservers=127.0.0.1
-    netcfg_disable_autoconfig=true
+    interface=auto
+    netcfg.disable_dhcp=true
+    netcfg.disable_autoconfig=true
+    netcfg.get_ipaddress={{ b4_enroll_nic_provision_ip }}
+    netcfg.get_netmask={{ b4_enroll_nic_provision_netmask }}
+    netcfg.get_gateway={{ b4_url_genesis_ip }}
+    netcfg.get_nameservers={{ b4_url_genesis_ip }}
+    netcfg.choose_interface={{ b4_enroll_nic_provision_mac }} 
+    nameservers={{ b4_url_genesis_ip }}
     netcfg_confirm_static=true
     auto=true
     priority=critical
     BOOTIF=01-{{ b4_render_mac }}
+    modules_to_load={{ b4_render_modules_preseed }}
 
 b4_render_menu_esxi: >-
     ks={{ b4_node_os_manifesto['url'] }}
@@ -788,7 +824,7 @@ b4_render_menu_esxi: >-
     gateway={{ b4_enroll_nic_provision_gateway}}
     nameserver={{ b4_url_genesis_ip }}
 
-b4_render_menu_autoyast_old: >-
+b4_render_menu_autoyast: >-
     install={{ b4_netinstall_os_mounted_repo_url }}
     autoyast={{ b4_node_os_manifesto['url'] }}autoinst.xml
     ifcfg={{ b4_enroll_nic_provision_mac }}
@@ -812,11 +848,15 @@ b4_os_installer_bootloader_call:
     initram: "{{ b4_render_initram }}"
     menu:    "{{ b4_render_menu_casper }}"
 
-  autoyast:
+  amanda: # New SuSE Installer
+    kernel:  "{{ b4_render_kernel }}"
+    initram: "{{ b4_render_initram }}"
+    menu:    "{{ b4_render_menu_amanda }}"
+
+  autoyast: # Old SuSE Installer
     kernel:  "{{ b4_render_kernel }}"
     initram: "{{ b4_render_initram }}"
     menu:    "{{ b4_render_menu_autoyast }}"
-    menu_old: "{{ b4_render_menu_autoyast_old }}"
 
   preseed:  
     kernel:  "{{ b4_render_kernel }}"
@@ -837,6 +877,11 @@ b4_os_installer_bootloader_call:
     kernel:  "{{ b4_render_kernel }}"
     initram: "{{ b4_render_initram }}"
     menu:    "{{ b4_render_menu_microos }}"
+
+  ubcore:
+    kernel:  "{{ b4_render_kernel }}"
+    initram: "{{ b4_render_initram }}"
+    menu:    "{{ b4_render_menu_ubcore }}"
 
 #####################################################
 #  OS Manifesto
@@ -884,58 +929,47 @@ b4_os_post_install_bash_lines:
 b4_node_os_allow_passwords:     "{{ (deploy.login_password | default(true)  | bool) | ternary ('yes','no') }}"
 b4_node_os_allow_root_password: "{{ (deploy.root_password  | default(false) | bool) | ternary ('yes','no') }}"
 b4_os_postinstall_script: |
-  # =======================================================================
-  # A. HARDEN ROOT ACCOUNT (Disable direct external access)
-  # =======================================================================
+  # ---> Root Account Hardening
   {{ b4_os_post_install_bash_lines[b4_node_os | trim].root_lock }}
   
-  # =======================================================================
-  # B. PROVISION AUTOMATION USER WITH SYNCHRONIZED INDUSTRIAL IDs
-  # =======================================================================
+  # ---> Automation User Provisioning
   if ! id -u {{ b4_provision_user_name }} >/dev/null 2>&1; then
     {{ b4_os_post_install_bash_lines[b4_node_os | trim].user_add }}
   fi
   
-  # Lock standard cleartext password entry mechanisms
+  # Lock standard password mechanisms
   {{ b4_os_post_install_bash_lines[b4_node_os | trim].user_lock }}  
   
-  # Grant privileged sudo rights without operational password prompts
+  # Configure privileged sudo rights
   echo '{{ b4_provision_user_name }} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{{ b4_provision_user_name }}
   chmod 440 /etc/sudoers.d/{{ b4_provision_user_name }}
   
-  # =======================================================================
-  # C. INJECT ANSIBLE CORE PUBLIC KEY INTO IMMUTABLE STORAGE TARGET
-  # =======================================================================
+  # ---> SSH Public Key Injection
   mkdir -p /home/{{ b4_provision_user_name }}/.ssh
   echo "{{ b4_provision_user_ssh_key }}" > /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
   
-  # Enforce standard OpenSSH authorization security permissions matrix
+  # Enforce SSH directory matrix permissions
   {{ b4_os_post_install_bash_lines[b4_node_os | trim].ssh_chown }} 
   chmod 700 /home/{{ b4_provision_user_name }}/.ssh
   chmod 600 /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
   
-  # Hide the provisioning service account from greeting managers
+  # Hide account from greeting managers
   mkdir -p /var/lib/AccountsService/users/
   echo -e "[User]\nSystemAccount=true" > /var/lib/AccountsService/users/{{ b4_provision_user_name }}
   
-  # =======================================================================
-  # D. REWRITE ACTIVE SECURE DAEMON POLICIES (sshd_config)
-  # =======================================================================
-  # Sanitize native password authentication entries and enforce root restrictions
+  # ---> SSHD Policy Customization
   sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication {{ b4_node_os_allow_passwords }}/g' /etc/ssh/sshd_config
   sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin {{ b4_node_os_allow_root_password }}/g' /etc/ssh/sshd_config
          
-  # Purge vendor drop-in overrides to guarantee strict configuration dominance
+  # Purge drop-in configuration overrides
   rm -f /etc/ssh/sshd_config.d/*.conf
   
-  # Execute vendor-specific services overrides (e.g. systemctl enablement for SUSE)
+  # Execute vendor-specific services tasks
   {{ b4_os_post_install_bash_lines[b4_node_os | trim].extra_cmd }}
 
 b4_os_postinstall_networkmanager_script: |
-  # =======================================================================
-  # E. NATIVE NETWORKMANAGER INJECTION BLINDED STRICTLY BY HARDWARE MAC
-  # =======================================================================
-  # Purge any residual connections created by the installer to avoid routing loops
+  # ---> NetworkManager Static Target Profile
+  # Purge residual connection configuration files
   mkdir -p /etc/NetworkManager/system-connections/
   rm -f /etc/NetworkManager/system-connections/*.nmconnection
   rm -f /etc/NetworkManager/system-connections/*.conf
@@ -957,39 +991,28 @@ b4_os_postinstall_networkmanager_script: |
   [proxy]
   EOF
   
-  # Enforce strict NetworkManager secure file permissions Matrix
+  # Secure connection parameters configuration permissions
   chmod 600 /etc/NetworkManager/system-connections/provision.nmconnection
 
 b4_postinstall_netplan_script: |  
-  # ==========================================
-  # GENESIS NETWORK CONFIGURATION
-  # ==========================================
-    
-  # STEP 1: Resolve Interface Name From MAC
-  # ------------------------------------------
+  # ---> Dynamic Interface Resolution
   TARGET_MAC="{{ b4_enroll_nic_provision_mac | lower }}"
-  
-  # Find the interface name that matches the target MAC address
   PRIMARY_IFACE=$(ip -o link show | grep -i "$TARGET_MAC" | awk -F': ' '{print $2}')
   
-  # Fallback mechanism if the MAC is not found or is empty
+  # Fallback to first available interface if MAC parsing fails
   if [ -z "$PRIMARY_IFACE" ]; then
       PRIMARY_IFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -v 'lo' | head -n1)
   fi
   
-  # If everything fails, fallback to standard generic name
+  # Hard fallback parameters to default interface
   if [ -z "$PRIMARY_IFACE" ]; then
       PRIMARY_IFACE="eth0"
   fi
   
-  # STEP 2: Apply OS-Specific Configuration
-  # ------------------------------------------
+  # ---> OS Network Engine Deployment
   if [ -d "/etc/netplan" ]; then
-      # --- UBUNTU METHOD (Netplan YAML) ---
-      # Purge any installer-generated configuration files to prevent conflicts
+      # Ubuntu / Debian Cloud Netplan implementation
       rm -rf /etc/netplan/*
-      
-      # Generate a clean, lightweight DHCP Netplan profile matching the interface by MAC
       cat <<EOF > /etc/netplan/01-genesis-network.yaml
   network:
     version: 2
@@ -1001,11 +1024,9 @@ b4_postinstall_netplan_script: |
         dhcp4: true
         optional: true
   EOF
-      # Secure permissions required by Netplan
       chmod 600 /etc/netplan/01-genesis-network.yaml
   else
-      # --- DEBIAN METHOD (Classic /etc/network/interfaces) ---
-      # Completely overwrite with bare-minimum loopback and DHCP configuration
+      # Standard legacy interfaces implementation
       cat <<EOF > /etc/network/interfaces
   auto lo
   iface lo inet loopback
@@ -1015,45 +1036,34 @@ b4_postinstall_netplan_script: |
   fi
 
 b4_os_postinstall_apt_script: |
-  # ==========================================
-  # GENESIS REPOSITORY CONFIGURATION
-  # ==========================================
+  # ---> Genesis Package Repository Configuration
   GENESIS_URL="{{ b4_netinstall_os_mounted_repo_url }}"
   
-  # STEP 1: Clear all existing repository configurations
-  # ------------------------------------------
-  
-  # 1. Clear the main traditional repository configuration file
+  # Clear vendor software sources list
   if [ -f "/etc/apt/sources.list" ]; then
       echo "# Repositories disabled by Genesis" > /etc/apt/sources.list
   fi
-  
-  # 2. Purge all auxiliary repository files inside sources.list.d (handles modern DEB822 formats)
   if [ -d "/etc/apt/sources.list.d" ]; then
       rm -rf /etc/apt/sources.list.d/*
   fi
   
-  # STEP 2: Populate with the most universal syntax (legacy format)
-  # ------------------------------------------
-  
-  # Dynamically detect the Ubuntu release codename (e.g., noble, jammy, focal)
+  # Resolve distribution release codename
   UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || grep "VERSION_CODENAME=" /etc/os-release | cut -d= -f2)
-  
-  # Fallback to 'stable' if the codename detection fails for some reason
   if [ -z "$UBUNTU_CODENAME" ]; then
       UBUNTU_CODENAME="stable"
   fi
   
-  # Inject the legacy single-line syntax using the dynamic codename.
-  # The [trusted=yes] flag bypasses GPG key verification for local network deployments.
+  # Inject local repository bypass signature verification
   echo "deb [trusted=yes] ${GENESIS_URL} ${UBUNTU_CODENAME} main restricted universe multiverse" >> /etc/apt/sources.list
   
-  # STEP 3: Final Cache Refresh
-  # ------------------------------------------
-  # Force APT to flush previous metadata and fetch exclusively from the Genesis network source
+  # Synchronize infrastructure software mirror parameters
   apt-get clean
   apt-get update -o Acquire::Languages="none"
 
+
+b4_os_postinstall_script_render: "{{ b4_os_postinstall_script | trim | regex_replace('(?m)(.+)$', '\\1 \\\\') }}"
+b4_os_postinstall_networkmanager_script_render: "{{ b4_os_postinstall_networkmanager_script | trim | regex_replace('(?m)(.+)$', '\\1 \\\\') }}"
+b4_os_postinstall_apt_script_render: "{{ b4_os_postinstall_apt_script | trim | regex_replace('(?m)(.+)$', '\\1 \\\\') }}"
 b4_postinstall_repo_filename: "{{ b4_repo_manifesto_path }}/{{ b4_node_os }}"
 b4_os_postinstall_local_scripts_list: 
   - content: "{{ b4_os_postinstall_script | default('') }}"
@@ -1152,7 +1162,7 @@ b4_kickstart_template_defaults:
     # 3. Third: Logical Volumes inside the Volume Group
     volgroup VolGroup00 --pesize=4096 pv.{{ b4_enroll_node_name }}-0001
     logvol /home --fstype=ext4 --name=LogVol03    --vgname=VolGroup00 --size=4096 --grow
-    logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }} 
+    logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }}
 
 # 1.3.- Changes over Default Template according OS release
 b4_kickstart_template_os_profiles:
@@ -1233,7 +1243,6 @@ b4_casper_template_defaults:
       cat << 'EOF' > /target/tmp/setup-users.sh
       #!/bin/bash
       {{ b4_os_postinstall_apt_script  | indent(2, first=false) }}
-      {{ b4_postinstall_netplan_script | indent(2, first=false) }}
       EOF
     - curtin in-target -- bash /tmp/setup-users.sh
     - rm -f /target/tmp/setup-users.sh
@@ -1378,6 +1387,126 @@ b4_autoyast_template_os_profiles:
   "42.3": *autoyast_legacy
 
 #------------------------------------
+# 4.- Preseed Manifesto
+#------------------------------------
+b4_preseed_template_defaults:
+  preinstall: |
+    # Prevent DHCP loops and initialize manual network setup immediately
+    d-i netcfg/disable_autoconfig boolean true
+    d-i netcfg/use_dhcp boolean false
+    d-i netcfg/disable_dhcp boolean true
+    d-i netcfg/dhcp_options select Configure network manually
+    d-i netcfg/confirm_static boolean true
+
+  system: |       
+    # System localization configuration
+    d-i debian-installer/locale string {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
+    d-i keyboard-configuration/xkb-keymap select {{ b4_node_os_locale_info.keyboard | default('us') | lower }}
+    d-i debian-installer/language string {{ (b4_node_os_locale_info.lang | default('en_GB.UTF-8')).split('_') | first | lower }}
+    d-i debian-installer/country string {{ b4_node_os_locale_info.keyboard | default('us') | upper }}
+    d-i localechooser/supported-locales multiselect {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
+    d-i pkgsel/ignore-incomplete-language-support boolean true
+           
+    # System timezone setup
+    d-i time/zone string {{ b4_node_os_locale_info.timezone | default('America/New_York') }}
+    d-i clock-setup/utc boolean true
+    d-i clock-setup/ntp boolean true
+
+  user: |
+    # Root account configuration with encrypted password
+    d-i passwd/root-login boolean true
+    d-i passwd/root-password-crypted password {{ b4_root_user_password }}
+    
+    # Primary user account creation
+    d-i passwd/make-user boolean true
+    d-i passwd/user-fullname string {{ b4_provision_user_name }}
+    d-i passwd/username string {{ b4_provision_user_name }}
+    d-i passwd/user-password-crypted password {{ b4_provision_user_password }}
+
+  repos: |
+    # Main mirror repository configuration (Parsed Netinstall URL)
+    d-i mirror/country string manual
+    d-i mirror/protocol string http
+    d-i mirror/http/hostname string {{ b4_url_genesis_url }}
+    d-i mirror/http/directory string {{ b4_render_presubpath }}
+    d-i mirror/http/proxy string
+    d-i debian-installer/allow_unauthenticated boolean true
+    d-i mirror/http/valid_mirror boolean true
+
+  packages: |
+    # Base packages and software selection
+    d-i tasksel/first multiselect standard
+    d-i pkgsel/include string tar bzip2
+
+  network: |
+    # Static network parameters and Hostname assignment
+    d-i netcfg/get_ipaddress string {{ b4_enroll_nic_provision_ip }}
+    d-i netcfg/get_netmask string {{ b4_enroll_nic_provision_netmask }}
+    d-i netcfg/get_gateway string {{ b4_url_genesis_ip }}
+    d-i netcfg/get_nameservers string {{ b4_url_genesis_ip }}
+    d-i netcfg/get_hostname string {{ b4_enroll_node_name }}
+
+  storage: |	
+    {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('sda') %}
+    {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'sda' %}{% endif %}
+    
+    # Clear previous disk layouts and partition tables
+    d-i partman-lvm/device_remove_lvm boolean true
+    d-i partman-md/device_remove_md boolean true
+    d-i partman-partitioning/confirm_write_new_label boolean true
+        
+    # Target disk assignment and LVM initialization
+    d-i partman-auto/disk string /dev/{{ b4_disk }}
+    d-i partman-auto/method string lvm
+    d-i partman-auto-lvm/guided_size string max
+       
+    # Select standard atomic LVM recipe (Single root layout)
+    d-i partman-auto/choose_recipe select atomic
+       
+    # Automatic format confirmations for zero-interaction provisioning
+    d-i partman-lvm/confirm boolean true
+    d-i partman-lvm/confirm_nooverwrite boolean true
+    d-i partman/confirm_nochanges boolean true
+    d-i partman/confirm boolean true
+    d-i partman/confirm_nooverwrite boolean true
+    d-i partman/choose_partition select finish
+ 
+  postinstall: |
+    # GRUB bootloader installation on target disk
+    d-i grub-installer/only_debian boolean true
+    d-i grub-installer/with_other_os boolean true
+    d-i grub-installer/bootdev string default
+    
+    # Inject and execute Genesis core post-installation bash scripts via strict literal heredoc
+    d-i preseed/late_command string \
+        cat << 'EOF' > /target/tmp/postinstall.sh; \
+        #!/bin/bash \
+        # ============================================================================== \
+        # START OF GENESIS CORE INJECTED SCRIPTS \
+        # ============================================================================== \
+        {{ b4_os_postinstall_script_render | indent(4,false) }}
+        \
+        # ------------------------------------------------------------------------------ \
+        # NETWORK CONFIGURATION BLOCK \
+        # ------------------------------------------------------------------------------ \
+        {{ b4_os_postinstall_networkmanager_script_render  | indent(4,false) }}
+        \
+        # ------------------------------------------------------------------------------ \
+        # APT REPOSITORIES CONFIGURATION BLOCK \
+        # ------------------------------------------------------------------------------ \
+        {{ b4_os_postinstall_apt_script_render | indent(4,false) }}
+        # ============================================================================== \
+        # END OF GENESIS CORE INJECTED SCRIPTS \
+        # ============================================================================== \
+        EOF; \
+        chmod +x /target/tmp/postinstall.sh; \
+        in-target /tmp/postinstall.sh
+        
+    # Signal completion and trigger automatic reboot
+    d-i finish-install/reboot_in_progress note
+
+
+#------------------------------------
 # 4.- Ignition Manifesto
 #------------------------------------
 b4_ignition_template_defaults: 
@@ -1445,7 +1574,7 @@ b4_os_installer_manifesto:
     system:     "{{ b4_system_manifesto_profiles }}"
     node:       "{{ b4_node_manifesto_profiles   }}"
 
-  autoyast:
+  autoyast: &suse_manifesto
     template:  
       - "manifesto/autoyast.j2"    
     file:      
@@ -1455,7 +1584,8 @@ b4_os_installer_manifesto:
     os_version: "{{ b4_os_manifesto_profiles }}"
     system:     "{{ b4_system_manifesto_profiles }}"
     node:       "{{ b4_node_manifesto_profiles   }}"
-
+  amanda: *suse_manifesto
+  
   esxi:
     template:  
       - "manifesto/kickstart.j2"

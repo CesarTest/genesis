@@ -71,7 +71,14 @@
         msg: "CRITICAL: The Genesis system was unable to rehydrate the persistent local ledger file into RAM facts. Deploy pipeline aborted to prevent cleaning stage to start."
 
 #-----------------------------------------------------------------------
-# 3.- Setup the Node in Ironic
+# 3.-Remove the Node from Ironic
+#-----------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_tasks: "1_enroll/3_delete.yml"
+  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+  
+#-----------------------------------------------------------------------
+# 4.- Setup the Node in Ironic
 #-----------------------------------------------------------------------
 - block:
  
@@ -79,7 +86,6 @@
     #.................................
     - ansible.builtin.include_tasks: "1_enroll/1_os_manifesto.yml"
     #- ansible.builtin.include_tasks: "1_enroll/2_config_drive.yml"
-    - ansible.builtin.include_tasks: "1_enroll/3_delete.yml"
     - ansible.builtin.include_tasks: "1_enroll/4_outband.yml"
  
     # => 3.2.- Stage 2: Manage - Inband Provision
@@ -96,5 +102,6 @@
       vars:
         b4_lifecycle_instructions: "{{ b4_lifecycle_api_calls.setup + b4_lifecycle_api_calls.poweroff }}" 
     - ansible.builtin.include_tasks: "2_manage/5_available.yml"
-
+  when:
+    - genesis_clean_node is not defined
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

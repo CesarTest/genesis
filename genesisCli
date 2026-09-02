@@ -67,6 +67,8 @@ BAREMETAL_ROOT_PASSWORD="cesar" # Automatic ssh-copy-id
 # 2.3.- Genesis Playbooks
 REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
 T5_DEPLOY="6" ; T5_ACTIVE="7" ; T5_CLEAN="8" ; T4_ENROLL="9"   ; T4_MANAGE="10" ; T4_INSPECT="11"
+A5_DEPLOY="12" ; A5_ACTIVE="13" ; A5_CLEAN="14" ; A4_ENROLL="15"   ; A4_MANAGE="16" ; A4_INSPECT="17"
+E1_PROXMOX="18" 
 GENESIS_PLAYBOOKS=( \
 	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
 	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
@@ -80,6 +82,13 @@ GENESIS_PLAYBOOKS=( \
 	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
 	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
 	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+     "None" \
+     "None" \
+     "None" \
+     "None" \
+     "None" \
+     "None" \
+	 "${GENESIS_WORKING_PATH}/playbooks/hypervisor.yml" \
 )
 GENESIS_PLAYBOOKS_HEADER=( \
         "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1- genesis.yml)${COLOR[$NC]}" \
@@ -100,6 +109,7 @@ GENESIS_PLAYBOOKS_HEADER=( \
         "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ENROLL : BMC Conectivity & Authentication(A4)${COLOR[$NC]}" \
         "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE MANAGE : Power Cycle, Firmware Updates(A4)${COLOR[$NC]}" \
         "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE INSPECT: IPA tooling(A4)${COLOR[$NC]}" \
+        "${COLOR[$NC]}[VIRTUAL] - PROXMOX ENVIRONMENT: Prepare Genesis VM(E1)${COLOR[$NC]}" \
 )
 
 # 2.3.- Online Installation
@@ -110,7 +120,7 @@ dhcp_pool_start=$( cat "${GENESIS_HOSTS_TARGET_FILE}" | grep 'dhcp_pool_start:' 
 dhcp_pool_end=$( cat "${GENESIS_HOSTS_TARGET_FILE}" | grep 'dhcp_pool_end:' | head -1 | awk -F: '{print $NF}' | tr -d '"' | tr -d ' ' )
 PXE=( "${network_interface}" "${dhcp_address}" "${dhcp_pool_start}" "${dhcp_pool_end}" )      
 
-# 2.3.- Dependencies
+# 2.4.- Dependencies
 PIP=0; SCRIPTS=1; INSTALLER=2
 DEPENDENCIES=( 'collections/requirements.yml' \
                'roles/requirements.yml' \
@@ -155,6 +165,7 @@ function defineMenu() {
                               "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: integrate into deployment strategy (B6- baremetal.yml)${COLOR[$NC]}" \
                               "${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}"
                               "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
+							  "${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}" \
                               "Exit" \
 		                   )
 	          PARAMETRO=(     "MENU" )
@@ -314,6 +325,19 @@ function defineMenu() {
 	          unset MENU
               ;;
 
+	    10|"${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}")
+		      MENU_TEXT="PREPARE GENESIS EMULATIONS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
         11|"Exit")
 	         echo "Removing Temporal Files... rm -f ${OUT_TMP} 2> /dev/null"
 	         rm -f "${OUT_TMP}"
@@ -424,7 +448,7 @@ function defineMenu() {
 			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
 
-              RETURNING_MENU="10"
+              RETURNING_MENU="9"
               RUN_ACTION="22"
               unset GENESIS_REFRESH LOG_FILE 
               ;;
@@ -436,7 +460,7 @@ function defineMenu() {
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
 			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
-              RETURNING_MENU="10"
+              RETURNING_MENU="9"
               RUN_ACTION="23"
               unset GENESIS_REFRESH LOG_FILE 
               ;;
@@ -448,7 +472,7 @@ function defineMenu() {
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
 			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
                                  )
-              RETURNING_MENU="10"
+              RETURNING_MENU="9"
               RUN_ACTION="24"
               unset GENESIS_REFRESH LOG_FILE 
               ;;
@@ -459,7 +483,7 @@ function defineMenu() {
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
                                  )
-              RETURNING_MENU="10"
+              RETURNING_MENU="9"
               RUN_ACTION="25"
               unset GENESIS_REFRESH LOG_FILE 
               ;;
@@ -470,7 +494,7 @@ function defineMenu() {
 	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
                                  )
-              RETURNING_MENU="10"
+              RETURNING_MENU="9"
               RUN_ACTION="26"
               unset GENESIS_REFRESH LOG_FILE 
               ;;
@@ -483,6 +507,18 @@ function defineMenu() {
                                  )
               RETURNING_MENU="10"
               RUN_ACTION="27"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+
+       33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}")
+		      MENU_TEXT="(33)___________ ${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/e1_proxmox.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="10"
+              RUN_ACTION="33"
               unset GENESIS_REFRESH LOG_FILE 
               ;;
 
@@ -512,48 +548,27 @@ function defineMenu() {
 #  Show help, the options of the command
 #========================================================
 function ayuda() {
-	echo -e "------------------------------------------------------"
-	echo -e "genesisCli -[hHRDLSKAPIQMGNTi:t:a:v:g:s:e:l:b:p:d:u:m:] "
-	echo -e "  -h <HELP>        : Show this help"
-	echo -e "---------- iDAS Transitions -------"
-	echo -e "  -R <REFRESH>     : Shoot refresh iDAS build"
-	echo -e "  -D <DEPLOY>      : Shoot deploy iDAS"
-	echo -e "  -S <SETUP>       : Shoot setup iDAS"
-	echo -e "  -K <KICKSTART>   : Shoot kickstart "
-	echo -e "  -P <PROVISION>   : Shoot provision "
-	echo -e "------------ iDAS Tools ------------"
-	echo -e "  -L <LOAD CFGs>   : Shoot load iDAS CFGs"
-	echo -e "  -A <ANSIBLE>     : Shoot ansible initializations"	
-	echo -e "----------- iDAS Plugins -----------"	
-	echo -e "  -I <IDM/LDAP>    : Shoot plugin idm/ldap"
-	echo -e "  -Q <RABBIT MQ>   : Shoot plugin rabbit MQ"	
-	echo -e "----------- iDAS Testing -----------"		
-	echo -e "  -G <GRAPHICS>    : Shoot graphics"
-	echo -e "  -M <MAP SSH>     : Shoot map ssh"
-	echo -e "  -N <NETWORK>     : Shoot network"
-	echo -e "  -T <NTP>         : Shoot NTP "
-
-	echo -e "----------- Playbook Parameters -----------"	
+    echo -e "------------------------------------------------------"
+    echo -e "genesisCli -[hHRCISDAPi:t:a:v:e:] "
+    echo -e "  -h <HELP>        : Show this help"
+    echo -e "---------- Genesis Transitions -------"
+    echo -e "  -R <REFRESH>     : Shoot refresh Genesis Installation"
+    echo -e "  -C <CREATE>      : Shoot install Bifrost Ironic"
+    echo -e "  -I <INIT>        : Populate PXE Service"
+    echo -e "  -S <SETUP>       : Enroll & Manage & Inspect Baremetal Node"
+    echo -e "  -D <DEPLOY>      : Clean  & Deploy & Active Baremental Node"
+    echo -e "  -P <PROVISION>   : Deployment Strategy over Baremetal Nodes "
+	echo -e "------------ Playbook Parameters -----------"	
     echo -e "  -i <INVENTORY>  [${genesis_DEFAULT_INVENTORY}] : Full path to inventory file"
     echo -e "  -t <TARGET>        []: comma separated IP addresses of target machines"
-    echo -e "  -v <VAULT>     [root]: vault password where iDAS setup critical parameters are encrypted"
+    echo -e "  -v <VAULT>     [root]: vault password where Genesis critical parameters are encrypted"
     echo -e "  -a <TAGS>          []: playbook tags to shoot"
-    echo -e "  -e <EXTRA_VARS>    []: playbook additional environmental variables"
-	
-	echo -e "----------- Genesis Parameters -----------"	
-    echo -e "  -p <PROJECT_NAME> [pansa]    : Project Name to install"	
-    echo -e "  -g <CFGS_CORE>  []    : String CFGs to Load"
-    echo -e "  -b <genesis_BUILD> []    : Path to build file"
-    echo -e "  -s <SLOT>       [1]   : slot for setting up iDAS unattended installation files"
-    echo -e "  -l <LOG_FILE>   [${HOME}/tests.log] : full path to log direct actions"
-
-	echo -e "----------- Plugins Parameters -----------"
-    echo -e "  -d <LDAP_DATA>           [pv3]      : LDAP Data to Feed"	
-    echo -e "  -u <LDAP_TYPE>           [idm]      : IDM / LDAP"
-    echo -e "  -m <LDAP_GROUP_MACHINES> [fdp_group]: Plugin Target Group of Machines"
+    echo -e "  -e <EXTRA_VARS>    []: playbook additional environmental variables"	
+	echo -e "----------- Certification Testing ----------"		
+    echo -e "----------- Troubleshooting Tools ----------"
+    echo -e "--------- Prepare Virtual Enviroments ------"
 	echo -e "------------------------------------------------------"
     OUT="$OK"
-	
 }
 
 #========================================================
@@ -2123,7 +2138,7 @@ function 0_call() {
     #if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi	
 	local CALL_LOG="${HOME}/${CALL}.log"
     if [ -n "${LOG_FILE}" ] ; then local CALL_LOG="${LOG_FILE}"   ; fi
-    
+   
    #--------------------
    #  ACTIONS
    #--------------------	
@@ -2347,6 +2362,7 @@ function runActions() {
         25|"${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}")  underConstruction ;;
         26|"${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}")  underConstruction ;;
         27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}") underConstruction ;;
+        33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}") underConstruction ;;
     esac
 }
 
@@ -2467,39 +2483,20 @@ if [ -w "/dev/null" ] ; then
 		#=============================
 		# CAPTURE COMMAND FLAGS
 		#=============================
-		while getopts "hHRDLSKAPIQMGNTi:t:a:v:g:s:e:l:b:p:d:u:m:" OPCION ; do
+		while getopts "hHRCISDAPi:t:a:v:" OPCION ; do
 			case "$OPCION" in
 				h|H)   ayuda ; exit 1 ;;
 				R)   RUN_ACTION="1"  ; unset MENU ;;
-				D)   RUN_ACTION="2"  ; unset MENU ;;
-				L)   RUN_ACTION="3"  ; unset MENU ;;
+				C)   RUN_ACTION="2"  ; unset MENU ;;
+				I)   RUN_ACTION="3"  ; unset MENU ;;
 				S)   RUN_ACTION="4"  ; unset MENU ;;
-				K)   RUN_ACTION="5"  ; unset MENU ;;
+				D)   RUN_ACTION="5"  ; unset MENU ;;
 				A)   RUN_ACTION="6"  ; unset MENU ;;
 				P)   RUN_ACTION="7"  ; unset MENU ;;
-				I)   RUN_ACTION="12" ; unset MENU ;;
-				Q)   RUN_ACTION="12" ; unset MENU ;;				
-				M)   RUN_ACTION="14" ; unset MENU ;;
-				G)   RUN_ACTION="15" ; unset MENU ;;
-				N)   RUN_ACTION="16" ; unset MENU ;;
-				T)   RUN_ACTION="17" ; unset MENU ;;
                 i)   if [ -n "$OPTARG" ] ; then INVENTORY="$OPTARG"  ; fi ;;
                 t)   if [ -n "$OPTARG" ] ; then TARGET="$OPTARG"     ; fi ;;
                 a)   if [ -n "$OPTARG" ] ; then TAGS="$OPTARG"       ; fi ;;				
                 v)   if [ -n "$OPTARG" ] ; then VAULT="$OPTARG"      ; fi ;;
-                g)   if [ -n "$OPTARG" ] ; then CFGS_CORE="$OPTARG"  ; fi ;;
-                s)   if [ -n "$OPTARG" ] ; then SLOT="$OPTARG"       ; fi ;;
-                e)   if [ -n "$OPTARG" ] ; then EXTRA_VARS="$OPTARG" ; fi ;;
-                l)   if [ -n "$OPTARG" ] ; then LOG_FILE="$OPTARG"   ; fi ;;
-                b)   if [ -n "$OPTARG" ] ; then genesis_BUILD="$OPTARG" ; fi ;;
-                p)   if [ -n "$OPTARG" ] ; then PROJECT_NAME="$OPTARG" ; fi ;;
-                d)   if [ -n "$OPTARG" ] ; then LDAP_DATA="$OPTARG" ; fi ;;
-                u)   if [ -n "$OPTARG" ] ; then LDAP_TYPE="$OPTARG" ; fi ;;					
-                m)   if [ -n "$OPTARG" ] ; then 
-				        GROUP_MACHINES="$OPTARG" 
-						LDAP_GROUP_MACHINES="$OPTARG" 
-					 fi 
-					 ;;
 				[?]) ayuda ;; # Unknown parameter
 			esac
 		done

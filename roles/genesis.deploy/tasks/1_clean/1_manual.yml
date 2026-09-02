@@ -61,6 +61,7 @@
 
   rescue:    
     - name: "B5 - DEPLOY - 1.- Clean: 14) Reboot"
+      ignore_errors: yes
       become: yes
       ansible.builtin.shell:
         cmd: "reboot"
