@@ -1,0 +1,141 @@
+# ==============================================================================
+# GENESIS CORE ENGINE - WSL BOOTSTRAPPER POWER SHELL SCRIPT
+# - Enabling Power Shell Scripts:
+#   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+#
+# Author: Cesar Delgado
+# Date: 03/Sep/2026
+# ==============================================================================
+#  cd "$env:USERPROFILE\Desktop"
+
+# ---> CONFIGURACIÓN GLOBAL (VARIABLES CENTRALIZADAS)
+$USUARIO       = "cesar"
+$CONTRASENA    = "cesar"
+
+$GIT_NAME      = "Cesar DGM"
+$GIT_EMAIL     = "cesar.electronic.engineer@gmail.com"
+$REPO_URL      = "https://github.com/CesarTest/genesis.git"
+$TARGET_DIR    = "/home/$USUARIO/genesis"
+
+$DISTRO        = "Debian"
+
+# ------------------------------------------------------------------------------
+# FASE 1: Saneamiento del hipervisor local
+# ------------------------------------------------------------------------------
+function Sanear-Entorno {
+    Write-Host "[1/6] Sanear-Entorno: Pulverizando instancias previas..." -ForegroundColor Cyan
+    wsl --unregister $DISTRO 2>$null
+    wsl --shutdown
+
+    # Detiene el servicio de red que usa WSL en segundo plano
+    Stop-Service -Name "WslService" -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name "Hns" -Force -ErrorAction SilentlyContinue
+    Start-Service -Name "WslService" -ErrorAction SilentlyContinue
+    Start-Service -Name "Hns" -ErrorAction SilentlyContinue
+}
+
+# ------------------------------------------------------------------------------
+# FASE 2: Instalación limpia del sistema operativo (Primer plano visible)
+# ------------------------------------------------------------------------------
+function Instalar-Distribucion {
+    Write-Host "[2/6] Instalar-Distribucion: Lanzando instalación de $DISTRO en primer plano..." -ForegroundColor Cyan
+    
+    # Quitamos --no-launch para que Windows inicialice la máquina de forma síncrona y visible
+    wsl --install -d $DISTRO
+    
+    # Pausa de seguridad para asegurar que el subsistema ha terminado de registrarse en Windows
+    Write-Host "Esperando 5 segundos para el asentamiento del contenedor..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
+}
+
+# ------------------------------------------------------------------------------
+# FASE 3: Reinicio y asentamiento del motor
+# ------------------------------------------------------------------------------
+function Reiniciar-Motor {
+    Write-Host "[4/6] Reiniciar-Motor: Reiniciando el hipervisor WSL..." -ForegroundColor Cyan
+    wsl --terminate $DISTRO
+    Start-Sleep -Seconds 2
+}
+
+# ------------------------------------------------------------------------------
+# FASE 4: Inyección de herramientas del sistema base
+# ------------------------------------------------------------------------------
+function Inyectar-Paquetes {
+    Write-Host "[5/6] Inyectar-Paquetes: Actualizando APT e instalando Git..." -ForegroundColor Cyan
+    $PackScript = @"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y git curl jq python3-pip python3-venv
+"@
+    wsl -d $DISTRO -u root exec bash -c $PackScript
+}
+
+# ------------------------------------------------------------------------------
+# FASE 5: Inyección de Ansible
+# ------------------------------------------------------------------------------
+function Inject-AnsibleToDebian {
+    Write-Host "====== 1. Actualizando Debian y dependencias ======" -ForegroundColor Cyan
+    wsl -d Debian -u root apt update
+    wsl -d Debian -u root apt install -y python3-pip python3-venv pipx
+
+    Write-Host "====== 2. Configurando variables de entorno en Linux ======" -ForegroundColor Cyan
+    wsl -d Debian -u root pipx ensurepath --global
+
+    Write-Host "====== 3. Instalando Ansible de forma aislada ======" -ForegroundColor Cyan
+    wsl -d Debian -u root pipx install --include-deps ansible --global
+
+    Write-Host "====== 4. Verificando la instalación ======" -ForegroundColor Cyan
+    wsl -d Debian ansible --version
+
+    Write-Host "[ OK ] ¡Ansible ha sido inyectado con éxito en tu distribución Debian!" -ForegroundColor Green
+}
+
+# ------------------------------------------------------------------------------
+# FASE 6: Sincronización del repositorio de Genesis
+# ------------------------------------------------------------------------------
+function Clonar-Repositorio {
+    Write-Host "[6/6] Clonar-Repositorio: Configurando Git y descargando Genesis..." -ForegroundColor Cyan
+
+    # Corregido: Se añade el '$' antes del paréntesis para la sintaxis de Bash: $(dirname ...)
+    $LinuxCommands = "git config --global user.name '$GIT_NAME'; " +
+                     "git config --global user.email '$GIT_EMAIL'; " +
+                     "git config --global http.sslVerify false; " +
+                     "echo 'Clonando repositorio en $TARGET_DIR...'; " +
+                     "mkdir -p `$(dirname '$TARGET_DIR'); " + # El ` evita que PowerShell lo interprete
+                     "git clone '$REPO_URL' '$TARGET_DIR'"
+
+    # Ejecutamos de forma correcta en WSL
+    wsl -d $DISTRO -u $USUARIO -e bash -c $LinuxCommands
+}
+
+# ==============================================================================
+# FUNCIÓN PRINCIPAL (ORQUESTADOR MAIN)
+# ==============================================================================
+function Main {
+    $cronometro = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Host "====================================================================" -ForegroundColor Magenta
+    Write-Host "      GENESIS MESH - INICIALIZANDO PIPELINE DE DESPLIEGUE WSL       " -ForegroundColor Magenta
+    Write-Host "====================================================================" -ForegroundColor Magenta
+
+    try {
+        Sanear-Entorno
+        Instalar-Distribucion
+        Reiniciar-Motor
+        Inyectar-Paquetes
+		#Inject-AnsibleToDebian
+        Clonar-Repositorio
+
+        $cronometro.Stop()
+        Write-Host "¡Victoria! Entorno operativo completo generado en $($cronometro.Elapsed.Seconds) segundos." -ForegroundColor Green
+        Write-Host "Usuario WSL: $USUARIO" -ForegroundColor Green
+        Write-Host "Repositorio listo en: $TARGET_DIR" -ForegroundColor Green
+        Write-Host "Acceso directo con el comando: -d $DISTRO -u $USUARIO" -ForegroundColor Yellow
+    }
+    catch {
+        Write-Host "Error crítico durante el pipeline de Genesis: $_" -ForegroundColor Red
+        exit 1
+    }
+}
+
+# LUNCH: Disparador automático del script
+Main
