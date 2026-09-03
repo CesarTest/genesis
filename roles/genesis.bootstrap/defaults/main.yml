@@ -81,6 +81,7 @@ genesis_local_checksum_file:
    360c3b6b4cc8a58807fca8ac6947c8ec578e482af52d2311ae99ef02fe9d8dc5 *fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img 
    b0389e187ed951727560f517d589f3daa2736dc34dc9aa245b986d72b6f6c3ee *fedora-coreos-44.20260707.3.1-live-kernel.x86_64
    376a1025e24a9f36b0e5e8a2ee8ca8b2c30d29a06e61f0dfe7edf9a9c76ed77b *fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img
+   3c0ace903c0a78b13a09d5649ffc4409370f6d8dab2a79fea310b20ac20a2ac2 *Leap-16.0-offline-installer-x86_64-Build178.27.install.iso
 
 # 6.- Default OS Names 
 genesis_default_os_image_name:
@@ -183,6 +184,7 @@ g1_native_os_installer:
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
     mount: yes
+
   - distribution: "Ubuntu"
     distribution_version: "24.04"
     os_image_name: "x86_64.iso"
@@ -190,31 +192,52 @@ g1_native_os_installer:
     checksum: "https://releases.ubuntu.com/noble/SHA256SUMS"
     checksum_algorithm: "sha256"
     extract_ramdisk: yes
+
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "x86_64.iso"  
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso"
     checksum: "{{ g1_local_checksum_url }}"
-    checksum_algorithm: "sha256"      
+    checksum_algorithm: "sha256" 
+	
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "vmlinuz"
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-kernel.x86_64"
     checksum: "{{ g1_local_checksum_url }}"
     checksum_algorithm: "sha256"
+
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "initrd" 
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
     checksum: "{{ g1_local_checksum_url }}"
     checksum_algorithm: "sha256"
+
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "install.img" 
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260802.3.1/x86_64/fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img"
     checksum: "{{ g1_local_checksum_url }}"
     checksum_algorithm: "sha256"
-    
+
+  - distribution: "Debian"
+    distribution_version: "13.6"
+    os_image_name: "x86_64.iso"
+    image: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso"
+    checksum: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    netinstall_ramdisk: yes
+    mount: yes
+
+  - distribution: "SuSE"
+    distribution_version: "16.0"
+    os_image_name: "x86_64.iso"
+    image: "https://download.opensuse.org/distribution/leap/16.0/offline/Leap-16.0-offline-installer-x86_64-Build178.27.install.iso"
+    checksum: "{{ g1_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+    extract_ramdisk: yes
+    mount: yes
     
 g1_cloud_os_installer:
   - distribution: "CentOS"

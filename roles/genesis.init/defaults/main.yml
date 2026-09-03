@@ -182,6 +182,24 @@ g3_native_os_installer:
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260802.3.1/x86_64/fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img"
     checksum: "{{ g3_local_checksum_url }}"
     checksum_algorithm: "sha256"
+
+  - distribution: "Debian"
+    distribution_version: "13.6"
+    os_image_name: "x86_64.iso"
+    image: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso"
+    checksum: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    netinstall_ramdisk: yes
+    mount: yes
+
+  - distribution: "SuSE"
+    distribution_version: "16.0"
+    os_image_name: "x86_64.iso"
+    image: "https://download.opensuse.org/distribution/leap/16.0/offline/Leap-16.0-offline-installer-x86_64-Build178.27.install.iso"
+    checksum: "{{ g3_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+    extract_ramdisk: yes
+    mount: yes
     
 g3_cloud_os_installer:
   - distribution: "CentOS"
