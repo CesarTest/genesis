@@ -685,21 +685,37 @@ b4_render_initram: "{{ b4_netinstall_os_images_url }}/{{ b4_node_os_definitions.
 
 # --> Menus
 # ==============================================================================
-# FAMILY 1: DRACUT FRAMERWORK ARCHITECTURE
-# SYSTEMS: Red Hat/CentOS (Anaconda), SUSE 16 (Agama), CoreOS (Ignition), MicroOS (Combustion).
+# FAMILY 1: DRACUT FRAMEWORK ARCHITECTURE (PERSISTENT STAGE LIFECYCLE)
+# TARGET SYSTEMS: Red Hat/CentOS/Rocky (Anaconda), SUSE 16 (Agama), CoreOS (Ignition), MicroOS.
 #
-# PARAMETER LAYOUT & DRACUT STAGE REQUISITES:
+# PARSING LOGIC:
+# The Dracut engine natively understands dot-separated (.) syntax in both stages. 
+# Ironic transmits dots safely, and the underlying installer successfully processes them.
+#
+# STAGE I: INITRAMFS EARLY KERNEL SPACE (RAM Space Execution)
+# ------------------------------------------------------------------------------
 # 1. root=live:<URL>:
-#    Directs Dracut to pull and stage the runtime live installation environment squashfs into RAM.
+#    Instructs the early RAM kernel to download and mount the target runtime squashfs root.
+#    Critlcally important to bypass root=/dev/ram0 that Ironic Ramdisk deployment render into iPXE menu.
 # 2. ifname=<interface>:<MAC>:
-#    Enforces absolute hardware isolation by forcing predictive interface allocation strictly 
-#    to our targeted provisioning MAC address, binding it layout-wide to the custom token (net0).
-# 3. ip=<client-ip>:[...]:<interface>:<autoconf>:
-#    Dracut positional network argument. Appending ':none' globally terminates automatic 
-#    DHCP network broadcast discovery loops, establishing static exclusivity on the selected NIC.
+#    Executed strictly in RAM space. Binds the hardware MAC to a fixed custom token (e.g., net0).
+# 3. ip=<client-ip>::<gw>:<netmask>:<hostname>:<interface>:none:
+#    Positional argument for RAM space network configuration. The ':none' suffix completely 
+#    disables early kernel-level DHCP broadcast loops on the specified interface.
 # 4. rd.neednet=1:
-#    Mandates kernel runtime persistence for the established networking configurations, 
-#    ensuring seamless lifecycle handover from initramfs to the secondary installer stage.
+#    Forces runtime network persistence inside the initramfs, preventing the RAM space 
+#    from killing the network link prior to handing over control.
+#
+# STAGE II: INSTALLER USER-SPACE ENVIRONMENT (Installer Space Handover)
+# ------------------------------------------------------------------------------
+# 5. coreos.inst.<parameter>=<value> (CoreOS Installer Space):
+#    Explicitly targeted at the secondary user-space installation script. These flags bypass 
+#    the RAM kernel entirely and are parsed only after the live rootfs payload has been staged.
+# 6. Continuous Lifecycle Handover:
+#    BEHAVIOR: Unlike legacy d-i platforms, modern Dracut-powered installer environments (Anaconda, 
+#    Agama, Ignition, Combustion) directly INHERIT the network interface state and custom name (net0) 
+#    instantiated during Stage I. 
+#    The host maintains unbroken network connectivity (ICMP/Ping active) througho
 # ==============================================================================
 b4_render_menu_anaconda: >-
     root=live:{{ b4_render_ksroot }}
@@ -766,21 +782,42 @@ b4_render_menu_ubcore: >-
     rd.net.dhcp.retry=0
 
 # ==============================================================================
-# FAMILY 2: CASPER ENVIRONMENT AND LEGACY DEBIAN-INSTALLER TRADITION
-# SYSTEMS: Ubuntu Server (Subiquity), Debian (Preseed), VMware (ESXi Hypervisor), Old YaST.
+# FAMILY 2: CASPER ENVIRONMENT AND DEBIAN-INSTALLER (d-i) ARCHITECTURE
+# TARGET SYSTEMS: Ubuntu Server (Subiquity/Casper), Debian (Preseed/Netcfg), VMware (ESXi).
 #
-# PARAMETER LAYOUT & STAGE OVERRIDES:
-# 1. boot=casper & netboot=url:
-#    Instructs the custom Ubuntu ramdisk framework to instantiate network-based bootstrapping,
-#    fetching and mounting the complete cloud-init target squashfs ISO image directly from HTTP.
-# 2. ds=nocloud-net;s=<URL>:
-#    Seeds data source targets for automated cloud-init and subiquity ingestion parameters.
-# 3. BOOTIF=01-<MAC>:
-#    Forces strict hardware isolation mapping using the traditional 01-ARP Ethernet code standard,
-#    bypassing predictive naming bugs across legacy kernel boot modules.
-# 4. Explicit Field Assignments:
-#    Unlike modular Dracut strings, these platforms explicitly process networking arguments 
-#    isolated line-by-line across granular variable keys (ip, netmask, gateway, nameserver).
+# OPENSTACK IRONIC CONSTRAINT NOTICE:
+# The Ironic API validator strictly aborts deployments upon detecting slashes (/), 
+#  or URL encodings (%2f) within certain fields. To bypass this, downstream 
+# d-i variables must leverage native hyphen substitution (e.g., netcfg- instead of netcfg/).
+#
+# STAGE I: INITRAMFS EARLY KERNEL SPACE (Executed strictly BEFORE the '---' delimiter)
+# These parameters manipulate the hardware ring, kernel driver modules, and initial RAM interface.
+# ------------------------------------------------------------------------------
+# 1. ip=<client-ip>::<gw>:<netmask>:<hostname>::off (Debian/Ubuntu Native):
+#    Forces static allocation in early kernel space. The ':off' (or ':none' for Casper) suffix
+#    is mandatory to kill immediate kernel-level DHCP/RARP auto-configuration hooks.
+# 2. BOOTIF=01-<MAC-with-hyphens> & interface=auto:
+#    The physical hardware anchor. 'interface=auto' forces the kernel to inspect the iPXE 
+#    BOOTIF ARP-01 Ethernet header to bind network-boot tasks directly to the active provision link.
+# 3. modules_to_load=<csv_list> / pci=realloc / panic=10:
+#    Kernel execution space arguments to stabilize disk controller/HBA fabrics prior to root handoff.
+# 4. boot=casper & netboot=url (Ubuntu Exclusive):
+#    Instructs the Casper framework to spawn an ephemeral interface, fetch the root squashfs
+#    ISO via HTTP, and overlay it directly in RAM before the secondary installer executes.
+#
+# STAGE II: INSTALLER USER-SPACE ENVIRONMENT (Executed strictly AFTER the '---' delimiter)
+# Debian 'd-i' totally tears down and erases the Initramfs network map. When udev renames 
+# the adapter (e.g., net0 -> ens18), the following d-i / debconf responses maintain automation:
+# ------------------------------------------------------------------------------
+# 5. url=<URL> (Verified & Accepted):
+#    CONFIRMED BEHAVIOR: The short alias 'url=' is successfully ingested and parsed by the 
+#    preseed deployment framework without triggering environmental execution blocks.
+# 6. auto=true & priority=critical:
+#    Silences interactive wizard prompts. Forces debconf to instantly accept automated seeds.
+# 7. netcfg-disable_dhcp=true & netcfg-disable_autoconfig=true:
+#    Neutralizes user-space DHCP/IPv6 discovery attempts triggered on the newly renamed ens18 link.
+# 8. netcfg-get_ipaddress / netcfg-get_netmask / netcfg-get_gateway / netcfg-get_nameservers:
+#    Re-injects and locks the static networking architecture directly inside the debian-installer.
 # ==============================================================================
 b4_render_menu_casper: >-
     boot=casper
@@ -798,23 +835,32 @@ b4_render_menu_casper: >-
     BOOTIF=01-{{ b4_render_mac }}
     modules_to_load={{ b4_render_modules_casper }}
 
+#----
+# Debian Installer do not take parameters,
+#    TODO: syntax allowed by Ironic and iPXE, 
+#            accepted by installer 
+#----
 b4_render_menu_preseed: >-
-    auto-install_enable=true
+    ip={{ b4_render_ip }}::none:::{{ b4_enroll_nic_provision_mac }} 
+    BOOTIF=01-{{ b4_render_mac }}
+    biosdevname=0
+    pci=realloc
+    panic=10
+    modules_to_load={{ b4_render_modules_preseed }}
+    interface=auto    
+    nameserver={{ b4_url_genesis_ip }}    
     url={{ b4_node_os_manifesto['url'] }}
-    interface=auto
-    netcfg.disable_dhcp=true
-    netcfg.disable_autoconfig=true
-    netcfg.get_ipaddress={{ b4_enroll_nic_provision_ip }}
-    netcfg.get_netmask={{ b4_enroll_nic_provision_netmask }}
-    netcfg.get_gateway={{ b4_url_genesis_ip }}
-    netcfg.get_nameservers={{ b4_url_genesis_ip }}
-    netcfg.choose_interface={{ b4_enroll_nic_provision_mac }} 
-    nameservers={{ b4_url_genesis_ip }}
-    netcfg_confirm_static=true
+    ---
     auto=true
     priority=critical
-    BOOTIF=01-{{ b4_render_mac }}
-    modules_to_load={{ b4_render_modules_preseed }}
+    netcfg-disable_dhcp=true
+    netcfg-disable_autoconfig=true
+    netcfg-confirm_static=true
+    netcfg-get_ipaddress={{ b4_enroll_nic_provision_ip }}
+    netcfg-get_netmask={{ b4_enroll_nic_provision_netmask }}
+    netcfg-get_gateway={{ b4_url_genesis_ip }}
+    netcfg-get_nameservers={{ b4_url_genesis_ip }}
+    netcfg-choose_interface={{ b4_enroll_nic_provision_mac }}
 
 b4_render_menu_esxi: >-
     ks={{ b4_node_os_manifesto['url'] }}
