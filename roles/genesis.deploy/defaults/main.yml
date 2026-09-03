@@ -11,10 +11,11 @@
 # 1.- Repos Paths
 genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+genesis_http_path: "{{ ironic_http_path | default('/var/lib/ironic/httpboot') | realpath }}"
 
 # 2.- Bifrost Role Paths
 genesis_bifrost_role_name: "genesis.bifrost"
-genesis_bifrost_path:  "{{ role_path }}/../{{ genesis_bifrost_role_name }}"
+genesis_bifrost_path:  "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
 genesis_bifrost_roles: "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
 genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
 genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"

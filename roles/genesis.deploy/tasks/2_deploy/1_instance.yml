@@ -5,7 +5,11 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- ansible.builtin.include_role:
+#----------------------------------
+# 1.- Shoot Ironic Deploy Stage
+#----------------------------------
+- name: "B5 - DEPLOY - 2.- Deploy: 2.1) Deploy Instance"
+  ansible.builtin.include_role:
     name: "{{ b5_baremetal_deploy.name }}"
   when: 
     - b5_baremetal_deploy.name is defined
@@ -13,3 +17,34 @@
   loop: "{{ b5_baremetal_deploy_roles | default([]) }}"
   loop_control:
     loop_var: "b5_baremetal_deploy"  
+
+#----------------------------------
+# WORKAROUND: fixes on iPXE menu for Debian OS Native Installer
+#----------------------------------
+- vars:
+    b5_instance_pxe_file: "{{ genesis_http_path | default('') }}/{{ uuid | default('') }}/config"
+  block:
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Wait Ironic to Render PXE/iPXE files"
+      ansible.builtin.wait_for:
+        path: "{{ b5_instance_pxe_file }}"
+        state: present
+        timeout: 300
+        delay: 2
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.3) Fix OS Native Debian Installer"
+      become: true
+      ansible.builtin.replace:
+        path: "{{ b5_instance_pxe_file }}"
+        regexp: 'netcfg\.'
+        replace: 'netcfg/'
+
+  when:
+    - uuid is defined
+    - uuid is not none
+    - deploy_interface is defined
+    - deploy_interface is not none
+    - "'ramdisk' in deploy_interface"
+    - instance_info.kernel_append_params is defined
+    - instance_info.kernel_append_params is not none
+    - "'netcfg' in instance_info.kernel_append_params"

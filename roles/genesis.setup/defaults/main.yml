@@ -674,7 +674,9 @@ b4_render_ignroot: "{{ b4_render_ksroot }}"
 b4_render_casperds: 'nocloud-net;s={{ b4_node_os_manifesto["url"] | default("") }}'
 b4_render_modules_casper: "r8125,r8168,r8169,e1000e,igb,ixgbe,i40e,ice,tg3,bnxt_en,bnx2x,mlx5_core,virtio_net,vmxnet3"
 b4_render_presubpath: "/{{ b4_os_mounted_repo_subpath }}/{{ b4_url_full_subpath }}"
-b4_render_modules_preseed: "sd_mod,scsi_mod,mpt3sas,megaraid_sas,hpsa,virtio_blk"
+b4_render_modules_preseed:
+  ramdisk: "virtio_blk,virtio_net,virtio_pci,ahci,ata_piix,sd_mod,scsi_mod,mpt3sas,megaraid_sas,hpsa,smartpqi"
+  installer: "virtio-modules,sata-modules,scsi-core-modules,scsi-extra-modules,ext4-modules,xfs-modules"
 
 # 2.2- Menu Rendering
 #.....................................
@@ -839,28 +841,28 @@ b4_render_menu_casper: >-
 # Debian Installer do not take parameters,
 #    TODO: syntax allowed by Ironic and iPXE, 
 #            accepted by installer 
+#  WORKAROUND: at deploy stage filter iPXE file
 #----
 b4_render_menu_preseed: >-
     ip={{ b4_render_ip }}::none:::{{ b4_enroll_nic_provision_mac }} 
     BOOTIF=01-{{ b4_render_mac }}
+    ksdevice=bootif
+    interface=auto
     biosdevname=0
     pci=realloc
     panic=10
-    modules_to_load={{ b4_render_modules_preseed }}
-    interface=auto    
-    nameserver={{ b4_url_genesis_ip }}    
+    modules_to_load={{ b4_render_modules_preseed.ramdisk }}  
     url={{ b4_node_os_manifesto['url'] }}
     ---
     auto=true
     priority=critical
-    netcfg-disable_dhcp=true
-    netcfg-disable_autoconfig=true
-    netcfg-confirm_static=true
-    netcfg-get_ipaddress={{ b4_enroll_nic_provision_ip }}
-    netcfg-get_netmask={{ b4_enroll_nic_provision_netmask }}
-    netcfg-get_gateway={{ b4_url_genesis_ip }}
-    netcfg-get_nameservers={{ b4_url_genesis_ip }}
-    netcfg-choose_interface={{ b4_enroll_nic_provision_mac }}
+    netcfg.disable_dhcp=true
+    netcfg.disable_autoconfig=true
+    netcfg.confirm_static=true
+    netcfg.get_ipaddress={{ b4_enroll_nic_provision_ip }}
+    netcfg.get_netmask={{ b4_enroll_nic_provision_netmask }}
+    netcfg.get_gateway={{ b4_url_genesis_ip }}
+    netcfg.get_nameservers={{ b4_url_genesis_ip }}
 
 b4_render_menu_esxi: >-
     ks={{ b4_node_os_manifesto['url'] }}
@@ -1436,14 +1438,17 @@ b4_autoyast_template_os_profiles:
 # 4.- Preseed Manifesto
 #------------------------------------
 b4_preseed_template_defaults:
-  preinstall: |
+   preinstall: |
     # Prevent DHCP loops and initialize manual network setup immediately
     d-i netcfg/disable_autoconfig boolean true
-    d-i netcfg/use_dhcp boolean false
     d-i netcfg/disable_dhcp boolean true
     d-i netcfg/dhcp_options select Configure network manually
     d-i netcfg/confirm_static boolean true
-
+    
+    # Load Storage Modules
+    d-i anna/choose_modules string {{ b4_render_modules_preseed.installer }}
+    d-i hw-detect/load_firmware boolean true
+    
   system: |       
     # System localization configuration
     d-i debian-installer/locale string {{ b4_node_os_locale_info.lang | default('en_US.UTF-8') }}
@@ -1492,7 +1497,10 @@ b4_preseed_template_defaults:
     d-i netcfg/get_nameservers string {{ b4_url_genesis_ip }}
     d-i netcfg/get_hostname string {{ b4_enroll_node_name }}
 
-  storage: |	
+  storage: |
+    # PROXMOX -> Workaround
+    d-i partman/early_command string anna-install virtio-modules; sleep 5; udevadm settle; list-devices disk
+    
     {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('sda') %}
     {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'sda' %}{% endif %}
     
