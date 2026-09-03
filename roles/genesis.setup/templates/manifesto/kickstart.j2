@@ -108,16 +108,16 @@
 {%- set ks_logging     = logging_candidatos  | select | first | default('') -%}
 {#......... 2.- Kickstart Sections Definition ..... #}
 {%-  set ks_sections = [  
-        { "header": "# Installer",                        "content": ks_preinstall },
-        { "header": "# Users",                            "content": ks_user     },
-        { "header": "# Users",                            "content": ks_repos     },
-        { "header": "# SYSTEM",                           "content": ks_system   },
-		{ "header": "# System authorization information", "content": ks_auth     },	  
-        { "header": "# SSH Keys",                         "content": ks_ssh      },	
-        { "header": "# Installation logging level",       "content": ks_logging  },
-        { "header": "# Network information",              "content": ks_network  },
-        { "header": "# Partitions",                       "content": ks_storage  },				  
-        { "header": "%packages", "end": "%end\n",         "content": ks_packages },
+        { "header": "# ------> Installer & Initialization",  "content": ks_preinstall },
+        { "header": "# ------> Users & Passwords",           "content": ks_user     },
+        { "header": "# ------> Mirror Repositories",         "content": ks_repos     },
+        { "header": "# ------> System Properties",           "content": ks_system   },
+		{ "header": "# ------> System authorization",        "content": ks_auth     },	  
+        { "header": "# ------> SSH Keys",                    "content": ks_ssh      },	
+        { "header": "# ------> Installation Logging Level",  "content": ks_logging  },
+        { "header": "# ------> Network Information",         "content": ks_network  },
+        { "header": "# ------> Partitions & Storage Layout", "content": ks_storage  },				  
+        { "header": "%packages", "end": "%end\n",            "content": ks_packages },
         { "header": "%post --log=/root/ks-post-ipmi.log", "end":"%end\n", "content": ks_postinstall }
       ]			  
 -%}
@@ -125,11 +125,12 @@
          RENDERING FILE
  ##############################}
 # ==============================================================================
-# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY                            
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                           
 # Generated dynamically by Genesis Core Engine Mesh                              
 # Deployment Context: Anaconda Kickstart / Automated OS Provisioning Profile    
-# Timestamp: 2026                                                                
+# Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }} 
 # ==============================================================================
+{{ eol }}
 {%- for section in ks_sections -%}
   {%- if section.content -%}
 {{ section.header | default('') }}
