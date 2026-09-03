@@ -199,7 +199,7 @@ g1_native_os_installer:
     image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso"
     checksum: "{{ g1_local_checksum_url }}"
     checksum_algorithm: "sha256" 
-	
+
   - distribution: "CoreOS"
     distribution_version: "44"
     os_image_name: "vmlinuz"

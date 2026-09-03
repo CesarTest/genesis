@@ -23,8 +23,12 @@
     - name: "GENESIS API: Cast global string variables to native booleans"
       ansible.builtin.set_fact:
         genesis_hypervisor: "{{ target_hypervisor | default(inventory_name) | default('proxmox') }}"
+  #roles: 
+    #- role: "genesis.test"
+    #  vars:
+    #    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
 
-  roles: 
-    - role: "genesis.test"
-      vars:
-        genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
+  tasks:
+    - name: "DEBUG: Mostrar valor final de genesis_hypervisor"
+      ansible.builtin.debug:
+        var: genesis_hypervisor

@@ -122,16 +122,23 @@ PXE=( "${network_interface}" "${dhcp_address}" "${dhcp_pool_start}" "${dhcp_pool
 
 # 2.4.- Dependencies
 PIP=0; SCRIPTS=1; INSTALLER=2
-DEPENDENCIES=( 'collections/requirements.yml' \
+GENESIS_DEPENDENCIES=( 'collections/requirements.yml' \
                'roles/requirements.yml' \
                '#' \
 			   '#' \
               )
 
-DEPENDENCIES_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
+GENESIS_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                     'ansible-galaxy role install --force -r ' \
 						 'sed -i "/cdglab.duckdns.org/d" /etc/hosts' \
                         )
+
+PROXMOX_DEPENDENCIES=( '#' \
+                     )
+					 
+PROXMOX_INSTALLER=( 'ansible-galaxy collection install --force community.proxmox' \
+                  )
+					 
 
 ########################################################################################
 # MODULE 1 => MENU DEFINITION
@@ -513,13 +520,15 @@ function defineMenu() {
        33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}")
 		      MENU_TEXT="(33)___________ ${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/e1_proxmox.log"  ; fi
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+              PARAMETRO=(     "HYPERVISOR_IP" "HYPERVISOR_PASSWORD"  "LOG_FILE" )
+              VALOR_DEFECTO=( "192.168.1.133" "root" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Proxmox Hypervisor IP [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Proxmox Root Password [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File              [${VALOR_DEFECTO[2]}]:" \
                                  )
               RETURNING_MENU="10"
               RUN_ACTION="33"
-              unset GENESIS_REFRESH LOG_FILE 
+              unset HYPERVISOR_IP HYPERVISOR_PASSWORD LOG_FILE 
               ;;
 
 	     [?])
@@ -865,6 +874,7 @@ installDependencies() {
 #  Download Bifrost Dependencies
 #===================================================
 installEnvironment() {
+ 
    
    # Local Environment
    #------------------
@@ -881,11 +891,13 @@ installEnvironment() {
 	 if [ "${INDEX_CMD}" -lt "${#DEPENDENCIES_INSTALLER[@]}" ] ; then
 	     local COMMAND="${DEPENDENCIES_INSTALLER[${INDEX_CMD}]}"
 	     local INDEX_CMD=$(expr ${INDEX_CMD} + 1)
+	     echo "${LOG_HEADER} -> ..Command: [${COMMAND}]"
 	  fi
           
 	  # 2.- Get CMD Result
 	  local FILES=( "${DEPENDENCIES[$INDEX_DEP]}" )
-		  
+	  echo "${LOG_HEADER} -> ..Files: [${FILES}]"
+	  
 	  # 3.- RUN Script	  
 	  local RUTA="${RUTA_PROJECT}"
 	  runScripts
@@ -931,12 +943,32 @@ bifrostScriptsWorkaround() {
 #  Chack Bifrost Installer Dependencies
 #===================================================
 prepareLocalMachine() {
-  local  PACKAGES=( ${DEP_INSTALLER[@]} )
+  local ARRAY_ELEMENT
+  for ARRAY_ELEMENT in "${DEP_INSTALLER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
   runOSfixes
   installDependencies
   firewallZone
   installEnvironment
   bifrostScriptsWorkaround
+}
+
+#===================================================
+#   Function: prepareProxmoxInstaller
+#---------------------------------------------------
+#  Private Function
+#
+#  Prepare a PC to create Airgap Virtual Environment
+#===================================================
+prepareProxmoxInstaller() {
+  local ARRAY_ELEMENT
+  for ARRAY_ELEMENT in "${DEP_INSTALLER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${PROXMOX_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${PROXMOX_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
+  runOSfixes  
+  installDependencies
+  installEnvironment
 }
 
 #========================================================
@@ -1182,17 +1214,18 @@ function trust_relationships() {
     #---------------------------
     # LOCAL ENVIRONMENT
     #---------------------------
+	local USER_FORCED="${1}"
     if [ ! -n "${BAREMETAL_ROOT_PASSWORD}" ] ; then local BAREMETAL_ROOT_PASSWORD="root" ; fi	
     local LIST_OF_NODES_FILE="${1}"
     local NODE INVENTORY_LIST
-    if [ -n "${USER}" ] ; then local USER="${USER}@" 
-	else                       local USER="root@"  
+    if   [ -n "${USER_FORCED}" ] ; then local USER="${USER_FORCED}@" 
+    elif [ -n "${USER}"        ] ; then local USER="${USER}@" 
+	else local USER="root@"  
 	fi    
 	
     #---------------------------
     # ACTIONS
     #---------------------------
-	
 	
 	# 1.- Load list of IP nodes
     echo "-----> Loading Nodes"
@@ -1200,6 +1233,8 @@ function trust_relationships() {
     echo "${LOG_HEADER} -... GENESIS_ANSIBLE_INVENTORY_SOURCE=[${GENESIS_ANSIBLE_INVENTORY_SOURCE}]"
 	if [ -r "${LIST_OF_NODES_FILE}" ] ; then
         . "${LIST_OF_NODES_FILE}" 2> /dev/null
+    elif [ -n "${LIST_OF_NODES_FILE_ARRAY}" ] ; then
+	    local INVENTORY_LIST=( ${LIST_OF_NODES_FILE_ARRAY[@]} )
     elif [ -r "${GENESIS_ANSIBLE_INVENTORY_SOURCE}" ] ; then
 	    echo "runAdHoc ' ' '--list-hosts' | sed '1d'"
 	    local INVENTORY_LIST=( $(runAdHoc ' ' '--list-hosts' | sed '1d') )
@@ -2335,6 +2370,30 @@ function 8_test() {
 }
 
 #========================================================
+#   Function: 18_hypervisor
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 18_hypervisor() {
+
+   # 2.- Set Shoot Conditions  
+   local PLAYBOOK_INDEX="${1:-18}"
+   local EMULATION=$(echo "${HYPERVISOR}" | tr '[:upper:]' '[:lower:]')
+   local EMULATION_IP=$(echo "${HYPERVISOR_IP}" | tr '[:upper:]' '[:lower:]' | tr -d ' ') 
+   local BAREMETAL_ROOT_PASSWORD="${HYPERVISOR_PASSWORD}"
+   local LIST_OF_NODES_FILE_ARRAY=( "${EMULATION_IP}" )
+   case "${EMULATION}" in
+    "proxmox")
+	    EXTRA_VARS="target_hypervisor=proxmox"
+        prepareProxmoxInstaller
+		trust_relationships 'root'
+		0_call "${PLAYBOOK_INDEX}"
+        ;;
+   esac
+   unset EMULATION EMULATION_IP HYPERVISOR HYPERVISOR_IP LIST_OF_NODES_FILE_ARRAY PLAYBOOK_INDEX BAREMETAL_ROOT_PASSWORD
+}
+
+#========================================================
 #   Function: runActions
 #--------------------------------------------------------
 #  Execute Menu actions
@@ -2362,7 +2421,7 @@ function runActions() {
         25|"${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}")  underConstruction ;;
         26|"${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}")  underConstruction ;;
         27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}") underConstruction ;;
-        33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}") underConstruction ;;
+        33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}") local HYPERVISOR='proxmox' ; 18_hypervisor "${E1_PROXMOX}" ;;
     esac
 }
 
