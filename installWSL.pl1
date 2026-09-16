@@ -9,27 +9,28 @@
 #  cd "$env:USERPROFILE\Desktop"
 
 # ---> CONFIGURACIÓN GLOBAL (VARIABLES CENTRALIZADAS)
-$USUARIO       = "cesar"
-$CONTRASENA    = "cesar"
+$USUARIO       = "javier"
+$CONTRASENA    = "malo"
 
 $GIT_NAME      = "Cesar DGM"
 $GIT_EMAIL     = "cesar.electronic.engineer@gmail.com"
-$REPO_URL      = "https://github.com/CesarTest/genesis.git"
+$REPO_URL      = "git@github.com:CesarTest/genesis.git"
 $TARGET_DIR    = "/home/$USUARIO/genesis"
 
 $DISTRO        = "Debian"
+$SSH_PORT      = "2222"
 
 # ------------------------------------------------------------------------------
 # FASE 0: Deteccion Distro ya instalada
 # ------------------------------------------------------------------------------
 function Detectar-Entorno {
 	
-    # ===> Comprueba si la distribucion ya está instalada
+    # ===> Comprueba si la distribucion ya esta instalada
     $instalada = (wsl --list --quiet) -contains $DISTRO
     
-	# CASO 1 => La distro Ya está en el Sistema
+	# CASO 1 => La distro Ya esta en el Sistema
     if ($instalada) {
-        Write-Host "La distribucion $DISTRO ya está instalada." -ForegroundColor Yellow
+        Write-Host "La distribucion $DISTRO ya esta instalada." -ForegroundColor Yellow
       
 	    # 1.1. Pregunta al usuario si desea formatear/reinstalar todo de nuevo
         $respuesta = Read-Host "¿Deseas proceder con una instalacion limpia desde cero? (S/N)"
@@ -43,7 +44,7 @@ function Detectar-Entorno {
         return $true
     }
 	
-	# CASO 2 => La distro no está en el sistema => False=Refrescar Instalacion
+	# CASO 2 => La distro no esta en el sistema => False=Refrescar Instalacion
     return $false
 }
 
@@ -59,13 +60,14 @@ function Sanear-Entorno {
     
     # 2. Eliminamos el registro interno de WSL
     $distrosActuales = (wsl --list --quiet) -replace "`0", "" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
-    $nombreReal = $distrosActuales | Where-Object { $_ -match "Debian" -or $_ -match "Ubuntu" }
+    $nombreReal = $distrosActuales | Where-Object { $_ -match $DISTRO }
     if ($nombreReal) {
         wsl --unregister $nombreReal 2>$null
     }
 
-    # EL CAMBIO QUIRÚRGICO AQUÍ: Desinstala la App de Windows Store para que NO diga "ya existe"
-    Get-AppxPackage -AllUsers | Where-Object { $_.Name -match "Debian" -or $_.Name -match "Ubuntu" } | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+    # Desinstala la App de Windows Store para que NO diga "ya existe"
+    Get-AppxPackage -AllUsers | Where-Object { $_.Name -match $DISTRO } | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+
 
     # 3. Levantamos el servicio limpio
     Start-Service -Name "WslService" -ErrorAction SilentlyContinue
@@ -78,7 +80,7 @@ function Sanear-Entorno {
 function Instalar-Distribucion {
     Write-Host "[2/6] Instalar-Distribucion: Lanzando instalacion de $DISTRO en primer plano..." -ForegroundColor Cyan
     
-    # Quitamos --no-launch para que Windows inicialice la máquina de forma síncrona y visible
+    # Quitamos --no-launch para que Windows inicialice la maquina de forma sincrona y visible
     wsl --install -d $DISTRO 
     
     # Pausa de seguridad para asegurar que el subsistema ha terminado de registrarse en Windows
@@ -109,26 +111,6 @@ apt-get install -y git curl jq python3-pip python3-venv openssh-server
 }
 
 # ------------------------------------------------------------------------------
-# FASE 5: Inyeccion de Ansible
-# ------------------------------------------------------------------------------
-function Inject-AnsibleToDebian {
-    Write-Host "====== 1. Actualizando Debian y dependencias ======" -ForegroundColor Cyan
-    wsl -d Debian -u root apt update
-    wsl -d Debian -u root apt install -y python3-pip python3-venv pipx
-
-    Write-Host "====== 2. Configurando variables de entorno en Linux ======" -ForegroundColor Cyan
-    wsl -d Debian -u root pipx ensurepath --global
-
-    Write-Host "====== 3. Instalando Ansible de forma aislada ======" -ForegroundColor Cyan
-    wsl -d Debian -u root pipx install --include-deps ansible --global
-
-    Write-Host "====== 4. Verificando la instalacion ======" -ForegroundColor Cyan
-    wsl -d Debian ansible --version
-
-    Write-Host "[ OK ] ¡Ansible ha sido inyectado con éxito en tu distribucion Debian!" -ForegroundColor Green
-}
-
-# ------------------------------------------------------------------------------
 # FASE 6: Configuración del Servidor SFTP/SSH para Notepad++
 # ------------------------------------------------------------------------------
 function Configurar-SSH {
@@ -136,7 +118,7 @@ function Configurar-SSH {
 
     # Encapsulamos las órdenes de Linux limpiando configuraciones previas
     $LinuxCommands = "echo 'Configurando sshd_config...'; " +
-                     "sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config; " +
+                     "sed -i 's/#Port 22/Port $SSH_PORT/' /etc/ssh/sshd_config; " +
                      "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config; " +
                      "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config; " +
                      "echo 'Generando llaves de host SSH esenciales...'; " +
@@ -149,17 +131,17 @@ function Configurar-SSH {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 7: Sincronizacion del repositorio de Genesis
+# FASE 6: Sincronizacion del repositorio de Genesis
 # ------------------------------------------------------------------------------
 function Clonar-Repositorio {
     Write-Host "[6/6] Clonar-Repositorio: Configurando Git y descargando Genesis..." -ForegroundColor Cyan
 
-    # Corregido: Se añade el '$' antes del paréntesis para la sintaxis de Bash: $(dirname ...)
     $LinuxCommands = "git config --global user.name '$GIT_NAME'; " +
                      "git config --global user.email '$GIT_EMAIL'; " +
                      "git config --global http.sslVerify false; " +
+                     "git config --global core.sshCommand 'ssh -o StrictHostKeyChecking=no'; " +
                      "echo 'Clonando repositorio en $TARGET_DIR...'; " +
-                     "mkdir -p `$(dirname '$TARGET_DIR'); " + # El ` evita que PowerShell lo interprete
+                     "mkdir -p `$(dirname '$TARGET_DIR'); " + 
                      "git clone '$REPO_URL' '$TARGET_DIR'"
 
     # Ejecutamos de forma correcta en WSL
@@ -182,7 +164,6 @@ function Main {
             Instalar-Distribucion
             Reiniciar-Motor
             Inyectar-Paquetes
-            #Inject-AnsibleToDebian
             Configurar-SSH
             Clonar-Repositorio
             $cronometro.Stop()
@@ -197,10 +178,10 @@ function Main {
         wsl -d $DISTRO -u $USUARIO --cd $TARGET_DIR
     }
     catch {
-        Write-Host "Error crítico durante el pipeline de Genesis: $_" -ForegroundColor Red
+        Write-Host "Error critico durante el pipeline de Genesis: $_" -ForegroundColor Red
         exit 1
     }
 }
 
-# LUNCH: Disparador automático del script
+# LUNCH: Disparador automatico del script
 Main
