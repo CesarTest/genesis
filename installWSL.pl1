@@ -90,7 +90,7 @@ function Instalar-Distribucion {
 # FASE 3: Reinicio y asentamiento del motor
 # ------------------------------------------------------------------------------
 function Reiniciar-Motor {
-    Write-Host "[4/6] Reiniciar-Motor: Reiniciando el hipervisor WSL..." -ForegroundColor Cyan
+    Write-Host "[3/6] Reiniciar-Motor: Reiniciando el hipervisor WSL..." -ForegroundColor Cyan
     wsl --terminate $DISTRO
     Start-Sleep -Seconds 2
 }
@@ -99,11 +99,11 @@ function Reiniciar-Motor {
 # FASE 4: Inyeccion de herramientas del sistema base
 # ------------------------------------------------------------------------------
 function Inyectar-Paquetes {
-    Write-Host "[5/6] Inyectar-Paquetes: Actualizando APT e instalando Git..." -ForegroundColor Cyan
+    Write-Host "[4/6] Inyectar-Paquetes: Actualizando APT e instalando Git..." -ForegroundColor Cyan
     $PackScript = @"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -y git curl jq python3-pip python3-venv
+apt-get install -y git curl jq python3-pip python3-venv openssh-server
 "@
     wsl -d $DISTRO -u root exec bash -c $PackScript
 }
@@ -129,7 +129,27 @@ function Inject-AnsibleToDebian {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 6: Sincronizacion del repositorio de Genesis
+# FASE 6: Configuración del Servidor SFTP/SSH para Notepad++
+# ------------------------------------------------------------------------------
+function Configurar-SSH {
+    Write-Host "[5/6] Configurar-SSH: Ajustando puerto 2222 y habilitando SFTP..." -ForegroundColor Cyan
+
+    # Encapsulamos las órdenes de Linux limpiando configuraciones previas
+    $LinuxCommands = "echo 'Configurando sshd_config...'; " +
+                     "sed -i 's/#Port 22/Port 2222/' /etc/ssh/sshd_config; " +
+                     "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config; " +
+                     "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config; " +
+                     "echo 'Generando llaves de host SSH esenciales...'; " +
+                     "ssh-keygen -A; " +
+                     "echo 'Reiniciando servicio OpenSSH...'; " +
+                     "service ssh restart"
+
+    # Se ejecuta obligatoriamente como ROOT (-u root) para poder modificar /etc/ y levantar el servicio
+    wsl -d $DISTRO -u root -e bash -c $LinuxCommands
+}
+
+# ------------------------------------------------------------------------------
+# FASE 7: Sincronizacion del repositorio de Genesis
 # ------------------------------------------------------------------------------
 function Clonar-Repositorio {
     Write-Host "[6/6] Clonar-Repositorio: Configurando Git y descargando Genesis..." -ForegroundColor Cyan
@@ -145,6 +165,7 @@ function Clonar-Repositorio {
     # Ejecutamos de forma correcta en WSL
     wsl -d $DISTRO -u $USUARIO -e bash -c $LinuxCommands
 }
+
 
 # ==============================================================================
 # FUNCIÓN PRINCIPAL (ORQUESTADOR MAIN)
@@ -162,8 +183,8 @@ function Main {
             Reiniciar-Motor
             Inyectar-Paquetes
             #Inject-AnsibleToDebian
+            Configurar-SSH
             Clonar-Repositorio
-
             $cronometro.Stop()
             Write-Host "¡Victoria! Entorno operativo completo generado en $($cronometro.Elapsed.Seconds) segundos." -ForegroundColor Green
             Write-Host "Usuario WSL: $USUARIO" -ForegroundColor Green
