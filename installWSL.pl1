@@ -1,5 +1,5 @@
 # ==============================================================================
-# GENESIS CORE ENGINE - WSL BOOTSTRAPPER POWER SHELL SCRIPT
+# GENESIS CORE ENGINE - WSL BOOTSTRAPPER
 # - Enabling Power Shell Scripts:
 #   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
 #
@@ -20,28 +20,66 @@ $TARGET_DIR    = "/home/$USUARIO/genesis"
 $DISTRO        = "Debian"
 
 # ------------------------------------------------------------------------------
-# FASE 1: Saneamiento del hipervisor local
+# FASE 0: Deteccion Distro ya instalada
 # ------------------------------------------------------------------------------
-function Sanear-Entorno {
-    Write-Host "[1/6] Sanear-Entorno: Pulverizando instancias previas..." -ForegroundColor Cyan
-    wsl --unregister $DISTRO 2>$null
-    wsl --shutdown
-
-    # Detiene el servicio de red que usa WSL en segundo plano
-    Stop-Service -Name "WslService" -Force -ErrorAction SilentlyContinue
-    Stop-Service -Name "Hns" -Force -ErrorAction SilentlyContinue
-    Start-Service -Name "WslService" -ErrorAction SilentlyContinue
-    Start-Service -Name "Hns" -ErrorAction SilentlyContinue
+function Detectar-Entorno {
+	
+    # ===> Comprueba si la distribucion ya está instalada
+    $instalada = (wsl --list --quiet) -contains $DISTRO
+    
+	# CASO 1 => La distro Ya está en el Sistema
+    if ($instalada) {
+        Write-Host "La distribucion $DISTRO ya está instalada." -ForegroundColor Yellow
+      
+	    # 1.1. Pregunta al usuario si desea formatear/reinstalar todo de nuevo
+        $respuesta = Read-Host "¿Deseas proceder con una instalacion limpia desde cero? (S/N)"
+        
+        # 1.2.- Si dice que SI a Reinstalar => False=Refrescar Instalacion
+        if ($respuesta -match "^[sSyY]([iI]|[eE][sS])?$") {
+            return $false 
+        }
+        
+        # 1.3. Cualquier Otra Respuesta => True=Acceder a la instancia instalada
+        return $true
+    }
+	
+	# CASO 2 => La distro no está en el sistema => False=Refrescar Instalacion
+    return $false
 }
 
 # ------------------------------------------------------------------------------
-# FASE 2: Instalación limpia del sistema operativo (Primer plano visible)
+# FASE 1: Saneamiento del hipervisor local
+# ------------------------------------------------------------------------------
+function Sanear-Entorno {
+    Write-Host "[1/6] Sanear-Entorno: Deteniendo servicios y pulverizando instancias..." -ForegroundColor Cyan
+    
+    # 1. Apagamos el motor WSL para liberar cualquier archivo bloqueado
+    wsl --shutdown 2>$null
+    Stop-Service -Name "WslService" -Force -ErrorAction SilentlyContinue
+    
+    # 2. Eliminamos el registro interno de WSL
+    $distrosActuales = (wsl --list --quiet) -replace "`0", "" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+    $nombreReal = $distrosActuales | Where-Object { $_ -match "Debian" -or $_ -match "Ubuntu" }
+    if ($nombreReal) {
+        wsl --unregister $nombreReal 2>$null
+    }
+
+    # EL CAMBIO QUIRÚRGICO AQUÍ: Desinstala la App de Windows Store para que NO diga "ya existe"
+    Get-AppxPackage -AllUsers | Where-Object { $_.Name -match "Debian" -or $_.Name -match "Ubuntu" } | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+
+    # 3. Levantamos el servicio limpio
+    Start-Service -Name "WslService" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}
+
+# ------------------------------------------------------------------------------
+# FASE 2: Instalacion limpia del sistema operativo (Primer plano visible)
 # ------------------------------------------------------------------------------
 function Instalar-Distribucion {
-    Write-Host "[2/6] Instalar-Distribucion: Lanzando instalación de $DISTRO en primer plano..." -ForegroundColor Cyan
+    Write-Host "[2/6] Instalar-Distribucion: Lanzando instalacion de $DISTRO en primer plano..." -ForegroundColor Cyan
     
     # Quitamos --no-launch para que Windows inicialice la máquina de forma síncrona y visible
-    wsl --install -d $DISTRO
+    wsl --install -d $DISTRO 
     
     # Pausa de seguridad para asegurar que el subsistema ha terminado de registrarse en Windows
     Write-Host "Esperando 5 segundos para el asentamiento del contenedor..." -ForegroundColor Yellow
@@ -58,7 +96,7 @@ function Reiniciar-Motor {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 4: Inyección de herramientas del sistema base
+# FASE 4: Inyeccion de herramientas del sistema base
 # ------------------------------------------------------------------------------
 function Inyectar-Paquetes {
     Write-Host "[5/6] Inyectar-Paquetes: Actualizando APT e instalando Git..." -ForegroundColor Cyan
@@ -71,7 +109,7 @@ apt-get install -y git curl jq python3-pip python3-venv
 }
 
 # ------------------------------------------------------------------------------
-# FASE 5: Inyección de Ansible
+# FASE 5: Inyeccion de Ansible
 # ------------------------------------------------------------------------------
 function Inject-AnsibleToDebian {
     Write-Host "====== 1. Actualizando Debian y dependencias ======" -ForegroundColor Cyan
@@ -84,14 +122,14 @@ function Inject-AnsibleToDebian {
     Write-Host "====== 3. Instalando Ansible de forma aislada ======" -ForegroundColor Cyan
     wsl -d Debian -u root pipx install --include-deps ansible --global
 
-    Write-Host "====== 4. Verificando la instalación ======" -ForegroundColor Cyan
+    Write-Host "====== 4. Verificando la instalacion ======" -ForegroundColor Cyan
     wsl -d Debian ansible --version
 
-    Write-Host "[ OK ] ¡Ansible ha sido inyectado con éxito en tu distribución Debian!" -ForegroundColor Green
+    Write-Host "[ OK ] ¡Ansible ha sido inyectado con éxito en tu distribucion Debian!" -ForegroundColor Green
 }
 
 # ------------------------------------------------------------------------------
-# FASE 6: Sincronización del repositorio de Genesis
+# FASE 6: Sincronizacion del repositorio de Genesis
 # ------------------------------------------------------------------------------
 function Clonar-Repositorio {
     Write-Host "[6/6] Clonar-Repositorio: Configurando Git y descargando Genesis..." -ForegroundColor Cyan
@@ -118,18 +156,24 @@ function Main {
     Write-Host "====================================================================" -ForegroundColor Magenta
 
     try {
-        Sanear-Entorno
-        Instalar-Distribucion
-        Reiniciar-Motor
-        Inyectar-Paquetes
-		#Inject-AnsibleToDebian
-        Clonar-Repositorio
+        if (-not (Detectar-Entorno)) {
+            Sanear-Entorno
+            Instalar-Distribucion
+            Reiniciar-Motor
+            Inyectar-Paquetes
+            #Inject-AnsibleToDebian
+            Clonar-Repositorio
 
-        $cronometro.Stop()
-        Write-Host "¡Victoria! Entorno operativo completo generado en $($cronometro.Elapsed.Seconds) segundos." -ForegroundColor Green
-        Write-Host "Usuario WSL: $USUARIO" -ForegroundColor Green
-        Write-Host "Repositorio listo en: $TARGET_DIR" -ForegroundColor Green
-        Write-Host "Acceso directo con el comando: -d $DISTRO -u $USUARIO" -ForegroundColor Yellow
+            $cronometro.Stop()
+            Write-Host "¡Victoria! Entorno operativo completo generado en $($cronometro.Elapsed.Seconds) segundos." -ForegroundColor Green
+            Write-Host "Usuario WSL: $USUARIO" -ForegroundColor Green
+            Write-Host "Repositorio listo en: $TARGET_DIR" -ForegroundColor Green
+        } else {
+            Write-Host "Saltando el pipeline de instalacion a peticion del usuario." -ForegroundColor Yellow
+        }
+
+        # Te mete dentro de la terminal de WSL en la ruta correcta en ambos casos
+        wsl -d $DISTRO -u $USUARIO --cd $TARGET_DIR
     }
     catch {
         Write-Host "Error crítico durante el pipeline de Genesis: $_" -ForegroundColor Red
