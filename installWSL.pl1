@@ -114,7 +114,7 @@ apt-get install -y git curl jq python3-pip python3-venv openssh-server
 # FASE 6: Configuración del Servidor SFTP/SSH para Notepad++
 # ------------------------------------------------------------------------------
 function Configurar-SSH {
-    Write-Host "[5/6] Configurar-SSH: Ajustando puerto 2222 y habilitando SFTP..." -ForegroundColor Cyan
+    Write-Host "[5/6] Configurar-SSH: Ajustando puerto $SSH_PORT y habilitando SFTP..." -ForegroundColor Cyan
 
     # Encapsulamos las órdenes de Linux limpiando configuraciones previas
     $LinuxCommands = "echo 'Configurando sshd_config...'; " +
