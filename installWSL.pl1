@@ -14,7 +14,7 @@ $CONTRASENA    = "malo"
 
 $GIT_NAME      = "Cesar DGM"
 $GIT_EMAIL     = "cesar.electronic.engineer@gmail.com"
-$REPO_URL      = "git@github.com:CesarTest/genesis.git"
+$REPO_URL      = "https://github.com/CesarTest/genesis.git"
 $TARGET_DIR    = "/home/$USUARIO/genesis"
 
 $DISTRO        = "Debian"
@@ -33,7 +33,7 @@ function Detectar-Entorno {
         Write-Host "La distribucion $DISTRO ya esta instalada." -ForegroundColor Yellow
       
 	    # 1.1. Pregunta al usuario si desea formatear/reinstalar todo de nuevo
-        $respuesta = Read-Host "¿Deseas proceder con una instalacion limpia desde cero? (S/N)"
+        $respuesta = Read-Host "Deseas proceder con una instalacion limpia desde cero? (S/N)"
         
         # 1.2.- Si dice que SI a Reinstalar => False=Refrescar Instalacion
         if ($respuesta -match "^[sSyY]([iI]|[eE][sS])?$") {
