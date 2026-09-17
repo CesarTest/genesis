@@ -58,6 +58,7 @@ IRONIC_BAREMETAL_NODES=$(cat ${GENESIS_PROJECT_ANSIBLE_CFG} | grep 'inventory=' 
 GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
 GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
 GENESIS_TARGET_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/target/inventory"
+GENESIS_COLLECTIONS_WORKING_PATH="${GENESIS_WORKING_PATH}/collections"
 
 # 2.2.- Installation OPTIONS
 DEBUG_ANSIBLE_FLAGS='-vvv '
@@ -136,7 +137,7 @@ GENESIS_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 PROXMOX_DEPENDENCIES=( '#' \
                      )
 					 
-PROXMOX_INSTALLER=( 'ansible-galaxy collection install --force community.proxmox' \
+PROXMOX_INSTALLER=( "ansible-galaxy collection install --force community.proxmox -p ${GENESIS_COLLECTIONS_WORKING_PATH}" \
                   )
 					 
 

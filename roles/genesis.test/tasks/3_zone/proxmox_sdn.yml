@@ -1,0 +1,56 @@
+---
+# genesis.test 3_nodes/proxmox_sdn.yml
+#  - Dynamically Ensure the SDN OVS Zone is present on Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 0) SDN Zone inspection trace"
+  ansible.builtin.debug:
+    msg: | 
+      ===[ SDN ZONE DEPLOYMENT INFO ]===
+      APi User:     {{ t1_hypervisor_api_user | default('UNDEFINED_MISSING_VALUE') }}
+      API Password: {{ t1_hypervisor_api_password | default('UNDEFINED_MISSING_VALUE') }}
+      Zone Name:    {{ t1_airgap_zone.zone | default('UNDEFINED_MISSING_VALUE') }}
+      Zone Type:    {{ t1_airgap_zone.type | default('UNDEFINED_MISSING_VALUE') }}
+      Target Node:  {{ t1_hypervisor_node  | default('localhost') }}
+  delegate_to: localhost
+  
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 1) SDN Zone Creation"
+  block:
+
+    #-----------------------------------------------------------------------
+    # 1.- SDN Zone Creation via Proxmox API
+    #-----------------------------------------------------------------------
+    - name: "T3 - ZONE: 1.1) Ensure Proxmox SDN OVS Zone exists"
+      community.proxmox.proxmox_zone:
+        api_host: "127.0.0.1"
+        api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        zone: "{{ t1_airgap_zone.zone | default('airgap') }}"
+        type: "{{ t1_airgap_zone.type | default('simple') }}"
+        state: present
+      register: t3_zone_creation_api
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    # Nota: No llamamos a "reload" aquí porque es más eficiente acumularlo 
+    # y recargar el subsistema SDN una sola vez al terminar de crear los VNets.
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- Fallback / Contingencia CLI
+    #-----------------------------------------------------------------------
+    - name: "T3 - ZONE: 1.2) RESCUE) API Zone creation bypassed - Open vSwitch CLI verification"
+      become: true
+      ansible.builtin.command: "ovs-vsctl show"
+      register: t3_ovs_cli_check
+      failed_when: false
+      changed_when: false
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T3 - ZONE: 0.3) RESCUE) Abort if Open vSwitch service is missing on Hypervisor"
+      ansible.builtin.fail:
+        msg: "El servicio Open vSwitch (OVS) no está instalado o no responde en el hipervisor."
+      when: t3_ovs_cli_check.rc != 0

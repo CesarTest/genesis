@@ -40,12 +40,22 @@
       Net0 (MAC):     {{ t1_enroll_nic_provision_mac | default('[t1_enroll_nic_provision_mac is NOT DEFINED]') }}
       Net1 (Bridge):  {{ t1_proxmox_bmc_bridge | default('[t1_proxmox_bmc_bridge is NOT DEFINED]') }}
       Net1 (MAC):     {{ t1_enroll_nic_bmc_mac | default('[t1_enroll_nic_bmc_mac is NOT DEFINED]') }}
+      Net2 (Bridge):  {{ t1_proxmox_internet_bridge | default('[t1_proxmox_internet_bridge is NOT DEFINED]') }}
+      Net2 (MAC):     {{ t1_enroll_nic_internet_mac | default('[t1_enroll_nic_internet_mac is NOT DEFINED]') }}
   delegate_to: localhost
 
 #-----------------------------------------------------------------------
 # 2.- Create Virtual Machine
 #-----------------------------------------------------------------------
 - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3) Create VM"
+  vars:
+    t1_proxmox_nics_airgap:
+       net0: "model=e1000,bridge={{ t1_proxmox_provision_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_provision_mac | default('') }}"
+       net1: "model=e1000,bridge={{ t1_proxmox_bmc_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_bmc_mac | default('') }}"
+    t1_proxmox_nics_internet:
+       net2: "model=e1000,bridge={{ t1_proxmox_internet_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_internet_mac | default('') }}"
+    t1_proxmox_nics_online: "{{ t1_proxmox_nics_airgap | combine(t1_proxmox_nics_internet) }}"
+    t1_proxmox_nics: "{{ t1_connect_internet | bool | ternary(t1_proxmox_nics_online,t1_proxmox_nics_airgap) }}"
   block:
 
     - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.1) Create VM with BareMetal Specs"
@@ -67,9 +77,9 @@
         scsihw: virtio-scsi-single
         scsi:
           scsi0: "{{ t1_proxmox_storage | default('local') }}:{{ t1_enroll_node_chassis_properties.local_gb | default(32) }},discard=on,iothread=1,cache=writeback"
-        net:
-          net0: "model=e1000,bridge={{ t1_proxmox_provision_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_provision_mac }}"
-          net1: "model=e1000,bridge={{ t1_proxmox_bmc_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_bmc_mac }}"
+        ide:
+          ide2: "none,media=cdrom"
+        net: "{{ t1_proxmox_nics | default({}) }}"
         boot: "order=scsi0;net0;net1"
         timeout: 300
       register: t2_kvm_clone_result
@@ -102,9 +112,11 @@
           --machine {{ t1_proxmox_node_boot.machine }} \
           --scsihw virtio-scsi-single \
           --scsi0 "{{ t1_proxmox_storage | default('local') }}:{{ t1_enroll_node_chassis_properties.local_gb }},discard=on,iothread=1,cache=writeback" \
-          --net0 "e1000,bridge={{ t1_proxmox_provision_bridge }},macaddr={{ t1_enroll_nic_provision_mac }}" \
-          --net1 "e1000,bridge={{ t1_proxmox_bmc_bridge }},macaddr={{ t1_enroll_nic_bmc_mac }}" \
-          --boot "order=scsi0;net0;net1"
+          --ide2 "none,media=cdrom" \
+          {% for nic_id, nic_config in t1_proxmox_nics.items() %}
+          --{{ nic_id }} "{{ nic_config }}" \
+          {% endfor %}
+          --boot "order=scsi0;{{ t1_proxmox_nics.keys() | join(';') }}"
       register: t1_kvm_cli_create_result
       changed_when: t1_kvm_cli_create_result.rc == 0
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"

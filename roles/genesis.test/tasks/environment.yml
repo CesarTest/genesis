@@ -12,14 +12,29 @@
     - ansible.builtin.include_tasks: "1_hypervisor/connectivity.yml"
     - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_dependencies.yml"
     - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_users.yml"
-    - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_facts.yml"
     #- ansible.builtin.include_tasks: "2_emulator/proxmox.yml"
     #- ansible.builtin.include_tasks: "2_emulator/sushy.yml"
+  run_once: yes
+  when: 
+    - t1_refresh_hypervisor | default(false) | bool
 
 #-----------------------------------------------------------------------
-# 2.- Refresh Testing Environment
+# 2.- Airgap Zone Check
 #-----------------------------------------------------------------------
 - block:
-    #- ansible.builtin.include_tasks: "3_nodes/{{ t1_hypervisor }}_network.yml"
-    - ansible.builtin.include_tasks: "3_nodes/{{ t1_hypervisor }}_delete.yml"
-    - ansible.builtin.include_tasks: "3_nodes/{{ t1_hypervisor }}_create.yml"
+    - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_facts.yml"
+- block:
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_sdn.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_bridge.yml"
+  run_once: yes
+  when:
+    - t1_refresh_vms | default(true) | bool
+
+#-----------------------------------------------------------------------
+# 3.- Refresh Testing Virtual Machine
+#-----------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_delete.yml"
+    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_create.yml"
+  when:
+    - t1_refresh_vms | default(true) | bool

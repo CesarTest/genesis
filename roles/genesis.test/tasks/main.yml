@@ -27,3 +27,5 @@
         name: "genesis.setup"
     - ansible.builtin.include_role: 
         name: "genesis.deploy"
+  when:
+    - not (t1_skip_tests | default(false) | bool)

@@ -1,6 +1,6 @@
 ---
 # genesis playbooks/hypervisor.yml
-#  - Preprare Hypervisor for Genesis deployment
+#  - Prepare Hypervisor for Genesis deployment
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -8,27 +8,46 @@
 #---------------------------------
 #  GATHERING FACT
 #---------------------------------
-- name: "Gather facts on localhost"
-  hosts: localhost
+- name: "Gather facts on hypervisor"
+  hosts: "hypervisor"
   become: no
   gather_facts: yes
- 
+
 #---------------------------------
-#  TEST NODES
+#  HYPERVISOR CREATE ENVIRONMENT
 #--------------------------------
 - hosts: "hypervisor"
   become: no
   gather_facts: no
+  vars: 
+    genesis_refresh_environment: yes
+    genesis_refresh_hypervisor: yes  
+    genesis_refresh_vms: no
+    genesis_skip_tests: yes
+    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
   pre_tasks:
-    - name: "GENESIS API: Cast global string variables to native booleans"
+    - name: "GENESIS CLI: Capture shell script variables"
       ansible.builtin.set_fact:
         genesis_hypervisor: "{{ target_hypervisor | default(inventory_name) | default('proxmox') }}"
-  #roles: 
-    #- role: "genesis.test"
-    #  vars:
-    #    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
+  roles: 
+    - role: "genesis.test"
 
-  tasks:
-    - name: "DEBUG: Mostrar valor final de genesis_hypervisor"
-      ansible.builtin.debug:
-        var: genesis_hypervisor
+#---------------------------------
+# CREATE GENESIS NODE
+#--------------------------------
+- hosts: "emulation"
+  become: no
+  gather_facts: no
+  vars: 
+    genesis_refresh_environment: yes
+    genesis_refresh_hypervisor: no  
+    genesis_refresh_vms: yes
+    genesis_skip_tests: yes
+    genesis_connect_internet: yes
+    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
+  pre_tasks:
+    - name: "GENESIS CLI: Capture shell script variables"
+      ansible.builtin.set_fact:
+        genesis_hypervisor: "{{ target_hypervisor | default(inventory_name) | default('proxmox') }}"
+  roles: 
+    - role: "genesis.test"

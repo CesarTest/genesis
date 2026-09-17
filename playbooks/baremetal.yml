@@ -19,7 +19,7 @@
 - hosts: "baremetal"
   become: no
   gather_facts: no
-  vars:  
+  vars:
     genesis_repo_path:   "{{ playbook_dir }}/../repo"
     genesis_hosts_path:  "{{ playbook_dir }}/../hosts"
     genesis_target_path: "{{ genesis_hosts_path | realpath }}/target"

@@ -5,13 +5,16 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-
 ######################################################
-# ENROLL PARTICULARS
+# TESTING SUITES DESCRIPTION
 ######################################################
-genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
+genesis_repo_path:      "{{ role_path | dirname | dirname | realpath }}/repo"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
-t1_refresh_environment: "{{ genesis_refresh_environment | default(true) | bool }}"
+t1_skip_tests:          "{{ genesis_skip_tests          | default(false) | bool }}" 
+t1_refresh_environment: "{{ genesis_refresh_environment | default(false) | bool }}"
+t1_refresh_hypervisor:  "{{ genesis_refresh_hypervisor  | default(false) | bool }}"
+t1_refresh_vms:         "{{ genesis_refresh_vms         | default(true)  | bool }}"
+t1_connect_internet:    "{{ genesis_connect_internet    | default(false) | bool }}"
 
 #------------------
 # 0.- Genesis Node Nics Details
@@ -21,10 +24,10 @@ t1_url_genesis_ip:      "{{ t1_url_genesis_ipv4 | ansible.utils.ipaddr('address'
 t1_url_genesis_gateway: "{{ t1_url_genesis_ipv4 | ansible.utils.ipaddr('last_usable') }}"
 t1_url_genesis_netmask: "{{ t1_url_genesis_ipv4 | ansible.utils.ipaddr('netmask') }}"
 t1_genesis_port:
-  http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
-  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
-  oci:   "{{ genesis_https_oci  | default(registry_port)     | default('5500') }}"
-  ironic: "{{ genesis_ironic_port  | default(ironic_api_port)     | default('6385') }}"
+  http:   "{{ genesis_http_port   | default(file_url_port)     | default('8080') }}"
+  https:  "{{ genesis_https_port  | default(file_url_port_tls) | default('8083') }}" 
+  oci:    "{{ genesis_https_oci   | default(registry_port)     | default('5500') }}"
+  ironic: "{{ genesis_ironic_port | default(ironic_api_port)   | default('6385') }}"
 
 #------------------
 # 1.- Nics Details, extract BMC and Provision NICs
@@ -33,6 +36,7 @@ t1_genesis_port:
 t1_enroll_nics:      "{{ enroll['nics'] | default({}) }}"
 t1_enroll_node_inband_nics:  "{{ t1_enroll_nics['inband']  | default([]) }}"
 t1_enroll_node_outband_nics: "{{ t1_enroll_nics['outband'] | default([]) }}" 
+t1_enroll_node_internet_nics: "{{ t1_enroll_nics['internet'] | default([]) }}"
 t1_enroll_nics_list: "{{ t1_enroll_node_inband_nics + t1_enroll_node_outband_nics }}"
 
 # ---- Filter according to flag - provision: yes/true
@@ -40,6 +44,7 @@ t1_enroll_default_provision: "{{ t1_enroll_nics_list | selectattr('provision', '
 
 # ---- NIC selection from list (BMC y Provisión)
 t1_enroll_nic_bmc:   "{{ t1_enroll_node_outband_nics[0] | default(t1_enroll_default_provision[0] | default({})) }}"
+t1_enroll_nic_internet:  "{{ t1_enroll_node_internet_nics[0] | default({}) }}"
 t1_enroll_nic_provision: "{{ t1_enroll_default_provision[0] | default(t1_enroll_node_inband_nics[0] | default(t1_enroll_nic_bmc | default(t1_enroll_nics_list[0] | default({})))) }}"
 
 # 1.2.- BMC NIC Particulars
@@ -60,7 +65,16 @@ t1_enroll_nic_provision_prefix:  "{{ t1_enroll_nic_provision_ipv4  | ansible.uti
 t1_enroll_nic_provision_default_gateway: "{{ t1_url_genesis_ip | default(t1_enroll_nic_provision_ipv4 | ansible.utils.ipaddr('last_usable'), true) }}"
 t1_enroll_nic_provision_gateway: "{{ t1_enroll_nic_provision['gateway'] | default(t1_enroll_nic_provision_default_gateway, true) }}"
 
-# 1.4.- List of NICs for OpenStack Ansible Module
+# 1.4.- Internet NIC Particulars
+t1_enroll_nic_internet_mac:     "{{ t1_enroll_nic_internet['mac'] | default('') | lower }}"
+t1_enroll_nic_internet_ipv4:    "{{ t1_enroll_nic_internet['ipv4'] | default('127.0.0.1/24')  }}"
+t1_enroll_nic_internet_ip:      "{{ t1_enroll_nic_internet_ipv4  | ansible.utils.ipaddr('address') }}"
+t1_enroll_nic_internet_netmask: "{{ t1_enroll_nic_internet_ipv4  | ansible.utils.ipaddr('netmask') }}"
+t1_enroll_nic_internet_prefix:  "{{ t1_enroll_nic_internet_ipv4  | ansible.utils.ipaddr('prefix') }}"
+t1_enroll_nic_internet_default_gateway: "{{ t1_enroll_nic_provision_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+t1_enroll_nic_internet_gateway: "{{ t1_enroll_nic_internet['gateway'] | default(t1_enroll_nic_internet_default_gateway) }}"
+
+# 1.5.- List of NICs for OpenStack Ansible Module
 t1_enroll_node_nics_raw: 
   - mac: "{{ t1_enroll_nic_provision_mac | default(none) }}" 
   - mac: "{{ t1_enroll_nic_bmc_mac       | default(none) }}"
@@ -119,7 +133,7 @@ t1_enroll_node_chassis_capabilities_string: "{{ (t1_enroll_node_chassis_capabili
 t1_enroll_node_chassis_cpus: "{{ t1_enroll_node_chassis_properties_input['cpus']         | default('4') }}"
 t1_enroll_node_chassis_cpu_arch: "{{ t1_enroll_node_chassis_properties_input['cpu_arch']     | default('x86_64') }}"
 t1_enroll_node_chassis_memory_mb: "{{ t1_enroll_node_chassis_properties_input['memory_mb']    | default(t1_enroll_node_chassis_properties_input['ram'] ) | default('4096') }}"
-t1_enroll_node_chassis_local_gb: "{{ t1_enroll_node_chassis_properties_input['local_gb']     | default('32')  }}"
+t1_enroll_node_chassis_local_gb: "{{ t1_enroll_node_chassis_properties_input['local_gb']   |   default(t1_enroll_node_chassis_properties_input['disk_size'] ) | default('32')  }}"
 t1_enroll_node_chassis_root_device: "{{ t1_enroll_node_chassis_properties_input['root_device']  | default('sda') }}"
 t1_enroll_node_chassis_capabilities: "{{ t1_enroll_node_chassis_properties_input['capabilities'] | default(t1_enroll_node_chassis_capabilities_string)  }}"
 t1_enroll_node_chassis_properties:
@@ -130,10 +144,26 @@ t1_enroll_node_chassis_properties:
    root_device:  "{{ t1_enroll_node_chassis_root_device  }}"
    capabilities: "{{ t1_enroll_node_chassis_capabilities }}"
 
-t1_enroll_node_chassis_type: "{{ ('uefi' in (t1_enroll_node_chassis_capabilities.boot_mode | default('uefi') | string | lower)) | ternary('uefi', 'bios') }}"
+t1_enroll_node_chassis_type: "{{ t1_enroll_node_chassis_capabilities_input['boot_mode'] | default('uefi') }}"
 
 ######################################################
-# HYPERVISOR CREDENTIALS
+# AIRGAP SCENARIO DESCRIPTIION 
+######################################################
+t1_airgap_zone_default:
+   zone: "airgap"
+   type: "simple"
+   bridges:
+     - type: "ovs"
+       name: "outband"
+       ipv4: "10.10.41.1/24"
+     - type: "ovs"
+       name: "inband"
+       ipv4: "10.10.51.1/24"     
+   
+t1_airgap_zone: "{{  genesis_airgap_zone | default(t1_airgap_zone_default) }}" 
+     
+######################################################
+# TESTING WORKING ENVIRONMENT (VMs)
 ######################################################
 # 1.. Hypervisor Properties
 t1_hypervisor: "{{ genesis_hypervisor | default('proxmox') }}"
@@ -168,13 +198,18 @@ t1_hypervisor_add_user_script:
        echo "STATUS: User $TARGET_USER successfully provisioned."
     fi
 
+# 3. Redfish Emulator
 t1_proxmox_redfish_tarball_name: "proxmox-redfish.zip"
 t1_proxmox_redfish_local_tarball: "{{ genesis_repo_path | default('') }}/openstack/{{ t1_proxmox_redfish_tarball_name }}"
 t1_proxmox_redfish_remote_path: "/tmp/proxmox-redfish" 
 t1_proxmox_redfish_remote_tarball: "/tmp/{{ t1_proxmox_redfish_tarball_name }}"
+
+# 3. Network Properties
 t1_proxmox_storage: "local-lvm"
-t1_proxmox_provision_bridge: "provision"
-t1_proxmox_bmc_bridge: "redfish"
+t1_proxmox_provision_bridge: "{{ t1_airgap_zone.bridges[1].name | default('provision') }}"
+t1_proxmox_bmc_bridge: "{{ t1_airgap_zone.bridges[0].name | default('redfish') }}"
+
+# 4. Baremetal Emulation Properties
 t1_proxmox_boot_type:
   uefi: 
     bios: ovmf
@@ -185,7 +220,9 @@ t1_proxmox_boot_type:
       efitype: "4m"
       pre_enrolled_keys: false
   bios: 
-    bios: default
-    machine: i440fx
+    bios: seabios
+    machine: pc
 t1_proxmox_node_default_boot: "{{ t1_proxmox_boot_type['uefi'] | default({}) }}"
 t1_proxmox_node_boot: "{{ t1_proxmox_boot_type[t1_enroll_node_chassis_type] | default(t1_proxmox_node_default_boot) }}"
+
+# 5. Genesis Emulation Properties
