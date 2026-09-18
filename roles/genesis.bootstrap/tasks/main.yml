@@ -21,7 +21,7 @@
     - name: "G1 - REFRESH : Try to Recover Network Configuration"
       ansible.builtin.include_tasks: "3_ready/2_network.yml"		
  
-    - name: "------------------> G1- REFRESH GENESIS NODE - Error"
-      debug:
-        msg:
-        - "Possible errors:"	 
+    - debug:
+        msg: |
+          --------> G1 - REFRESH [genesis.bootstrap] - ERROR - Common errors:
+           => 1.- Localhost User credentials in Inventory (hosts/{env}/inventory)

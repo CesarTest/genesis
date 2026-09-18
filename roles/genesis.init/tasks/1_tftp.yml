@@ -17,10 +17,12 @@
     g3_deploy_mount_path:  "{{ g3_repo_mount_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
 
     # 2.- Image Name Default Values
+    g3_netinstall_ramdisk: "{{ g3_image.netinstall_ramdisk | default('') }}"
     g3_deploy_image_default_name: "{{ g3_image.image | default('') | basename }}"
     g3_deploy_image_default_ext:  "{{ g3_deploy_image_default_name | ansible.builtin.splitext | last }}"
     g3_default_os_image_name:     "{{ genesis_default_os_image_name[g3_deploy_image_default_ext] |  default(g3_deploy_image_default_name) }}" 
-    g3_deploy_image_name: "{{ g3_image.os_image_name | default(g3_default_os_image_name) }}" 
+    g3_deploy_netinstall_name: "{{ genesis_default_os_image_name[g3_netinstall_ramdisk] | default(none) }}"
+    g3_deploy_image_name: "{{ g3_deploy_netinstall_name | default(g3_image.os_image_name, true) | default(g3_default_os_image_name, true) }}"
 
     # 3.- Ramdisk Files
     g3_iso_files:     "{{ g3_extract_os_installer[g3_image_os_distro] | default([]) }}"

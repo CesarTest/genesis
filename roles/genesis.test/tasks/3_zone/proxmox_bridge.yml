@@ -1,9 +1,23 @@
 ---
-# genesis.test 3_nodes/proxmox_network.yml
+# genesis.test 3_nodes/proxmox_bridge.yml
 #  - Dynamically Ensure Provision and RedFish Networks are present on Hypervisor
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
+
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 1.0) Display SDN Bridges Topology"
+  ansible.builtin.debug:
+    msg: |
+      --- SDN Bridges Topology Specs ---
+      {% for bridge in t1_airgap_zone.bridges | default([]) %}
+      Net{{ loop.index0 }} (Bridge Name): {{ bridge.name }}
+      ├─ Driver / Type: {{ bridge.type | default('ovs') | upper }}
+      ├─ IPv4 Address:  {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
+      └─ Node Gateway:   {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }} (Hipervisor IP)
+      {% else %}
+      [ No bridges are defined in t1_airgap_zone.bridges]
+      {% endfor %}
+  delegate_to: localhost
 
 - name: "T3 - TESTING ENVIRONMENT 3.- Zone: 1) Network Creation"
   block:
@@ -54,19 +68,27 @@
         marker: "# {mark} ANSIBLE MANAGED GENESIS BRIDGES"
         block: |
           {% for bridge in t1_airgap_zone.bridges | default([]) %}
-          iface {{ bridge.name | default('bridge' ~ loop.index0, true) }} inet manual
-                  bridge-ports none
-                  bridge-stp off
-                  bridge-fd 0
+          auto {{ bridge.name | default('bridge' ~ loop.index0, true) }}
+          iface {{ bridge.name | default('bridge' ~ loop.index0, true) }} inet static
+                  address {{ bridge.ipv4 }}
+                  {% if (bridge.type | default('') | lower) == 'ovs') %}
+                  ovs_type OVSBridge
+                  {% else %}
+                  bridge_ports none
+                  bridge_stp off
+                  bridge_fd 0
+                  {% endif %}
           {% endfor %}
       register: t3_network_file_modification
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
       when: t3_network_cli_probes is failed
 
+
     - name: "T3 - ZONE: RESCUE) Reload Proxmox networking sub-system to apply changes in live"
       become: true
       ansible.builtin.shell: |
-        {% for bridge in t3_airgap_zone.bridges | default([]) %}
+        {% for bridge in t1_airgap_zone.bridges | default([]) %}
+          ifdown {{ bridge.name | default('bridge' ~ loop.index0, true) }} --force 2>/dev/null || true
           ifup {{ bridge.name | default('bridge' ~ loop.index0, true) }}
         {% endfor %}
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"

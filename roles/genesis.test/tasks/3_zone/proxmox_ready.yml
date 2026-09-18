@@ -1,0 +1,32 @@
+---
+# genesis.test 3_nodes/proxmox_ready.yml
+#  - Commit and Apply SDN Configurations Live into Hypervisor Kernel
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 3) Network Activation"
+  block:
+
+    #-----------------------------------------------------------------------
+    # 1.- Network Activation via Proxmox API (Environment Level)
+    #-----------------------------------------------------------------------
+    - name: "T3 - ZONE: 3.1) Apply Pending SDN and Network configurations on Hypervisor Node via API"
+      community.proxmox.proxmox_node_network:
+        api_host: "127.0.0.1"
+        api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        node: "{{ t1_hypervisor_api_hostname | default(omit) }}"
+        state: apply
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- Network Activation via CLI (Fallback)
+    #-----------------------------------------------------------------------
+    - name: "T3 - ZONE: RESCUE Ready) Force SDN network reload via Proxmox Cluster CLI"
+      become: true
+      ansible.builtin.command: pvesh set /cluster/sdn
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"

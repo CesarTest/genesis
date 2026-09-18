@@ -63,7 +63,7 @@ GENESIS_COLLECTIONS_WORKING_PATH="${GENESIS_WORKING_PATH}/collections"
 # 2.2.- Installation OPTIONS
 DEBUG_ANSIBLE_FLAGS='-vvv '
 RUN_BACKGROUND="no"
-BAREMETAL_ROOT_PASSWORD="cesar" # Automatic ssh-copy-id
+BAREMETAL_ROOT_PASSWORD="malo" # Automatic ssh-copy-id
 
 # 2.3.- Genesis Playbooks
 REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
@@ -601,7 +601,7 @@ function error() {
 		"-r"|"-noRead")   echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No {Exists/Read Permisions} [$2] ${COLOR[$NC]}" ;;
 		"-e"|"-noExist")  echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No {File/Folder} found [$2] ${COLOR[$NC]}" ;;
 		"-o"|"-noOwner")  echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No owner of path [$2] ${COLOR[$NC]}"
-			              echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: Usually you need to be 'root' to shoot iDAS ${COLOR[$NC]}" ;;
+			              echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: Usually you need to be 'root' to shoot GENESIS ${COLOR[$NC]}" ;;
 		[?])              echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: Undefined error: [$2] ${COLOR[$NC]}" ;;
 	esac
 
@@ -990,7 +990,7 @@ function reloadUserEnvironment() {
 #========================================================
 #   Function: updateInventory
 #--------------------------------------------------------
-#   iDAS ISOS generation
+#   GENESIS ISOS generation
 #    - common.yaml... create from /mnt/isos/ contents
 #========================================================
 function updateInventory() {
@@ -1957,7 +1957,7 @@ function shootPlaybook() {
 			unset PLAYBOOK
           fi
        else
-          echo "ANSIBLE INSTALLATION NOT FOUND: please try to REFRESH iDAS build installation (option 1)"
+          echo "ANSIBLE INSTALLATION NOT FOUND: please try to REFRESH GENESIS build installation (option 1)"
           error "-x" "ansible-playbook/ansible-playbook-3"
        fi
        OUT="$?"
@@ -2221,7 +2221,7 @@ function 1_refresh() {
    # 3.- Clean environment
    unset PXE_DHCP_IP PXE_DHCP_NIC CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
    echo -e '......................................................................................................'
-   echo -e "   BEWARE !!!! ====> Don't forget DEPLOY (option 2) and SETUP (option 4) iDAS"
+   echo -e "   BEWARE !!!! ====> Don't forget DEPLOY (option 2) and SETUP (option 4) GENESIS"
    echo -e '......................................................................................................'
 }
 
@@ -2259,7 +2259,7 @@ function 2_create() {
    unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
    
    echo -e '......................................................................................................'
-   echo -e "   BEWARE !!!! ====> Don't forget SETUP (option 4) iDAS"
+   echo -e "   BEWARE !!!! ====> Don't forget SETUP (option 4) GENESIS"
    echo -e '......................................................................................................'
 }
 
@@ -2349,7 +2349,7 @@ function 8_test() {
    local GENESIS_REFRESH_NORM=$(echo "${GENESIS_REFRESH}" | tr '[:upper:]' '[:lower:]')
    case "${GENESIS_REFRESH_NORM}" in
     y|yes|si|s|true|1)
-        local REFRESH_INSTALL=yes
+        local REFRESH_INSTALL=yes	
         ;;
    esac
 
@@ -2362,10 +2362,10 @@ function 8_test() {
 	
    # 3.- Prepare Playbook Call
    EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}" 
-
    #--------------------
    #   ACTIONS
    #--------------------
+   if [[ "${REFRESH_INSTALL}" == 'yes' ]] ; then prepareLocalMachine ; fi
    0_call "${TEST_CYCLE}" 
    unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH
 }
@@ -2448,11 +2448,11 @@ function initParameters() {
    
    # => 2.- Set Default Action Values
    case "${ACTION}" in
-     1|"${COLOR[$ORANGE]}[iDAS]   - REFRESH     : Reinstall iDAS Build${COLOR[$NC]}")
+     1|"${COLOR[$ORANGE]}[GENESIS]   - REFRESH     : Reinstall GENESIS Build${COLOR[$NC]}")
 	   if [ ! -n "${genesis_BUILD}" ] ; then genesis_BUILD=$(ls -1 /mnt/build*.tgz | head -1 2> /dev/null)  ; fi
 	   genesis_BUILD=$(echo ${genesis_BUILD} | tr -d ' ' )   
 	 ;;
-     3|"${COLOR[$SILVER]}[iDAS]   - LOAD (pre-setup): load String configuration files${COLOR[$NC]}")
+     3|"${COLOR[$SILVER]}[GENESIS]   - LOAD (pre-setup): load String configuration files${COLOR[$NC]}")
 	   if [ ! -n "${CFGS_CORE}" ] ; then CFGS_CORE=$(ls -1 -d ${genesis_CFGS_PATH}/* | head -1 2> /dev/null)  ; fi
 	   CFGS_CORE=$(echo ${CFGS_CORE} | tr -d ' ' )
      ;;	 

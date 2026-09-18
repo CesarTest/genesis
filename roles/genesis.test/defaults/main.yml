@@ -151,7 +151,7 @@ t1_enroll_node_chassis_type: "{{ t1_enroll_node_chassis_capabilities_input['boot
 ######################################################
 t1_airgap_zone_default:
    zone: "airgap"
-   type: "simple"
+   type: "vlan"
    bridges:
      - type: "ovs"
        name: "outband"

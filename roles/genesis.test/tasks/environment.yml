@@ -26,6 +26,8 @@
 - block:
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_sdn.yml"
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_bridge.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_subnet.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_ready.yml"
   run_once: yes
   when:
     - t1_refresh_vms | default(true) | bool
