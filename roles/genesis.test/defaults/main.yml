@@ -151,14 +151,14 @@ t1_enroll_node_chassis_type: "{{ t1_enroll_node_chassis_capabilities_input['boot
 ######################################################
 t1_airgap_zone_default:
    zone: "airgap"
-   type: "vlan"
+   type: "simple"
    bridges:
-     - type: "ovs"
+     - type: "bridge"
        name: "outband"
        ipv4: "10.10.41.1/24"
-     - type: "ovs"
+     - type: "bridge"
        name: "inband"
-       ipv4: "10.10.51.1/24"     
+       ipv4: "10.10.51.1/24" 
    
 t1_airgap_zone: "{{  genesis_airgap_zone | default(t1_airgap_zone_default) }}" 
      
@@ -167,8 +167,10 @@ t1_airgap_zone: "{{  genesis_airgap_zone | default(t1_airgap_zone_default) }}"
 ######################################################
 # 1.. Hypervisor Properties
 t1_hypervisor: "{{ genesis_hypervisor | default('proxmox') }}"
-t1_hypervisor_node: "{{ genesis_hypervisor_node | default(hostvars[groups['hypervisor'][0]]['ansible_host']) | default('') }}"
-t1_hypervisor_user: "{{ hostvars[t1_hypervisor_node]['ansible_user'] | default('root') }}"
+t1_hypervisor_node_default: "{{ hostvars[groups['hypervisor'] | first] | default({}) }}"
+t1_hypervisor_node_default_name: "{{ t1_hypervisor_node_default['ansible_host'] | default('') }}"
+t1_hypervisor_node: "{{ genesis_hypervisor_node | default(t1_hypervisor_node_default_name) }}"
+t1_hypervisor_user: "{{ t1_hypervisor_node_default['ansible_user'] | default('root') }}"
 
 # 2.. Hypervisor API
 t1_hypervisor_api_node: "{{ t1_hypervisor_node }}"

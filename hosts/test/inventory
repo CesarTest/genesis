@@ -5,18 +5,15 @@ all:
   #  GLOBAL ENVIRONMENT
   #--------------------------------------------------------------------
   vars:
-  
-    # 1.- BMC Emulators use shared credentials
-    genesis_bmc_credentials: 
-      fake_hardware:
-        username: "root@pam"
-        password: "cesardgm"
-      redfish:
-        ipv4: "10.10.41.1/24" # Proxmox Hypervisor 
-        port: "8000"          # Proxmox RedFish Daemon
-        username: "root@pam"
-        password: "cesardgm"
-        verify_ca: false
+
+    # 1.- BMC: Test Configuration Parameters
+    baremetal_bmc_driver:       "redfish"
+    baremetal_boot_mode:        "uefi"
+    baremetal_power_cycle:      "fake"
+
+    # 2.- DEPLOY: Test Configuration Parameters	
+    baremetal_boot_interface:   "ipxe"
+    baremetal_deploy_interface: "ramdisk"
 
   #--------------------------------------------------------------------
   #  HOST_VARS: HARDWARE PROFILE DECLARED IN IRONIC API FORMAT
@@ -43,14 +40,6 @@ all:
       os_name: "Debian"
       os_version: "13.6"
 
-    genesis.maas.lab:
-      ansible_host: "{{ genesis_nics.inband.ip | default('127.0.0.1') | ansible.utils.ipaddr('address') }}"
-      os_name: "Ubuntu"
-      os_version: "24.04"
-
-    proxmox:
-      ansible_host: 192.168.1.133
-
   #--------------------------------------------------------------------
   #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
   #--------------------------------------------------------------------
@@ -66,17 +55,3 @@ all:
         ansible_user: "javier"
         ansible_become_pass: "malo"
         ansible_connection: "ssh"
-
-    hypervisor:
-      hosts:
-        proxmox:
-      vars:
-        ansible_user: root
-        ansible_become_pass: cesardgm
-
-    emulation:
-      hosts:
-        genesis.maas.lab:
-      vars:
-        ansible_user: "javier"
-        ansible_become_pass: "malo"

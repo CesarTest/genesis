@@ -1,0 +1,24 @@
+---
+# genesis.test emulation.yml
+#   - Set Hypervisor Conditions
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#-----------------------------------------------------------------------
+# 1.- Hypervisor Working Environment Check
+#-----------------------------------------------------------------------
+- name: "T3 - TESTING ENVIRONMENT: Prepare Emulation Environment "
+  vars: 
+    ansible_user: "{{ t1_hypervisor_user }}"
+  block:
+    - ansible.builtin.include_tasks: "1_hypervisor.yml"
+    - ansible.builtin.include_tasks: "3_zone.yml"
+      run_once: yes	
+    - ansible.builtin.include_tasks: "4_nodes.yml"
+  when:
+    - t1_hypervisor_node is defined
+    - t1_hypervisor_node is not none
+    - t1_refresh_environment is defined
+    - t1_refresh_environment is not none
+    - t1_refresh_environment

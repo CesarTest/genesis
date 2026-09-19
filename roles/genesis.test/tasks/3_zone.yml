@@ -1,0 +1,63 @@
+---
+# genesis.test 3_zone.yml
+#   - Create Airgap Zone
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#-----------------------------------------------------------------------
+# 1.- Unplug VMs os the zone
+#-----------------------------------------------------------------------
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 3.1) Unplug VMs of the Zone"
+  vars:
+    t3_nics_state: "absent"
+    t3_zone_bridge: "{{ t1_airgap_zone.bridges | default([]) }}" 
+  block:
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_facts.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_nics.yml"
+      loop: "{{ t3_proxmox_instances | default([]) }}"
+      loop_control:
+        loop_var: "t3_proxmox_vm"  
+  #when:
+  #  - t1_refresh_hypervisor | default(true) | bool
+
+#-----------------------------------------------------------------------
+# 2.- Remove Airgap Zone
+#-----------------------------------------------------------------------
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 2) Clean Zone"
+  vars:
+    t3_zone_state: "absent"
+  block:
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_subnet.yml"  
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_bridge.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_sdn.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_ready.yml"
+
+#when:
+#  - t1_refresh_hypervisor | default(true) | bool
+#
+#-----------------------------------------------------------------------
+# 3.- Create Airgap Zone
+#-----------------------------------------------------------------------
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 3) Create Zone"
+  vars:
+    t1_zone_state: "present"
+  block:
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_sdn.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_bridge.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_subnet.yml"
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_ready.yml"
+
+#-----------------------------------------------------------------------
+# 4.- Plug VMs of the Zone
+#-----------------------------------------------------------------------
+- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 4) Plug VMs of the Zone"
+  block:
+
+    - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_nics.yml"
+      loop: "{{ t3_proxmox_instances | default([]) }}"
+      loop_control:
+        loop_var: "t3_proxmox_vm"
+
+  #when:
+  #  - t1_refresh_hypervisor | default(true) | bool

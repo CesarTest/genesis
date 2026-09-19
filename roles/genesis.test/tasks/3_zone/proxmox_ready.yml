@@ -5,13 +5,13 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 3) Network Activation"
+- name: "T3 - PROXMOX_READY -3- Zone: 4) Network Activation"
   block:
 
     #-----------------------------------------------------------------------
     # 1.- Network Activation via Proxmox API (Environment Level)
     #-----------------------------------------------------------------------
-    - name: "T3 - ZONE: 3.1) Apply Pending SDN and Network configurations on Hypervisor Node via API"
+    - name: "T3 - PROXMOX_READY -3- Zone: 4.1) Apply Pending SDN and Network configurations on Hypervisor Node via API"
       community.proxmox.proxmox_node_network:
         api_host: "127.0.0.1"
         api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
@@ -26,7 +26,38 @@
     #-----------------------------------------------------------------------
     # 2.- Network Activation via CLI (Fallback)
     #-----------------------------------------------------------------------
-    - name: "T3 - ZONE: RESCUE Ready) Force SDN network reload via Proxmox Cluster CLI"
+    - name: "T3 - PROXMOX_READY -3- Zone: 4.2) RESCUE: Force SDN network reload via Proxmox Cluster CLI"
       become: true
       ansible.builtin.command: pvesh set /cluster/sdn
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+  always:
+
+    #-----------------------------------------------------------------------
+    # 3.- MAC (Mandatory Access Control)
+    #-----------------------------------------------------------------------  
+    - name: "T3 - PROXMOX_READY -3- Zone: 4.2) ALWAYS: Ensure IPv4 Packet Forwarding is active in Kernel"
+      become: true
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        sysctl_set: true
+        state: present
+        reload: true
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      when: 
+      - t1_zone_state is defined
+      - "'present' in t1_zone_state"
+
+    - name: "T3 - PROXMOX_READY -3- Zone: 4.2) ALWAYS: Apply Linux Firewall Rules to permit ICMP/Ping traffic"
+      become: true
+      ansible.builtin.shell: |
+        {% for bridge in (t1_airgap_zone.bridges | default([])) %}
+        iptables -A INPUT -i {{ bridge.name }} -p icmp --icmp-type echo-request -j ACCEPT 2>/dev/null || true
+        iptables -A FORWARD -i {{ bridge.name }} -j ACCEPT 2>/dev/null || true
+        {% endfor %}
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      changed_when: true
+      when: 
+      - t1_zone_state is defined
+      - "'present' in t1_zone_state"

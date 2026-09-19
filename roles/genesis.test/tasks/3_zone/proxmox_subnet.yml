@@ -1,10 +1,11 @@
+---
 # genesis.test 3_nodes/proxmox_subnet.yml
 #  - Dynamically Ensure Subnets and Hypervisor IPs are present on VNets/Bridges
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 2.0) Display SDN Subnets Spec"
+- name: "T3 - PROXMOX_SUBNET -3- Zone: 3.0) Display SDN Subnets Spec"
   ansible.builtin.debug:
     msg: |
       --- SDN Subnets Topology Specs ---
@@ -19,13 +20,12 @@
       {% endfor %}
   delegate_to: localhost
 
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 2) Subnet Creation"
-  block:
+- block:
 
     #-----------------------------------------------------------------------
-    # 1.- Subnets Creation via Proxmox SDN (Environment Level)
+    # 1.- Bridges/VNets Association via Proxmox Module
     #-----------------------------------------------------------------------
-    - name: "T3 - ZONE: 2.1) Ensure Subnets are mapped to VNETs with Hypervisor Gateway IP"
+    - name: "T3 - PROXMOX_SUBNET -3- Zone: 3.1) Ensure Subnets are mapped to VNETs with Hypervisor Gateway IP"
       community.proxmox.proxmox_subnet:
         api_host: "127.0.0.1"
         api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
@@ -35,10 +35,33 @@
         vnet: "{{ t3_proxmox_bridge.name | default('bridge' ~ t3_proxmox_index, true) }}"
         subnet: "{{ t3_proxmox_bridge.ipv4 | ansible.utils.ipaddr('network/prefix') }}"
         gateway: "{{ t3_proxmox_bridge.ipv4 | ansible.utils.ipaddr('address') }}"
-        state: present
+        state: "{{ t3_zone_state | default('present') }}"
       loop: "{{ t1_airgap_zone.bridges | default([]) }}"
       loop_control:
         loop_var: "t3_proxmox_bridge"
         index_var: "t3_proxmox_index" 
       register: t3_subnet_provision_api
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- RECOVERY: Simula exactamente el comportamiento de proxmox_vnet por CLI
+    #-----------------------------------------------------------------------
+    - name: "T3 - PROXMOX_SUBNET -3- Zone: 3.2) SDN Force VNets synchronization via Bash Loop"
+      ansible.builtin.shell: |
+        ACTION="{{ 'delete' if (t3_zone_state | default('present')) == 'absent' else 'create' }}"
+        ZONE_NAME="{{ t1_airgap_zone.zone | default('airgap') }}"
+        
+        {% for bridge in (t1_airgap_zone.bridges | default([])) %}
+        if [ "$ACTION" = "delete" ]; then
+          pvesh delete /cluster/sdn/vnets/{{ bridge.name }} 2>/dev/null || true
+        else
+          pvesh create /cluster/sdn/vnets --vnet "{{ bridge.name }}" --zone "$ZONE_NAME" 2>/dev/null || true
+        fi
+        {% endfor %}
+        
+        # Consolidamos los borradores de red SDN en caliente a nivel de clúster
+        pvesh put /cluster/sdn 2>/dev/null || true
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      changed_when: true

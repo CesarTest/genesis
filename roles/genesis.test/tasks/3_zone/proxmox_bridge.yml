@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 1.0) Display SDN Bridges Topology"
+- name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.0) Display SDN Bridges Topology"
   ansible.builtin.debug:
     msg: |
       --- SDN Bridges Topology Specs ---
@@ -19,13 +19,12 @@
       {% endfor %}
   delegate_to: localhost
 
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 1) Network Creation"
-  block:
+- block:
 
     #-----------------------------------------------------------------------
     # 1.- Bridges Creation via Proxmox SDN (Environment Level)
     #-----------------------------------------------------------------------
-    - name: "T3 - ZONE: 1.1) Ensure Provision and Redfish VNETs are present in Proxmox cluster"
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone 2.1) Ensure Provision and Redfish VNETs are present in Proxmox cluster"
       community.proxmox.proxmox_vnet:
         api_host: "127.0.0.1"
         api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
@@ -33,8 +32,8 @@
         validate_certs: false
         vnet: "{{ t3_proxmox_bridge.name | default('bridge' ~ t3_proxmox_index, true) }}"
         tag:  "{{ t1_proxmox_vnet_tag    | default(omit) }}"
-        zone: "{{ t1_airgap_zone.zone    | default('localnetwork') }}"
-        state: present
+        zone: "{{ t1_airgap_zone.zone    | default(omit) }}"
+        state: "{{ t3_zone_state | default('present') }}"
       loop: "{{ t1_airgap_zone.bridges | default([]) }}"
       loop_control:
         loop_var: "t3_proxmox_bridge"
@@ -47,7 +46,7 @@
     #-----------------------------------------------------------------------
     # 2.- Bridges Creation via CLI
     #-----------------------------------------------------------------------  
-    - name: "T3 - TESTING ENVIRONMENT 3.- Zone: RESCUE) Probe existing networking states on Hypervisor"
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.2) RESCUE: Check existing networking states on Hypervisor"
       become: true
       ansible.builtin.shell: "ls /sys/class/net/{{ t3_bride_name }} 2>/dev/null"
       register: t3_network_cli_probes
@@ -61,7 +60,7 @@
         index_var: "t3_proxmox_index" 
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
-    - name: "T3 - TESTING ENVIRONMENT 3.- Zone: RESCUE) Inject configuration for Provision and Redfish bridges in interfaces file"
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.3) RESCUE: Inject configuration for Provision and Redfish bridges in interfaces file"
       become: true
       ansible.builtin.blockinfile:
         path: /etc/network/interfaces
@@ -83,8 +82,7 @@
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
       when: t3_network_cli_probes is failed
 
-
-    - name: "T3 - ZONE: RESCUE) Reload Proxmox networking sub-system to apply changes in live"
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.4) RESCUE: Reload Proxmox networking sub-system to apply changes in live"
       become: true
       ansible.builtin.shell: |
         {% for bridge in t1_airgap_zone.bridges | default([]) %}

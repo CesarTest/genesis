@@ -26,13 +26,13 @@ enroll:
 
    # 1.1.- Out-of-Band BMC Information       
    uuid: "0f86778e-c7f2-4712-8cc8-3a5000ad7e69"
-   driver: "redfish"
+   driver: "{{ baremetal_bmc_driver | default('redfish') }}"
    node_id: "105"
 
    # 1.2.- Chassis Information
    name: "{{ inventory_hostname_short }}"
    capabilities: 
-     boot_mode: "uefi" 
+     boot_mode: "{{ baremetal_boot_mode | default('uefi') }}" 
      secure_boot: false
    properties:
      cpu_arch: "x86_64"
@@ -56,8 +56,8 @@ enroll:
 # 5.- Deploy Stage
 #-----------------
 deploy:   
-   boot_interface:   "ipxe"
-   deploy_interface: "ramdisk"
+   boot_interface:   "{{ baremetal_boot_interface   | default('ipxe') }}"
+   deploy_interface: "{{ baremetal_deploy_interface | default('ramdisk') }}"
    os:
      name: "{{ os_name }}"
      version: "{{ os_version }}"

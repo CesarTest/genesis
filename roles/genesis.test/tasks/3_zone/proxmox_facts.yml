@@ -1,0 +1,53 @@
+---
+# genesis.test 3_zone/proxmox_facts.yml
+#  - Capture VMs of the Zone
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- block:
+
+    #-----------------------------------------------------------------------
+    # 1.- Capture VMs Information via Proxmox Modules 
+    #-----------------------------------------------------------------------
+    - name: "T3 - PROXMOX_FACTS -3- Zone: 0.1) Capture VMs Properties via Proxmox Modules"
+      community.proxmox.proxmox_vm_info:
+        api_host: "127.0.0.1"
+        api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        config: current
+        node: "{{ t1_hypervisor_api_hostname | default(omit) }}"
+      register: pve_instances
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+  rescue:
+    #-----------------------------------------------------------------------
+    # 2.- Capture VMs Information via Native Proxmox CLI API
+    #-----------------------------------------------------------------------
+    - name: "T3 - PROXMOX_FACTS -3- Zone: 0.2) RESCUE: Capture VMs Properties via pvesh API"
+      ansible.builtin.shell: |
+        echo '{"proxmox_vms": ['
+        first=true
+        for vmid in $(qm list | tail -n +2 | awk '{print $1}'); do
+          if [ "$first" = true ]; then first=false; else echo ","; fi
+          vm_config=$(pvesh get /nodes/localhost/qemu/$vmid/config --output-format json)
+          echo "{\"vmid\": $vmid, \"type\": \"qemu\", ${vm_config#\{}"
+        done
+        echo ']}'
+      register: pve_instances_cli
+      changed_when: false
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T3 -3- ZONE: RESCUE - 1.2.1) Adapt CLI Output to Module Format"
+      ansible.builtin.set_fact: 
+        pve_instances: "{{ pve_instances_cli.stdout | from_json }}"
+
+  always:
+
+    #-----------------------------------------------------------------------
+    # 3.- Set Facts
+    #-----------------------------------------------------------------------  
+    - name: "T3 - PROXMOX_FACTS -3- Zone: 1.3) ALWAYS: Save Raw Instances as Fact"
+      ansible.builtin.set_fact:
+        t3_proxmox_instances: "{{ pve_instances.proxmox_vms | default([]) }}"

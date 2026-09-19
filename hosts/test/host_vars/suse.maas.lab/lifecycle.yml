@@ -26,13 +26,13 @@ enroll:
 
    # 1.1.- Out-of-Band BMC Information       
    uuid: "fa1331e3-b94c-48b6-bff8-992ec9f9b067"
-   driver: "redfish"
+   driver: "{{ baremetal_bmc_driver | default('redfish') }}"
    node_id: "104"
 
    # 1.2.- Chassis Information
    name: "{{ inventory_hostname_short }}"
    capabilities: 
-     boot_mode: "uefi" 
+     boot_mode: "{{ baremetal_boot_mode | default('uefi') }}" 
      secure_boot: false
    properties:
      cpu_arch: "x86_64"
@@ -51,15 +51,11 @@ enroll:
          ipv4: "{{ ansible_host }}/24"
  
 #-----------------
-# 5.- Deploy - Install Operating System
+# 5.- Deploy Stage
 #-----------------
-deploy: 
-
-   # 2.1.- PXE Setup  
-   boot_interface:   "ipxe"
-   deploy_interface: "ramdisk"
-   
-  # 2.2.- Operating System Description
+deploy:   
+   boot_interface:   "{{ baremetal_boot_interface   | default('ipxe') }}"
+   deploy_interface: "{{ baremetal_deploy_interface | default('ramdisk') }}"
    os:
      name: "{{ os_name }}"
      version: "{{ os_version }}"

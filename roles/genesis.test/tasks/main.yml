@@ -6,21 +6,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 #-----------------------------------------------------------------------
-# 1.- Create Bundle of Virtual Machines
+# 1.- Create Emulation Environment on Hypervisor
 #-----------------------------------------------------------------------
-- vars: 
-    ansible_user: "{{ t1_hypervisor_user }}"
-  block:
-    - ansible.builtin.include_tasks: "environment.yml"
-  when:
-    - t1_hypervisor_node is defined
-    - t1_hypervisor_node is not none
-    - t1_refresh_environment is defined
-    - t1_refresh_environment is not none
-    - t1_refresh_environment
+- ansible.builtin.include_tasks: "emulation.yml"
 
 #-----------------------------------------------------------------------
-# 2.- Run Stage Tests
+# 2.- Run Baremetal Certification Tests
 #-----------------------------------------------------------------------
 - block:
     - ansible.builtin.include_role: 
