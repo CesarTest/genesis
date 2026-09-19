@@ -13,16 +13,18 @@
     t3_proxmox_vmid: "{{ t3_proxmox_vm.vmid | default(omit) }}"
     t3_proxmox_config: "{{ t3_proxmox_vm.config | default({}) }}"
     t3_proxmox_nics_list_capture: "{{ t3_proxmox_config | dict2items | selectattr('key', 'match', '^net\\d+$') | list }}"  
+    t3_proxmox_nics_filtered_raw: "{{ t3_proxmox_nics_list_capture | map(attribute='value') | list }}"
+    t3_proxmox_genesis_detection: "{{ t3_proxmox_nics_filtered_raw | select('regex', (genesis_nics.internet.mac | default('00:00') | lower)) | list }}"
+    t3_proxmox_vm_is_genesis: "{{ t3_proxmox_genesis_detection | length > 0 }}"
     t3_proxmox_nics_list: "{{ t3_proxmox_nics_list_capture | rejectattr('value', 'contains', 'bridge=' ~ t3_zone_internet_bridge) | list }}"
     t3_proxmox_nics_absent: "{{ t3_proxmox_nics_list | map(attribute='key') | list | join(',') }}"
     t3_proxmox_nics_dict: "{{ t3_proxmox_nics_list | items2dict }}"
     t3_proxmox_nics_filtered: "{{ t3_proxmox_nics_list | map(attribute='value') | list }}"
-    t3_proxmox_nics_connected: "{{ t3_proxmox_nics_filtered | select('regex', 'bridge=(' ~ t3_zone_bridge_names_concat ~ ')') | list }}"
-    t3_proxmox_nics_internet: "{{ t3_proxmox_nics_filtered | select('regex', 'bridge=(' ~ t3_zone_internet_bridge ~ ')') | list }}"
+    t3_proxmox_nics_connected: "{{ t3_proxmox_nics_filtered | select('regex', 'bridge=(' ~ t3_zone_bridge_names_concat ~ ')') | list }}"   
     t3_proxmox_vm_in_zone: "{{ t3_proxmox_nics_connected | length > 0 }}"
-    t3_proxmox_vm_internet: "{{ t3_proxmox_nics_internet | length > 0 }}"
-    t3_genesis_nics: "{{ t1_genesis_nics | default({}) }}"
-    t3_proxmox_vm_nics: "{{ t3_proxmox_vm_internet | ternary(t3_genesis_nics,t3_proxmox_nics_dict,t3_proxmox_nics_dict) }}"
+    t3_proxmox_nics_genesis: "{{ t1_proxmox_nics_genesis | default({}) }}"
+    t3_proxmox_vm_nics: "{{ t3_proxmox_nics_genesis if t3_proxmox_vm_is_genesis | bool else t3_proxmox_nics_dict }}"
+
   block:
 
     # --- PRE-FLIGHT DEBUG ---
@@ -42,10 +44,16 @@
           [2.3] Flat Values: {{ t3_proxmox_nics_filtered | default('t3_proxmox_nics_filtered NOT DEFINED') | to_json }}
           [2.4] Connected: {{ t3_proxmox_nics_connected | default('t3_proxmox_nics_connected NOT DEFINED') | to_json }}
           
+          --- GENESIS SYSTEM IDENTITY DETECTION ---
+          Target Genesis MAC:   {{ genesis_nics.internet.mac | default('genesis_nics.internet.mac NOT DEFINED IN ENVIRONMENT VARS') }}
+          Genesis Match Found:  {{ t3_proxmox_genesis_detection | default('t3_proxmox_genesis_detection NOT DEFINED') | to_json }}
+          Is Node Genesis?:     {{ t3_proxmox_vm_is_genesis | default('t3_proxmox_vm_is_genesis NOT DEFINED') }}
+          Profile Genesis Dict: {{ t3_proxmox_nics_genesis | default('t3_proxmox_nics_genesis NOT DEFINED') | to_json }}
+          
           --- FINAL ACTIONS ---
           Affected: {{ t3_proxmox_vm_in_zone | default('t3_proxmox_vm_in_zone NOT DEFINED') }}
           Dict Present: {{ t3_proxmox_nics_dict | default('t3_proxmox_nics_dict NOT DEFINED') | to_json }}
-          Nics Absent: {{ t3_proxmox_nics_absent | default('t3_proxmox_nics_dict_absent NOT DEFINED') | to_json }}
+          Nics Absent: {{ t3_proxmox_nics_absent | default('t3_proxmox_nics_absent NOT DEFINED') | to_json }}
           Payload Net: {{ t3_proxmox_vm_nics | default('t3_proxmox_vm_nics NOT DEFINED') | to_json }}
       delegate_to: localhost
 
@@ -64,9 +72,9 @@
         update: true
         update_unsafe: true
       when:
-        - t3_proxmox_vm_in_zone | default(false) | bool
-        - t3_proxmox_vm_nics    | default({})    | length > 0
-        - "not 'absent' in (t3_nics_state | default(''))"
+        - (t3_proxmox_vm_in_zone | bool) or (t3_proxmox_vm_is_genesis | bool)
+        - (t3_proxmox_vm_nics | length) > 0
+        - "'absent' not in (t3_nics_state | default(''))"
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
     - name: "T3 - PROXMOX_NICS -3- Zone: 5.3) Delete NICs"

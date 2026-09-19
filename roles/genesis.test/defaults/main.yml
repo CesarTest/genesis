@@ -149,6 +149,7 @@ t1_enroll_node_chassis_type: "{{ t1_enroll_node_chassis_capabilities_input['boot
 ######################################################
 # AIRGAP SCENARIO DESCRIPTIION 
 ######################################################
+# Zone
 t1_airgap_zone_default:
    zone: "airgap"
    type: "simple"
@@ -161,7 +162,19 @@ t1_airgap_zone_default:
        ipv4: "10.10.51.1/24" 
    
 t1_airgap_zone: "{{  genesis_airgap_zone | default(t1_airgap_zone_default) }}" 
-     
+
+# Genesis Nics
+t1_genesis_bmc_bridge: "{{ t1_airgap_zone['bridges'] | default([]) | first }}"
+t1_genesis_bmc_bridge_name: "{{ t1_genesis_bmc_bridge.name | default('outband') }}"
+t1_genesis_provision_bridge: "{{ t1_airgap_zone['bridges'] | default([]) | last }}"
+t1_genesis_provision_bridge_name: "{{ t1_genesis_provision_bridge.name | default('inband') }}"
+t1_proxmox_nics_genesis:
+   net0: "model=e1000,bridge={{ t1_genesis_provision_bridge_name }},macaddr={{ genesis_nics.inband.mac | default('') | lower }}"
+   net1: "model=e1000,bridge={{ t1_genesis_bmc_bridge_name }},macaddr={{ genesis_nics.outband.mac | default('') | lower }}"
+   net2: "model=e1000,bridge={{ t1_proxmox_internet_bridge | default('vmbr0') }},macaddr={{ genesis_nics.internet.mac | default('') | lower }}"
+
+ 
+
 ######################################################
 # TESTING WORKING ENVIRONMENT (VMs)
 ######################################################
