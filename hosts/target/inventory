@@ -20,7 +20,7 @@ all:
       internet: 
         mac: "bc:24:11:34:c8:96"
         ip: "192.168.1.40/24"
-        gateway: "192.168.1.1"
+        gateway: "192.168.1.1" 
         default_route: yes
         dns: "192.168.1.1"
 

@@ -31,7 +31,7 @@
       ansible.builtin.include_tasks: "2_http/4_expose.yml"  
 
     #---------------------------------------
-    # 3. PXE - ORAS: Full Access to Images Repositories
+    # 3. PXE - ORAS: Full Access to Registry for Bootstraping Clusters
     #---------------------------------------     
     #- name: "G3 - INIT: Setup PXE-ORAS - Expose Images Repositories"
     #  ansible.builtin.include_tasks: "3_oras.yml"
@@ -45,3 +45,6 @@
     #---------------------------------------
     - ansible.builtin.include_tasks: "4_ready/1_ironic.yml"
       ignore_errors: yes
+    - ansible.builtin.include_tasks: "4_ready/2_nat.yml"
+      ignore_errors: yes
+      when: genesis_bmc_credentials is defined

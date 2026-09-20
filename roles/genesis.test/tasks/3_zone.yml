@@ -18,8 +18,8 @@
       loop: "{{ t3_proxmox_instances | default([]) }}"
       loop_control:
         loop_var: "t3_proxmox_vm"  
-  #when:
-  #  - t1_refresh_hypervisor | default(true) | bool
+  when:
+    - t1_refresh_hypervisor | default(true) | bool
 
 #-----------------------------------------------------------------------
 # 2.- Remove Airgap Zone
@@ -33,9 +33,9 @@
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_sdn.yml"
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_ready.yml"
   delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
-#when:
-#  - t1_refresh_hypervisor | default(true) | bool
-#
+  when:
+   - t1_refresh_hypervisor | default(true) | bool
+
 #-----------------------------------------------------------------------
 # 3.- Create Airgap Zone
 #-----------------------------------------------------------------------
@@ -61,5 +61,5 @@
         loop_var: "t3_proxmox_vm"
 
   delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
-  #when:
-  #  - t1_refresh_hypervisor | default(true) | bool
+  when:
+    - t1_refresh_hypervisor | default(true) | bool

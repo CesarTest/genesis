@@ -33,6 +33,8 @@
   vars:
     bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
     genesis_repo_path: "{{ playbook_dir }}/../repo"    
+    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
+    genesis_hypervisor_ip: "{{ hostvars[genesis_hypervisor_node]['ansible_host'] | default('127.0.0.1') }}"
   
   # 2.1. Pre-Tasks: Prepare Bifrost Python Virtual Environment 
   #--------------------------------------- 
