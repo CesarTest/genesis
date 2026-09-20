@@ -10,7 +10,7 @@
     #-----------------------------------------------------------------------
     # 1.- Capture VMs Information via Proxmox Modules 
     #-----------------------------------------------------------------------
-    - name: "T3 - PROXMOX_FACTS -3- Zone: 0.1) Capture VMs Properties via Proxmox Modules"
+    - name: "T3 - PROXMOX_FACTS -3- Zone: 1.1) Capture VMs Properties via Proxmox Modules"
       community.proxmox.proxmox_vm_info:
         api_host: "127.0.0.1"
         api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
@@ -23,25 +23,46 @@
 
   rescue:
     #-----------------------------------------------------------------------
-    # 2.- Capture VMs Information via Native Proxmox CLI API
+    # 2. Capture VMs Information via Proxmox CLI
     #-----------------------------------------------------------------------
-    - name: "T3 - PROXMOX_FACTS -3- Zone: 0.2) RESCUE: Capture VMs Properties via pvesh API"
-      ansible.builtin.shell: |
-        echo '{"proxmox_vms": ['
-        first=true
-        for vmid in $(qm list | tail -n +2 | awk '{print $1}'); do
-          if [ "$first" = true ]; then first=false; else echo ","; fi
-          vm_config=$(pvesh get /nodes/localhost/qemu/$vmid/config --output-format json)
-          echo "{\"vmid\": $vmid, \"type\": \"qemu\", ${vm_config#\{}"
-        done
-        echo ']}'
-      register: pve_instances_cli
+    - name: "T3 - PROXMOX_FACTS -3- Zone: 1.2) RESCUE: Extract Raw VM Data"
+      ansible.builtin.shell: 
+        cmd: "pvesh get /nodes/localhost/qemu --output-format json"
+      register: pve_vm_info
       changed_when: false
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
-    - name: "T3 -3- ZONE: RESCUE - 1.2.1) Adapt CLI Output to Module Format"
-      ansible.builtin.set_fact: 
-        pve_instances: "{{ pve_instances_cli.stdout | from_json }}"
+    - name: "T3 - PROXMOX_FACTS -3- Zone: 1.3) RESCUE: Extract Raw VM Config Data"
+      ansible.builtin.shell: |
+        for CONF in {{ t3_vm_info_bash_format }} ; do 
+           contenido_crudo=$(cat "/etc/pve/qemu-server/${CONF}.conf" 2>/dev/null)
+           echo "${CONF}:"
+           echo "  config:"
+           echo "${contenido_crudo}" | awk '/\[PENDING\]/ { exit }{ print "    " $0 }'
+        done
+      vars:
+        t3_vm_info: "{{ (pve_vm_info.stdout | from_json) | map(attribute='vmid') | list }}"
+        t3_vm_info_bash_format: "{{ t3_vm_info | join(' ') }}"
+      register: pve_vm_config
+      changed_when: false
+      become: yes
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T3 - PROXMOX_FACTS -3- Zone RESCUE - 1.4) Render to Module Format"
+      ansible.builtin.set_fact:
+        pve_instances:
+          proxmox_vms: "{{ t3_vm_proxmox }}"
+      vars:
+        t3_vm_info_in: "{{ pve_vm_info.stdout | default('[]') | from_json }}"
+        t3_vm_config_in: "{{ pve_vm_config.stdout | default('{}') | from_yaml }}"
+        t3_vm_proxmox: >-
+          [
+          {% for vm in t3_vm_info_in %}
+            {% set config_block = t3_vm_config_in[vm.vmid | int] | default(t3_vm_config_in[vm.vmid | string]) | default({}) %}
+            {% set vm_raw_str = (vm | to_json)[:-1] %}
+            {{ vm_raw_str }}, "config": {{ config_block.config | default({}) | to_json }} }{% if not loop.last %},{% endif %}
+          {% endfor %}
+          ]
 
   always:
 

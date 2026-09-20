@@ -5,22 +5,21 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T1 - TESTING ENVIRONMENT: Proxmox Testing User Provisioning"
+- name: "T1 - PROXMOX_USERS -2- Hypervisor: 3) Proxmox Testing User Provisioning"
   vars: 
     t1_node_add_user_script: "{{ t1_hypervisor_add_user_script[t1_hypervisor] | default('') }}"
-
 
   #-----------------------------------------------------------------------
   # 1.- Create Users
   #-----------------------------------------------------------------------
   block:
-    - name: "T1 - CLI PROVISION: Check if user already exists in Proxmox"
+    - name: "T1 - PROXMOX_USERS -2- Hypervisor: 3.1) Check if user already exists in Proxmox"
       become: true
       ansible.builtin.shell: "{{ t1_node_add_user_script }}"
       register: t1_proxmox_script_result
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
-    - name: "T1 - CLI PROVISION: Show user provisioning success status"
+    - name: "T1 - PROXMOX_USERS -2- Hypervisor: 3.2) Show user provisioning success status"
       ansible.builtin.debug:
         msg: |
           --- SUCCESS: USER PROVISIONING COMPLETED ---
@@ -35,13 +34,12 @@
         - t1_proxmox_script_result.rc == 0
       delegate_to: localhost
 
-
   #-----------------------------------------------------------------------
   # 2.- Failed
   #-----------------------------------------------------------------------
   rescue:
 
-    - name: "T1 - CLI PROVISION: Handle user provisioning failure"
+    - name: "T1 - PROXMOX_USERS -2- Hypervisor: 3.3)  Handle user provisioning failure"
       ansible.builtin.fail:
         msg: |
           --- CRITICAL ERROR: PROXMOX USER PROVISIONING FAILED ---

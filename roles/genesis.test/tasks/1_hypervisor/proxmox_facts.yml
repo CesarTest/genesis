@@ -5,13 +5,13 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T1 - TESTING ENVIRONMENT: Proxmox Testing User Provisioning"
+- name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4) Properties required by API Calls"
   block:
 
     #-----------------------------------------------------------------------
     # 1.- Node Name
     #-----------------------------------------------------------------------
-    - name: "T1 - TESTING ENVIRONMENT 1.- Hypervisor: 2.1) Query Proxmox API node name dynamically"
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.1) Proxmox Query Proxmox API node name dynamically"
       become: true
       ansible.builtin.shell: |
         pvesh get /nodes --output-format json | awk -F'\"node\":\"' '{print $2}' | awk -F'\"' '{print $1}'
@@ -19,7 +19,7 @@
       changed_when: false
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
-    - name: "T1 - TESTING ENVIRONMENT 1.- Hypervisor: 2.2) Register node name as a runtime fact"
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.2) Proxmox Register node name as a runtime fact"
       ansible.builtin.set_fact:
         t1_hypervisor_api_hostname: "{{ genesis_hypervisor_api_hostname | default(t1_captured_hostname) }}"
       vars:
@@ -29,7 +29,7 @@
     #-----------------------------------------------------------------------
     # 2.- Internet Bridge
     #-----------------------------------------------------------------------
-    - name: "T1 - TESTING ENVIRONMENT 1.- Hypervisor: 2.2) Extract Internet Bridge from Ansible Facts"
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.3) Extract Internet Bridge from Ansible Facts"
       set_fact:
         t1_proxmox_internet_bridge: >-
           {{
@@ -39,7 +39,6 @@
             | selectattr('value.type', 'equalto', 'bridge')
             | selectattr('value.active', 'equalto', true)
             | map(attribute='key')
-
             | first | default('vmbr0')
           }}
 

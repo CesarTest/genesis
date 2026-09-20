@@ -33,7 +33,7 @@ dhcp_static_mask: "{{ dhcp_ipv4 | ansible.utils.ipaddr('netmask') }}"
 dhcp_prefix:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('prefix') }}"
 dhcp_subnet:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('network') }}"
 dhcp_subnet_cidr: "{{ dhcp_ipv4 | ansible.utils.ipaddr('network/prefix') }}"
-dhcp_raw_node_count: "{{ groups['baremetal'] | default([]) | length }}" # Number of Baremetal Nodees
+dhcp_raw_node_count: "{{ groups['baremetal'] | default([]) | length }}" # Number of Baremetal Nodes
 dhcp_range_size:  "{{ (dhcp_raw_node_count | int > 0) | ternary(dhcp_raw_node_count | int + 2, 10) }}"
 dhcp_last_usable: "{{ dhcp_subnet_cidr | ansible.utils.ipaddr('last_usable') }}"
 dhcp_pool_end:    "{{ dhcp_last_usable | ansible.utils.ipmath(-1) }}"
@@ -41,9 +41,9 @@ dhcp_pool_start:  "{{ dhcp_last_usable | ansible.utils.ipmath(-1 * dhcp_range_si
 
 # password to use between services
 noauth_mode: true
-#admin_password: "CDEcoces2026."
-#service_password: "CDEcoces2026."
-#default_password: "CDEcocesar2026."
+#admin_password: "JavierMalo."
+#service_password: "JavierMalo."
+#default_password: "JavierMalo."
  
 # mysql_username: Default mysql admin username
 mysql_username: root

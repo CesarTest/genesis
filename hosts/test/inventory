@@ -21,22 +21,22 @@ all:
   hosts:  
 
     ubuntu.maas.lab:
-      ansible_host: 10.10.51.150
+      ansible_host: "10.10.51.150"
       os_name: "Ubuntu"
       os_version: "24.04"
 
     centos.maas.lab:      
-      ansible_host: 10.10.51.151
+      ansible_host: "10.10.51.151"
       os_name: "CentOS"
       os_version: "9"
  
     suse.maas.lab:        
-      ansible_host: 10.10.51.152
+      ansible_host: "10.10.51.152"
       os_name: "SuSE"
       os_version: "16.0"
  
     debian.maas.lab:
-      ansible_host: 10.10.51.153
+      ansible_host: "10.10.51.153"
       os_name: "Debian"
       os_version: "13.6"
 

@@ -8,7 +8,7 @@
 #-----------------------------------------------------------------------
 # 1.- Virtual Machine Specs
 #-----------------------------------------------------------------------
-- name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.1) Display VM Creation Spec"
+- name: "T4 - PROXMOX_CREATE -4- Nodes: 1) Display VM Creation Spec"
   ansible.builtin.debug:
     msg: |
       --- API Connection ---
@@ -47,8 +47,7 @@
 #-----------------------------------------------------------------------
 # 2.- Create Virtual Machine
 #-----------------------------------------------------------------------
-- name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3) Create VM"
-  vars:
+- vars:
     t1_proxmox_nics_airgap:
        net0: "model=e1000,bridge={{ t1_proxmox_provision_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_provision_mac | default('') }}"
        net1: "model=e1000,bridge={{ t1_proxmox_bmc_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_bmc_mac | default('') }}"
@@ -58,7 +57,7 @@
     t1_proxmox_nics: "{{ t1_connect_internet | bool | ternary(t1_proxmox_nics_online,t1_proxmox_nics_airgap) }}"
   block:
 
-    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.1) Create VM with BareMetal Specs"
+    - name: "T4 - PROXMOX_CREATE -4- Nodes: 1.1) Create VM with BareMetal Specs"
       community.proxmox.proxmox_kvm:
         api_host: "127.0.0.1"
         api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
@@ -85,7 +84,7 @@
       register: t2_kvm_clone_result
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
  
-    - name: "T2 - TESTING ENVIRONMENT 3.- Nodes: 3.2) Inject permanent EFI storage volume into existing VM via qm CLI"
+    - name: "T4 - PROXMOX_CREATE -4- Nodes: 1.2) Inject permanent EFI storage volume into existing VM via qm CLI"
       become: true
       ansible.builtin.shell: |
         qm set {{ t1_enroll_default_node_id | default(201) }} \
@@ -100,7 +99,7 @@
 
   rescue:
 
-    - name: "T1 - TESTING ENVIRONMENT 3.- Nodes: 3.1) RESCUE - Create VM with BareMetal Specs by CLI"
+    - name: "T4 - PROXMOX_CREATE -4- Nodes: 1.3) RESCUE - Create VM with BareMetal Specs by CLI"
       become: true
       ansible.builtin.shell: |
         qm create {{ t1_enroll_default_node_id }} \
@@ -121,7 +120,7 @@
       changed_when: t1_kvm_cli_create_result.rc == 0
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
-    - name: "T1 - TESTING ENVIRONMENT 3.- Nodes: 3.2) RESCUE - Inject permanent EFI storage volume via CLI"
+    - name: "T4 - PROXMOX_CREATE -4- Nodes: 1.4) RESCUE - Inject permanent EFI storage volume via CLI"
       become: true
       ansible.builtin.shell: |
         qm set {{ t1_enroll_default_node_id | default(201) }} \

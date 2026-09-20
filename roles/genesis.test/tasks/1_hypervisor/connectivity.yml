@@ -5,19 +5,19 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T1 - TESTING ENVIRONMENT: Proxmox Ansible Connection Check"
+- name: "T1 - CONNECTIVITY -1- Hypervisor: 1) Ansible Connection Check"
   vars:
     ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     t1_hypervisor_node_ip: "{{ hostvars[t1_hypervisor_node]['ansible_host'] }}"
   block:
   
-    - name: "T1- 1.- TESTING ENVIRONMENT: 1) Remove old SSH host fingerprint to avoid conflicts"
+    - name: "T1 - CONNECTIVITY -1- Hypervisor: 1.1) Remove old SSH host fingerprint to avoid conflicts"
       ansible.builtin.known_hosts:
         name: "{{ t1_hypervisor_node }}"
         state: absent
       delegate_to: localhost
 
-    - name: "T1- 1.- TESTING ENVIRONMENT: 3) Proxmox Ansible Connection Check"
+    - name: "T1 - CONNECTIVITY -1- Hypervisor: 1.2) Proxmox Ansible Connection Check"
       ansible.builtin.ping:
       register: t1_proxmox_probe_result
       delegate_to: "{{ t1_hypervisor_node_ip | default('localhost') }}"

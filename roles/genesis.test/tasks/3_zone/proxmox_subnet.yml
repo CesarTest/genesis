@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - PROXMOX_SUBNET -3- Zone: 3.0) Display SDN Subnets Spec"
+- name: "T3 - PROXMOX_SUBNET -3- Zone: 3) Display SDN Subnets Spec"
   ansible.builtin.debug:
     msg: |
       --- SDN Subnets Topology Specs ---

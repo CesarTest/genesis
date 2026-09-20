@@ -8,7 +8,7 @@
 #-----------------------------------------------------------------------
 # 1.- Unplug VMs os the zone
 #-----------------------------------------------------------------------
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 3.1) Unplug VMs of the Zone"
+- name: "T3 - PROXMOX_NICS -3- Zone: 1) Unplug VMs of the Zone"
   vars:
     t3_nics_state: "absent"
     t3_zone_bridge: "{{ t1_airgap_zone.bridges | default([]) }}" 
@@ -24,7 +24,7 @@
 #-----------------------------------------------------------------------
 # 2.- Remove Airgap Zone
 #-----------------------------------------------------------------------
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 2) Clean Zone"
+- name: "T3 - PROXMOX_NICS -3- Zone: 2) Delete Zone"
   vars:
     t3_zone_state: "absent"
   block:
@@ -32,14 +32,14 @@
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_bridge.yml"
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_sdn.yml"
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_ready.yml"
-
+  delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 #when:
 #  - t1_refresh_hypervisor | default(true) | bool
 #
 #-----------------------------------------------------------------------
 # 3.- Create Airgap Zone
 #-----------------------------------------------------------------------
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 3) Create Zone"
+- name: "T3 - PROXMOX_NICS -3- Zone: 3) Create Zone"
   vars:
     t1_zone_state: "present"
   block:
@@ -47,11 +47,12 @@
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_bridge.yml"
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_subnet.yml"
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_ready.yml"
+  delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
 #-----------------------------------------------------------------------
 # 4.- Plug VMs of the Zone
 #-----------------------------------------------------------------------
-- name: "T3 - TESTING ENVIRONMENT 3.- Zone: 4) Plug VMs of the Zone"
+- name: "T3 - PROXMOX_NICS -3- Zone: 4) Plug VMs of the Zone"
   block:
 
     - ansible.builtin.include_tasks: "3_zone/{{ t1_hypervisor }}_nics.yml"
@@ -59,5 +60,6 @@
       loop_control:
         loop_var: "t3_proxmox_vm"
 
+  delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
   #when:
   #  - t1_refresh_hypervisor | default(true) | bool

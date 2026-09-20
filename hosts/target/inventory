@@ -30,7 +30,7 @@ all:
         username: "root@pam"
         password: "cesardgm"
       redfish:
-        ipv4: "10.10.41.1/24" # Proxmox Hypervisor 
+        ipv4: "{{ genesis_nics.outband.ip | default('10.10.41.5/24') }}" # Proxmox Hypervisor 
         port: "8000"          # Proxmox RedFish Daemon
         username: "root@pam"
         password: "cesardgm"

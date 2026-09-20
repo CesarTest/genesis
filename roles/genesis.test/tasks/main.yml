@@ -9,6 +9,8 @@
 # 1.- Create Emulation Environment on Hypervisor
 #-----------------------------------------------------------------------
 - ansible.builtin.include_tasks: "emulation.yml"
+  when:
+    - t1_refresh_environment | default(false) | bool
 
 #-----------------------------------------------------------------------
 # 2.- Run Baremetal Certification Tests

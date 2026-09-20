@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.0) Display SDN Bridges Topology"
+- name: "T3 - PROXMOX_BRIDGE -3- Zone: 2) Display SDN Bridges Topology"
   ansible.builtin.debug:
     msg: |
       --- SDN Bridges Topology Specs ---

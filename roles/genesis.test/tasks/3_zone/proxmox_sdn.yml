@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - PROXMOX_SDN -3- Zone: 1.0) SDN Zone inspection trace"
+- name: "T3 - PROXMOX_SDN -3- Zone: 1) SDN Zone inspection trace"
   ansible.builtin.debug:
     msg: | 
       ===[ SDN ZONE DEPLOYMENT INFO ]===
@@ -25,7 +25,7 @@
     #-----------------------------------------------------------------------
     # 1.- SDN Zone Creation via Proxmox API
     #-----------------------------------------------------------------------
-    - name: "T3 - PROXMOX_SDN -3- Zone: 1.2) Ensure Proxmox SDN Airgap Zone exists"
+    - name: "T3 - PROXMOX_SDN -3- Zone: 1.1) Ensure Proxmox SDN Airgap Zone exists"
       community.proxmox.proxmox_zone:
         api_host: "127.0.0.1"
         api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
@@ -43,7 +43,7 @@
     #-----------------------------------------------------------------------
     # 2.- Fallback / Contingencia CLI Nativa (Cero dependencias de OVS)
     #-----------------------------------------------------------------------
-    - name: "T3 - PROXMOX_SDN -3- Zone: 1.3) RESCUE - Force SDN Zone State via pvesh"
+    - name: "T3 - PROXMOX_SDN -3- Zone: 1.2) RESCUE - Force SDN Zone State via pvesh"
       become: true
       ansible.builtin.shell: |
         ACTION="{{ 'delete' if (t3_zone_state | default('present')) == 'absent' else 'create' }}"

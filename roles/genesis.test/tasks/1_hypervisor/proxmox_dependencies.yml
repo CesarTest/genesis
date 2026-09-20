@@ -5,10 +5,10 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T1 - TESTING ENVIRONMENT: Proxmox Testing User Provisioning"
+- name: "T1 - PROXMOX_DEPENDENCIES -1- Hypervisor: 2) Install Dependencies"
   block:
 
-    - name: "T1 - TEST ENVIRONMENT: Proxmox Dependencies"
+    - name: "T1 - PROXMOX_DEPENDENCIES -1- Hypervisor: 2.1) Linux Packages"
       become: true
       ansible.builtin.package:
         name: 
@@ -21,10 +21,8 @@
         - git 
         - jq
         state: present
-      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
-
-    - name: "T2 - TESTING ENVIRONMENT: Proxmox Dependencies"
+    - name: "T1 - PROXMOX_DEPENDENCIES -1- Hypervisor: 2.2) PIP modules"
       become: true
       ansible.builtin.pip:
         name: 
@@ -32,4 +30,3 @@
           - "requests"
         state: present
         extra_args: "--break-system-packages"
-      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
