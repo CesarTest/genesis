@@ -5,21 +5,65 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - PROXMOX_BRIDGE -3- Zone: 2) Display SDN Bridges Topology"
-  ansible.builtin.debug:
-    msg: |
-      --- SDN Bridges Topology Specs ---
-      {% for bridge in t1_airgap_zone.bridges | default([]) %}
-      Net{{ loop.index0 }} (Bridge Name): {{ bridge.name }}
-      ├─ Driver / Type: {{ bridge.type | default('ovs') | upper }}
-      ├─ IPv4 Address:  {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
-      └─ Node Gateway:   {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }} (Hipervisor IP)
-      {% else %}
-      [ No bridges are defined in t1_airgap_zone.bridges]
-      {% endfor %}
-  delegate_to: localhost
+- vars:
+    t3_cli_commands:
+      present: >-
+        {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+        awk -v br="{{ bridge.name }}" -v ip="{{ bridge.ipv4 }}" '
+          $1 == "iface" && $2 == br { existe=1 }
+          { print }
+          END {
+            if (!existe) {
+              print ""
+              print "auto " br
+              print "iface " br " inet static"
+              print "\taddress " ip
+              print "\tbridge_ports none"
+              print "\tbridge_stp off"
+              print "\tbridge_fd 0"
+            }
+          }
+        ' /etc/network/interfaces > /etc/network/interfaces.tmp && mv /etc/network/interfaces.tmp /etc/network/interfaces;
+        ifdown {{ bridge.name }} --force 2>/dev/null || true; 
+        ifup {{ bridge.name }} 2>/dev/null || true;
+        ip link set {{ bridge.name }} up 2>/dev/null || true;
+        {% endfor -%}
+        pvesh set /cluster/sdn 2>/dev/null || true;
+        pvesh set /nodes/localhost/network 2>/dev/null || true
 
-- block:
+      absent: >-
+        if [ -f /etc/network/interfaces ]; then
+          {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+          ifdown {{ bridge.name }} --force 2>/dev/null || true;
+          ip link set {{ bridge.name }} down 2>/dev/null || true;
+          ip link delete {{ bridge.name }} 2>/dev/null || true;
+          awk -v br="{{ bridge.name }}" '
+            $1 == "auto" && $2 == br { borrar=1; next }
+            $1 == "iface" && $2 == br { borrar=1; next }
+            borrar && /^[ \t]/ { next }
+            borrar && !/^\t/ { borrar=0 }
+            { print }
+          ' /etc/network/interfaces > /etc/network/interfaces.tmp && mv /etc/network/interfaces.tmp /etc/network/interfaces;
+          {% endfor -%}
+        fi;
+        pvesh set /cluster/sdn 2>/dev/null || true;
+        pvesh set /nodes/localhost/network 2>/dev/null || true
+
+  block:
+
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2) Display SDN Bridges Topology"
+      ansible.builtin.debug:
+        msg: |
+          --- SDN Bridges Topology Specs ---
+          {% for bridge in t1_airgap_zone.bridges | default([]) %}
+          Net{{ loop.index0 }} (Bridge Name): {{ bridge.name }}
+          ├─ Driver / Type: {{ bridge.type | default('ovs') | upper }}
+          ├─ IPv4 Address:  {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
+          └─ Node Gateway:   {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }} (Hipervisor IP)
+          {% else %}
+          [ No bridges are defined in t1_airgap_zone.bridges]
+          {% endfor %}
+      delegate_to: localhost
 
     #-----------------------------------------------------------------------
     # 1.- Bridges Creation via Proxmox SDN (Environment Level)
@@ -46,48 +90,13 @@
     #-----------------------------------------------------------------------
     # 2.- Bridges Creation via CLI
     #-----------------------------------------------------------------------  
-    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.2) RESCUE: Check existing networking states on Hypervisor"
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.2) RESCUE - Force Bridge Creation via CLI"
       become: true
-      ansible.builtin.shell: "ls /sys/class/net/{{ t3_bride_name }} 2>/dev/null"
-      register: t3_network_cli_probes
-      failed_when: false
-      changed_when: false
+      ansible.builtin.shell: 
+        cmd: "{{ t3_cli_commands[t3_selector] | default('') }}"
       vars:
-        t3_bride_name: "{{ t3_proxmox_bridge.name | default('bridge' ~ t3_proxmox_index, true) }}" 
-      loop: "{{ t1_airgap_zone.bridges | default([]) }}"
-      loop_control:
-        loop_var: "t3_proxmox_bridge" 
-        index_var: "t3_proxmox_index" 
+        t3_selector: "{{ t3_zone_state | default('present') }}" 
+      register: t3_zone_cli_fallback
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
-
-    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.3) RESCUE: Inject configuration for Provision and Redfish bridges in interfaces file"
-      become: true
-      ansible.builtin.blockinfile:
-        path: /etc/network/interfaces
-        marker: "# {mark} ANSIBLE MANAGED GENESIS BRIDGES"
-        block: |
-          {% for bridge in t1_airgap_zone.bridges | default([]) %}
-          auto {{ bridge.name | default('bridge' ~ loop.index0, true) }}
-          iface {{ bridge.name | default('bridge' ~ loop.index0, true) }} inet static
-                  address {{ bridge.ipv4 }}
-                  {% if (bridge.type | default('') | lower) == 'ovs') %}
-                  ovs_type OVSBridge
-                  {% else %}
-                  bridge_ports none
-                  bridge_stp off
-                  bridge_fd 0
-                  {% endif %}
-          {% endfor %}
-      register: t3_network_file_modification
-      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
-      when: t3_network_cli_probes is failed
-
-    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.4) RESCUE: Reload Proxmox networking sub-system to apply changes in live"
-      become: true
-      ansible.builtin.shell: |
-        {% for bridge in t1_airgap_zone.bridges | default([]) %}
-          ifdown {{ bridge.name | default('bridge' ~ loop.index0, true) }} --force 2>/dev/null || true
-          ifup {{ bridge.name | default('bridge' ~ loop.index0, true) }}
-        {% endfor %}
-      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
-      when: t3_network_file_modification is changed
+      failed_when: false
+      changed_when: true

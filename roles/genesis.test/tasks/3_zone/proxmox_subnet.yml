@@ -5,22 +5,36 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - PROXMOX_SUBNET -3- Zone: 3) Display SDN Subnets Spec"
-  ansible.builtin.debug:
-    msg: |
-      --- SDN Subnets Topology Specs ---
-      {% for bridge in t1_airgap_zone.bridges | default([]) %}
-      Subnet [{{ loop.index0 }}] (Target VNET): {{ bridge.name }}
-      ├─ Parent SDN Zone: {{ t1_airgap_zone.zone | default('airgap') }}
-      ├─ Subnet Identity: {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('network/prefix') }}
-      ├─ Network Range:    {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
-      └─ Assigned Gateway: {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }}
-      {% else %}
-      [ No subnets can be mapped. t1_airgap_zone.bridges is empty]
-      {% endfor %}
-  delegate_to: localhost
+- vars:
+    t3_cli_commands:
+      present: >-
+        {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+        pvesh create /cluster/sdn/vnets --vnet "{{ bridge.name }}" --zone "{{ t1_airgap_zone.zone | default('airgap') }}" 2>/dev/null || true;
+        {% endfor -%}
+        pvesh set /cluster/sdn --apply 2>/dev/null || true
+      absent: >-
+        {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+        pvesh delete /cluster/sdn/vnets/{{ bridge.name }} 2>/dev/null || true;
+        {% endfor -%}
+        pvesh set /cluster/sdn --apply 2>/dev/null || true
 
-- block:
+
+  block:
+
+    - name: "T3 - PROXMOX_SUBNET -3- Zone: 3) Display SDN Subnets Spec"
+      ansible.builtin.debug:
+        msg: |
+          --- SDN Subnets Topology Specs ---
+          {% for bridge in t1_airgap_zone.bridges | default([]) %}
+          Subnet [{{ loop.index0 }}] (Target VNET): {{ bridge.name }}
+          ├─ Parent SDN Zone: {{ t1_airgap_zone.zone | default('airgap') }}
+          ├─ Subnet Identity: {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('network/prefix') }}
+          ├─ Network Range:    {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
+          └─ Assigned Gateway: {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }}
+          {% else %}
+          [ No subnets can be mapped. t1_airgap_zone.bridges is empty]
+          {% endfor %}
+      delegate_to: localhost
 
     #-----------------------------------------------------------------------
     # 1.- Bridges/VNets Association via Proxmox Module
@@ -49,19 +63,12 @@
     # 2.- RECOVERY: Simula exactamente el comportamiento de proxmox_vnet por CLI
     #-----------------------------------------------------------------------
     - name: "T3 - PROXMOX_SUBNET -3- Zone: 3.2) SDN Force VNets synchronization via Bash Loop"
-      ansible.builtin.shell: |
-        ACTION="{{ 'delete' if (t3_zone_state | default('present')) == 'absent' else 'create' }}"
-        ZONE_NAME="{{ t1_airgap_zone.zone | default('airgap') }}"
-        
-        {% for bridge in (t1_airgap_zone.bridges | default([])) %}
-        if [ "$ACTION" = "delete" ]; then
-          pvesh delete /cluster/sdn/vnets/{{ bridge.name }} 2>/dev/null || true
-        else
-          pvesh create /cluster/sdn/vnets --vnet "{{ bridge.name }}" --zone "$ZONE_NAME" 2>/dev/null || true
-        fi
-        {% endfor %}
-        
-        # Consolidamos los borradores de red SDN en caliente a nivel de clúster
-        pvesh put /cluster/sdn 2>/dev/null || true
+      become: true
+      ansible.builtin.shell: 
+        cmd: "{{ t3_cli_commands[t3_selector] | default('') }}"
+      vars:
+        t3_selector: "{{ t3_zone_state | default('present') }}" 
+      register: t3_zone_cli_fallback
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      failed_when: false
       changed_when: true

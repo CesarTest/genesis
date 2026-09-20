@@ -23,6 +23,13 @@
     t3_proxmox_vm_in_zone: "{{ t3_proxmox_nics_connected | length > 0 }}"
     t3_proxmox_nics_genesis: "{{ t1_proxmox_nics_genesis | default({}) }}"
     t3_proxmox_vm_nics: "{{ t3_proxmox_nics_genesis if t3_proxmox_vm_is_genesis | bool else t3_proxmox_nics_dict }}"
+    t3_cli_commands: 
+      present: >-
+        qm set {{ t3_proxmox_vmid | default('') }}
+        {% for key, val in (t3_proxmox_vm_nics | default({})).items() -%}
+        --{{ key }} "{{ val }}"{{ ' ' }}
+        {%- endfor %}
+      absent: qm set {{ t3_proxmox_vmid | default('') }} --delete {{ t3_proxmox_nics_absent | default('') }}
 
   block:
 
@@ -84,7 +91,6 @@
         validate_certs: false
         node: "{{ t1_hypervisor_api_hostname | default('pve') }}" 
         vmid: "{{ t3_proxmox_vmid    | default(omit) }}"
-        # Inyecta el string crudo limpio separado por comas (ej: "net1,net2")
         delete: "{{ t3_proxmox_nics_absent | default(omit) }}"
       when:
         - t3_proxmox_vm_in_zone | default(false) | bool
@@ -98,11 +104,10 @@
     # 2.- Nics Update via Proxmox CLI 
     #-----------------------------------------------------------------------
     - name: "T3 - PROXMOX_NICS -3- Zone: 5.4) RESCUE: Modify VM NIC Specs via qm set"
-      ansible.builtin.shell: >-
-        qm set {{ t3_proxmox_vmid | default(201) }}
-        {% for key, val in (t3_proxmox_vm_nics | default({})).items() %}
-        {{ '--delete ' ~ key if val == 'delete' else '--' ~ key ~ ' "' ~ val ~ '"' }}
-        {% endfor %}
+      ansible.builtin.shell: 
+        cmd: "{{ t3_cli_commands[t3_selector] | default('') }}"
+      vars:
+        t3_selector: "{{ t3_nics_state | default('present') }}" 
       register: pve_nics_cli_result
       changed_when: true
       when: 

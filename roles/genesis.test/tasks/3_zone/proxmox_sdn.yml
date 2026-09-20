@@ -5,23 +5,54 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "T3 - PROXMOX_SDN -3- Zone: 1) SDN Zone inspection trace"
-  ansible.builtin.debug:
-    msg: | 
-      ===[ SDN ZONE DEPLOYMENT INFO ]===
-      APi User:        {{ t1_hypervisor_api_user | default('t1_hypervisor_api_user UNDEFINED_MISSING_VALUE') }}
-      API Password:    {{ t1_hypervisor_api_password | default('t1_hypervisor_api_password UNDEFINED_MISSING_VALUE') }}
-      Zone Name:       {{ t1_airgap_zone.zone | default('t1_airgap_zone.zone UNDEFINED_MISSING_VALUE') }}
-      Zone Type:       {{ t1_airgap_zone.type | default('t1_airgap_zone.type UNDEFINED_MISSING_VALUE') }}
-      Internet Bridge: {{ t1_proxmox_internet_bridge  | default('t1_proxmox_internet_bridge UNDEFINED_MISSING_VALUE') }}
-      Hypervisor:      {{ t1_hypervisor_node  | default('t1_hypervisor_node UNDEFINED_MISSING_VALUE') }}
-  delegate_to: localhost
-  
 - vars:
     t3_proxmox_is_simple_zone: "{{ ('simple' in (t1_airgap_zone.type | default('simple') | lower)) | bool  }}"
     t3_proxmox_internet_bridge: "{{ omit if t3_proxmox_is_simple_zone else (t1_proxmox_internet_bridge | default('vmbr0')) }}"
+    t3_cli_commands:
+      present: >-
+        mkdir -p /etc/pve/sdn 2>/dev/null || true;
+        touch /etc/pve/sdn/zones.cfg;
+        awk -v zone_name="{{ t1_airgap_zone.zone | default('airgap') }}" '
+          $0 ~ "simple: " zone_name { existe=1 }
+          { print }
+          END {
+            if (!existe) {
+              print "\nsimple: " zone_name;
+              {% if not t3_proxmox_is_simple_zone -%}
+              print "\tbridge {{ t1_proxmox_internet_bridge | default('vmbr0') }}";
+              {%- endif %}
+            }
+          }
+        ' /etc/pve/sdn/zones.cfg > /etc/pve/sdn/zones.cfg.tmp && 
+        mv /etc/pve/sdn/zones.cfg.tmp /etc/pve/sdn/zones.cfg;
+        pvesh set /cluster/sdn 2>/dev/null || true
+
+      absent: >-
+        if [ -f /etc/pve/sdn/zones.cfg ]; then
+          awk -v zone_name="{{ t1_airgap_zone.zone | default('airgap') }}" '
+            $0 ~ "simple: " zone_name { borrar=1; next }
+            borrar && /^\t/ { next }
+            borrar && !/^\t/ { borrar=0 }
+            { print }
+          ' /etc/pve/sdn/zones.cfg > /etc/pve/sdn/zones.cfg.tmp && 
+          mv /etc/pve/sdn/zones.cfg.tmp /etc/pve/sdn/zones.cfg;
+        fi;
+        pvesh set /cluster/sdn 2>/dev/null || true
+
   block:
 
+    - name: "T3 - PROXMOX_SDN -3- Zone: 1) SDN Zone inspection trace"
+      ansible.builtin.debug:
+        msg: | 
+          ===[ SDN ZONE DEPLOYMENT INFO ]===
+          APi User:        {{ t1_hypervisor_api_user | default('t1_hypervisor_api_user UNDEFINED_MISSING_VALUE') }}
+          API Password:    {{ t1_hypervisor_api_password | default('t1_hypervisor_api_password UNDEFINED_MISSING_VALUE') }}
+          Zone Name:       {{ t1_airgap_zone.zone | default('t1_airgap_zone.zone UNDEFINED_MISSING_VALUE') }}
+          Zone Type:       {{ t1_airgap_zone.type | default('t1_airgap_zone.type UNDEFINED_MISSING_VALUE') }}
+          Internet Bridge: {{ t1_proxmox_internet_bridge  | default('t1_proxmox_internet_bridge UNDEFINED_MISSING_VALUE') }}
+          Hypervisor:      {{ t1_hypervisor_node  | default('t1_hypervisor_node UNDEFINED_MISSING_VALUE') }}
+      delegate_to: localhost
+    
     #-----------------------------------------------------------------------
     # 1.- SDN Zone Creation via Proxmox API
     #-----------------------------------------------------------------------
@@ -45,21 +76,10 @@
     #-----------------------------------------------------------------------
     - name: "T3 - PROXMOX_SDN -3- Zone: 1.2) RESCUE - Force SDN Zone State via pvesh"
       become: true
-      ansible.builtin.shell: |
-        ACTION="{{ 'delete' if (t3_zone_state | default('present')) == 'absent' else 'create' }}"
-        ZONE_NAME="{{ t1_airgap_zone.zone | default('airgap') }}"
-        ZONE_TYPE="{{ t1_airgap_zone.type | default('simple') }}"
-        
-        if [ "$ACTION" = "delete" ]; then
-          pvesh delete /cluster/sdn/zones/$ZONE_NAME 2>/dev/null || true
-        else
-          # Evaluamos dinámicamente si pasamos la interfaz puente según tu variable booleana de zona simple
-          {% if t3_proxmox_is_simple_zone %}
-            pvesh create /cluster/sdn/zones --zone "$ZONE_NAME" --type "$ZONE_TYPE" --local_routing 1 2>/dev/null || true
-          {% else %}
-            pvesh create /cluster/sdn/zones --zone "$ZONE_NAME" --type "$ZONE_TYPE" --bridge "{{ t1_proxmox_internet_bridge | default('vmbr0') }}" --local_routing 1 2>/dev/null || true
-          {% endif %}
-        fi
+      ansible.builtin.shell: 
+        cmd: "{{ t3_cli_commands[t3_selector] | default('') }}"
+      vars:
+        t3_selector: "{{ t3_zone_state | default('present') }}" 
       register: t3_zone_cli_fallback
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
       failed_when: false
