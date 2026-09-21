@@ -108,10 +108,10 @@ g3_extract_os_installer:
     - src: "casper/initrd"
       dest: "initrd"	
   debian:
-    - src: "install.amd/vmlinuz"
-      dest: "vmlinuz"	
-    - src: "install.amd/initrd.gz"
-      dest: "initrd"
+    - src: "debian-installer/amd64/linux"
+      dest: "linux"	
+    - src: "debian-installer/amd64/initrd.gz"
+      dest: "initrd.gz"
   suse: 
     - src: "boot/x86_64/loader/linux"
       dest: "vmlinuz"

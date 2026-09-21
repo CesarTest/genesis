@@ -2499,7 +2499,7 @@ function startMenu() {
     echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
     echo -e "${COLOR[$SILVER]}               WELCOME TO GENESIS PROVISIONING SYSTEM !!!!!! ${COLOR[$NC]}"
     echo -e "${COLOR[$SILVER]}---------------------------------------------------------------------------------${COLOR[$NC]}"
-    echo -e "${COLOR[$SILVER]}  -> New Features Requests: Cesar Delgado (cesar.electronic.engineer@gmail.com) ${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}  -> New Features Requests: Cesar Delgado (cesar.delgado.gonzalez@alumnos.upm.es) ${COLOR[$NC]}"
     echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
 
     # 1.- Menu System

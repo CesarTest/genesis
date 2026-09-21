@@ -75,6 +75,8 @@
           ide2: "none,media=cdrom"
         net: "{{ t1_proxmox_nics | default({}) }}"
         boot: "order=scsi0;net0;net1"
+        onboot: true
+        args: "-boot reboot-timeout=1"
         timeout: 300
       register: t2_kvm_clone_result
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
@@ -126,3 +128,14 @@
       when: 
         - t1_kvm_cli_create_result is succeeded
         - (t1_proxmox_node_boot.bios | default('ovmf')) == 'ovmf'
+
+    - name: "T4 - PROXMOX_CREATE -4- Nodes: 1.4) RESCUE - Set Reboot Timeout"
+      become: true
+      ansible.builtin.shell: |
+        qm set {{ t1_enroll_default_node_id | default(201) }} \
+          --args "-boot reboot-timeout=1"
+      register: t1_kvm_cli_boot_result
+      changed_when: t1_kvm_cli_boot_result.rc == 0
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      when: 
+        - t1_kvm_cli_create_result is succeeded

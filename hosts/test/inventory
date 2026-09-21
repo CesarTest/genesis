@@ -38,7 +38,7 @@ all:
     debian.maas.lab:
       ansible_host: "10.10.51.153"
       os_name: "Debian"
-      os_version: "13.6"
+      os_version: "13.7"
 
   #--------------------------------------------------------------------
   #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
