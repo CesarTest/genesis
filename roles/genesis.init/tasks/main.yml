@@ -45,6 +45,6 @@
     #---------------------------------------
     - ansible.builtin.include_tasks: "4_ready/1_ironic.yml"
       ignore_errors: yes
-    - ansible.builtin.include_tasks: "4_ready/2_nat.yml"
-      ignore_errors: yes
-      when: genesis_bmc_credentials is defined
+    #- ansible.builtin.include_tasks: "4_ready/2_nat.yml"
+    #  ignore_errors: yes
+    #  when: genesis_bmc_credentials is defined

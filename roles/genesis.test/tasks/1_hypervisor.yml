@@ -6,16 +6,21 @@
 # SPDX-License-Identifier: Apache-2.0
 
 #-----------------------------------------------------------------------
-# 1.- Hypervisor Working Environment Check
+# 1.- Hypervisor Connectivity Check
 #-----------------------------------------------------------------------
 - block:
     - ansible.builtin.include_tasks: "1_hypervisor/connectivity.yml"
+  run_once: yes
+  
+#-----------------------------------------------------------------------
+# 2.- Hypervisor Working Environment Check
+#-----------------------------------------------------------------------
+- block:
     - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_dependencies.yml"
     - ansible.builtin.include_tasks: "1_hypervisor/{{ t1_hypervisor }}_users.yml"
     #- ansible.builtin.include_tasks: "2_emulator/proxmox.yml"
     #- ansible.builtin.include_tasks: "2_emulator/sushy.yml"
   run_once: yes
-  delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
   when:
     - t1_refresh_hypervisor | default(true) | bool
 

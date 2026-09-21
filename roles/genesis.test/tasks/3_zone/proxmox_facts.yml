@@ -52,6 +52,7 @@
       ansible.builtin.set_fact:
         pve_instances:
           proxmox_vms: "{{ t3_vm_proxmox }}"
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
       vars:
         t3_vm_info_in: "{{ pve_vm_info.stdout | default('[]') | from_json }}"
         t3_vm_config_in: "{{ pve_vm_config.stdout | default('{}') | from_yaml }}"
@@ -72,3 +73,4 @@
     - name: "T3 - PROXMOX_FACTS -3- Zone: 1.3) ALWAYS: Save Raw Instances as Fact"
       ansible.builtin.set_fact:
         t3_proxmox_instances: "{{ pve_instances.proxmox_vms | default([]) }}"
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"

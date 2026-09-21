@@ -30,7 +30,7 @@ all:
         username: "root@pam"
         password: "cesardgm"
       redfish:
-        ipv4: "{{ genesis_nics.outband.ip | default('10.10.41.5/24') }}" # Proxmox Hypervisor 
+        ipv4: "192.168.1.133" # Proxmox Hypervisor 
         port: "8000"          # Proxmox RedFish Daemon
         username: "root@pam"
         password: "cesardgm"
@@ -45,7 +45,7 @@ all:
       ansible_connection: "local"
   
     proxmox:
-      ansible_host: 192.168.1.133
+      ansible_host: "{{ genesis_bmc_credentials.redfish.ipv4 | default('192.168.1.133') }}"
  
     genesis:
       ansible_host: "{{ genesis_nics.inband.ip | default('127.0.0.1') | ansible.utils.ipaddr('address') }}"

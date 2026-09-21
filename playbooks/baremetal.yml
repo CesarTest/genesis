@@ -19,6 +19,7 @@
 - hosts: "baremetal"
   become: no
   gather_facts: no
+  connection: ssh # IMPORTANT! Allow genesis unattended lifecycle 
   vars:
     genesis_repo_path:   "{{ playbook_dir }}/../repo"
     genesis_hosts_path:  "{{ playbook_dir }}/../hosts"

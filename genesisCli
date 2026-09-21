@@ -353,15 +353,16 @@ function defineMenu() {
         12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")
 		      MENU_TEXT="(12)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_deploy.log"  ; fi
-	          PARAMETRO=(     "GENESIS_REFRESH" "LOG_FILE" )
-              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
-              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
-			  VALOR_DEFECTO=( "No" "Yes" "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"  "GENESIS_REFRESH" "BAREMETAL_REFRESH"   "LOG_FILE"   )
+			  VALOR_DEFECTO=( "0" "No" "Yes" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[3]}]:" \
                                  )
-
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="12"
               unset GENESIS_REFRESH LOG_FILE 
@@ -512,17 +513,18 @@ function defineMenu() {
               ;;
 
        33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}")
+	          source "/tmp/${GENESIS_HYPERVISOR_NODES[0]}.credentials"
 		      MENU_TEXT="(33)___________ ${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/e1_proxmox.log"  ; fi
               PARAMETRO=(     "HYPERVISOR_IP" "HYPERVISOR_PASSWORD"  "LOG_FILE" )
-              VALOR_DEFECTO=( "192.168.1.133" "root" "${LOG_FILE}" )
+              VALOR_DEFECTO=( "${ansible_host}" "${ansible_become_pass}" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Proxmox Hypervisor IP [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Proxmox Root Password [${VALOR_DEFECTO[1]}]:" \
 			                      "-----> Log File              [${VALOR_DEFECTO[2]}]:" \
                                  )
               RETURNING_MENU="10"
               RUN_ACTION="33"
-              unset HYPERVISOR_IP HYPERVISOR_PASSWORD LOG_FILE 
+              unset HYPERVISOR_IP HYPERVISOR_PASSWORD LOG_FILE ansible_host ansible_user ansible_become_pass
               ;;
 
 	     [?])
@@ -756,15 +758,16 @@ firewallZone() {
 #  Set environment
 #===================================================
 setEnvironment() {
+   # => 1.- OS Properties
    case "${OS}" in
      "ubuntu"|"debian")
-       DEP_INSTALLER=( 'python3' 'git' 'ansible' ) 
+       DEP_INSTALLER=( 'python3' 'git' 'ansible' 'sshpass' ) 
        DEP_DOCKER=( 'podman-docker' )
        INSTALLER_CMD="sudo -H -E apt-get -y install"
        CHECK_CMD="dpkg -s"
        ;;
      "redhat"|"centos")
-       DEP_INSTALLER=( 'python3' 'git' 'ansible' 'glibc-locale-source' 'glibc-langpack-en' )
+       DEP_INSTALLER=( 'python3' 'git' 'ansible' 'glibc-locale-source' 'glibc-langpack-en' 'sshpass' )
        DEP_DOCKER=( 'podman-docker' )
        PKG_MANAGER=$(/usr/bin/which dnf || /usr/bin/which yum)
        INSTALLER_CMD="sudo -H -E ${PKG_MANAGER} -y install"
@@ -776,6 +779,8 @@ setEnvironment() {
        ;;
    esac
    
+   # => 2.- Hypervisor Credentials
+   hypervisorCredentials
 }
 
 #===================================================
@@ -1209,9 +1214,8 @@ function trust_relationships() {
     # LOCAL ENVIRONMENT
     #---------------------------
 	local USER_FORCED="${1}"
+    local LIST_OF_NODES_FILE="${2}"
     if [ ! -n "${BAREMETAL_ROOT_PASSWORD}" ] ; then local BAREMETAL_ROOT_PASSWORD="root" ; fi	
-    local LIST_OF_NODES_FILE="${1}"
-    local NODE INVENTORY_LIST
     if   [ -n "${USER_FORCED}" ] ; then local USER="${USER_FORCED}@" 
     elif [ -n "${USER}"        ] ; then local USER="${USER}@" 
 	else local USER="root@"  
@@ -1224,15 +1228,8 @@ function trust_relationships() {
 	# 1.- Load list of IP nodes
     echo "-----> Loading Nodes"
     echo "${LOG_HEADER} -................. LIST_OF_NODES_FILE=[${LIST_OF_NODES_FILE}]"
-    echo "${LOG_HEADER} -... GENESIS_ANSIBLE_INVENTORY_SOURCE=[${GENESIS_ANSIBLE_INVENTORY_SOURCE}]"
 	if [ -r "${LIST_OF_NODES_FILE}" ] ; then
         . "${LIST_OF_NODES_FILE}" 2> /dev/null
-    elif [ -n "${LIST_OF_NODES_FILE_ARRAY}" ] ; then
-	    local INVENTORY_LIST=( ${LIST_OF_NODES_FILE_ARRAY[@]} )
-    elif [ -r "${GENESIS_ANSIBLE_INVENTORY_SOURCE}" ] ; then
-	    echo "runAdHoc ' ' '--list-hosts' | sed '1d'"
-	    local INVENTORY_LIST=( $(runAdHoc ' ' '--list-hosts' | sed '1d') )
-        echo "${LOG_HEADER} -................. INVENTORY_LIST=[${INVENTORY_LIST[@]}]"
     fi
 	
 	# 2.- Detect Passwordless 
@@ -1849,18 +1846,13 @@ function buildCommand() {
         # 1.- Build Playbook Options
         #----------------------
         OPTIONS=''
-		if [ -n "${DEBUG_ANSIBLE_FLAGS}" ] ; then OPTIONS="${DEBUG_ANSIBLE_FLAGS} " ; fi
-        if [ -n "${INVENTORY}"      ] ; then OPTIONS="${OPTIONS} -i ${INVENTORY}"   ; fi
-        if [ -n "${ADHOC_MODULE}"   ]  && [ ! "${ADHOC_MODULE}" == ' ' ] ; then 
-		     OPTIONS="${OPTIONS} -m ${ADHOC_MODULE}"  
-		     if [ -n "${ADHOC_CALL}" ] && [ ! "${ADHOC_CALL}" == ' ' ] ; then 
-			    OPTIONS="${OPTIONS} -a '${ADHOC_CALL}'" 
-			 fi 	 
-		elif [ -n "${ADHOC_CALL}" ] ; then 
-		     OPTIONS="${OPTIONS} --list-hosts" 
-	    fi		
-        if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"     ; fi
-		if [ -n "${FLUSH_CACHE}"    ] ; then OPTIONS="${OPTIONS} --flush-cache"     ; fi
+		if [ -n "${DEBUG_ANSIBLE_FLAGS}" ] ; then OPTIONS="${DEBUG_ANSIBLE_FLAGS} "  ; fi
+        if [ -n "${INVENTORY}"      ] ; then OPTIONS="${OPTIONS} -i ${INVENTORY}"    ; fi
+		if [ -n "${ADHOC_MODULE}"   ] ; then OPTIONS="${OPTIONS} -m ${ADHOC_MODULE}" ; fi
+		if [ -n "${ADHOC_CALL}"     ] ; then OPTIONS="${OPTIONS} -a ${ADHOC_CALL}"   ; fi
+		if [ -n "${ADHOC_LISTHOSTS}" ] ; then OPTIONS="${OPTIONS} --list-hosts"      ; fi
+        if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"      ; fi
+		if [ -n "${FLUSH_CACHE}"    ] ; then OPTIONS="${OPTIONS} --flush-cache"      ; fi
         if [ -n "${EXTRA_VARS}"     ] ; then
 		   local EXTRA_VARS_ARRAY=( $(echo "${EXTRA_VARS}" | sed 's/#/\n/g') )
 		   local EXTRA_VARS_ANSIBLE="$(printf " -e %s" "${EXTRA_VARS_ARRAY[@]}")"
@@ -1989,27 +1981,28 @@ detectBackgroundExecution() {
 #===================================================
 function setupCommand() {
    local TIMESTAMP=$(date -R)
+   local MUTE="${1}"
    detectBackgroundExecution
    if [ -n "${GENESIS_PROJECT_ANSIBLE_CFG}" ] ; then
-      echo  "[$TIMESTAMP] -> export ANSIBLE_CONFIG=${GENESIS_PROJECT_ANSIBLE_CFG}"    
+      if [ ! -n "${MUTE}" ] ; then echo  "[$TIMESTAMP] -> export ANSIBLE_CONFIG=${GENESIS_PROJECT_ANSIBLE_CFG}"  ; fi
       export ANSIBLE_CONFIG="${GENESIS_PROJECT_ANSIBLE_CFG}"
    fi
    
    if [ -n "${GENESIS_VIRTUAL_ENVIRONMENT}" ] ; then
-       echo "[$TIMESTAMP] -> source ${GENESIS_VIRTUAL_ENVIRONMENT}"
-       source "${GENESIS_VIRTUAL_ENVIRONMENT}"
-       echo "-> echo source ${GENESIS_VIRTUAL_ENVIRONMENT} > $HOME/env.sh"
-       echo "source ${GENESIS_VIRTUAL_ENVIRONMENT}" > "$HOME/env.sh"
+       if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> source ${GENESIS_VIRTUAL_ENVIRONMENT}"
+       source "${GENESIS_VIRTUAL_ENVIRONMENT}"  ; fi
+       if [ ! -n "${MUTE}" ] ; then echo "-> echo source ${GENESIS_VIRTUAL_ENVIRONMENT} > $HOME/env.sh"  ; fi
+       if [ ! -n "${MUTE}" ] ; then echo "source ${GENESIS_VIRTUAL_ENVIRONMENT}" > "$HOME/env.sh"  ; fi
    fi
    
    if [ -n "${IRONIC_CLOUD}" ] ; then
-       echo "[$TIMESTAMP] -> export OS_CLOUD=${IRONIC_CLOUD}"
+       if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> export OS_CLOUD=${IRONIC_CLOUD}"  ; fi
        export OS_CLOUD="${IRONIC_CLOUD}"
-       echo "[$TIMESTAMP] -> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"
-       echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"
+       if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"  ; fi
+       if [ ! -n "${MUTE}" ] ; then echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"  ; fi
    fi 
    
-   echo "[$TIMESTAMP] -> export BIFROST_INVENTORY_SOURCE=${GENESIS_BIFROST_INVENTORY_SOURCE}"
+   if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> export  BIFROST_INVENTORY_SOURCE=${GENESIS_BIFROST_INVENTORY_SOURCE}"  ; fi
    export BIFROST_INVENTORY_SOURCE="${GENESIS_BIFROST_INVENTORY_SOURCE}" 
 }
 
@@ -2022,16 +2015,15 @@ function setupCommand() {
 #===================================================
 function shootAdhoc() {
 
+   local MUTE="${1}"
+   
    # 0.- Trace Entry
    if [ ! -n "${ATARGET}" ] ; then  local ATARGET="all" ; fi
-   #if [[ ! "${LOG}" == "/dev/null" ]] ; then
-   #   echo "[${TIMESTAMP}] :  ansible  ${OPTIONS} ${ATARGET}"
-   #fi
-   
+   if [ ! -n "${MUTE}"    ] ; then echo "[${TIMESTAMP}] :  ansible ${ATARGET} ${OPTIONS}" ; fi
+
    # 1.- Shoot Ad-Hoc Command
    if   [ -x /opt/stack/bifrost/bin/ansible ] ; then
-        #echo $OPTIONS
-        /opt/stack/bifrost/bin/ansible  ${OPTIONS} ${ATARGET}
+        /opt/stack/bifrost/bin/ansible ${ATARGET} ${OPTIONS} 
    elif [ -x /usr/bin/ansible    ] ; then
         /usr/bin/ansible ${ATARGET} ${OPTIONS} 
    elif [ -x /usr/sbin/ansible   ] ; then
@@ -2093,8 +2085,8 @@ function shootCommand() {
    if [ -n "${PLAYBOOK}" ] ; then
       shootPlaybook "${PLAYBOOK}"
       
-   elif [ -n "${ADHOC_MODULE}" ] ; then
-      shootAdhoc
+   elif  [ -n "${ADHOC_MODULE}" ] || [ -n "${ADHOC_LISTHOSTS}" ] ; then
+      shootAdhoc "quiet"
    fi
    
 }
@@ -2121,23 +2113,65 @@ function runPlaybook() {
 #========================================================
 function runAdHoc() {
    
-   local ADHOC_MODULE="${1}"
-   local ADHOC_CALL="${2}"
-   local LOG="${3}"
+   local LOG="${1}"
    
    if [ ! -n "${LOG}" ] ; then local LOG="/dev/null" ; fi  
    buildCommand
-
-   export ANSIBLE_CONFIG="${GENESIS_PROJECT_ANSIBLE_CFG}"
-   export ANSIBLE_INVENTORY="${GENESIS_ANSIBLE_INVENTORY_SOURCE}"
+   setupCommand "quiet"
    shootCommand "${LOG}"
    
-   unset INVENTORY PTARGET SLOT VAULT EXTRA_VARS ADHOC_MODULE ADHOC_CALL
+   unset INVENTORY ATARGET SLOT VAULT EXTRA_VARS ADHOC_MODULE ADHOC_CALL
 }
 
 ########################################################################################
 # MODULE 6 - MENU ACTIONS
 ########################################################################################
+function ansibleListHosts() {
+   local TMP_ADHOC="/tmp/adhoc"
+   local DEBUG_ANSIBLE_FLAGS=''
+   local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
+   local ADHOC_LISTHOSTS="--list-host"
+   local LIST_HOSTS_RAW="$(runAdHoc 2> /dev/null)"
+   echo "${LIST_HOSTS_RAW}" > "${TMP_ADHOC}"
+   LIST_HOSTS=$(awk 'NR>1 {printf "%s ", $1}' ${TMP_ADHOC})
+   rm -f "${TMP_ADHOC}"
+}
+
+function ansibleInventoryUserCredentials() {
+
+   # 1.- AdHoc Call Properties
+   local TMP_ADHOC="/tmp/${ATARGET}.credentials"
+   local DEBUG_ANSIBLE_FLAGS=''
+   local ADHOC_MODULE="debug"
+   local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
+   
+   # 2.- Capture User Credentials   
+   local USER_CREDENTIAL_VARS="ansible_host ansible_user ansible_become_pass" 
+   echo '' > "${TMP_ADHOC}"
+   for ANSIBLE_VAR in ${USER_CREDENTIAL_VARS} ; do
+     local ADHOC_CALL="var=${ANSIBLE_VAR}"
+     local LIST_HOSTS_RAW="$(runAdHoc 2> /dev/null)"
+     echo "${LIST_HOSTS_RAW}" | grep "${ANSIBLE_VAR}" | tr ':' '=' | tr -d '" ' >> "${TMP_ADHOC}"
+   done   
+   cat "${TMP_ADHOC}"
+}
+
+function hypervisorCredentials() {
+   # => 1.- Target Hosts
+   ansibleListHosts "${GENESIS_TARGET_INVENTORY_SOURCE}"
+   GENESIS_TARGET_LIST_OF_HOSTS=( ${LIST_HOSTS} )
+   GENESIS_HYPERVISOR_NODES=()
+   for NODE in ${LIST_HOSTS}; do
+       if [ "${NODE}" != "localhost" ] && [ "${NODE}" != "genesis" ]; then
+          GENESIS_HYPERVISOR_NODES=( "${GENESIS_HYPERVISOR_NODES[@]}" "${NODE}" )
+       fi
+   done
+   unset LIST_HOSTS NODE
+   
+   # => 2.- Hypervisor Credentials   
+   local ATARGET="${GENESIS_HYPERVISOR_NODES[0]}"
+   ansibleInventoryUserCredentials
+}
 
 #========================================================
 #   Function: underConstruction
@@ -2145,11 +2179,12 @@ function runAdHoc() {
 #   Warning Message: Under Construction 
 #========================================================
 function underConstruction() {
-   echo -e "${COLOR[$RED]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
-   echo -e "${COLOR[$SEA]}  UNDER CONSTRUCTION ${COLOR[$NC]}"
-   echo -e "${COLOR[$RED]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
-   echo -e  "  ---> Options not implemented yet are marked with grey color"
-   echo -e  "${COLOR[$RED]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+ 
+   echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   echo -e "${COLOR[$ORANGE]}  UNDER CONSTRUCTION ${COLOR[$NC]}"
+   echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   echo -e  "${COLOR[$ORANGE]}  ---> Options not implemented yet are marked with grey color${COLOR[$NC]}"
+   echo -e  "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
 }
 
 #========================================================
@@ -2330,11 +2365,10 @@ function 8_test() {
    #--------------------
    # 1.- Capture Local Environment
    local TEST_CYCLE="${1:-0}"
-   
+    
    # 2.- Set Shoot Conditions
    local REFRESH_INSTALL=no
-   local REFRESH_ENVIRONMENT=no
-   
+   local REFRESH_ENVIRONMENT=no   
    local GENESIS_REFRESH_NORM=$(echo "${GENESIS_REFRESH}" | tr '[:upper:]' '[:lower:]')
    case "${GENESIS_REFRESH_NORM}" in
     y|yes|si|s|true|1)
@@ -2355,8 +2389,16 @@ function 8_test() {
    #   ACTIONS
    #--------------------
    if [[ "${REFRESH_INSTALL}" == 'yes' ]] ; then prepareLocalMachine ; fi
+   if [[ "${REFRESH_ENVIRONMENT}" == 'yes' ]] ; then  
+      source "/tmp/${GENESIS_HYPERVISOR_NODES[0]}.credentials" 2> /dev/null
+      BAREMETAL_ROOT_PASSWORD="${ansible_become_pass}"
+      local INVENTORY_LIST=( "${ansible_host}" )
+	  trust_relationships 'root'
+   fi
    0_call "${TEST_CYCLE}" 
-   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH
+   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH 
+   unset INVENTORY_LIST EMULATION EMULATION_IP 
+   unset ansible_host ansible_user ansible_become_pass
 }
 
 #========================================================
@@ -2371,7 +2413,7 @@ function 18_hypervisor() {
    local EMULATION=$(echo "${HYPERVISOR}" | tr '[:upper:]' '[:lower:]')
    local EMULATION_IP=$(echo "${HYPERVISOR_IP}" | tr '[:upper:]' '[:lower:]' | tr -d ' ') 
    local BAREMETAL_ROOT_PASSWORD="${HYPERVISOR_PASSWORD}"
-   local LIST_OF_NODES_FILE_ARRAY=( "${EMULATION_IP}" )
+   local INVENTORY_LIST=( "${EMULATION_IP}" )
    case "${EMULATION}" in
     "proxmox")
 	    EXTRA_VARS="target_hypervisor=proxmox"
@@ -2435,41 +2477,12 @@ function initParameters() {
    TARGET=$(echo ${TARGET} | tr -d ' ' )
    LOG_FILE=$(echo ${LOG_FILE} | tr -d ' ' )
    
-   # => 2.- Set Default Action Values
-   case "${ACTION}" in
-     1|"${COLOR[$ORANGE]}[GENESIS]   - REFRESH     : Reinstall GENESIS Build${COLOR[$NC]}")
-	   if [ ! -n "${genesis_BUILD}" ] ; then genesis_BUILD=$(ls -1 /mnt/build*.tgz | head -1 2> /dev/null)  ; fi
-	   genesis_BUILD=$(echo ${genesis_BUILD} | tr -d ' ' )   
-	 ;;
-     3|"${COLOR[$SILVER]}[GENESIS]   - LOAD (pre-setup): load String configuration files${COLOR[$NC]}")
-	   if [ ! -n "${CFGS_CORE}" ] ; then CFGS_CORE=$(ls -1 -d ${genesis_CFGS_PATH}/* | head -1 2> /dev/null)  ; fi
-	   CFGS_CORE=$(echo ${CFGS_CORE} | tr -d ' ' )
-     ;;	 
-     4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")
-       if [[ "${PROJECT_NAME}" == "LVNL" ]] ; then 
-          if [ ! -n "${SLOT}"      ] ; then SLOT="1"     ; fi
-          if [ ! -n "${VAULT}"     ] ; then VAULT="root" ; fi
-          SLOT=$(echo ${SLOT} | tr -d ' ' )
-          VAULT=$(echo ${VAULT} | tr -d ' ' )
-       fi	 
-	 ;;	
-     12|"${GENESIS_PLAYBOOKS_HEADER[${LDAP}]}") 
-       if [ ! -n "${VAULT}" ] ; then VAULT="trufa"  ; fi	 
-       if [ ! -n "${LDAP_DATA}" ] ; then LDAP_DATA="pv3"  ; fi	    
-       if [ ! -n "${LDAP_TYPE}" ] ; then LDAP_TYPE="idm"  ; fi
-       if [ ! -n "${LDAP_GROUP_MACHINES}" ] ; then LDAP_GROUP_MACHINES="iss_group"  ; fi
-	   VAULT=$(echo ${VAULT} | tr -d ' ' )
-       LDAP_TYPE=$(echo ${LDAP_TYPE} | tr -d ' ' | tr [:upper:] [:lower:]  )
-       LDAP_DATA=$(echo ${LDAP_DATA} | tr -d ' ' | tr [:upper:] [:lower:]  )
-       LDAP_GROUP_MACHINES=$(echo ${LDAP_GROUP_MACHINES} | tr -d ' ' | tr [:upper:] [:lower:]  )	  	   
-	 ;;
-     13|"${GENESIS_PLAYBOOKS_HEADER[${TESTING}]}")	
-       if [ ! -n "${GROUP_MACHINES}" ] ; then GROUP_MACHINES="iss_group"  ; fi
-       GROUP_MACHINES=$(echo ${GROUP_MACHINES} | tr -d ' ' | tr [:upper:] [:lower:]  )	   
-	 ;;
-   esac
+   # => 2.- tARGET hOSTS
+   ansibleListHosts "${GENESIS_TARGET_INVENTORY_SOURCE}"
+   GENESIS_TARGET_HOSTS=( ${LIST_HOSTS} )
+   unset LIST_HOSTS
 
-   # => 4.- Avoid startMenu
+   # => 3.- Avoid startMenu
    unset MENU
 }
 

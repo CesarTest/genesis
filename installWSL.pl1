@@ -13,7 +13,7 @@ $USUARIO       = "javier"
 $CONTRASENA    = "malo"
 
 $GIT_NAME      = "Cesar DGM"
-$GIT_EMAIL     = "cesar.electronic.engineer@gmail.com"
+$GIT_EMAIL     = "cesar.delgado.gonzalez@alumnos.upm.es"
 $REPO_URL      = "https://github.com/CesarTest/genesis.git"
 $TARGET_DIR    = "/home/$USUARIO/genesis"
 
