@@ -42,20 +42,15 @@
       Net1 (MAC):     {{ t1_enroll_nic_bmc_mac | default('[t1_enroll_nic_bmc_mac is NOT DEFINED]') }}
       Net2 (Bridge):  {{ t1_proxmox_internet_bridge | default('[t1_proxmox_internet_bridge is NOT DEFINED]') }}
       Net2 (MAC):     {{ t1_enroll_nic_internet_mac | default('[t1_enroll_nic_internet_mac is NOT DEFINED]') }}
+      
+      --- PROXMOX Network Interfaces Definition ---
+      ProxMox NIC: {{ t1_proxmox_nics }}
   delegate_to: localhost
 
 #-----------------------------------------------------------------------
 # 2.- Create Virtual Machine
 #-----------------------------------------------------------------------
-- vars:
-    t1_proxmox_nics_airgap:
-       net0: "model=e1000,bridge={{ t1_proxmox_provision_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_provision_mac | default('') }}"
-       net1: "model=e1000,bridge={{ t1_proxmox_bmc_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_bmc_mac | default('') }}"
-    t1_proxmox_nics_internet:
-       net2: "model=e1000,bridge={{ t1_proxmox_internet_bridge | default('vmbr0') }},macaddr={{ t1_enroll_nic_internet_mac | default('') }}"
-    t1_proxmox_nics_online: "{{ t1_proxmox_nics_airgap | combine(t1_proxmox_nics_internet) }}"
-    t1_proxmox_nics: "{{ t1_connect_internet | bool | ternary(t1_proxmox_nics_online,t1_proxmox_nics_airgap) }}"
-  block:
+- block:
 
     - name: "T4 - PROXMOX_CREATE -4- Nodes: 1.1) Create VM with BareMetal Specs"
       community.proxmox.proxmox_kvm:
