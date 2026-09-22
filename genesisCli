@@ -59,11 +59,17 @@ GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMET
 GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
 GENESIS_TARGET_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/target/inventory"
 GENESIS_COLLECTIONS_WORKING_PATH="${GENESIS_WORKING_PATH}/collections"
+GENESIS_INTERNET_BLOCK="$(awk '/internet:/{c=5; next} c && c--' "${GENESIS_TARGET_INVENTORY_SOURCE}")"
+GENESIS_INTERNET_IP_LINE="$(echo "${GENESIS_INTERNET_BLOCK}" | grep 'ip:' | head -n 1)"
+GENESIS_INTERNET_IP_RAW="$(echo "${GENESIS_INTERNET_IP_LINE}" | awk -F: '{print $2}')"
+GENESIS_INTERNET_IP="$(echo "${GENESIS_INTERNET_IP_RAW}" | tr -d '"' | tr -d ' ')"
 
 # 2.2.- Installation OPTIONS
 DEBUG_ANSIBLE_FLAGS='-vvv '
 RUN_BACKGROUND="no"
-BAREMETAL_ROOT_PASSWORD="malo" # Automatic ssh-copy-id
+genesis_hypervisor_ip=$( cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'genesis_hypervisor_ip:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
+genesis_hypervisor_become_pass=$( cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'genesis_hypervisor_become_pass:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
+BAREMETAL_ROOT_PASSWORD=$( cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'ansible_become_pass:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
 
 # 2.3.- Genesis Playbooks
 REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
@@ -124,7 +130,6 @@ GENESIS_DEPENDENCIES=( 'collections/requirements.yml' \
 
 GENESIS_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                     'ansible-galaxy role install --force -r ' \
-						 'sed -i "/cdglab.duckdns.org/d" /etc/hosts' \
                         )
 
 PROXMOX_DEPENDENCIES=( '#' \
@@ -179,15 +184,20 @@ function defineMenu() {
 	          if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/refresh.log"; fi
 			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
 		      MENU_TEXT="(1)___________ ${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}"
-	          PARAMETRO=(     "RUN_BACKGROUND" "LOG_FILE" )
-              VALOR_DEFECTO=( "No"  "${LOG_FILE}")	  
-	          SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Log File                  [${VALOR_DEFECTO[1]}]:" \
+	          PARAMETRO=(  "GENESIS_INTERNET_IP"  "RUN_BACKGROUND" "LOG_FILE" )
+              VALOR_DEFECTO=( "${GENESIS_INTERNET_IP}" "No"   "${LOG_FILE}")	  
+	          SOLICITA_PARAMETRO=("-----> Genesis Internet IP       [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File                  [${VALOR_DEFECTO[2]}]:" \
                                  )
+	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}" '' '' )
+			  CNF_OLD_VALUE=( "${GENESIS_INTERNET_IP}"       '' '' )
+			  #CNF_REEMPLAZA_LINEA=( 'Yes' '' '' )
+			  #CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' ': ' '' )
               RETURNING_MENU="0"
               RUN_ACTION="1"
 			  EXTRA_VARS="genesis_stage='G1'"
-              unset RUN_BACKGROUND LOG_FILE
+              unset GENESIS_INTERNET_IP RUN_BACKGROUND LOG_FILE
               ;;
 
 	   2|"${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}")
@@ -198,13 +208,7 @@ function defineMenu() {
              VALOR_DEFECTO=(  "No" \
 							  "${LOG_FILE}" \
 							  )
-	        #CNF_REEMPLAZO=( "${GENESIS_HOSTS_TARGET_FILE}" \
-			#                 "${GENESIS_HOSTS_TARGET_FILE}" \
-			#				  "${GENESIS_HOSTS_TARGET_FILE}" \
-			#				  "${GENESIS_HOSTS_TARGET_FILE}" \
-			#				  '' \
-			#				  )
-			# CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' ': ' '' )
+
 			 SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
 								 "-----> Log File            [${VALOR_DEFECTO[1]}]:" \
 			                     )
@@ -371,16 +375,20 @@ function defineMenu() {
         13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")
 		      MENU_TEXT="(13)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_active.log"  ; fi
-             PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
-			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+	          PARAMETRO=(  "HYPERVISOR_IP"  "GENESIS_REFRESH" "BAREMETAL_REFRESH" "LOG_FILE" )
+              VALOR_DEFECTO=( "${HYPERVISOR_IP}" "No"  "No" "${LOG_FILE}")	  
+	          SOLICITA_PARAMETRO=("-----> Hypervisor IP       [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[1]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[3]}]:" \
                                  )
-
+	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}" '' '' '' )
+			  CNF_OLD_VALUE=( "${HYPERVISOR_IP}"       '' '' '' )
+			  #CNF_REEMPLAZA_LINEA=( 'Yes' '' '' )
+			  #CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' ': ' '' )
               RETURNING_MENU="8"
               RUN_ACTION="13"
-              unset GENESIS_REFRESH LOG_FILE 
+              unset GENESIS_INTERNET_IP GENESIS_REFRESH BAREMETAL_REFRESH LOG_FILE 
 		      ;;			  
 			 
 
@@ -513,18 +521,21 @@ function defineMenu() {
               ;;
 
        33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}")
-	          source "/tmp/${GENESIS_HYPERVISOR_NODES[0]}.credentials"
 		      MENU_TEXT="(33)___________ ${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/e1_proxmox.log"  ; fi
-              PARAMETRO=(     "HYPERVISOR_IP" "HYPERVISOR_PASSWORD"  "LOG_FILE" )
-              VALOR_DEFECTO=( "${ansible_host}" "${ansible_become_pass}" "${LOG_FILE}" )
+              PARAMETRO=(     "genesis_hypervisor_ip" "genesis_hypervisor_become_pass"  "LOG_FILE" )
+              VALOR_DEFECTO=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" "${LOG_FILE}" )
 	          SOLICITA_PARAMETRO=("-----> Proxmox Hypervisor IP [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Proxmox Root Password [${VALOR_DEFECTO[1]}]:" \
 			                      "-----> Log File              [${VALOR_DEFECTO[2]}]:" \
                                  )
+	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}" "${GENESIS_TARGET_INVENTORY_SOURCE}" '' )
+			  CNF_OLD_VALUE=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" '' )
+              CNF_REEMPLAZA_LINEA=( 'Yes' 'Yes' '' )
+			  CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' ': ' '' )
               RETURNING_MENU="10"
               RUN_ACTION="33"
-              unset HYPERVISOR_IP HYPERVISOR_PASSWORD LOG_FILE ansible_host ansible_user ansible_become_pass
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass LOG_FILE
               ;;
 
 	     [?])
@@ -778,9 +789,6 @@ setEnvironment() {
        DEP_DOCKER=( 'podman-docker' )
        ;;
    esac
-   
-   # => 2.- Hypervisor Credentials
-   hypervisorCredentials
 }
 
 #===================================================
@@ -1608,21 +1616,49 @@ function capturaValor() {
 #========================================================
 function reemplazaParametro() {
 
-	local REEMPLAZA_LINEA="$1"
 	local SEPARADOR_CAMPO='='
 	if [ -n "${CNF_SEPARADOR_CAMPO[${POSICION}]}" ] ; then local SEPARADOR_CAMPO="${CNF_SEPARADOR_CAMPO[${POSICION}]}" ; fi 
+	
 	if [ -w "${CNF_REEMPLAZO[${POSICION}]}" ] ; then
+	
+	   # CASE 1: variable=* -> variable=<new value> 
 	   if [ -n "${REEMPLAZA_LINEA}" ] ; then
-	     if [ ! -n "${SIN_COMILLA}" ] ; then local REPLN="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
-		 else                                local REPLN="${VAR}${SEPARADOR_CAMPO}${PREPO}${VALOR}" 
+
+		 # 1. Construimos la Expresión Regular capturando la indentación con ()
+		 # ^([[:space:]]*) captura todos los espacios/tabulaciones del inicio en el Grupo 1 (\1)
+		 if [ -n "${OLD_VALUE}" ] ; then
+		   local OLD="^([[:space:]]*)${VAR}${SEPARADOR_CAMPO}${OLD_VALUE}$"
+		 else 
+		   local OLD="^([[:space:]]*)${VAR}${SEPARADOR_CAMPO}.*$"
+		 fi  
+		 
+	     # 2. Definimos el reemplazo base (con o sin comillas)
+	     if [ ! -n "${SIN_COMILLA}" ] ; then 
+		      local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
+		 else                                
+		      local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}${PREPO}${VALOR}" 
 		 fi
-	   	 echo "===> sed s|^${VAR}${SEPARADOR_CAMPO}.*$|$REPLN| ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
-	   	 sed "s|^${VAR}${SEPARADOR_CAMPO}.*$|$REPLN|" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
-	   else
+		 local REPLN="\1${VAL_NUEVO}"
+		 
+	   	 echo "===> sed s|${OLD}|$REPLN| ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
+	   	 sed "s|${OLD}|$REPLN|" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+
+	   # CASE 2: <old value> -> <new value> 
+	   elif [ -n "${OLD_VALUE}" ] ; then
 	   	 local REPLN="${PREPO}${VALOR}"
-	   	 echo "===> sed s|${VAR}|$REPLN|g ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
-	   	 sed "s|${VAR}|$REPLN|g" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
-	   fi
+		 if [[ "${REPLN}" != "${OLD_VALUE}" ]] ; then
+	   	   echo "===> sed s|${OLD_VALUE}|$REPLN|g ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
+	   	   sed "s|${OLD_VALUE}|$REPLN|g" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
+		 else 
+		   #echo "===>  cp -f ${CNF_REEMPLAZO[${POSICION}]} ${OUT_TMP}"
+		   cp -f "${CNF_REEMPLAZO[${POSICION}]}" "${OUT_TMP}"
+		 fi
+		fi 
+	   # CASE 3: variable -> <new value>    
+	   #else
+	   #	 local REPLN="${PREPO}${VALOR}"
+	   #	 echo "===> sed s|${VAR}|$REPLN|g ${CNF_REEMPLAZO[${POSICION}]} > ${OUT_TMP}"
+	   #	 sed "s|${VAR}|$REPLN|g" "${CNF_REEMPLAZO[${POSICION}]}" > "${OUT_TMP}"
 	else
 	   error "-w" "${CNF_REEMPLAZO[${POSICION}]}"
 	fi
@@ -1638,7 +1674,6 @@ function deployMenu() {
     #------------------
 	# ENTORNO LOCAL
 	#------------------
-	local REEMPLAZA_LINEA="$1"
 	local POSICION="0"
     local VAR VALOR PREPO
 
@@ -1689,17 +1724,19 @@ function deployMenu() {
 
 			#    2.3.1.1.- Replace / for \/ for the sed command
 			#            BEWARE: dump results to temporal file in order to avoid issues with bash of different systems
-			echo "${VALOR}" | awk 'BEGIN{FS="/"} {linea=$1;for(i=2;i<=NF;i++) {linea=linea "\\/" $i }} END{print linea}' > "${OUT_TMP}"
-			VALOR=`cat "${OUT_TMP}"`
+			#echo "${VALOR}" | awk 'BEGIN{FS="/"} {linea=$1;for(i=2;i<=NF;i++) {linea=linea "\\/" $i }} END{print linea}' > "${OUT_TMP}"
+			#VALOR=`cat "${OUT_TMP}"`
 
 			#   2.3.1.2.- Add preposition
 			PREPO="${PREPOSICION[${POSICION}]}"
-               if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then 
-                 reemplazaParametro "${REEMPLAZA_LINEA}"
+            if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then 
+			     local OLD_VALUE="${CNF_OLD_VALUE[${POSICION}]}"
+         	     local REEMPLAZA_LINEA="${CNF_REEMPLAZA_LINEA[${POSICION}]}"                    
+			     reemplazaParametro 
 			     local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
 			     chmod "$PERMISSIONS" "${OUT_TMP}"
-		         mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"				
-               fi
+		         mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"
+            fi
 		fi 
 
 		# 2.3.2.- Capture List Value
@@ -1717,7 +1754,7 @@ function deployMenu() {
 	# 3.- Restore loop Environment
 	#--------------------
     OUT="$?"
-	unset VALOR VAL PREPO POSICION
+	unset VALOR VAL PREPO POSICION 
 }
 
 ########################################################################################
@@ -2157,6 +2194,7 @@ function ansibleInventoryUserCredentials() {
 }
 
 function hypervisorCredentials() {
+
    # => 1.- Target Hosts
    ansibleListHosts "${GENESIS_TARGET_INVENTORY_SOURCE}"
    GENESIS_TARGET_LIST_OF_HOSTS=( ${LIST_HOSTS} )
@@ -2179,7 +2217,10 @@ function hypervisorCredentials() {
 #   Warning Message: Under Construction 
 #========================================================
 function underConstruction() {
- 
+   
+
+   cat "${GENESIS_TARGET_INVENTORY_SOURCE}"
+   
    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
    echo -e "${COLOR[$ORANGE]}  UNDER CONSTRUCTION ${COLOR[$NC]}"
    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
@@ -2389,7 +2430,8 @@ function 8_test() {
    #   ACTIONS
    #--------------------
    if [[ "${REFRESH_INSTALL}" == 'yes' ]] ; then prepareLocalMachine ; fi
-   if [[ "${REFRESH_ENVIRONMENT}" == 'yes' ]] ; then  
+   if [[ "${REFRESH_ENVIRONMENT}" == 'yes' ]] ; then
+      hypervisorCredentials
       source "/tmp/${GENESIS_HYPERVISOR_NODES[0]}.credentials" 2> /dev/null
       BAREMETAL_ROOT_PASSWORD="${ansible_become_pass}"
       local INVENTORY_LIST=( "${ansible_host}" )
@@ -2411,8 +2453,8 @@ function 18_hypervisor() {
    # 2.- Set Shoot Conditions  
    local PLAYBOOK_INDEX="${1:-18}"
    local EMULATION=$(echo "${HYPERVISOR}" | tr '[:upper:]' '[:lower:]')
-   local EMULATION_IP=$(echo "${HYPERVISOR_IP}" | tr '[:upper:]' '[:lower:]' | tr -d ' ') 
-   local BAREMETAL_ROOT_PASSWORD="${HYPERVISOR_PASSWORD}"
+   local EMULATION_IP=$(echo "${genesis_hypervisor_ip}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+   local BAREMETAL_ROOT_PASSWORD="${genesis_hypervisor_become_pass}"
    local INVENTORY_LIST=( "${EMULATION_IP}" )
    case "${EMULATION}" in
     "proxmox")
@@ -2422,7 +2464,8 @@ function 18_hypervisor() {
 		0_call "${PLAYBOOK_INDEX}"
         ;;
    esac
-   unset EMULATION EMULATION_IP HYPERVISOR HYPERVISOR_IP LIST_OF_NODES_FILE_ARRAY PLAYBOOK_INDEX BAREMETAL_ROOT_PASSWORD
+   unset EMULATION EMULATION_IP HYPERVISOR BAREMETAL_ROOT_PASSWORD
+   unset PLAYBOOK_INDEX  
 }
 
 #========================================================
@@ -2516,7 +2559,9 @@ function startMenu() {
          if [ -n "${RETURNING_MENU}" ] ; then MENU="${RETURNING_MENU}"   ; fi
 
          # 1.3.- Clean Loop Environment
-         unset  MENU_TEXT SOLICITA_PARAMETRO PARAMETRO VALOR_DEFECTO RUTA_OPCIONES EXT_OPCIONES RUN_ACTION RETURNING_MENU MENU_SKIP_PATHS MENU_BREAK_TEXT CALL_LOG
+         unset MENU_TEXT SOLICITA_PARAMETRO PARAMETRO VALOR_DEFECTO RUTA_OPCIONES EXT_OPCIONES 
+		 unset RUN_ACTION RETURNING_MENU MENU_SKIP_PATHS MENU_BREAK_TEXT CALL_LOG 
+		 unset CNF_REEMPLAZO CNF_OLD_VALUE CNF_REEMPLAZA_LINEA 
 
     done
 }

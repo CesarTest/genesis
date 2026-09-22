@@ -25,13 +25,15 @@ all:
         dns: "192.168.1.1"
 
     # => 2.- BMC Emulators shared credentials
+    genesis_hypervisor_ip: "192.168.1.133"
+	genesis_hypervisor_become_pass: "cesardgm"
     genesis_bmc_credentials: 
       fake_hardware:
         username: "root@pam"
         password: "cesardgm"
       redfish:
-        ipv4: "192.168.1.133" # Proxmox Hypervisor 
-        port: "8000"          # Proxmox RedFish Daemon
+        ipv4: "{{ genesis_hypervisor_ip | default('127.0.0.1') }}" # Proxmox Hypervisor 
+        port: "8000"                                               # Proxmox RedFish Daemon
         username: "root@pam"
         password: "cesardgm"
         verify_ca: false
@@ -45,7 +47,7 @@ all:
       ansible_connection: "local"
   
     proxmox:
-      ansible_host: "{{ genesis_bmc_credentials.redfish.ipv4 | default('192.168.1.133') }}"
+      ansible_host: "{{ genesis_hypervisor_ip | default('127.0.0.1') }}"
  
     genesis:
       ansible_host: "{{ genesis_nics.inband.ip | default('127.0.0.1') | ansible.utils.ipaddr('address') }}"
@@ -66,7 +68,7 @@ all:
         proxmox:
       vars:
         ansible_user: root
-        ansible_become_pass: cesardgm
+        ansible_become_pass: "{{ genesis_hypervisor_become_pass | default('root') }}"
 
     emulation:
       hosts:
