@@ -121,8 +121,6 @@ GENESIS_PLAYBOOKS_HEADER=( \
 PIP=0; SCRIPTS=1; INSTALLER=2
 GENESIS_DEPENDENCIES=( 'collections/requirements.yml' \
                        'roles/requirements.yml' \
-                       '#' \
-			           '#' \
                      )
 
 GENESIS_INSTALLER=( 'ansible-galaxy collection install --force -r ' \

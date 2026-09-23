@@ -347,6 +347,11 @@ b4_enroll_default_node_id:      "{{ enroll['node_id']         | default('') }}"
 # 3.2. Defaults BMC credentials
 b4_ilo_deploy_iso: "http://{{ b4_url_genesis_ip | default('127.0.0.1') }}:{{ b4_url_genesis_port['http'] | default(8080) }}/os/agent.iso"
 b4_enroll_default_bmc_credentials:
+  manual-management:
+    ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
+    username: "root"
+    password: "calvin"
+    verify_ca: false 
   redfish:
     ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
     username: "root"
@@ -614,16 +619,12 @@ b4_power_cycle_os_scripts:
     fi  
 b4_power_cycle_profiles:
   fake:
-    #driver: "fake-hardware" 
     power_interface: "fake" 
-    management_interface: "fake" 
-    boot_interface: "fake" 
-    deploy_interface: "fake"
-    inspect_interface: "fake"
+    management_interface: "noop" 
     clean_steps: []
   manual:
-    management_interface: "noop"
     power_interface: "{{ b4_enroll_node_bmc_driver }}"
+    management_interface: "noop"
     clean_steps: []
     clean_timeout: 10 
   raid:

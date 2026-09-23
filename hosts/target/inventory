@@ -29,9 +29,12 @@ all:
     genesis_hypervisor_ip: "192.168.1.133"
     genesis_hypervisor_become_pass: "cesardg"
     genesis_bmc_credentials: 
-      fake_hardware:
+      manual-management:
+        ipv4: "{{ genesis_hypervisor_ip | default('127.0.0.1') }}" # Proxmox Hypervisor 
+        port: "8000"                                               # Proxmox RedFish Daemon
         username: "root@pam"
         password: "cesardgm"
+        verify_ca: false
       redfish:
         ipv4: "{{ genesis_hypervisor_ip | default('127.0.0.1') }}" # Proxmox Hypervisor 
         port: "8000"                                               # Proxmox RedFish Daemon
