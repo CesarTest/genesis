@@ -16,8 +16,8 @@
     g3_src_file:   "{{ g3_deploy_os_path }}/{{ g3_os_installer_src }}"     
     g3_dest_file:  "{{ g3_os_installer_path }}/{{ g3_os_installer_dest }}"   
   when: 
-    - g3_image.extract_ramdisk is defined
-    - g3_image.extract_ramdisk   
+    - g3_image.extract_ramdisk     | default(false) | bool
+    - (g3_image.netinstall_ramdisk | default('iso')) == 'iso'
   loop: "{{ g3_iso_files | default([]) }}"
   loop_control:
     loop_var: "g3_os_installer_file"

@@ -7,7 +7,7 @@ all:
   vars:
 
     # 1.- BMC: Test Configuration Parameters
-    baremetal_bmc_driver:       "redfish"
+    baremetal_bmc_driver:       "manual-management"
     baremetal_boot_mode:        "uefi"
     baremetal_power_cycle:      "fake"
 

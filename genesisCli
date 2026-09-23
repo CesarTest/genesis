@@ -363,36 +363,97 @@ function defineMenu() {
 		      MENU_TEXT="(12)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}"
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_deploy.log"  ; fi
               RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
-	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"  "GENESIS_REFRESH" "BAREMETAL_REFRESH"   "LOG_FILE"   )
-			  VALOR_DEFECTO=( "0" "No" "Yes" "${LOG_FILE}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
 	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[1]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[2]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[3]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
                                  )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="12"
-              unset GENESIS_REFRESH LOG_FILE 
+              unset IRONIC_BAREMETAL_NODES 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH 
+			  unset RUN_BACKGROUND LOG_FILE 
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
 		      ;;
 
         13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")
 		      MENU_TEXT="(13)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}"
-	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_active.log"  ; fi
-	          PARAMETRO=(  "genesis_hypervisor_ip"  "genesis_hypervisor_become_pass"  "genesis_internet_ipv4"  "GENESIS_REFRESH" "BAREMETAL_REFRESH" "LOG_FILE" )
-              VALOR_DEFECTO=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" "${genesis_internet_ipv4}" "No"  "No" "${LOG_FILE}")	  
-	          SOLICITA_PARAMETRO=("-----> Hypervisor IP       [${VALOR_DEFECTO[0]}]:" \
-			                      "-----> Hypervisor Password [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[2]}]:" \
-			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[3]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[4]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[5]}]:" \
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
                                  )
-	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}"  "${GENESIS_TARGET_INVENTORY_SOURCE}"  "${GENESIS_TARGET_INVENTORY_SOURCE}" '' '' '' )
-			  CNF_OLD_VALUE=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" "${genesis_internet_ipv4}"   '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( 'Yes' 'Yes' 'Yes' '' '' '' )
-			  CNF_SEPARADOR_CAMPO=( ': '  ': '  ': '  '' '' '' )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="13"
               unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
@@ -401,13 +462,47 @@ function defineMenu() {
 			 
         14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")
 		      MENU_TEXT="(14)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}"
-	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_clean.log"  ; fi
-             PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
-			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
                                  )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="14"
               unset GENESIS_REFRESH LOG_FILE 
@@ -415,14 +510,47 @@ function defineMenu() {
 
         15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")
 		      MENU_TEXT="(15)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}"
-	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_enroll.log"  ; fi
-              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
-			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
                                  )
-
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="15"
               unset GENESIS_REFRESH LOG_FILE 
@@ -430,13 +558,47 @@ function defineMenu() {
 
        16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")
  		      MENU_TEXT="(16)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}"
-	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_manage.log"  ; fi
-              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
-			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
                                  )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="16"
               unset GENESIS_REFRESH LOG_FILE 
@@ -444,13 +606,47 @@ function defineMenu() {
 
        17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}")
 		      MENU_TEXT="(17)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}"
-	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_inspect.log"  ; fi
-              PARAMETRO=(     "GENESIS_REFRESH"   "BAREMETAL_REFRESH"   "LOG_FILE" )
-			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
-                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
                                  )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="17"
               unset GENESIS_REFRESH LOG_FILE 
@@ -1640,7 +1836,7 @@ function reemplazaParametro() {
 	   if [ -n "${CNF_SEPARADOR}" ] ; then local SEPARADOR_CAMPO="${CNF_SEPARADOR}" ; fi 	   
 	   
 	   # 1.1.- Input Pattern Types	   
-	   if [ ! -n "${REEMPLAZA_LINEA}" ] ; then
+	   if [ -z "${REEMPLAZA_LINEA}" ] ; then
 	     # CASE 1: <old value> -> <new value>
 	     local OLD="${OLD_VALUE}"   
 	   elif [ -n "${OLD_VALUE}" ] ; then
@@ -1656,11 +1852,12 @@ function reemplazaParametro() {
 	   fi  
 
 	   # 1.2.- Replacement Pattern Types	      
-	   if [ ! -n "${SIN_COMILLA}" ] ; then 
+	   if [ -z "${SIN_COMILLA}" ] ; then 
 		   local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
 	   else                                
 		   local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}${PREPO}${VALOR}" 
 	   fi
+
 	   # CASE 1: Add Identation on Line Replacements
 	   if [ -n "${REEMPLAZA_LINEA}" ] ; then 
 	      local REPLN="\1${VAL_NUEVO}"
@@ -1672,13 +1869,12 @@ function reemplazaParametro() {
        # 3.- EJECUCION PATRON REEMPLAZO
 	   #-----------------------------------	 
 	   if [[ "${REPLN}" != "${OLD}" ]]; then
-	   	 echo "===> sed -E s|${OLD}|$REPLN| ${CNF_FILE} > ${OUT_TMP}"
+         echo "===> sed -E \"s|${OLD}|${REPLN}|\" \"${CNF_FILE}\" > \"${OUT_TMP}\""
 	   	 sed -E "s|${OLD}|$REPLN|" "${CNF_FILE}" > "${OUT_TMP}"
-	   else 
-		 cp -f "${CNF_FILE}" "${OUT_TMP}"
+		 REPLACEMENT_APPLIED="Yes"
 	   fi	   
 	else
-	   error "-w" "${CNF_REEMPLAZO[${POSICION}]}"
+	   error "-w" "[genesisCli.reemplazaParametro]-[${CNF_FILE}]"
 	fi
     OUT="$?"
 }
@@ -1745,7 +1941,7 @@ function deployMenu() {
             if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then
 
 			     #   2.3.1.1.- Set Replacement Environment
-				 local CNF_FILE="${CNF_REEMPLAZO[${POSICION}]}"
+				 local CNF_FILE="$(echo ${CNF_REEMPLAZO[${POSICION}]} | tr -d ' ')"
 			     local OLD_VALUE="${CNF_OLD_VALUE[${POSICION}]}"
          	     local REEMPLAZA_LINEA="${CNF_REEMPLAZA_LINEA[${POSICION}]}" 
                  local CNF_SEPARADOR="${CNF_SEPARADOR_CAMPO[${POSICION}]}"
@@ -1754,10 +1950,13 @@ function deployMenu() {
 			     reemplazaParametro 
 				 
 			     #   2.3.1.3.- Restore TMP file with right permissions 	
-			     local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
-			     chmod "$PERMISSIONS" "${OUT_TMP}"
-		         mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"
-				 unset CNF_FILE OLD_VALUE REEMPLAZA_LINEA CNF_SEPARADOR PERMISSIONS
+                 if [ "${OUT}" -eq "${OK}" ] && [ -n "${REPLACEMENT_APPLIED}" ] ; then
+				    local PERMISSIONS=$(stat -c "%a %n" ${CNF_FILE} | awk '{print $1;}')
+			        chmod "$PERMISSIONS" "${OUT_TMP}"
+		            mv "${OUT_TMP}" "${CNF_FILE}"
+				 fi
+				 unset CNF_FILE CNF_SEPARADOR OLD_VALUE REEMPLAZA_LINEA 
+				 unset REPLACEMENT_APPLIED PERMISSIONS 
             fi
 		fi 
 
@@ -2507,18 +2706,24 @@ function 8_test() {
    #--------------------
    #   ACTIONS
    #--------------------
+   
+   # 1.- Switch Testing Environment in ansible.cfg 
+   updateInventory
+   
+   # 2.- Refresh Emulation Environment 
    if [[ "${REFRESH_INSTALL}" == 'yes' ]] ; then prepareLocalMachine ; fi
    if [[ "${REFRESH_ENVIRONMENT}" == 'yes' ]] ; then
-      hypervisorCredentials
-      source "/tmp/${GENESIS_HYPERVISOR_NODES[0]}.credentials" 2> /dev/null
-      BAREMETAL_ROOT_PASSWORD="${ansible_become_pass}"
-      local INVENTORY_LIST=( "${ansible_host}" )
+      BAREMETAL_ROOT_PASSWORD="${genesis_hypervisor_become_pass}"
+      local INVENTORY_LIST=( "${genesis_hypervisor_ip}" )
 	  trust_relationships 'root'
    fi
+   
+   # 3.- Shoot Tests 
    0_call "${TEST_CYCLE}" 
+   
+   # 4.- Clean Environment 
    unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH 
    unset INVENTORY_LIST EMULATION EMULATION_IP 
-   unset ansible_host ansible_user ansible_become_pass
 }
 
 #========================================================

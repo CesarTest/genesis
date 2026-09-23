@@ -105,6 +105,7 @@ keystone:
 ######################################################
 #  IRONIC CONFIG 
 ######################################################
+genesis_ironic_hardware_types: "fake_hardware,ipmi,redfish"
 genesis_ironic_deploy_interfaces: "direct,ramdisk,anaconda,bootc,ansible"
 genesis_ironic_install_roles:
    - name: "bifrost-prep-for-install"
@@ -125,6 +126,9 @@ genesis_create_setup_ironic:
    - file: "{{ genesis_ironic_config_file }}"
      regexp: '^enabled_deploy_interfaces '
      line: "enabled_deploy_interfaces = {{ genesis_ironic_deploy_interfaces }}" 
+#   - file: "{{ genesis_ironic_config_file }}"
+#     regexp: '^enabled_hardware_types  '
+#     line: "enabled_hardware_types  = {{ genesis_ironic_hardware_types }}" 
 #    - file: "{{ genesis_ironic_config_file }}"  
 #      regexp: '[DEFAULT]'
 #      insertafter: '[DEFAULT]'

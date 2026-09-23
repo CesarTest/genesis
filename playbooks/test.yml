@@ -18,6 +18,19 @@
   become: no
   gather_facts: yes
  
+
+#---------------------------------
+#  CLEAN IRONIC INSTANCE INFORMATION
+#--------------------------------
+- hosts: "baremetal"
+  become: no
+  gather_facts: no 
+  roles: 
+    - role: "genesis.setup"
+      vars:
+        b4_skip_setup: yes
+        uuid: "{{ enroll.uuid }}" 
+
 #---------------------------------
 #  TEST NODES
 #--------------------------------
@@ -28,7 +41,6 @@
     - name: "GENESIS API: Cast global string variables to native booleans"
       ansible.builtin.set_fact:
         genesis_refresh_environment: "{{ genesis_refresh_testenv | default(false) | bool }}"
-
   roles: 
     - role: "genesis.test"
       vars:

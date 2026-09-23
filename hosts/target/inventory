@@ -27,7 +27,7 @@ all:
 
     # => 2.- BMC Emulators shared credentials
     genesis_hypervisor_ip: "192.168.1.133"
-    genesis_hypervisor_become_pass: "cesardgm"
+    genesis_hypervisor_become_pass: "cesardg"
     genesis_bmc_credentials: 
       fake_hardware:
         username: "root@pam"

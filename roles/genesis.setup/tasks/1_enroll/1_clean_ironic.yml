@@ -1,49 +1,17 @@
 ---
-# genesis.setup 1_enroll/3_delete.yml
-#   - Delete Allocations
-#   - Set Nodes to Maintanance Mode
-#   - Clear Nodes from Ironic Database
+# genesis.setup 1_enroll/1_clean_ironic.yml
+#   - Clean Instance Info:
+#
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "B4 SETUP - 1.- Enroll: 3) Delete Node" 
 
-  #----------------------
-  # 1.- Bifrost Role
-  #----------------------  
-  block: 
-    - ansible.builtin.include_role: 
-        name: "{{ b4_delete.name }}"
-      when: 
-        - b4_delete.name is defined
-        - b4_delete.condition | default(true) | bool 
-      loop: "{{ b4_delete_roles | default([]) }}"
-      loop_control:
-        loop_var: "b4_delete" 
+- block:
 
-  #----------------------
-  # 2.- Command Line	
-  #----------------------
-  rescue:
-    - name: "B4 SETUP - 1.- Enroll: 3.1) Delete Node through Command Line"
-      shell:
-         cmd: "{{ command | default('ls') }}"
-      vars:
-         node_uuid: "{{ uuid | default(' ') }}"
-         node_name: "{{ name | default(' ') }}"
-         command: |
-           . /opt/stack/bifrost/bin/activate
-           export OS_CLOUD=bifrost
-           baremetal allocation delete {{ node_name }}
-           baremetal node maintenance set {{ node_uuid }}
-           baremetal node delete {{ node_uuid }}
-   
-  #----------------------
-  # 3.- Remove old instance information	
-  #----------------------
-  always: 
-
+    #--------------------
+    # Clean Instance files via Ansible
+    #--------------------
     # ==> 3.1. Symbolink Links Removal
     - name: "B4 SETUP - 1.- Enroll: 3.2) Detect symlinks pointing to this instance"
       ansible.builtin.find:
@@ -68,11 +36,6 @@
       loop_control:
         loop_var: b4_symlink
       when: 
-        - uuid is defined
-        - uuid is not none
-        - uuid is string
-        - uuid is not mapping
-        - uuid | length > 0
         - b4_symlink.stat.islnk is defined 
         - b4_symlink.stat.islnk
         - b4_symlink.stat.lnk_source is defined
@@ -90,9 +53,25 @@
       become: yes	  
       vars:
         b4_instance_path: "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}/{{ uuid | default('') }}"
-      when:
-        - uuid is defined
-        - uuid is not none
-        - uuid is string
-        - uuid is not mapping
-        - uuid | length > 0
+
+  rescue:
+
+    #--------------------
+    # Clean Instance files via SHELL
+    #--------------------
+
+    - name: "RESCUE - PURGE: Limpieza rápida de symlinks y directorio caché usando Shell"
+      ansible.builtin.shell: |
+        # 1.- Borrar symlinks recursivos que apunten al UUID
+        find "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}" -type l -exec sh -c 'readlink -f "$0" | grep -q "{{ uuid }}"' {} \; -delete
+
+        # 2.- Borrar el directorio caché del UUID
+        rm -rf "{{ genesis_http_path | default('/var/lib/ironic/httpboot') }}/{{ uuid }}"
+      become: yes
+
+  when:
+    - uuid is defined
+    - uuid is not none
+    - uuid is string
+    - uuid is not mapping
+    - uuid | length > 0

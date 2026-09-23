@@ -21,12 +21,13 @@
       vars: 
         b4_datamodel_file: "{{ b4_baremetal_vars_file | default('/tmp/datamodel.json') }}"
 
-    # 1.2.- Dump File on Screen 
+    # 2.2.- Dump File on Screen 
     - name: "B4 SETUP - B) Dump Local File Content to Terminal (Pure Local Cat)"
       ansible.builtin.debug:
         msg: "{{ lookup('ansible.builtin.file', b4_baremetal_vars_file) | string }}"
 
   when:
+    - not b4_skip_setup | default(false) | bool
     - b4_baremetal_vars_file is defined
     - b4_baremetal_vars_file is not none
     - b4_baremetal_vars_file is string
@@ -69,12 +70,16 @@
     - name: "B4 SETUP - ABORT: Failure In Data Model Rehydration Process"
       ansible.builtin.fail: 
         msg: "CRITICAL: The Genesis system was unable to rehydrate the persistent local ledger file into RAM facts. Deploy pipeline aborted to prevent cleaning stage to start."
+  when:
+    - not b4_skip_setup | default(false) | bool
 
 #-----------------------------------------------------------------------
 # 3.-Remove the Node from Ironic
 #-----------------------------------------------------------------------
 - block:
-    - ansible.builtin.include_tasks: "1_enroll/3_delete.yml"
+    - ansible.builtin.include_tasks: "1_enroll/1_clean_ironic.yml"
+    - ansible.builtin.include_tasks: "1_enroll/4_delete.yml"
+      when: not b4_skip_setup | default(false) | bool
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
   
 #-----------------------------------------------------------------------
@@ -82,13 +87,13 @@
 #-----------------------------------------------------------------------
 - block:
  
-    # => 3.1.- Stage 1: Enroll - Outband Control
+    # => 4.1.- Stage 1: Enroll - Outband Control
     #.................................
-    - ansible.builtin.include_tasks: "1_enroll/1_os_manifesto.yml"
-    #- ansible.builtin.include_tasks: "1_enroll/2_config_drive.yml"
-    - ansible.builtin.include_tasks: "1_enroll/4_outband.yml"
+    - ansible.builtin.include_tasks: "1_enroll/3_os_manifesto.yml"
+    #- ansible.builtin.include_tasks: "1_enroll/4_config_drive.yml"
+    - ansible.builtin.include_tasks: "1_enroll/5_outband.yml"
  
-    # => 3.2.- Stage 2: Manage - Inband Provision
+    # => 4.2.- Stage 2: Manage - Inband Provision
     #.................................
     - ansible.builtin.include_tasks: "2_manage/1_inband.yml"
     - ansible.builtin.include_tasks: "2_manage/2_boot_order.yml"
@@ -103,5 +108,6 @@
         b4_lifecycle_instructions: "{{ b4_lifecycle_api_calls.setup + b4_lifecycle_api_calls.poweroff }}" 
     - ansible.builtin.include_tasks: "2_manage/5_available.yml"
   when:
+    - not b4_skip_setup | default(false) | bool
     - genesis_clean_node is not defined
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
