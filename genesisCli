@@ -2298,8 +2298,6 @@ function baremetalTrustRelationships() {
 #========================================================
 function underConstruction() {
    
-   baremetalTrustRelationships
-   cat "${}"   
    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
    echo -e "${COLOR[$ORANGE]}  UNDER CONSTRUCTION ${COLOR[$NC]}"
    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
