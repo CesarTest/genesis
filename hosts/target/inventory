@@ -8,6 +8,7 @@ all:
   
     # => 1.- Genesis Node NICs
     git_branch: "stable/2026.1"
+    genesis_internet_ipv4: "192.168.1.40/24"
     genesis_nics:
       inband: 
         mac: "bc:24:11:4c:37:14"
@@ -19,14 +20,14 @@ all:
         gateway: "10.10.41.1"
       internet: 
         mac: "bc:24:11:34:c8:96"
-        ip: "192.168.1.40/24"
+        ip: "{{ genesis_internet_ipv4 | default('192.168.1.40/24') }}"
         gateway: "192.168.1.1" 
         default_route: yes
         dns: "192.168.1.1"
 
     # => 2.- BMC Emulators shared credentials
     genesis_hypervisor_ip: "192.168.1.133"
-	genesis_hypervisor_become_pass: "cesardgm"
+    genesis_hypervisor_become_pass: "cesardgm"
     genesis_bmc_credentials: 
       fake_hardware:
         username: "root@pam"
