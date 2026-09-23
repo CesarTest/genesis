@@ -29,9 +29,11 @@
   #--------------------------------------------------------------------------  
   # 2.- Wipe Disks & Reboot
   #--------------------------------------------------------------------------
-- block:
+- name: "B5 - DEPLOY - 2.- Wipe Disks & Reboot Block"
+  ignore_unreachable: true  
+  block:
 
-    # 1.1.- Wipe Disks (Optimizado: Sin async porque dd count=100 es instantáneo)
+    # 1.1.- Wipe Disks 
     #....................... 
     - name: "B5 - DEPLOY - 1.- Clean: 1.2) Raw Disk Zapping"
       become: yes
@@ -58,6 +60,7 @@
         msg: "Genesis Core Engine triggering automated deployment reset"
       failed_when: false 
       changed_when: false
+      ignore_unreachable: true 
 
   rescue:    
     - name: "B5 - DEPLOY - 1.- Clean: 14) Reboot"
