@@ -239,7 +239,6 @@ function defineMenu() {
 	   4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")
 	         if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/setup.log"  ; fi
 	         MENU_TEXT="(4)___________ ${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}"
-			 
              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
 	         PARAMETRO=(     "IRONIC_BAREMETAL_NODES"    "LOG_FILE"   )
              VALOR_DEFECTO=( "0"  "${LOG_FILE}" )
@@ -271,14 +270,17 @@ function defineMenu() {
 
        6|"${COLOR[$NC]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}")
 		     MENU_TEXT="(6)___________ [BAREMETAL] - ANSIBLE     : Ansible Initial Setup"
-	         #PARAMETRO=(     "NODE_LIST" )
-	         #EXT_OPCIONES=( ".list"      )
-             #VALOR_DEFECTO=( "0"         )
-	         #SOLICITA_PARAMETRO=("-----> List of Nodes full Path  [${VALOR_DEFECTO[0]}]:" \
-             #                )
+             RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	         PARAMETRO=(     "IRONIC_BAREMETAL_NODES"    "LOG_FILE"   )
+             VALOR_DEFECTO=( "0"  "${LOG_FILE}" )
+	         SOLICITA_PARAMETRO=("-----> Baremetal Nodes Descripion [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File                   [${VALOR_DEFECTO[1]}]:" \
+                                    )
+             MENU_SKIP_PATHS="1"
+			 MENU_SKIP_ELEMENT="target"
              RETURNING_MENU="0"
              RUN_ACTION="6"
-             unset NODE_LIST
+             unset IRONIC_BAREMETAL_NODES LOG_FILE
              ;;
 
 
@@ -1001,8 +1003,8 @@ function reloadUserEnvironment() {
 #========================================================
 #   Function: updateInventory
 #--------------------------------------------------------
-#   GENESIS ISOS generation
-#    - common.yaml... create from /mnt/isos/ contents
+#    - Update Inventory in ansible.cfg
+#    - Update Environment Variables
 #========================================================
 function updateInventory() {
    		
@@ -1010,19 +1012,20 @@ function updateInventory() {
 	
 	   # Local Environment
 	   local POSICION=0
-	   local CNF_REEMPLAZO=( "${GENESIS_PROJECT_ANSIBLE_CFG}" )
+	   local CNF_FILE="${GENESIS_PROJECT_ANSIBLE_CFG}"
 	   local VAR='inventory'
 	   local VALOR="hosts/target,hosts/${IRONIC_BAREMETAL_NODES##*/}"
+	   local REEMPLAZA_LINEA="Yes"
 	   local SIN_COMILLA="Si"
 	   
 	   # 1.- Replace Pattern
 	   echo "${LOG_HEADER} - reemplazaParametro Si"
        reemplazaParametro "Si"
-       local PERMISSIONS=$(stat -c "%a %n" ${CNF_REEMPLAZO[${POSICION}]} | awk '{print $1;}')
+       local PERMISSIONS=$(stat -c "%a %n" ${CNF_FILE} | awk '{print $1;}')
 	   echo "${LOG_HEADER} - chmod $PERMISSIONS ${OUT_TMP}"
        chmod "$PERMISSIONS" "${OUT_TMP}"
-	   echo "${LOG_HEADER} - mv ${OUT_TMP} ${CNF_REEMPLAZO[${POSICION}]}"
-	   mv "${OUT_TMP}" "${CNF_REEMPLAZO[${POSICION}]}"	
+	   echo "${LOG_HEADER} - mv ${OUT_TMP} ${CNF_FILE}"
+	   mv "${OUT_TMP}" "${CNF_FILE}"	
  
        # 2.- Update environment Variables
        GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES##*/}/${IRONIC_NODES_FILE}"
@@ -1032,7 +1035,7 @@ function updateInventory() {
        setupCommand
 	   
 	   # 3 Clean environment
-	   unset PERMISSIONS POSICION CNF_REEMPLAZO PARAMETRO inventory
+	   unset PERMISSIONS POSICION CNF_FILE REEMPLAZA_LINEA PARAMETRO inventory
  	  	     	   
 	fi
 }
@@ -2295,9 +2298,8 @@ function baremetalTrustRelationships() {
 #========================================================
 function underConstruction() {
    
-   cat "${GENESIS_TARGET_INVENTORY_SOURCE}"
    baremetalTrustRelationships
-   
+   cat "${}"   
    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
    echo -e "${COLOR[$ORANGE]}  UNDER CONSTRUCTION ${COLOR[$NC]}"
    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
@@ -2425,9 +2427,8 @@ function 3_init() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 4_setup() {
-   reloadUserEnvironment
+   #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"
    updateInventory
-   #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}" 
    0_call "${SETUP}" 
    state_status "${SETUP}"
    unset IRONIC_BAREMETAL_NODES LOG_FILE EXTRA_VARS
@@ -2455,6 +2456,7 @@ function 6_ansible() {
    echo -e "   [${IRONIC_BAREMETAL_NODES}] - [BAREMETAL] - ANSIBLE     : Ansible Initial Setup "
    echo -e '------------------------------------------------------------------------------------------------------'
    if [ -n "${LOG_FILE}"    ] ; then local CALL_LOG="${LOG_FILE}" ; fi
+   updateInventory
    baremetalTrustRelationships
    state_status "6"
 }
@@ -2503,6 +2505,7 @@ function 8_test() {
 	
    # 3.- Prepare Playbook Call
    EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}" 
+   
    #--------------------
    #   ACTIONS
    #--------------------
