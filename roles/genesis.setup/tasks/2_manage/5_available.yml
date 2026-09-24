@@ -14,34 +14,75 @@
 #---------------------------------------
 # 2.- Audit & Diagnostic Results
 #---------------------------------------  
-- vars:
-    b4_capture_cmd: 
-     - ss -unlp | grep :67 | head -n 1 
-     - openstack baremetal node show "{{ uuid }}"
-	 - 
-  block:
 - name: "B4 - SETUP -2- MANAGE: 5.1) Available: AUDIT Results"
-  delegate_to: localhost
-  ansible.builtin.shell: |
-    . /opt/stack/bifrost/bin/activate
-    export OS_CLOUD=bifrost
-    NODE_JSON=$(openstack baremetal node show "{{ uuid }}" -f json | tr -d '\n\r')
-    DHCP_NIC=$(ss -unlp | grep :67 | head -n 1 | awk -F'%' '{print $2}' | awk '{print $1}')
-    [ -z "$DHCP_NIC" ] && DHCP_NIC="NOT_BOUND"
-    HTTP_PORT=$(ss -tnlp | grep -E '(:80|:8080)' | head -n 1 | awk '{print $4}' | awk -F':' '{print $NF}')
-    [ -z "$HTTP_PORT" ] && HTTP_PORT="NOT_DETECTED"
-    echo "{\"ironic\": $NODE_JSON, \"dhcp_nic\": \"$DHCP_NIC\", \"http_port\": \"$HTTP_PORT\"}"
-  register: g1_audit_payload_raw
-  changed_when: false
-
-- name: "B4 - SETUP -2- MANAGE: 5.2) Available: DIAGNOSTICS, trace result"
   vars:
-    audit: "{{ g1_audit_payload_raw.stdout | from_json }}"
-  ansible.builtin.debug:
-    msg: |
-      --- IRONIC BAREMETAL INSTANCE DATA ---
-      {{ audit.ironic | to_nice_json(indent=2) }}
-      ----------- PXE SERVICES -------------
-      DHCP NIC:   [{{ audit.dhcp_nic | upper }}]
-      HTTP PORT:  [{{ audit.http_port }}]
-      --------------------------------------
+    b4_status_cmd:
+      - |
+        . /opt/stack/bifrost/bin/activate
+        export OS_CLOUD=bifrost
+        baremetal node show '{{ uuid }}' -f json
+      - |
+        systemctl status dnsmasq
+      - |
+        ss -tuplen | grep -i 'dnsmasq'
+      - |
+        systemctl status nginx
+      - |
+        ss -tuplen | grep -i 'nginx'
+ 
+  block:
+    - name: "B4 - SETUP -2- MANAGE: 5.1) Available: AUDIT Status Capture"
+      ignore_errors: yes
+      ansible.builtin.shell: "{{ b4_status }}"
+      environment:
+        OS_CLOUD: "bifrost"
+        PATH: "/opt/stack/bifrost/bin:{{ ansible_env.PATH }}"  
+      loop: "{{ b4_status_cmd | default([]) }}"
+      loop_control: 
+        loop_var: "b4_status"
+      register: g1_audit_payload_raw
+      changed_when: false
+
+    - name: "B4 - SETUP -2- MANAGE: 5.2) Available: DIAGNOSTICS, trace result"
+      delegate_to: localhost
+      vars:
+        # --- Variables de diagnóstico originales ---
+        ironic_json: "{{ g1_audit_payload_raw.results[0].stdout | default('{}') | from_json }}"
+        dnsmasq_status: "{{ g1_audit_payload_raw.results[1].stdout_lines | default(['No dnsmasq status captured']) }}"
+        nginx_status: "{{ g1_audit_payload_raw.results[3].stdout_lines | default(['No nginx status captured']) }}"
+        dnsmasq_sockets: "{{ g1_audit_payload_raw.results[2].stdout_lines | default(['No dnsmasq sockets detected']) }}"
+        nginx_sockets: "{{ g1_audit_payload_raw.results[4].stdout_lines | default(['No nginx sockets detected']) }}"
+        dnsmasq_conf_interface: "{{ g1_audit_payload_raw.results[5].stdout_lines | default(['No conf directives detected']) }}"
+        
+      ansible.builtin.debug:
+        msg: |
+          --- IRONIC BAREMETAL INSTANCE DATA ---
+          {{ ironic_json | to_nice_json(indent=2) }}
+          ----------- PXE SERVICES -------------
+          
+          => DNSMASQ CONFIGURATION DIRECTIVES:
+          network_interface=[{{ network_interface }}]
+          {% for line in dnsmasq_conf_interface %}
+             {{ line }}
+          {% endfor %}
+          
+          => DNSMASQ SERVICE STATUS:
+          {% for line in dnsmasq_status %}
+             {{ line }}
+          {% endfor %}
+         
+          => ACTIVE DNSMASQ SOCKETS:
+          {% for line in dnsmasq_sockets %}
+             {{ line }}
+          {% endfor %}
+           
+          => NGINX SERVICE STATUS:
+          {% for line in nginx_status %}
+             {{ line }}
+          {% endfor %}
+          
+          => ACTIVE NGINX SOCKETS:
+          {% for line in nginx_sockets %}
+             {{ line }}
+          {% endfor %}
+          --------------------------------------

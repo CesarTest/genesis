@@ -4,10 +4,37 @@
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-
 - name: "G1 - BOOTSTRAP - 3.- Ready : 1) Ubuntu System Preparation"
   vars:
-    g1_netplan_cmd:
+    g1_network_state:
+    
+       # INTERNET NIC (External Gateway & Internet Traffic)
+       internet:
+         match:
+           macaddress: "{{ g1_nic_internet_mac }}"
+         addresses:
+           - "{{ g1_nic_internet_ip }}/{{ g1_nic_internet_prefix }}"
+         routes:
+           - to: default
+             via: "{{ g1_nic_internet_gw }}"
+         nameservers:
+           addresses:
+             - "{{ g1_nic_internet_dns }}"
+       
+       # INBAND NIC (Private Provisioning / PXE Network)
+       inband:
+         match:
+           macaddress: "{{ g1_nic_inband_mac }}"
+         addresses:
+           - "{{ g1_nic_inband_ip }}/{{ g1_nic_inband_prefix }}"
+       
+       # OUTBAND NIC (Private Management / BMC Redfish Network)
+       outband:
+         match:
+           macaddress: "{{ g1_nic_outband_mac }}"
+         addresses:
+           - "{{ g1_nic_outband_ip }}/{{ g1_nic_outband_prefix }}"
+    g1_network_cmd:
       - |
         cat << 'EOF' > /etc/netplan/01-netplan-genesis.yaml
         # ==============================================================================
@@ -72,7 +99,7 @@
       become: true
       ansible.builtin.shell:
         cmd: "{{ g1_cmd }}"
-      loop: "{{ g1_netplan_cmd | default([]) }}"
+      loop: "{{ g1_network_cmd | default([]) }}"
       loop_control:
         loop_var: "g1_cmd"
       changed_when: true

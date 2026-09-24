@@ -7,7 +7,41 @@
 
 #---------------------------------------
 # 1. Install Ironic
-#---------------------------------------   
+#---------------------------------------  
+
+- name: "G2 - CREATE - Variables Dump: NETWORK & DHCP (group_vars/target)"
+  delegate_to: localhost
+  ansible.builtin.debug:
+    msg: |
+      --- NETWORK & DHCP VARIABLES DUMP ---
+      
+      => NETWORK INTERFACE RESOLUTION:
+      genesis_target_mac:            {{ genesis_target_mac | default('Not defined') }}
+      genesis_interface_found:       {{ genesis_interface_found | default('Not found') }}
+      genesis_interfaces_fallback:   {{ genesis_interfaces_fallback | default('Not available') }}
+      genesis_default_nic:           {{ genesis_default_nic | default('Not available') }}
+      SELECTED NETWORK_INTERFACE:    {{ network_interface | default('network_interface not found') }}
+      
+      => GENERAL DHCP CONFIGURATION:
+      enable_dhcp:   {{ enable_dhcp }}
+      dhcp_provider: {{ dhcp_provider }}
+      
+      => IP ADDRESSING PROPERTIES:
+      dhcp_ipv4:        {{ dhcp_ipv4 }}
+      dhcp_address:     {{ dhcp_address | default('Error/Not calculated') }}
+      dhcp_static_mask: {{ dhcp_static_mask | default('Error/Not calculated') }}
+      dhcp_prefix:      {{ dhcp_prefix | default('Error/Not calculated') }}
+      dhcp_subnet:      {{ dhcp_subnet | default('Error/Not calculated') }}
+      dhcp_subnet_cidr: {{ dhcp_subnet_cidr | default('Error/Not calculated') }}
+      
+      => DYNAMIC POOL CALCULATIONS:
+      dhcp_raw_node_count: {{ dhcp_raw_node_count }}
+      dhcp_range_size:     {{ dhcp_range_size }}
+      dhcp_last_usable:    {{ dhcp_last_usable | default('Error/Not calculated') }}
+      DHCP_POOL_START:     {{ dhcp_pool_start | default('Error/Not calculated') }}
+      DHCP_POOL_END:       {{ dhcp_pool_end | default('Error/Not calculated') }}
+      -------------------------------------
+
 - name: "G2 - CREATE - Install Ironic"
   ansible.builtin.include_role: 
     name: "{{ genesis_install_ironic_role.name }}"

@@ -9,52 +9,103 @@
 #  1.- Linux System Roles on RedHat OS Family
 #---------------------------------------
 - name: "G1 - BOOTSTRAP - 3.- Ready : 2) RHEL System Preparation"
+  vars:
+  
+    # --- RHEL NATIVE MODEL (Module Scope - Original Multi-Block Layout) ---
+    g1_network_provider: "{{ (ansible_facts['distribution'] | default('RedHat') == 'Ubuntu') | ternary('netplan', 'nm', 'nm') }}"
+    g1_network_state:
+      interfaces:
+        - name: "internet"
+          type: "ethernet"
+          state: "up"
+          mac: "{{ g1_nic_internet_mac | lower }}"
+          ip:
+            address:
+              - "{{ g1_nic_internet_ip }}/{{ g1_nic_internet_prefix }}"
+
+        - name: "inband"
+          type: "ethernet"
+          state: "up"
+          mac: "{{ g1_nic_inband_mac | lower }}"
+          ip:
+            address:
+              - "{{ g1_nic_inband_ip }}/{{ g1_nic_inband_prefix }}"
+
+        - name: "outband"
+          type: "ethernet"
+          state: "up"
+          mac: "{{ g1_nic_outband_mac | lower }}"
+          ip:
+            address:
+              - "{{ g1_nic_outband_ip }}/{{ g1_nic_outband_prefix }}"
+
+      # Gateway routing configuration block
+      routes:
+        config:
+          - destination: "0.0.0.0/0"
+            next-hop-address: "{{ g1_nic_internet_gw }}"
+            next-hop-interface: "internet"
+
+      # Global DNS configuration block
+      dns-resolver:
+        config:
+          server:
+            - "{{ g1_nic_internet_dns }}"
+
+    # --- Purge disconnected interfaces based on empty MACs ---
+    rhel_clean_connections: "{{ g1_network_state.interfaces | selectattr('mac', 'defined') | selectattr('mac', 'ne', '') | list }}"
+
+    # --- RHEL Fallback Shell Sequence (Dynamic loop-ready list) ---
+    g1_network_cmd:
+      - |
+        nmcli connection modify internet \
+          connection.autoconnect yes \
+          ethernet.mac-address "{{ g1_nic_internet_mac }}" \
+          ipv4.method manual \
+          ipv4.addresses "{{ g1_nic_internet_ip }}/{{ g1_nic_internet_prefix }}" \
+          ipv4.gateway "{{ g1_nic_internet_gw }}" \
+          ipv4.dns "{{ g1_nic_internet_dns }}"
+        nmcli connection up internet
+      - |
+        nmcli connection modify inband \
+          connection.autoconnect yes \
+          ethernet.mac-address "{{ g1_nic_inband_mac }}" \
+          ipv4.method manual \
+          ipv4.addresses "{{ g1_nic_inband_ip }}/{{ g1_nic_inband_prefix }}"
+        nmcli connection up inband
+      - |
+        nmcli connection modify outband \
+          connection.autoconnect yes \
+          ethernet.mac-address "{{ g1_nic_outband_mac }}" \
+          ipv4.method manual \
+          ipv4.addresses "{{ g1_nic_outband_ip }}/{{ g1_nic_outband_prefix }}"
+        nmcli connection up outband
+      - "systemctl restart NetworkManager"
+
   block:
 
+    #---------------------------------------
+    #  1.- NetworkManager Rendering through Linux System Roles
+    #--------------------------------------- 
     - name: "G1 - BOOTSTRAP - 3.- Ready : 2.1) Network Setup via Linux System Roles (RHEL)"
       ansible.builtin.include_role:
         name: "fedora.linux_system_roles.network"  
       vars:
         # El rol oficial de RedHat exige que la variable se llame 'network_connections'
-        network_connections: "{{ g1_network_state.interfaces }}"
-        network_provider: "nm"
+        network_connections: "{{ rhel_clean_connections }}"
+        network_provider: "{{ g1_network_provider | default('nm') }}"
 
-  #---------------------------------------
-  #  2.- Rescue Branch (NetworkManager Shell Fallback)
-  #---------------------------------------
   rescue:
-    - name: "G1 - BOOTSTRAP - 3.- Ready : 2.2) RESCUE - Fallback Manual NetworkManager Setup"
+  
+    #---------------------------------------
+    #  2.- NetworkManager Rendering through ShelL Commands
+    #--------------------------------------- 
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 1.6) RESCUE - Fallback Manual Netplan Setup"
       become: true
       ansible.builtin.shell:
-        cmd: |
-          # 1. Configuración de la interfaz INTERNET (Gestión y Salida Externa)
-          nmcli connection modify internet \
-            connection.autoconnect yes \
-            ethernet.mac-address "{{ g1_nic_internet_mac }}" \
-            ipv4.method manual \
-            ipv4.addresses "{{ g1_nic_internet_ip }}/{{ g1_nic_internet_prefix }}" \
-            ipv4.gateway "{{ g1_nic_internet_gw }}" \
-            ipv4.dns "{{ g1_nic_internet_dns }}"
-          nmcli connection up internet
-         
-          # 2. Configuración de la interfaz INBAND (Red de Aprovisionamiento/PXE)
-          nmcli connection modify inband \
-            connection.autoconnect yes \
-            ethernet.mac-address "{{ g1_nic_inband_mac }}" \
-            ipv4.method manual \
-            ipv4.addresses "{{ g1_nic_inband_ip }}/{{ g1_nic_inband_prefix }}"
-          nmcli connection up inband
-           
-          # 3. Configuración de la interfaz OUTBAND (Red de Gestión IPMI/Redfish)
-          nmcli connection modify outband \
-            connection.autoconnect yes \
-            ethernet.mac-address "{{ g1_nic_outband_mac }}" \
-            ipv4.method manual \
-            ipv4.addresses "{{ g1_nic_outband_ip }}/{{ g1_nic_outband_prefix }}"
-          nmcli connection up outband
-          
-          # 4. Reinicio del demonio para asimilar los cambios
-          systemctl restart NetworkManager
+        cmd: "{{ g1_cmd }}"
+      loop: "{{ g1_network_cmd | default([]) }}"
+      loop_control:
+        loop_var: "g1_cmd"
       changed_when: true
       ignore_errors: true
-

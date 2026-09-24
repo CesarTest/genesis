@@ -7,7 +7,7 @@
 #
 
 - block:
-     
+
     - name: "G3 - INIT: 4.- Setup Ironic-Ready - Users Permissions to Allow Ironic SetUp Nodes"
       ansible.builtin.user:
         name:   "{{ g3_user.name }}"

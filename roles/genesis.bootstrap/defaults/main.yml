@@ -65,7 +65,14 @@ genesis_os_definitions:
     alias:
       "16": "SLES"                
       "15": "SUSE_SLE"
-      "12": "SLES"     
+      "12": "SLES"
+  
+genesis_os_netinstaller_url:
+   tarball:
+      debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+   iso:
+      debian: "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION].0/[ARCH]/iso-cd/debian-[VERSION].0-[ARCH]-netinst.iso"
+g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
  
 # 4.- Bifrost Root Paths
 git_root: "{{ genesis_repo_path | realpath }}/openstack"
@@ -91,17 +98,9 @@ genesis_default_os_image_name:
   raw: "wholedisk.raw" 
   iso:  "netboot.iso"
 
-g1_os_netinstaller_url:
-   tarball:
-      debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
-   iso:
-      debian: "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION].0/[ARCH]/iso-cd/debian-[VERSION].0-[ARCH]-netinst.iso"
-
 ######################################################
-# G1 BOOTSTRAP DETAILS
-######################################################
-
-# 1.- Paths  
+# G1 BOOTSTRAP PATHS
+###################################################### 
 g1_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
 g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default('os') }}"
 g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
@@ -111,8 +110,13 @@ g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default
 g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
 
+
+######################################################
+# G1 BOOTSTRAP NETWORK DETAILS
+######################################################
+
 #--------------------------------------------------------------------------
-# Genesis NICs Particulars (Declarativo con contingencias contra caídas)
+# Genesis NICs Particulars 
 #--------------------------------------------------------------------------
 g1_nics: "{{ genesis_nics | default({}) }}"
 
@@ -138,46 +142,6 @@ g1_nic_outband_ip:      "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('address'
 g1_nic_outband_prefix:  "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
 g1_nic_outband_gw:      "{{ g1_nics.outband.gateway | default(g1_nic_outband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
 
-#--------------------------------------------------------------------------
-# Construcción del g1_network_state limpio para el Rol de Red / Netplan
-#--------------------------------------------------------------------------
-g1_network_provider: "{{ (ansible_facts['distribution'] | default('Ubuntu') == 'Ubuntu') | ternary('netplan', 'nm', 'nm') }}"
-#--------------------------------------------------------------------------
-# Construcción del g1_network_state corregido (Sintaxis Netplan Plural)
-#--------------------------------------------------------------------------
-g1_network_provider: "{{ (ansible_facts['distribution'] | default('Ubuntu') == 'Ubuntu') | ternary('netplan', 'nm', 'nm') }}"
-g1_network_state:
-
-   # INTERNET NIC (External Gateway & Internet Traffic)
-   internet:
-     match:
-       macaddress: "{{ g1_nic_internet_mac }}"
-     set-name: "internet"
-     addresses:
-       - "{{ g1_nic_internet_ip }}/{{ g1_nic_internet_prefix }}"
-     routes:
-       - to: default
-         via: "{{ g1_nic_internet_gw }}"
-     nameservers:
-       addresses:
-         - "{{ g1_nic_internet_dns }}"
-   
-   # INBAND NIC (Private Provisioning / PXE Network)
-   inband:
-     match:
-       macaddress: "{{ g1_nic_inband_mac }}"
-     set-name: "inband"
-     addresses:
-       - "{{ g1_nic_inband_ip }}/{{ g1_nic_inband_prefix }}"
-   
-   # OUTBAND NIC (Private Management / BMC Redfish Network)
-   outband:
-     match:
-       macaddress: "{{ g1_nic_outband_mac }}"
-     set-name: "outband"
-     addresses:
-       - "{{ g1_nic_outband_ip }}/{{ g1_nic_outband_prefix }}"
-    
 ######################################################
 #  DOWNLOAD OPENSTACK COMPONENTS FROM GIT
 ######################################################

@@ -11,9 +11,9 @@
     #-------------------------------------
     # 1.- Bootsrap the Node
     #-------------------------------------
-    #- ansible.builtin.include_tasks: "1_prepare/1_repos.yml"
-    #- ansible.builtin.include_tasks: "2_download.yml"
-    #- ansible.builtin.include_tasks: "3_ready/1_setup.yml"
+    - ansible.builtin.include_tasks: "1_prepare/1_repos.yml"
+    - ansible.builtin.include_tasks: "2_download.yml"
+    - ansible.builtin.include_tasks: "3_ready/1_setup.yml"
     - ansible.builtin.include_tasks: "3_ready/2_network.yml"
         
   rescue:
