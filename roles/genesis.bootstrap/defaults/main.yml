@@ -111,39 +111,73 @@ g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default
 g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
 
-# 2.- Network  
-g1_network_provider: "{{ (ansible_facts['distribution'] == 'Ubuntu') | ternary('netplan', 'nm', 'nm') }}"
+#--------------------------------------------------------------------------
+# Genesis NICs Particulars (Declarativo con contingencias contra caídas)
+#--------------------------------------------------------------------------
+g1_nics: "{{ genesis_nics | default({}) }}"
+
+# => INTERNET NIC
+g1_nic_internet_mac:    "{{ g1_nics.internet.mac | default('') | lower }}"
+g1_nic_internet_ipv4:   "{{ g1_nics.internet.ip  | default('') }}"
+g1_nic_internet_ip:     "{{ g1_nic_internet_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_internet_prefix: "{{ g1_nic_internet_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_internet_gw:     "{{ g1_nics.internet.gateway | default(g1_nic_internet_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+g1_nic_internet_dns:    "{{ g1_nics.internet.dns     | default('') }}"
+
+# => INBAND NIC
+g1_nic_inband_mac:      "{{ g1_nics.inband.mac | default('') | lower }}"
+g1_nic_inband_ipv4:     "{{ g1_nics.inband.ip  | default('') }}"
+g1_nic_inband_ip:       "{{ g1_nic_inband_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_inband_prefix:   "{{ g1_nic_inband_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_inband_gw:       "{{ g1_nics.inband.gateway | default(g1_nic_inband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+
+# => OUTBAND NIC
+g1_nic_outband_mac:     "{{ g1_nics.outband.mac | default('') | lower }}"
+g1_nic_outband_ipv4:    "{{ g1_nics.outband.ip  | default('') }}"
+g1_nic_outband_ip:      "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_outband_prefix:  "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_outband_gw:      "{{ g1_nics.outband.gateway | default(g1_nic_outband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+
+#--------------------------------------------------------------------------
+# Construcción del g1_network_state limpio para el Rol de Red / Netplan
+#--------------------------------------------------------------------------
+g1_network_provider: "{{ (ansible_facts['distribution'] | default('Ubuntu') == 'Ubuntu') | ternary('netplan', 'nm', 'nm') }}"
+#--------------------------------------------------------------------------
+# Construcción del g1_network_state corregido (Sintaxis Netplan Plural)
+#--------------------------------------------------------------------------
+g1_network_provider: "{{ (ansible_facts['distribution'] | default('Ubuntu') == 'Ubuntu') | ternary('netplan', 'nm', 'nm') }}"
 g1_network_state:
-  interfaces: >-
-    {% set ifaces = [] %}
-    {% for name, data in genesis_nics.items() %}
-      {% set ip_clean = data.ip.split('/') | first %}
-      {% set prefix = data.ip.split('/') | last | int %}
-      {% set _ = ifaces.append({
-        'name': name,
-        'type': 'ethernet',
-        'state': 'up',
-        'match': { 'mac-address': data.mac | lower },
-        'ipv4': {
-          'enabled': true,
-          'address': [{ 'ip': ip_clean, 'prefix-length': prefix }]
-        }
-      }) %}
-    {% endfor %}
-    {{ ifaces | to_json }}
 
-  # Default Route to Internet
-  routes:
-    config:
-      - destination: "0.0.0.0/0"
-        next-hop-address: "{{ genesis_nics.internet.gateway | default('192.168.1.1') }}"
-        next-hop-interface: "internet"
-
-  # DNS Global (Corregido con fallback seguro a DNS público)
-  dns-resolver:
-    config:
-      server: [ "{{ dnsmasq_dns_servers | default(genesis_network.internet.dns) | default('8.8.8.8') }}" ]
-
+   # INTERNET NIC (External Gateway & Internet Traffic)
+   internet:
+     match:
+       macaddress: "{{ g1_nic_internet_mac }}"
+     set-name: "internet"
+     addresses:
+       - "{{ g1_nic_internet_ip }}/{{ g1_nic_internet_prefix }}"
+     routes:
+       - to: default
+         via: "{{ g1_nic_internet_gw }}"
+     nameservers:
+       addresses:
+         - "{{ g1_nic_internet_dns }}"
+   
+   # INBAND NIC (Private Provisioning / PXE Network)
+   inband:
+     match:
+       macaddress: "{{ g1_nic_inband_mac }}"
+     set-name: "inband"
+     addresses:
+       - "{{ g1_nic_inband_ip }}/{{ g1_nic_inband_prefix }}"
+   
+   # OUTBAND NIC (Private Management / BMC Redfish Network)
+   outband:
+     match:
+       macaddress: "{{ g1_nic_outband_mac }}"
+     set-name: "outband"
+     addresses:
+       - "{{ g1_nic_outband_ip }}/{{ g1_nic_outband_prefix }}"
+    
 ######################################################
 #  DOWNLOAD OPENSTACK COMPONENTS FROM GIT
 ######################################################

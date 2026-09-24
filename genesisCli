@@ -186,7 +186,7 @@ function defineMenu() {
 			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
 		      MENU_TEXT="(1)___________ ${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}"
 	          PARAMETRO=(  "genesis_internet_ipv4"  "RUN_BACKGROUND" "LOG_FILE" )
-              VALOR_DEFECTO=( "${GENESIS_INTERNET_IP}" "No"   "${LOG_FILE}")	  
+              VALOR_DEFECTO=( "${genesis_internet_ipv4}" "No"   "${LOG_FILE}")	  
 	          SOLICITA_PARAMETRO=("-----> Genesis Internet IP       [${VALOR_DEFECTO[0]}]:" \
 			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[1]}]:" \
 			                      "-----> Log File                  [${VALOR_DEFECTO[2]}]:" \

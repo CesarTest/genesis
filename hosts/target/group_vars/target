@@ -4,15 +4,13 @@
 
 # The network interface that bifrost will be operating on.  Defaults
 # to virbr0 in roles, can be overridden here.
-genesis_default_nic: "{{ ansible_default_ipv4.interface | default(ansible_interfaces | reject('sameas', 'lo') | first) | default('ens19') }}"
-network_interface: >-
-  {{
-    ansible_facts | dict2items
-    | selectattr('value.macaddress', 'defined')
-
-    | selectattr('value.macaddress', '==', (genesis_nics.inband.mac | lower))
-    | map(attribute='key') | first | default(genesis_default_nic)
-  }}
+genesis_target_mac: "{{ genesis_nics['inband']['mac'] | default('') | lower }}"
+genesis_system_interfaces: "{{ ansible_facts | dict2items | selectattr('value.macaddress', 'defined') | list }}"
+genesis_matched_interface_list: "{{ genesis_system_interfaces | selectattr('value.macaddress', '==', genesis_target_mac) | map(attribute='key') | list }}"
+genesis_interface_found: "{{ genesis_matched_interface_list | first | default('') }}"
+genesis_interfaces_fallback: "{{ ansible_interfaces | default([]) | reject('sameas', 'lo') | list | first }}"
+genesis_default_nic: "{{ ansible_default_ipv4.interface | default(genesis_interfaces_fallback) | default('ens19') }}"
+network_interface: "{{ genesis_interface_found | default(genesis_default_nic) }}"
 
 # DHCP properties for static IP to MAC assignation (global for all roles)
 #  - DNSmasq propeties

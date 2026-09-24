@@ -1,0 +1,79 @@
+---
+# genesis.bootstrap 3_ready/debian_setup.yml
+#   - NetPlan on Debian OS Family
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "G1 - BOOTSTRAP - 3.- Ready : 1) Ubuntu System Preparation"
+  vars:
+    g1_netplan_cmd:
+      - |
+        cat << 'EOF' > /etc/netplan/01-netplan-genesis.yaml
+        # ==============================================================================
+        # AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                           
+        # Generated dynamically by Genesis Core Engine Mesh                              
+        # Deployment Context: Genesis Node Bootstrap -> RESCUE SHELL BRANCH   
+        # Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }} 
+        # ==============================================================================
+        network:
+          version: 2
+          renderer: networkd
+          ethernets:
+        {{ g1_network_state | to_nice_yaml(indent=2) | indent(4, true) }}
+        EOF
+      - "chmod 0600 /etc/netplan/01-netplan-genesis.yaml"
+      - "netplan apply"
+
+  block:
+
+    #---------------------------------------
+    #  1.- Netplan Rendering through Ansible Modules
+    #--------------------------------------- 
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 1.1) Find Old Configurations"
+      ansible.builtin.find:
+        paths: "/etc/netplan"
+        patterns: "*.yaml"
+      register: g1_netplan_old
+ 
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 1.2) Remove Old Configurations"
+      ansible.builtin.file:
+        path: "{{ g1_netplan_file.path | default(omit) }}"
+        state: absent  
+      when:  
+        - g1_netplan_file.path != "/etc/netplan/01-netplan-genesis.yaml"
+      loop: "{{ g1_netplan_old.files | default([]) }}"
+      loop_control:
+        loop_var: "g1_netplan_file"
+ 
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 1.3) Load Input Data in Memory"
+      ansible.builtin.set_fact:
+        j2_input: "{{ g1_network_state | to_json }}"
+ 
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 1.4) Render Netplan Template"
+      ansible.builtin.template:
+        src: "netplan.j2"               
+        dest: "/etc/netplan/01-netplan-genesis.yaml"
+        owner: "root"
+        group: "root"
+        mode: "0600"                 
+      register: netplan_file_status
+ 
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 1.5) Apply Changes"
+      ansible.builtin.command: "netplan apply"
+      changed_when: true
+
+  rescue:
+  
+    #---------------------------------------
+    #  2.- Netplan Rendering through ShelL Commands
+    #--------------------------------------- 
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 1.6) RESCUE - Fallback Manual Netplan Setup"
+      become: true
+      ansible.builtin.shell:
+        cmd: "{{ g1_cmd }}"
+      loop: "{{ g1_netplan_cmd | default([]) }}"
+      loop_control:
+        loop_var: "g1_cmd"
+      changed_when: true
+      ignore_errors: true

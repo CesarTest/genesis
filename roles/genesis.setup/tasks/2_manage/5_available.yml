@@ -1,5 +1,5 @@
 ---
-# genesis.setup 4_manage/5_available.yml
+# genesis.setup 2_manage/5_available.yml
 #   - Leave Node in available State (ready to Deploy)
 #      - Force Ironic to Render PXE Files for check
 #
@@ -7,6 +7,41 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-#----------------------
+#---------------------------------------
 # 1.- Force Ironic to Render PXE File
-#----------------------  
+#---------------------------------------  
+
+#---------------------------------------
+# 2.- Audit & Diagnostic Results
+#---------------------------------------  
+- vars:
+    b4_capture_cmd: 
+     - ss -unlp | grep :67 | head -n 1 
+     - openstack baremetal node show "{{ uuid }}"
+	 - 
+  block:
+- name: "B4 - SETUP -2- MANAGE: 5.1) Available: AUDIT Results"
+  delegate_to: localhost
+  ansible.builtin.shell: |
+    . /opt/stack/bifrost/bin/activate
+    export OS_CLOUD=bifrost
+    NODE_JSON=$(openstack baremetal node show "{{ uuid }}" -f json | tr -d '\n\r')
+    DHCP_NIC=$(ss -unlp | grep :67 | head -n 1 | awk -F'%' '{print $2}' | awk '{print $1}')
+    [ -z "$DHCP_NIC" ] && DHCP_NIC="NOT_BOUND"
+    HTTP_PORT=$(ss -tnlp | grep -E '(:80|:8080)' | head -n 1 | awk '{print $4}' | awk -F':' '{print $NF}')
+    [ -z "$HTTP_PORT" ] && HTTP_PORT="NOT_DETECTED"
+    echo "{\"ironic\": $NODE_JSON, \"dhcp_nic\": \"$DHCP_NIC\", \"http_port\": \"$HTTP_PORT\"}"
+  register: g1_audit_payload_raw
+  changed_when: false
+
+- name: "B4 - SETUP -2- MANAGE: 5.2) Available: DIAGNOSTICS, trace result"
+  vars:
+    audit: "{{ g1_audit_payload_raw.stdout | from_json }}"
+  ansible.builtin.debug:
+    msg: |
+      --- IRONIC BAREMETAL INSTANCE DATA ---
+      {{ audit.ironic | to_nice_json(indent=2) }}
+      ----------- PXE SERVICES -------------
+      DHCP NIC:   [{{ audit.dhcp_nic | upper }}]
+      HTTP PORT:  [{{ audit.http_port }}]
+      --------------------------------------

@@ -2,58 +2,37 @@
 #                    ANSIBLE GENERATED NETPLAN FILE 
 # ----------------------------------------------------------------------------
 # Author: Cesar Delgado
-# Date:   05/08/2026
-# Version: 1.0
+# Date:   25/09/2026
+# Version: 3.0 
 #############################################################################}
-{%- if j2_input is defined -%}
-{%-   if j2_input is not none -%}
-{%-      if j2_input is not string -%}
-{%-         if j2_input is mapping -%}
-{%-            if j2_input is iterable -%}
-{%-               if j2_input|length > 0 -%}
-{%- macro get_match(mac) -%}
-  {{ {'macaddress': mac | lower} }}
-{%- endmacro -%}
-{%- macro get_routes(gateway, is_default) -%}
-  {%- if is_default | default(false) | bool -%}
-    {{ [{'to': 'default', 'via': gateway}] }}
-  {%- else -%}
-    {{ [{'to': gateway ~ '/32', 'via': gateway, 'scope': 'link'}] }}
-  {%- endif -%}
-{%- endmacro -%}
-{%- macro get_dns(dns_server) -%}
-  {{ {'addresses': [dns_server]} }}
-{%- endmacro -%}
-{%- set net_config = {} -%}
-{%- for nic_name, data in j2_input.items() -%}
-  {%- set match_obj = get_match(data.mac) | from_yaml -%}
-  {%- set nic_data = {
-    'match': match_obj,
-    'addresses': [data.ip]
-  } -%}
-  {%- if data.gateway is defined and data.gateway is truthy -%}
-    {%- set routes_obj = get_routes(data.gateway, data.default_route) | from_yaml -%}
-    {%- set _ = nic_data.update({'routes': routes_obj}) -%}
-  {%- endif -%}
-  {%- if data.dns is defined and data.dns is truthy -%}
-    {%- set dns_obj = get_dns(data.dns) | from_yaml -%}
-    {%- set _ = nic_data.update({'nameservers': dns_obj}) -%}
-  {%- endif -%}
-  {%- set _ = net_config.update({nic_name: nic_data}) -%}
-{%- endfor -%}
-{%- set final_json = {
-  'network': {
-    'version': 2,
-    'renderer': 'networkd',
-    'ethernets': net_config
-  }
-} -%}
-{{ final_json | to_nice_yaml(indent=2) }}
-{%-             endif -%}
-{%-           endif -%}
-{%-         endif -%}
-{%-       endif -%}
-{%-    endif -%}
+{%- if j2_input is defined and j2_input is not none and j2_input | length > 0 -%}
+
+{# ----------------- BLOCK 1: SECURE DATA LOAD ----------------- #}
+{%-   set input_data = j2_input | from_json -%}
+{%-   if input_data is mapping and input_data is iterable -%}
+
+{# ----------------- BLOCK 2: CLEAR SEPARATED FILTER ----------- #}
+{%-     set ethernets_list = input_data | dict2items -%}
+{%-     set filtered_list = ethernets_list | rejectattr('value.match.macaddress', 'equalto', '') | list -%}
+{%-     set clean_ethernets = filtered_list | items2dict -%}
+
+{# ----------------- BLOCK 3: FINAL CONFIG ASSEMBLY ------------ #}
+{%-     set final_config = {
+          'network': {
+            'version': 2,
+            'renderer': 'networkd',
+            'ethernets': clean_ethernets
+          }
+        } -%}
+{# ----------------- BLOCK 4: DIRECT RENDERING ----------------- #}
+# ==============================================================================
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                           
+# Generated dynamically by Genesis Core Engine Mesh                              
+# Deployment Context: Genesis Node Bootstrap    
+# Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }} 
+# ==============================================================================
+{{ final_config | to_nice_yaml(indent=2) }}
+{%-   endif -%}
 {%- endif -%}
 {#############################################################################
 #                    ANSIBLE GENERATED NETPLAN FILE 

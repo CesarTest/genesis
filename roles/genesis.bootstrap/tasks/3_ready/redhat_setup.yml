@@ -1,0 +1,60 @@
+---
+# genesis.bootstrap 3_ready/redhat_setup.yml
+#   - Setup Genesis Network Interfaces (Universal Multi-Distro Setup)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------------
+#  1.- Linux System Roles on RedHat OS Family
+#---------------------------------------
+- name: "G1 - BOOTSTRAP - 3.- Ready : 2) RHEL System Preparation"
+  block:
+
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 2.1) Network Setup via Linux System Roles (RHEL)"
+      ansible.builtin.include_role:
+        name: "fedora.linux_system_roles.network"  
+      vars:
+        # El rol oficial de RedHat exige que la variable se llame 'network_connections'
+        network_connections: "{{ g1_network_state.interfaces }}"
+        network_provider: "nm"
+
+  #---------------------------------------
+  #  2.- Rescue Branch (NetworkManager Shell Fallback)
+  #---------------------------------------
+  rescue:
+    - name: "G1 - BOOTSTRAP - 3.- Ready : 2.2) RESCUE - Fallback Manual NetworkManager Setup"
+      become: true
+      ansible.builtin.shell:
+        cmd: |
+          # 1. Configuración de la interfaz INTERNET (Gestión y Salida Externa)
+          nmcli connection modify internet \
+            connection.autoconnect yes \
+            ethernet.mac-address "{{ g1_nic_internet_mac }}" \
+            ipv4.method manual \
+            ipv4.addresses "{{ g1_nic_internet_ip }}/{{ g1_nic_internet_prefix }}" \
+            ipv4.gateway "{{ g1_nic_internet_gw }}" \
+            ipv4.dns "{{ g1_nic_internet_dns }}"
+          nmcli connection up internet
+         
+          # 2. Configuración de la interfaz INBAND (Red de Aprovisionamiento/PXE)
+          nmcli connection modify inband \
+            connection.autoconnect yes \
+            ethernet.mac-address "{{ g1_nic_inband_mac }}" \
+            ipv4.method manual \
+            ipv4.addresses "{{ g1_nic_inband_ip }}/{{ g1_nic_inband_prefix }}"
+          nmcli connection up inband
+           
+          # 3. Configuración de la interfaz OUTBAND (Red de Gestión IPMI/Redfish)
+          nmcli connection modify outband \
+            connection.autoconnect yes \
+            ethernet.mac-address "{{ g1_nic_outband_mac }}" \
+            ipv4.method manual \
+            ipv4.addresses "{{ g1_nic_outband_ip }}/{{ g1_nic_outband_prefix }}"
+          nmcli connection up outband
+          
+          # 4. Reinicio del demonio para asimilar los cambios
+          systemctl restart NetworkManager
+      changed_when: true
+      ignore_errors: true
+
