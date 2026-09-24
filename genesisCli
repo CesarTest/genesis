@@ -59,14 +59,28 @@ GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMET
 GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
 GENESIS_TARGET_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/target/inventory"
 GENESIS_COLLECTIONS_WORKING_PATH="${GENESIS_WORKING_PATH}/collections"
-genesis_internet_ipv4=$( cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'genesis_internet_ipv4:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
+GENESIS_INTERNET_IP_BLOCK="$( grep -A 6 "internet:" "${GENESIS_TARGET_INVENTORY_SOURCE}" )"
+GENESIS_INTERNET_IP_LINE="$( echo "${GENESIS_INTERNET_IP_BLOCK}" | grep 'ip:' | head -1 )"
+GENESIS_INTERNET_IP_VALUE="$( echo "${GENESIS_INTERNET_IP_LINE}" | cut -d':' -f2- | xargs )"
+genesis_internet_ipv4="$( echo "${GENESIS_INTERNET_IP_VALUE}" | tr -d ' ' )"
 
 # 2.2.- Installation OPTIONS
 DEBUG_ANSIBLE_FLAGS='-vvv '
 RUN_BACKGROUND="no"
-genesis_hypervisor_ip=$( cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'genesis_hypervisor_ip:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
-genesis_hypervisor_become_pass=$( cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'genesis_hypervisor_become_pass:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
-BAREMETAL_ROOT_PASSWORD=$( cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'ansible_become_pass:' | head -1 | awk -F: '{print $NF}'  | tr -d '"' | tr -d ' '  )
+# Extracción de la IP del Hipervisor (Proxmox)
+GENESIS_INTERNET_HYPERVISOR_BLOCK="$( grep -A 3 "proxmox:" "${GENESIS_TARGET_INVENTORY_SOURCE}" )"
+GENESIS_INTERNET_HYPERVISOR_LINE="$( echo "${GENESIS_INTERNET_HYPERVISOR_BLOCK}" | grep 'ansible_host:' | head -1 )"
+GENESIS_INTERNET_HYPERVISOR_VALUE="$( echo "${GENESIS_INTERNET_HYPERVISOR_LINE}" | cut -d':' -f2- | xargs )"
+genesis_hypervisor_ip="$( echo "${GENESIS_INTERNET_HYPERVISOR_VALUE}" | tr -d ' ' )"
+
+# Extracción de la contraseña del Hipervisor
+genesis_hypervisor_become_pass=$(cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'genesis_hypervisor_become_pass:' | awk -F: '{print $2}' | tr -d '"' | tr -d ' ')
+
+# Extracción de la contraseña de Emulación Genesis (Baremetal Root Password)
+GENESIS_BECOME_EMULATION_BLOCK="$( grep -A 10 "emulation:" "${GENESIS_TARGET_INVENTORY_SOURCE}" )"
+GENESIS_BECOME_EMULATION_LINE="$( echo "${GENESIS_BECOME_EMULATION_BLOCK}" | grep 'ansible_become_pass:' | head -1 )"
+GENESIS_BECOME_EMULATION_VALUE="$( echo "${GENESIS_BECOME_EMULATION_LINE}" | cut -d':' -f2- | xargs )"
+BAREMETAL_ROOT_PASSWORD="$( echo "${GENESIS_BECOME_EMULATION_VALUE}" | tr -d ' ' )"
 
 # 2.3.- Genesis Playbooks
 REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
@@ -193,7 +207,7 @@ function defineMenu() {
                                  )
 	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}" '' '' )
 			  CNF_OLD_VALUE=( "${genesis_internet_ipv4}"       '' '' )
-			  CNF_REEMPLAZA_LINEA=( 'Yes' '' ''   )
+			  #CNF_REEMPLAZA_LINEA=( 'Yes' '' ''   )
 			  CNF_SEPARADOR_CAMPO=( ': ' '' '' )
               RETURNING_MENU="0"
               RUN_ACTION="1"
@@ -390,15 +404,17 @@ function defineMenu() {
                                  )
 	          CNF_REEMPLAZO=( '' \
 			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 '' '' '' '' )
 			  CNF_OLD_VALUE=( '' \
 			                  "${genesis_hypervisor_ip}" \
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
 							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
-			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
@@ -448,8 +464,9 @@ function defineMenu() {
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
 							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
-			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
@@ -497,8 +514,9 @@ function defineMenu() {
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
 							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
-			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
@@ -545,8 +563,9 @@ function defineMenu() {
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
 							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
-			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
@@ -593,8 +612,9 @@ function defineMenu() {
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
 							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
-			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
@@ -641,8 +661,9 @@ function defineMenu() {
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
 							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '' 'Yes' 'Yes' 'Yes' '' '' '' '')
-			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '')
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
@@ -1849,13 +1870,21 @@ function reemplazaParametro() {
 	     local OLD="^([[:space:]]*)${VAR}${SEPARADOR_CAMPO}.*\r?\$"
 	   fi  
 
-	   # 1.2.- Replacement Pattern Types	      
-	   if [ -z "${SIN_COMILLA}" ] ; then 
-		   local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
-	   else                                
-		   local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}${PREPO}${VALOR}" 
-	   fi
-
+	   # 1.2.- Replacement Pattern Types
+       if [ -n "${REEMPLAZA_LINEA}" ] ; then	   
+	      if [ -z "${SIN_COMILLA}" ] ; then 
+		     local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
+	      else                                
+		     local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}${PREPO}${VALOR}" 
+	      fi
+	   else
+		   if [ -z "${SIN_COMILLA}" ] ; then  
+		       local VAL_NUEVO="\"${VALOR}\""
+		   else
+		       local VAL_NUEVO="${VALOR}"
+		   fi
+       fi
+	   
 	   # CASE 1: Add Identation on Line Replacements
 	   if [ -n "${REEMPLAZA_LINEA}" ] ; then 
 	      local REPLN="\1${VAL_NUEVO}"
@@ -1940,9 +1969,11 @@ function deployMenu() {
 
 			     #   2.3.1.1.- Set Replacement Environment
 				 local CNF_FILE="$(echo ${CNF_REEMPLAZO[${POSICION}]} | tr -d ' ')"
-			     local OLD_VALUE="${CNF_OLD_VALUE[${POSICION}]}"
-         	     local REEMPLAZA_LINEA="${CNF_REEMPLAZA_LINEA[${POSICION}]}" 
-                 local CNF_SEPARADOR="${CNF_SEPARADOR_CAMPO[${POSICION}]}"
+			     if [ -n "${CNF_OLD_VALUE[${POSICION}]}"    ] ; then local OLD_VALUE="${CNF_OLD_VALUE[${POSICION}]}" ; fi
+				 if [ -n "${CNF_REEMPLAZA_LINEA[${POSICION}]}" ] ; then local REEMPLAZA_LINEA="${CNF_REEMPLAZA_LINEA[${POSICION}]}" ; fi
+				 if [ -n "${CNF_REEMPLAZA_LINEA[${POSICION}]}" ] ; then  local REEMPLAZA_LINEA="${CNF_REEMPLAZA_LINEA[${POSICION}]}" ; fi
+                 if [ -n "${CNF_SEPARADOR_CAMPO[${POSICION}]}" ] ; then  local CNF_SEPARADOR="${CNF_SEPARADOR_CAMPO[${POSICION}]}" ; fi
+                 if [ -n "${CNF_SIN_COMILLA[${POSICION}]}" ] ; then  local SIN_COMILLA="${CNF_SIN_COMILLA[${POSICION}]}" ; fi				 
 
 			     #   2.3.1.2.- Execute CNF Replacement to TMP file			 
 			     reemplazaParametro 
@@ -1953,7 +1984,7 @@ function deployMenu() {
 			        chmod "$PERMISSIONS" "${OUT_TMP}"
 		            mv "${OUT_TMP}" "${CNF_FILE}"
 				 fi
-				 unset CNF_FILE CNF_SEPARADOR OLD_VALUE REEMPLAZA_LINEA 
+				 unset CNF_FILE CNF_SEPARADOR OLD_VALUE REEMPLAZA_LINEA SIN_COMILLA
 				 unset REPLACEMENT_APPLIED PERMISSIONS 
             fi
 		fi 
@@ -2151,8 +2182,8 @@ function shootPlaybook() {
             nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 &
 			unset PLAYBOOK 
           else
-            echo "[${TIMESTAMP}] : /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
-            /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
+            echo "[${TIMESTAMP}] : /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+            /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} | tee  "${LOG}.human"
 			unset PLAYBOOK
           fi   
        elif [ -x /usr/bin/ansible-playbook ] ; then
@@ -2161,8 +2192,8 @@ function shootPlaybook() {
              nohup /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
 	         unset PLAYBOOK
           else
-             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
-             /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+             /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
 			 unset PLAYBOOK 
           fi
        elif [ -x /usr/sbin/ansible-playbook ] ; then
@@ -2171,8 +2202,8 @@ function shootPlaybook() {
              nohup /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 & 
 			 unset PLAYBOOK
           else
-             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} "
-             /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} 
+             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+             /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
 			 unset PLAYBOOK
           fi
 		  			
@@ -2182,8 +2213,8 @@ function shootPlaybook() {
              nohup /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
 			 unset PLAYBOOK
           else
-             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
-             /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} 
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+             /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
 			 unset PLAYBOOK
           fi
 	   
@@ -2193,8 +2224,8 @@ function shootPlaybook() {
             nohup /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
 			unset PLAYBOOK 
           else
-            echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} "
-            /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}
+            echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+            /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
 			unset PLAYBOOK
           fi
        else

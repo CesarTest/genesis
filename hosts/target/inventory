@@ -8,7 +8,6 @@ all:
   
     # => 1.- Genesis Node NICs
     git_branch: "stable/2026.1"
-    genesis_internet_ipv4: "192.168.1.40/24"
     genesis_nics:
       inband: 
         mac: "bc:24:11:4c:37:14"
@@ -20,24 +19,23 @@ all:
         gateway: "10.10.41.1"
       internet: 
         mac: "bc:24:11:34:c8:96"
-        ip: "{{ genesis_internet_ipv4 | default('192.168.1.40/24') }}"
+        ip: "192.168.1.40/24"
         gateway: "192.168.1.1" 
         default_route: yes
         dns: "192.168.1.1"
 
     # => 2.- BMC Emulators shared credentials
-    genesis_hypervisor_ip: "192.168.1.133"
     genesis_hypervisor_become_pass: "cesardg"
     genesis_bmc_credentials: 
       manual-management:
-        ipv4: "{{ genesis_hypervisor_ip | default('127.0.0.1') }}" # Proxmox Hypervisor 
-        port: "8000"                                               # Proxmox RedFish Daemon
+        ipv4: "192.168.1.133" # Proxmox Hypervisor 
+        port: "8000"          # Proxmox RedFish Daemon
         username: "root@pam"
         password: "cesardgm"
         verify_ca: false
       redfish:
-        ipv4: "{{ genesis_hypervisor_ip | default('127.0.0.1') }}" # Proxmox Hypervisor 
-        port: "8000"                                               # Proxmox RedFish Daemon
+        ipv4: "192.168.1.133" # Proxmox Hypervisor 
+        port: "8000"          # Proxmox RedFish Daemon
         username: "root@pam"
         password: "cesardgm"
         verify_ca: false
@@ -51,10 +49,10 @@ all:
       ansible_connection: "local"
   
     proxmox:
-      ansible_host: "{{ genesis_hypervisor_ip | default('127.0.0.1') }}"
+      ansible_host: "192.168.1.133"
  
     genesis:
-      ansible_host: "{{ genesis_nics.inband.ip | default('127.0.0.1') | ansible.utils.ipaddr('address') }}"
+      ansible_host: "10.10.51.5"
   
   #--------------------------------------------------------------------
   #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS

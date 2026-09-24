@@ -9,12 +9,10 @@
 # 1. Install Ironic
 #---------------------------------------  
 
-- name: "G2 - CREATE - Variables Dump: NETWORK & DHCP (group_vars/target)"
-  delegate_to: localhost
   ansible.builtin.debug:
-    msg: |
-      --- NETWORK & DHCP VARIABLES DUMP ---
-      
+    msg: "{{ dump_text | split('\n') }}"
+  vars:
+    dump_text: |   
       => NETWORK INTERFACE RESOLUTION:
       genesis_target_mac:            {{ genesis_target_mac | default('Not defined') }}
       genesis_interface_found:       {{ genesis_interface_found | default('Not found') }}
