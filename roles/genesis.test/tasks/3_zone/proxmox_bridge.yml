@@ -53,7 +53,9 @@
 
     - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2) Display SDN Bridges Topology"
       ansible.builtin.debug:
-        msg: |
+        msg: "{{ debug_topology_msg.splitlines() }}"
+      vars:
+        debug_topology_msg: |
           --- SDN Bridges Topology Specs ---
           {% for bridge in t1_airgap_zone.bridges | default([]) %}
           Net{{ loop.index0 }} (Bridge Name): {{ bridge.name }}
@@ -61,7 +63,7 @@
           ├─ IPv4 Address:  {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
           └─ Node Gateway:   {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }} (Hipervisor IP)
           {% else %}
-          [ No bridges are defined in t1_airgap_zone.bridges]
+          [ No bridges are defined in t1_airgap_zone.bridges ]
           {% endfor %}
       delegate_to: localhost
 
@@ -71,7 +73,7 @@
     - name: "T3 - PROXMOX_BRIDGE -3- Zone 2.1) Ensure Provision and Redfish VNETs are present in Proxmox cluster"
       community.proxmox.proxmox_vnet:
         api_host: "127.0.0.1"
-        api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
+        api_user: "{{ t1_hypervisor_api_user         | default(omit) }}"
         api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
         validate_certs: false
         vnet: "{{ t3_proxmox_bridge.name | default('bridge' ~ t3_proxmox_index, true) }}"

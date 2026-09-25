@@ -182,6 +182,7 @@ t1_proxmox_nics: "{{ (t1_enroll_nic_internet_mac | length > 0) | ternary(t1_prox
 ######################################################
 # TESTING WORKING ENVIRONMENT (VMs)
 ######################################################
+
 # 1.. Hypervisor Properties
 t1_hypervisor: "{{ genesis_hypervisor | default('proxmox') }}"
 t1_hypervisor_node_default: "{{ hostvars[groups['hypervisor'] | first] | default({}) }}"
@@ -191,9 +192,9 @@ t1_hypervisor_user: "{{ t1_hypervisor_node_default['ansible_user'] | default('ro
 
 # 2.. Hypervisor API
 t1_hypervisor_api_node: "{{ t1_hypervisor_node }}"
-t1_hypervisor_api_user:  "{{ t1_enroll_bmc_node_driver_info['username']  | default('root') }}"
-t1_hypervisor_api_password: "{{ t1_enroll_bmc_node_driver_info['password'] | default(omit) }}"
-t1_hypervisor_api_token: "{{ t1_enroll_bmc_node_driver_info['token'] | default(omit) }}"
+t1_hypervisor_api_user: "{{ hostvars['proxmox']['hypervisor_api_username'] | default(t1_enroll_bmc_node_driver_info['username'] | default('root')) }}"
+t1_hypervisor_api_password: "{{ hostvars['proxmox']['hypervisor_api_password'] | default(t1_enroll_bmc_node_driver_info['password'] | default(omit)) }}"
+t1_hypervisor_api_token: "{{ hostvars['proxmox']['hypervisor_api_token'] | default(t1_enroll_bmc_node_driver_info['token'] | default(omit)) }}"
 t1_hypervisor_api_validate_certs: false
 
 t1_hypervisor_add_user_script: 

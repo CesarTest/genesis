@@ -20,10 +20,12 @@
 
 
   block:
-
+  
     - name: "T3 - PROXMOX_SUBNET -3- Zone: 3) Display SDN Subnets Spec"
       ansible.builtin.debug:
-        msg: |
+        msg: "{{ debug_subnets_msg.splitlines() }}"
+      vars:
+        debug_subnets_msg: |
           --- SDN Subnets Topology Specs ---
           {% for bridge in t1_airgap_zone.bridges | default([]) %}
           Subnet [{{ loop.index0 }}] (Target VNET): {{ bridge.name }}

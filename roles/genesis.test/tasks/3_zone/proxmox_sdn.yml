@@ -43,7 +43,9 @@
 
     - name: "T3 - PROXMOX_SDN -3- Zone: 1) SDN Zone inspection trace"
       ansible.builtin.debug:
-        msg: | 
+        msg: "{{ debug_sdn_msg.splitlines() }}"
+      vars:
+        debug_sdn_msg: |
           ===[ SDN ZONE DEPLOYMENT INFO ]===
           APi User:        {{ t1_hypervisor_api_user | default('t1_hypervisor_api_user UNDEFINED_MISSING_VALUE') }}
           API Password:    {{ t1_hypervisor_api_password | default('t1_hypervisor_api_password UNDEFINED_MISSING_VALUE') }}

@@ -10,7 +10,9 @@
 #-----------------------------------------------------------------------
 - name: "T4 - PROXMOX_CREATE -4- Nodes: 1) Display VM Creation Spec"
   ansible.builtin.debug:
-    msg: |
+    msg: "{{ debug_creation_msg.splitlines() }}"
+  vars:
+    debug_creation_msg: |
       --- API Connection ---
       API Host:       127.0.0.1
       API User:       {{ t1_hypervisor_api_user | default('[t1_hypervisor_api_user is NOT DEFINED]') }}
