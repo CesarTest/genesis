@@ -2548,12 +2548,37 @@ function printBackgroundMessageExecution() {
       echo -e "${COLOR[$ORANGE]}  BACKGROUND ANSIBLE EXECUTION ${COLOR[$NC]}"
       echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
       echo -e  "  ---> Activity Details: ${COLOR[$NC]}"
-      echo -e  "      ...Human Readable Log: ${COLOR[$ORANGE]} tail -f ${LOG_FILE}.nohup ${COLOR[$NC]}"
+      echo -e  "      ...Human Readable Log: "
+      echo -e  "           ${COLOR[$ORANGE]} tail -f ${LOG_FILE}.nohup ${COLOR[$NC]}"
+      echo -e  "           ${COLOR[$ORANGE]} less -R ${LOG_FILE}.nohup ${COLOR[$NC]}"
       echo -e  "      ....Machine Ready Log: ${COLOR[$ORANGE]} tail -f ${LOG_FILE} ${COLOR[$NC]}"
+      echo -e  "           ${COLOR[$ORANGE]} tail -f ${LOG_FILE} ${COLOR[$NC]}"
+      echo -e  "           ${COLOR[$ORANGE]} vi ${LOG_FILE} ${COLOR[$NC]}"
       echo -e  "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
    fi
 }     
 
+#========================================================
+#   Function: printEmulationInstructions
+#--------------------------------------------------------
+#   Warning Message: Under Construction 
+#========================================================
+function printEmulationInstructions() {
+   if [ -n "${RUN_BACKGROUND}" ] ; then
+      echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+      echo -e "${COLOR[$ORANGE]}  PREPARING EMULATED ENVIRONMENT ${COLOR[$NC]}"
+      echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+      echo -e  "  --> STEP 1: Install Ubuntu Noble 24.04 from ISO on Genesis Virtual Machine just created"
+      echo -e  "      ..URL: ${COLOR[$ORANGE]}https://releases.ubuntu.com/noble/ubuntu-24.04.4-live-server-amd64.iso${COLOR[$NC]}"  
+      echo -e  "  --> STEP 2: Clone the Project in Genesis"
+      echo -e  "      ${COLOR[$ORANGE]}git clone https://github.com/CesarTest/genesis.git ${COLOR[$NC]}"
+      echo -e  "      ${COLOR[$ORANGE]}cd genesis"
+      echo -e  "  --> STEP 3: Full Genesis Lifecycle:  genesisCli -> TEST Deploy Stage (OPTION 8 -> OPTION 2)"
+      echo -e  "      ..................Full Genesis Refresh: ${COLOR[$ORANGE]}Yes${COLOR[$NC]}"
+      echo -e  "      ..Full Baremetal Virtual Nodes Refresh: ${COLOR[$ORANGE]}Yes${COLOR[$NC]}"
+      echo -e  "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   fi
+}     
 
 
 #========================================================
@@ -2786,12 +2811,14 @@ function 8_test() {
 #========================================================
 function 18_hypervisor() {
 
-   # 2.- Set Shoot Conditions  
+   # 1.- Treat Menu Entries  
    local PLAYBOOK_INDEX="${1:-18}"
    local EMULATION=$(echo "${HYPERVISOR}" | tr '[:upper:]' '[:lower:]')
    local EMULATION_IP=$(echo "${genesis_hypervisor_ip}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
    local BAREMETAL_ROOT_PASSWORD="${genesis_hypervisor_become_pass}"
    local INVENTORY_LIST=( "${EMULATION_IP}" )
+
+   # 2.- Actions  
    case "${EMULATION}" in
     "proxmox")
 	    EXTRA_VARS="target_hypervisor=proxmox"
@@ -2800,6 +2827,11 @@ function 18_hypervisor() {
 		0_call "${PLAYBOOK_INDEX}"
         ;;
    esac
+   
+   # 3.- Provide Further Instructions to User
+   printEmulationInstructions
+   
+   # 4.- Clean Environment
    unset EMULATION EMULATION_IP HYPERVISOR BAREMETAL_ROOT_PASSWORD
    unset PLAYBOOK_INDEX  
 }
