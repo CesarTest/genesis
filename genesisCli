@@ -2454,7 +2454,6 @@ function ansibleListHosts() {
 #========================================================
 function ansibleInventoryUserCredentials() {
 
-
    if [ -r "${INVENTORY_SOURCE_FILE}" ] ; then
    
       # 1.- AdHoc Call Properties
@@ -2544,7 +2543,6 @@ function underConstruction() {
 #   Warning Message: Under Construction 
 #========================================================
 function printBackgroundMessageExecution() {
-   detectBackgroundExecution
    if [ -n "${RUN_BACKGROUND}" ] ; then
       echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
       echo -e "${COLOR[$ORANGE]}  BACKGROUND ANSIBLE EXECUTION ${COLOR[$NC]}"
@@ -2586,7 +2584,8 @@ function 0_call() {
    echo -e "${COLOR[$SEA]}baremetal node list${COLOR[$NC]}"
    # 2.- Run Playbook
    runPlaybook "${CALL_LOG}"
-
+   printBackgroundMessageExecution
+   
    # 4.- Clean Environments 
    echo "Removing Temporal Files... rm -f ${TMP_FILE}"
    rm -f "${TMP_FILE}" 2> /dev/null
@@ -2649,7 +2648,6 @@ function 2_create() {
    #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
    0_call "${CREATE}"
    state_status "${CREATE}"
-   printBackgroundMessageExecution
    
    # 3.- Clean Environemnt
    unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS

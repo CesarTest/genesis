@@ -21,9 +21,16 @@
     #---------------------------------------
     # 0. Log Image Download Properties
     #--------------------------------------- 
+    #-----------------------------------------------------------------------
+    # 2.0) Dump Download Properties (Optimized for Standard Callback)
+    #-----------------------------------------------------------------------
+    #-----------------------------------------------------------------------
+    # 2.0) Dump Download Properties (Splitlines + Join Variant)
+    #-----------------------------------------------------------------------
     - name: "G1 - BOOTSTRAP - 2.- Download OS:  2.0) Dump Download Properties"
-      ansible.builtin.debug:
-        msg: |
+      ignore_errors: true
+      vars:
+        t4_download_properties_block: |
           --- 1. OS Particulars ---
           Distro:       {{ g1_image_os_distro | default('[g1_image_os_distro is NOT DEFINED]') }}
           Version:      {{ g1_image_os_distro_version | default('[g1_image_os_distro_version is NOT DEFINED]') }}
@@ -39,9 +46,8 @@
           Pattern:      [{{ g1_image_os_netinstaller_url_pattern | default('[g1_image_os_netinstaller_url_pattern is NOT DEFINED]') }}]
           Arch URL:     [{{ g1_image_os_netinstaller_url_arch | default('[g1_image_os_netinstaller_url_arch is NOT DEFINED]') }}]
           Version URL:  [{{ g1_image_os_netinstaller_url_version | default('[g1_image_os_netinstaller_url_version is NOT DEFINED]') }}]
-          : {{ g1_image_os_netinstaller_url_default }}
-          Default URL:    [{{ g1_image_os_netinstaller_url_default | default('[g1_image_os_netinstaller_url_default is NOT DEFINED]') }} ]
-          Final URL: [{{ g1_image_os_netinstaller_url | default('[g1_image_os_netinstaller_url is NOT DEFINED]') }}] 
+          Default URL:  [{{ g1_image_os_netinstaller_url_default | default('[g1_image_os_netinstaller_url_default is NOT DEFINED]') }}]
+          Final URL:    [{{ g1_image_os_netinstaller_url | default('[g1_image_os_netinstaller_url is NOT DEFINED]') }}] 
           
           --- 2. Image Naming ---
           Image URL:    {{ g1_deploy_image_url | default('[g1_deploy_image_url is NOT DEFINED]') }}
@@ -53,6 +59,8 @@
           --- 3. Download Folders ---
           Default Path: {{ g1_image_os_default_local_path | default('[g1_image_os_default_local_path is NOT DEFINED]') }}
           Dest Folder:  {{ g1_image_os_local_folder | default('[g1_image_os_local_folder is NOT DEFINED]') }}
+      ansible.builtin.debug:
+        msg: "{{ t4_download_properties_block.splitlines() | join('\n') }}"
 
     #---------------------------------------
     # 1. Prepare Local Folders
