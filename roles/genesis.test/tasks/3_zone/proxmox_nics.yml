@@ -67,6 +67,7 @@
 
     # --- PRE-FLIGHT DEBUG ---
     - name: "T3 - PROXMOX_NICS -3- Zone: 5) DEBUG VM Specs to Check if any NIC in Zone"
+      ignore_errors: true
       ansible.builtin.debug:
         msg: "{{ debug_raw_text.splitlines() }}"
       vars:

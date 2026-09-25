@@ -52,6 +52,7 @@
   block:
 
     - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2) Display SDN Bridges Topology"
+      ignore_errors: true
       ansible.builtin.debug:
         msg: "{{ debug_topology_msg.splitlines() }}"
       vars:

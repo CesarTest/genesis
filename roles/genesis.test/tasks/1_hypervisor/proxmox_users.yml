@@ -20,6 +20,7 @@
       delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
 
     - name: "T1 - PROXMOX_USERS -2- Hypervisor: 3.2) Show user provisioning success status"
+      ignore_errors: true
       ansible.builtin.debug:
         msg: "{{ debug_success_msg.splitlines() }}"
       vars:

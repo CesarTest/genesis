@@ -23,8 +23,19 @@
 
     # 2.2.- Dump File on Screen 
     - name: "B4 SETUP - B) Dump Local File Content to Terminal (Pure Local Cat)"
+      ignore_errors: true
       ansible.builtin.debug:
-        msg: "{{ lookup('ansible.builtin.file', b4_baremetal_vars_file) | string }}"
+        msg:
+          - "===[ BAREMETAL OVERVIEW PROFILE MANIFESTO ]==="
+          - "Target Manifesto Node: [{{ inventory_hostname }}]"
+          - "Manifesto Source File: [{{ b4_baremetal_vars_file }}]"
+          - "--- JSON Manifest Content Payload ---"
+          - "{{ t4_manifesto_nice_json }}"
+      vars:
+        t4_raw_content: "{{ lookup('ansible.builtin.file', b4_baremetal_vars_file, errors='ignore') | default('{}', true) }}"
+        t4_parsed_dict: "{{ t4_raw_content if (t4_raw_content is mapping) else (t4_raw_content | from_json) }}"
+        t4_manifesto_nice_json: "{{ t4_parsed_dict | default({'STATUS': 'INVALID MANIFESTO'}) | to_nice_json }}"
+      delegate_to: localhost
 
   when:
     - not b4_skip_setup | default(false) | bool

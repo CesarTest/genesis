@@ -42,6 +42,7 @@
   block:
 
     - name: "T3 - PROXMOX_SDN -3- Zone: 1) SDN Zone inspection trace"
+      ignore_errors: true
       ansible.builtin.debug:
         msg: "{{ debug_sdn_msg.splitlines() }}"
       vars:

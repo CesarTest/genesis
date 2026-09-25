@@ -15,6 +15,7 @@
 # 2.- Audit & Diagnostic Results
 #---------------------------------------  
 - name: "B4 - SETUP -2- MANAGE: 5.1) Available: AUDIT Results"
+  ignore_errors: yes
   vars:
     b4_status_cmd:
       - |
@@ -32,7 +33,6 @@
  
   block:
     - name: "B4 - SETUP -2- MANAGE: 5.1) Available: AUDIT Status Capture"
-      ignore_errors: yes
       ansible.builtin.shell: "{{ b4_status }}"
       environment:
         OS_CLOUD: "bifrost"
@@ -43,46 +43,42 @@
       register: g1_audit_payload_raw
       changed_when: false
 
+    #-----------------------------------------------------------------------
+    # 5.2.- Available: DIAGNOSTICS, trace result
+    #-----------------------------------------------------------------------
     - name: "B4 - SETUP -2- MANAGE: 5.2) Available: DIAGNOSTICS, trace result"
       delegate_to: localhost
+      ignore_errors: true
       vars:
-        # --- Variables de diagnóstico originales ---
-        ironic_json: "{{ g1_audit_payload_raw.results[0].stdout | default('{}') | from_json }}"
-        dnsmasq_status: "{{ g1_audit_payload_raw.results[1].stdout_lines | default(['No dnsmasq status captured']) }}"
-        nginx_status: "{{ g1_audit_payload_raw.results[3].stdout_lines | default(['No nginx status captured']) }}"
-        dnsmasq_sockets: "{{ g1_audit_payload_raw.results[2].stdout_lines | default(['No dnsmasq sockets detected']) }}"
-        nginx_sockets: "{{ g1_audit_payload_raw.results[4].stdout_lines | default(['No nginx sockets detected']) }}"
-        dnsmasq_conf_interface: "{{ g1_audit_payload_raw.results[5].stdout_lines | default(['No conf directives detected']) }}"
+        # --- Unificación limpia de arrays a texto multilínea nativo ---
+        ironic_nice:            "{{ g1_audit_payload_raw.results[0].stdout | default('{}') | from_json | to_nice_json(indent=2) }}"
+        dnsmasq_status:         "{{ g1_audit_payload_raw.results[1].stdout_lines | default(['No dnsmasq status captured']) | join('\n   ') }}"
+        dnsmasq_sockets:        "{{ g1_audit_payload_raw.results[2].stdout_lines | default(['No dnsmasq sockets detected']) | join('\n   ') }}"
+        nginx_status:           "{{ g1_audit_payload_raw.results[3].stdout_lines | default(['No nginx status captured']) | join('\n   ') }}"
+        nginx_sockets:          "{{ g1_audit_payload_raw.results[4].stdout_lines | default(['No nginx sockets detected']) | join('\n   ') }}"
+        dnsmasq_conf_interface: "{{ g1_audit_payload_raw.results[5].stdout_lines | default(['No conf directives detected']) | join('\n   ') }}"
         
-      ansible.builtin.debug:
-        msg: |
+        # --- Construcción del bloque continuo de diagnóstico ---
+        t4_diagnostics_block: |
           --- IRONIC BAREMETAL INSTANCE DATA ---
-          {{ ironic_json | to_nice_json(indent=2) }}
+          {{ ironic_nice }}
           ----------- PXE SERVICES -------------
           
           => DNSMASQ CONFIGURATION DIRECTIVES:
           network_interface=[{{ network_interface }}]
-          {% for line in dnsmasq_conf_interface %}
-             {{ line }}
-          {% endfor %}
+             {{ dnsmasq_conf_interface }}
           
           => DNSMASQ SERVICE STATUS:
-          {% for line in dnsmasq_status %}
-             {{ line }}
-          {% endfor %}
+             {{ dnsmasq_status }}
          
           => ACTIVE DNSMASQ SOCKETS:
-          {% for line in dnsmasq_sockets %}
-             {{ line }}
-          {% endfor %}
+             {{ dnsmasq_sockets }}
            
           => NGINX SERVICE STATUS:
-          {% for line in nginx_status %}
-             {{ line }}
-          {% endfor %}
+             {{ nginx_status }}
           
           => ACTIVE NGINX SOCKETS:
-          {% for line in nginx_sockets %}
-             {{ line }}
-          {% endfor %}
+             {{ nginx_sockets }}
           --------------------------------------
+      ansible.builtin.debug:
+        msg: "{{ t4_diagnostics_block.splitlines() }}"

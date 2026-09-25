@@ -14,11 +14,15 @@
 #------------------
 # 1.0.- Log Instance Info
 - name: "B4 SETUP - Data Model -  Verify resolved OS installer definition"
-  ansible.builtin.debug:
-    msg: |
+  ignore_errors: true
+  vars:
+    t4_os_profile_block: |
       --- OS Definition Profile ---
-      b4_node_os_definitions: {{ b4_node_os_definitions | default('NOT_DEFINED') | to_nice_json }}
+      b4_node_os_definitions:
+      {{ b4_node_os_definitions | default({'STATUS': 'NOT DEFINED'}) | to_nice_json | indent(2, first=true) }}
       b4_node_os_installer:   [{{ b4_node_os_installer | default('NOT_DEFINED') }}]
+  ansible.builtin.debug:
+    msg: "{{ t4_os_profile_block.splitlines() }}"
 
 # 1.1.- Bootloader Information
 - name: "B4 SETUP - Data Model - Freeze Bootloader Instance Data"

@@ -33,7 +33,7 @@
             efidisk0: "{{ t1_proxmox_storage | default('local') }}:0,format=raw,pre-enrolled-keys=0"
           net:     "{{ t1_proxmox_nics | default({}) }}"
           boot:    "order=scsi0;net0;net1;ide2"
-          args:    "-boot reboot-timeout=1"
+          args:    "-boot reboot-timeout=1 -boot strict=on"
           onboot:  true
           timeout: 300
 
@@ -78,6 +78,7 @@
     # 1.- Virtual Machine Specs
     #-----------------------------------------------------------------------
     - name: "T4 - PROXMOX_INSTANCE -4- Nodes: 1) Display VM Creation Spec"
+      ignore_errors: true
       ansible.builtin.debug:
         msg: "{{ debug_creation_msg.splitlines() }}"
       vars:
