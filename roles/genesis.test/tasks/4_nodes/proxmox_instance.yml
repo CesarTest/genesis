@@ -1,0 +1,185 @@
+---
+# genesis.test 3_nodes/proxmox_instance.yml
+#  - Create/Delete a VM in ProxMox Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T4 - PROXMOX_INSTANCE -4- Nodes: 1) Display VM Creation Spec"
+  vars:
+    # 1.- Desired State of VM 
+    t4_selector: "{{ t4_vm_state | default('present') }}"
+    t4_hypervisor_api_host: '127.0.0.1'
+
+    # 2.- Proxmox Ansible Module Call Definition 
+    t4_proxmox_vm_ansible_call:
+      present:
+        - vmid:    "{{ t1_enroll_default_node_id | default('') }}"
+          name:    "{{ t1_enroll_node_name       | default('nohost') }}"
+          state:   'present'
+          cpu:     'host'
+          cores:   "{{ t1_enroll_node_chassis_properties.cpus      | default(2) }}"        
+          memory:  "{{ t1_enroll_node_chassis_properties.memory_mb | default(4096) }}"
+          bios:    "{{ t1_proxmox_node_boot.bios                   | default('ovmf') }}"
+          machine: "{{ t1_proxmox_node_boot.machine                | default('pc') }}"
+          smbios:
+            uuid:  "{{ t1_enroll_node_uuid | default(omit) }}"
+          scsihw:  'virtio-scsi-single'
+          scsi: 
+            scsi0: "{{ t1_proxmox_storage | default('local') }}:{{ t1_enroll_node_chassis_properties.local_gb | default(32) }},discard=on,iothread=1,cache=writeback"
+          ide: 
+            ide2:  "none,media=cdrom"
+          efi:
+            efidisk0: "{{ t1_proxmox_storage | default('local') }}:0,format=raw,pre-enrolled-keys=0"
+          net:     "{{ t1_proxmox_nics | default({}) }}"
+          boot:    "order=scsi0;net0;net1;ide2"
+          args:    "-boot reboot-timeout=1"
+          onboot:  true
+          timeout: 300
+
+      absent:
+        - { vmid: "{{ t1_enroll_default_node_id | default('') }}", name: "{{ t1_enroll_node_name | default('servera199') }}", state: 'absent' , force: true }
+
+    # 3.- Proxmox CLI Call Definition (Nourished STRICTLY from flat references)
+    t4_cli_ref: "{{ t4_proxmox_vm_ansible_call['present'][0] }}"
+    t4_cli_commands: 
+      present: |
+        qm create {{ t4_cli_ref['vmid'] }} \
+          --name "{{ t4_cli_ref['name'] }}" \
+          --cpu {{ t4_cli_ref['cpu'] }} --cores {{ t4_cli_ref['cores'] }} \
+          --memory {{ t4_cli_ref['memory'] }} \
+          --bios {{ t4_cli_ref['bios'] }} \
+          --smbios1 "uuid={{ t1_enroll_node_uuid | default('') }}" \
+          --machine {{ t4_cli_ref['machine'] }} \
+          --scsihw {{ t4_cli_ref['scsihw'] }} \
+          --scsi0 {{ t4_cli_ref['scsi']['scsi0'] }} \
+          --ide2 {{ t4_cli_ref['ide']['ide2'] }} \
+          {% for nic_id, nic_config in (t4_cli_ref['net'] | default({})).items() -%}
+          --{{ nic_id }} "{{ nic_config }}" \
+          {% endfor -%}
+          --boot "{{ t4_cli_ref['boot'] }}"
+        qm set {{ t4_cli_ref['vmid'] }} \
+          --args "{{ t4_cli_ref['args'] }}"
+
+      absent: |
+        qm shutdown {{ t4_cli_ref['vmid'] | default('') }} --timeout 15 || true
+        qm stop {{ t4_cli_ref['vmid'] | default('') }}
+        qm destroy {{ t4_cli_ref['vmid'] | default('') }} --purge
+
+      efi: |
+        qm set {{ t4_cli_ref['vmid'] | default(500) }} \
+          --smbios1 "uuid={{ t1_enroll_node_uuid | default('') }}" \
+          --efidisk0 {{ t4_cli_ref['efi']['efidisk0'] }}
+        qm start {{ t4_cli_ref['vmid'] }}
+
+  block:
+
+    #-----------------------------------------------------------------------
+    # 1.- Virtual Machine Specs
+    #-----------------------------------------------------------------------
+    - name: "T4 - PROXMOX_INSTANCE -4- Nodes: 1) Display VM Creation Spec"
+      ansible.builtin.debug:
+        msg: "{{ debug_creation_msg.splitlines() }}"
+      vars:
+        debug_creation_msg: |
+          ===[ PROXMOX INSTANCE DEPLOYMENT SPEC ]===
+          
+          --- API Connection ---
+          API Host:       [{{ t4_hypervisor_api_host | default('127.0.0.1') }}]
+          API User:       [{{ t1_hypervisor_api_user | default('t1_hypervisor_api_user NOT DEFINED') }}]
+          Target Node:    [{{ t1_hypervisor_api_hostname | default('t1_hypervisor_api_hostname NOT DEFINED') }}]
+          TLS Validation: [{{ 'false' }}]
+          
+          --- VM Identity ---
+          VMID:           [{{ t4_cli_ref['vmid'] | default('t4_cli_ref.vmid NOT DEFINED') }}]
+          VM Name:        [{{ t4_cli_ref['name'] | default('t4_cli_ref.name NOT DEFINED') }}]
+          Mode:           [{{ 'Fresh Baremetal Emulation' }}]
+          
+          --- Power Configuration ---
+          Active Selector Mode: [{{ t4_selector }}]
+          Default State:        [{{ t4_cli_ref['state'] | default('t4_cli_ref.state NOT DEFINED') }}]
+          Force Op:             [{{ t4_cli_ref['force'] | default('t4_cli_ref.force NOT DEFINED') }}]
+          Timeout:              [{{ t4_cli_ref['timeout'] | default('t4_cli_ref.timeout NOT DEFINED') }}]
+                      
+          --- Hardware Emulation (Baremetal Specs) ---
+          UUID (SMBIOS):  [{{ (t4_cli_ref['smbios'] | default({'uuid': 'smbios.uuid NOT DEFINED'}))['uuid'] }}]
+          CPU Type:       [{{ t4_cli_ref['cpu'] | default('t4_cli_ref.cpu NOT DEFINED') }}]
+          vCPUs (Cores):  [{{ t4_cli_ref['cores'] | default('t4_cli_ref.cores NOT DEFINED') }}]
+          RAM (MB):       [{{ t4_cli_ref['memory'] | default('t4_cli_ref.memory NOT DEFINED') }}]
+          BIOS Type:      [{{ (t4_cli_ref['bios'] | default('t4_cli_ref.bios NOT DEFINED')) | upper }}]
+          Machine Type:   [{{ (t4_cli_ref['machine'] | default('t4_cli_ref.machine NOT DEFINED')) | upper }}]
+          Disk Controller:[{{ t4_cli_ref['scsihw'] | default('t4_cli_ref.scsihw NOT DEFINED') }}]
+          Storage Pool:   [{{ (t4_cli_ref['scsi']['scsi0'].split(':') | first) | default('Storage Pool NOT DEFINED') }}]
+          Disk Size (GB): [{{ (t4_cli_ref['scsi']['scsi0'].split(':') | last | split(',') | first) | default('Disk Size NOT DEFINED') }}]
+          Boot Order:     [{{ t4_cli_ref['boot'] | default('t4_cli_ref.boot NOT DEFINED') }}]
+          OnBoot Active:  [{{ t4_cli_ref['onboot'] | default('t4_cli_ref.onboot NOT DEFINED') }}]
+          Extra Args:     [{{ t4_cli_ref['args'] | default('t4_cli_ref.args NOT DEFINED') }}]
+      delegate_to: localhost
+      when:
+        - (t4_selector | default('present')) in ['started', 'present']
+
+    #-----------------------------------------------------------------------
+    # 2.- Unified VM Lifecycle Management via Proxmox Module (Create/Delete)
+    #-----------------------------------------------------------------------
+    - name: "T4 - PROXMOX_INSTANCE -4- Nodes: 1) Manage VM Provisioning and Power State"
+      community.proxmox.proxmox_kvm:
+        api_host:     "{{ t4_hypervisor_api_host     | default('127.0.0.1') }}"
+        api_user:     "{{ t1_hypervisor_api_user     | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        node: "{{ t1_hypervisor_api_hostname }}" 
+        vmid: "{{ t1_enroll_default_node_id   | default(201) }}"
+        name: "{{ t1_enroll_node_name         | default('servera199') }}"
+        # Power configuration
+        state:   "{{ t4_vm_command['state']   | default('present') }}"
+        force:   "{{ t4_vm_command['force']   | default(omit) }}"
+        timeout: "{{ t4_vm_command['timeout'] | default(omit) }}"
+        # Hardware configuration
+        full:    "{{ t4_vm_command['full']    | default(omit) }}"
+        cpu:     "{{ t4_vm_command['cpu']     | default(omit) }}"
+        cores:   "{{ t4_vm_command['cores']   | default(omit) }}"
+        memory:  "{{ t4_vm_command['memory']  | default(omit) }}"
+        bios:    "{{ t4_vm_command['bios']    | default(omit) }}"
+        machine: "{{ t4_vm_command['machine'] | default(omit) }}"
+        #NOK- smbios:  "{{ t4_vm_command['smbios']  | default(omit) }}"
+        scsihw:  "{{ t4_vm_command['scsihw']  | default(omit) }}"
+        scsi:    "{{ t4_vm_command['scsi']    | default(omit) }}"
+        ide:     "{{ t4_vm_command['ide']     | default(omit) }}"
+        net:     "{{ t4_vm_command['net']     | default(omit) }}"
+        boot:    "{{ t4_vm_command['boot']    | default(omit) }}"
+        onboot:  "{{ t4_vm_command['onboot']  | default(omit) }}"
+        args:    "{{ t4_vm_command['args']    | default(omit) }}"
+        # Network/Update configuration
+        update: "{{ t4_vm_command['module_update'] | default(omit) }}"
+      loop: "{{ t4_proxmox_vm_ansible_call[t4_selector] | default([]) }}"
+      loop_control:
+        loop_var: t4_vm_command
+      register: t4_kvm_lifecycle_result
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- Create Virtual Machine via CLI
+    #-----------------------------------------------------------------------
+    - name: "T4 - PROXMOX_INSTANCE -4- Nodes: 1) Instance: 2) RESCUE: Manage VM Provisioning and Power State CLI"
+      ansible.builtin.shell: 
+        cmd: "{{ t4_cli_commands[t4_selector] | default('') }}"
+      register: t4_kvm_cli_lifecycle_result
+      changed_when: true
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+  
+  always:
+  
+    #-----------------------------------------------------------------------
+    # 3.- Add EFI Disk via CLI (Ansible Modules Fail)
+    #-----------------------------------------------------------------------  
+    - name: "T4 - PROXMOX_INSTANCE -4- Nodes: 1) Instance: 3) Inject permanent EFI storage volume into existing VM via qm CLI"
+      ignore_errors: yes	
+      ansible.builtin.shell: 
+        cmd: "{{ t4_cli_commands['efi'] | default('') }}"
+      register: t4_kvm_efi_inject_result
+      changed_when: t4_kvm_efi_inject_result.rc == 0
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      when:
+        - t4_selector in ['started', 'present']

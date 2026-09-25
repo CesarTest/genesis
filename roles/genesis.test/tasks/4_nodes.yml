@@ -9,7 +9,11 @@
 # 1.- Refresh Testing Virtual Machine
 #-----------------------------------------------------------------------
 - block:
-    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_delete.yml"
-    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_create.yml"
+    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_instance.yml"
+      vars:
+        t4_vm_state: "absent"
+    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_instance.yml"
+      vars:
+        t4_vm_state: "present"
   when:
     - t1_refresh_vms | default(true) | bool
