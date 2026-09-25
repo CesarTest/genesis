@@ -12,6 +12,7 @@
   hosts: localhost
   become: no
   gather_facts: yes
+  connection: ssh # IMPORTANT! Allow genesis unattended lifecycle 
  
 #---------------------------------
 #  SETUP NODES

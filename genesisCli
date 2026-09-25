@@ -2551,7 +2551,7 @@ function printBackgroundMessageExecution() {
       echo -e  "      ...Human Readable Log: "
       echo -e  "           ${COLOR[$ORANGE]} tail -f ${LOG_FILE}.nohup ${COLOR[$NC]}"
       echo -e  "           ${COLOR[$ORANGE]} less -R ${LOG_FILE}.nohup ${COLOR[$NC]}"
-      echo -e  "      ....Machine Ready Log: ${COLOR[$ORANGE]} tail -f ${LOG_FILE} ${COLOR[$NC]}"
+      echo -e  "      ....Machine Ready Log: ${COLOR[$ORANGE]}"
       echo -e  "           ${COLOR[$ORANGE]} tail -f ${LOG_FILE} ${COLOR[$NC]}"
       echo -e  "           ${COLOR[$ORANGE]} vi ${LOG_FILE} ${COLOR[$NC]}"
       echo -e  "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
