@@ -2649,7 +2649,8 @@ function 2_create() {
    #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
    0_call "${CREATE}"
    state_status "${CREATE}"
-	  
+   printBackgroundMessageExecution
+   
    # 3.- Clean Environemnt
    unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
    
@@ -2835,7 +2836,6 @@ function runActions() {
         27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}") underConstruction ;;
         33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}") local HYPERVISOR='proxmox' ; 18_hypervisor "${E1_PROXMOX}" ;;
     esac
-	printBackgroundMessageExecution
 }
 
 ########################################################################################

@@ -8,8 +8,7 @@
 #---------------------------------------
 # 1. Install Ironic
 #---------------------------------------  
-
-  ansible.builtin.debug:
+- ansible.builtin.debug:
     msg: "{{ dump_text | split('\n') }}"
   vars:
     dump_text: |   
