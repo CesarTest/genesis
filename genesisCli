@@ -373,7 +373,7 @@ function defineMenu() {
 			 
         12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")
 		      MENU_TEXT="(12)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}"
-	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_deploy.log"  ; fi
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_deploy.log"  ; fi
               RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
 	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
 			              "genesis_hypervisor_ip" \
@@ -427,6 +427,7 @@ function defineMenu() {
 
         13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")
 		      MENU_TEXT="(13)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_active.log"  ; fi
               RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
 	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
 			              "genesis_hypervisor_ip" \
@@ -477,6 +478,7 @@ function defineMenu() {
 			 
         14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")
 		      MENU_TEXT="(14)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_clean.log"  ; fi
               RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
 	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
 			              "genesis_hypervisor_ip" \
@@ -526,6 +528,7 @@ function defineMenu() {
 
         15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")
 		      MENU_TEXT="(15)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_enroll.log"  ; fi
               RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
 	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
 			              "genesis_hypervisor_ip" \
@@ -575,6 +578,7 @@ function defineMenu() {
 
        16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")
  		      MENU_TEXT="(16)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_manage.log"  ; fi
               RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
 	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
 			              "genesis_hypervisor_ip" \
@@ -624,6 +628,7 @@ function defineMenu() {
 
        17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}")
 		      MENU_TEXT="(17)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_inspect.log"  ; fi
               RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
 	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
 			              "genesis_hypervisor_ip" \
@@ -2534,6 +2539,26 @@ function underConstruction() {
 }
 
 #========================================================
+#   Function: printBackgroundMessageExecution
+#--------------------------------------------------------
+#   Warning Message: Under Construction 
+#========================================================
+function printBackgroundMessageExecution() {
+   detectBackgroundExecution
+   if [ -n "${RUN_BACKGROUND}" ] ; then
+      echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+      echo -e "${COLOR[$ORANGE]}  BACKGROUND ANSIBLE EXECUTION ${COLOR[$NC]}"
+      echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+      echo -e  "  ---> Activity Details: ${COLOR[$NC]}"
+      echo -e  "      ...Human Readable Log: ${COLOR[$ORANGE]} tail -f ${LOG_FILE}.nohup ${COLOR[$NC]}"
+      echo -e  "      ....Machine Ready Log: ${COLOR[$ORANGE]} tail -f ${LOG_FILE} ${COLOR[$NC]}"
+      echo -e  "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   fi
+}     
+
+
+
+#========================================================
 #   Function: 0_call
 #--------------------------------------------------------
 #   Basic playbook call without special context
@@ -2810,6 +2835,7 @@ function runActions() {
         27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}") underConstruction ;;
         33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}") local HYPERVISOR='proxmox' ; 18_hypervisor "${E1_PROXMOX}" ;;
     esac
+	printBackgroundMessageExecution
 }
 
 ########################################################################################
