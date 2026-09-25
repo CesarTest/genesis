@@ -2564,18 +2564,18 @@ function printBackgroundMessageExecution() {
 #   Warning Message: Under Construction 
 #========================================================
 function printEmulationInstructions() {
-    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
-    echo -e "${COLOR[$ORANGE]}  PREPARING EMULATED ENVIRONMENT ${COLOR[$NC]}"
-    echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+    echo -e "${COLOR[$SEA]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+    echo -e "${COLOR[$SEA]}  PREPARING EMULATED ENVIRONMENT ${COLOR[$NC]}"
+    echo -e "${COLOR[$SEA]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
     echo -e  "  --> STEP 1: Install Ubuntu Noble 24.04 from ISO on Genesis Virtual Machine just created"
-    echo -e  "      ..URL: ${COLOR[$ORANGE]}https://releases.ubuntu.com/noble/ubuntu-24.04.4-live-server-amd64.iso${COLOR[$NC]}"  
+    echo -e  "      ..URL: ${COLOR[$SEA]}https://releases.ubuntu.com/noble/ubuntu-24.04.4-live-server-amd64.iso${COLOR[$NC]}"  
     echo -e  "  --> STEP 2: Clone the Project in Genesis"
-    echo -e  "      ${COLOR[$ORANGE]}git clone https://github.com/CesarTest/genesis.git ${COLOR[$NC]}"
-    echo -e  "      ${COLOR[$ORANGE]}cd genesis"
+    echo -e  "      ${COLOR[$SEA]}git clone https://github.com/CesarTest/genesis.git ${COLOR[$NC]}"
+    echo -e  "      ${COLOR[$SEA]}cd genesis${COLOR[$NC]}"
     echo -e  "  --> STEP 3: Full Genesis Lifecycle:  genesisCli -> TEST Deploy Stage (OPTION 8 -> OPTION 2)"
-    echo -e  "      ..................Full Genesis Refresh: ${COLOR[$ORANGE]}Yes${COLOR[$NC]}"
-    echo -e  "      ..Full Baremetal Virtual Nodes Refresh: ${COLOR[$ORANGE]}Yes${COLOR[$NC]}"
-    echo -e  "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+    echo -e  "      ..................Full Genesis Refresh: ${COLOR[$SEA]}Yes${COLOR[$NC]}"
+    echo -e  "      ..Full Baremetal Virtual Nodes Refresh: ${COLOR[$SEA]}Yes${COLOR[$NC]}"
+    echo -e  "${COLOR[$SEA]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
 }     
 
 

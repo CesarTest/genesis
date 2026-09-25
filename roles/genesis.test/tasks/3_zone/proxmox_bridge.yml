@@ -62,7 +62,7 @@
           Net{{ loop.index0 }} (Bridge Name): {{ bridge.name }}
           ├─ Driver / Type: {{ bridge.type | default('ovs') | upper }}
           ├─ IPv4 Address:  {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
-          └─ Node Gateway:   {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }} (Hipervisor IP)
+          └─ Node Gateway:   {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }} (Hypervisor IP)
           {% else %}
           [ No bridges are defined in t1_airgap_zone.bridges ]
           {% endfor %}
