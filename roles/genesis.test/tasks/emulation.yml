@@ -18,6 +18,7 @@
      #-----------------------------------------------------------------------
     - name: "T1 - EMULATION -1- Hypervisor: 1) Display Hypervisor Details"
       ignore_errors: true
+      run_once: yes
       ansible.builtin.debug:
         msg: "{{ debug_topology_msg.splitlines() }}"
       vars:
@@ -36,6 +37,7 @@
      # 1.- Deploy Emulation Environment in Hypervisor
      #-----------------------------------------------------------------------	  
     - ansible.builtin.include_tasks: "1_hypervisor.yml"
+      run_once: yes
     - ansible.builtin.include_tasks: "3_zone.yml"
       run_once: yes	
     - ansible.builtin.include_tasks: "4_nodes.yml"

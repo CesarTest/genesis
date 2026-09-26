@@ -91,10 +91,17 @@
       when: 
         - genesis_refresh_install
         - (genesis_stage is not defined)  or  (genesis_stage=='G3')          
+
+
+  # 2.3. Posts-Tasks: Refresh Ansible Facts
+  #---------------------------------------  
+  post_tasks:
+    - ansible.builtin.meta: clear_facts
+    - ansible.builtin.setup:
  
-  # 2.3. Bifrost Environment
+ # 2.3. Bifrost Environment
   #--------------------------------------- 
   environment:
     http_proxy: "{{ lookup('env','http_proxy') }}"
     https_proxy: "{{ lookup('env','https_proxy') }}"
-    no_proxy: "{{ lookup('env', 'no_proxy') }}"      
+    no_proxy: "{{ lookup('env', 'no_proxy') }}" 

@@ -2775,14 +2775,14 @@ function 8_test() {
    local GENESIS_REFRESH_NORM=$(echo "${GENESIS_REFRESH}" | tr '[:upper:]' '[:lower:]')
    case "${GENESIS_REFRESH_NORM}" in
     y|yes|si|s|true|1)
-        local REFRESH_INSTALL=yes	
+        local REFRESH_INSTALL='yes'
         ;;
    esac
 
    local BAREMETAL_REFRESH_NORM=$(echo "${BAREMETAL_REFRESH}" | tr '[:upper:]' '[:lower:]')
    case "${BAREMETAL_REFRESH_NORM}" in
     y|yes|si|s|true|1)
-        local REFRESH_ENVIRONMENT=yes
+        local REFRESH_ENVIRONMENT='yes'
         ;;
     esac
 	

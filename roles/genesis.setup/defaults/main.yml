@@ -345,33 +345,33 @@ b4_enroll_node_bmc_credentials: "{{ enroll['bmc_credentials'] | default({}) }}"
 b4_enroll_default_node_id:      "{{ enroll['node_id']         | default('') }}"
 
 # 3.2. Defaults BMC credentials
+b4_hypervisor_node: "{{ groups['hypervisor'] | first | default('proxmox') }}"
+b4_node_bmc_username_default: "{{ hostvars[b4_hypervisor_node]['hypervisor_api_username'] | default('root') }}"
+b4_node_bmc_password_default: "{{ hostvars[b4_hypervisor_node]['hypervisor_api_password'] | default('calvin') }}"
+b4_node_bmc_token_default:    "{{ hostvars[b4_hypervisor_node]['hypervisor_api_token'] | default('') }}"
 b4_ilo_deploy_iso: "http://{{ b4_url_genesis_ip | default('127.0.0.1') }}:{{ b4_url_genesis_port['http'] | default(8080) }}/os/agent.iso"
 b4_enroll_default_bmc_credentials:
-  manual-management:
-    ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
-    username: "root"
-    password: "calvin"
-    verify_ca: false 
+  manual-management: {}
   redfish:
     ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
-    username: "root"
-    password: "calvin"
+    username: "{{ b4_node_bmc_username_default }}"
+    password: "{{ b4_node_bmc_password_default }}"
     verify_ca: false 
   idrac:
     ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}" 
-    username: "root"
-    password: "calvin"
+    username: "{{ b4_node_bmc_username_default }}"
+    password: "{{ b4_node_bmc_password_default }}"
     verify_ca: false 
     raid_config_backup: "none"
   ilo:
     ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"
-    username: "root"
-    password: "calvin"
+    username: "{{ b4_node_bmc_username_default }}"
+    password: "{{ b4_node_bmc_password_default }}"
     deploy_iso: "{{ b4_ilo_deploy_iso }}"
   ipmi:
     ipv4: "{{ b4_enroll_nic_bmc_ipv4 }}"  
-    username: "root"
-    password: "calvin" 
+    username: "{{ b4_node_bmc_username_default }}"
+    password: "{{ b4_node_bmc_password_default }}"
     priv_level: "ADMINISTRATOR"
     port: "623"
     cipher_suite: "17"
@@ -397,30 +397,31 @@ b4_enroll_default_system_id: "/redfish/v1/Systems/{{ b4_enroll_default_node_id |
 # 5.- Out-Of-Band BMC driver Info
 #------------------
 b4_enroll_node_bmc_driver_info:
+  manual-management: {} # No Credentials required
   redfish:
     redfish_address:   "{{ b4_enroll_node_bmc_url | default('http://127.0.0.1:8000') }}"
-    redfish_username:  "{{ b4_enroll_bmc_node_driver_info['username']  | default('root') }}"
-    redfish_password:  "{{ b4_enroll_bmc_node_driver_info['password']  | default('calvin') }}"
+    redfish_username:  "{{ b4_enroll_bmc_node_driver_info['username']  | default(b4_node_bmc_username_default) }}"
+    redfish_password:  "{{ b4_enroll_bmc_node_driver_info['password']  | default(b4_node_bmc_password_default) }}"
     redfish_verify_ca: "{{ b4_enroll_bmc_node_driver_info['verify_ca'] | default(true) }}"
     redfish_system_id: "{{ b4_enroll_bmc_node_driver_info['system_id'] | default(b4_enroll_default_system_id) | default('') }}"
   idrac:
     idrac_address:   "{{ b4_enroll_node_bmc_ipv4 | default(b4_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
-    idrac_username:  "{{ b4_enroll_bmc_node_driver_info['username']  | default('root') }}"
-    idrac_password:  "{{ b4_enroll_bmc_node_driver_info['password']  | default('calvin') }}"
+    idrac_username:  "{{ b4_enroll_bmc_node_driver_info['username']  | default(b4_node_bmc_username_default) }}"
+    idrac_password:  "{{ b4_enroll_bmc_node_driver_info['password']  | default(b4_node_bmc_password_default) }}"
     idrac_verify_ca: "{{ b4_enroll_bmc_node_driver_info['verify_ca'] | default(false) }}"
-    idrac_system_id: "{{ b4_enroll_bmc_node_driver_info['system_id'] | default('') }}"
+    idrac_system_id: "{{ b4_enroll_bmc_node_driver_info['system_id'] | default(b4_enroll_default_system_id) | default('') }}"
     idrac_raid_config_backup: "{{ b4_enroll_node_drivo['raid_config_backup'] | default('none') }}"
   ilo:
     ilo_address:    "{{ b4_enroll_node_bmc_ipv4 | default(b4_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
-    ilo_username:   "{{ b4_enroll_bmc_node_driver_info['username']   | default('root') }}"
-    ilo_password:   "{{ b4_enroll_bmc_node_driver_info['password']   | default('calvin') }}"
-    ilo_deploy_iso: "{{ b4_enroll_bmc_node_driver_info['deploy_iso'] | default('') }}"
-    ilo_system_id:  "{{ b4_enroll_bmc_node_driver_info['system_id']  | default('') }}"
+    ilo_username:   "{{ b4_enroll_bmc_node_driver_info['username']   | default(b4_node_bmc_username_default) }}"
+    ilo_password:   "{{ b4_enroll_bmc_node_driver_info['password']   |default(b4_node_bmc_password_default) }}"
+    ilo_deploy_iso: "{{ b4_enroll_bmc_node_driver_info['deploy_iso'] | default(b4_ilo_deploy_iso) }}"
+    ilo_system_id:  "{{ b4_enroll_bmc_node_driver_info['system_id']  | default(b4_enroll_default_system_id) | default('') }}"
   ipmi:
     ipmi_address:    "{{ b4_enroll_node_bmc_ipv4 | default(b4_enroll_nic_bmc_ip) | default('127.0.0.1') }}"
     ipmi_port:       "{{ b4_enroll_node_bmc_port | default('623') }}" 
-    ipmi_username:   "{{ b4_enroll_bmc_node_driver_info['username']   | default('root') }}"
-    ipmi_password:   "{{ b4_enroll_bmc_node_driver_info['password']   | default('calvin') }}"
+    ipmi_username:   "{{ b4_enroll_bmc_node_driver_info['username']   | default(b4_node_bmc_username_default) }}"
+    ipmi_password:   "{{ b4_enroll_bmc_node_driver_info['password']   | default(b4_node_bmc_password_default) }}"
     ipmi_priv_level: "{{ b4_enroll_bmc_node_driver_info['priv_level'] | default('ADMINISTRATOR') }}"
     ipmi_cipher_suite: "{{ b4_enroll_bmc_node_driver_info['cipher_suite'] | default('17') }}"
 
