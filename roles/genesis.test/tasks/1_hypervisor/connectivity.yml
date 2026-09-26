@@ -12,6 +12,7 @@
   block:
   
     - name: "T1 - CONNECTIVITY -1- Hypervisor: 1.1) Remove old SSH host fingerprint to avoid conflicts"
+      connection: local
       ansible.builtin.known_hosts:
         name: "{{ t1_hypervisor_node }}"
         state: absent

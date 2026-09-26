@@ -24,11 +24,10 @@
     genesis_refresh_hypervisor: yes  
     genesis_refresh_vms: no
     genesis_skip_tests: yes
-    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
   pre_tasks:
     - name: "GENESIS CLI: Capture shell script variables"
       ansible.builtin.set_fact:
-        genesis_hypervisor: "{{ target_hypervisor | default(inventory_name) | default('proxmox') }}"
+        genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
   roles: 
     - role: "genesis.test"
 
@@ -43,10 +42,9 @@
     genesis_refresh_hypervisor: no  
     genesis_refresh_vms: yes
     genesis_skip_tests: yes
-    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
   pre_tasks:
     - name: "GENESIS CLI: Capture shell script variables"
       ansible.builtin.set_fact:
-        genesis_hypervisor: "{{ target_hypervisor | default(inventory_name) | default('proxmox') }}"
+        genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
   roles: 
     - role: "genesis.test"

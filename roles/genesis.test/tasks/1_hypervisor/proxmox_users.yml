@@ -61,4 +61,5 @@
           
           --- Debug Context ---
           Hypervisor Node: {{ t1_hypervisor_node | default('NOT_DEFINED') }}
+          .........Script: {{ t1_node_add_user_script | default('NOT_DEFINED') }}
       delegate_to: localhost

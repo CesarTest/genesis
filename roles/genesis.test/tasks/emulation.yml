@@ -5,17 +5,41 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-#-----------------------------------------------------------------------
-# 1.- Hypervisor Working Environment Check
-#-----------------------------------------------------------------------
+
 - name: "T1 - EMULATION - Certification: Airgap Zone with VMs for Baremetal Emulation"
   vars: 
-    ansible_user: "{{ t1_hypervisor_user }}"
+    ansible_user: "{{ t1_hypervisor_user | default('root') }}"
+    ansible_become_pass: "{{ t1_hypervisor_become_pass | default('root') }}"
+
   block:
+
+     #-----------------------------------------------------------------------
+     # 1.- Hypervisor Details
+     #-----------------------------------------------------------------------
+    - name: "T1 - EMULATION -1- Hypervisor: 1) Display Hypervisor Details"
+      ignore_errors: true
+      ansible.builtin.debug:
+        msg: "{{ debug_topology_msg.splitlines() }}"
+      vars:
+        debug_topology_msg: |
+          --- Hypervisor Node Connection Specs ---
+          Target Node (Hostname): [{{ t1_hypervisor_node | default('t1_hypervisor_node is NOT DEFINED', true) }}]
+          ├─ Connection User:     [{{ ansible_user | default('ansible_user is NOT DEFINED', true) }}]
+          ├─ Connection Become:   [{{ ansible_become_pass | default('ansible_become_pass is NOT DEFINED', true) }}]
+          ├─ API Auth User:       [{{ t1_hypervisor_api_user | default('t1_hypervisor_api_user is NOT DEFINED', true) }}]
+          ├─ API Auth Password:   [{{ t1_hypervisor_api_password | default('t1_hypervisor_api_user is NOT DEFINED', true) }}]
+          ├─ API Auth Token:      [{{ t1_hypervisor_api_token | default('t1_hypervisor_api_token is NOT DEFINED', true) }}]
+          └─ API Validate Certs:  [{{ t1_hypervisor_api_validate_certs | default('t1_hypervisor_api_validate_certs is NOT DEFINED', true) }}]
+      delegate_to: localhost
+
+     #-----------------------------------------------------------------------
+     # 1.- Deploy Emulation Environment in Hypervisor
+     #-----------------------------------------------------------------------	  
     - ansible.builtin.include_tasks: "1_hypervisor.yml"
     - ansible.builtin.include_tasks: "3_zone.yml"
       run_once: yes	
     - ansible.builtin.include_tasks: "4_nodes.yml"
+
   when:
     - t1_hypervisor_node is defined
     - t1_hypervisor_node is not none

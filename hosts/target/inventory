@@ -74,9 +74,9 @@ all:
         # -> SSH Credentials (Proxmox Installer)
         ansible_user: root
         ansible_become_pass: "{{ genesis_hypervisor_become_pass | default('root') }}"
-	    
+    
         # -> API Credentials (Genesis Airgap Zone Installer Injection)
-        hypervisor_api_username: "javier@pam"
+        hypervisor_api_username: "javier@pve" # @pve=proxmox user / @pam=linux user
         hypervisor_api_password: "javiermalo"
 
     emulation:
