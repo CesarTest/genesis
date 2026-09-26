@@ -1,4 +1,13 @@
 ---
+# genesis test/inventory
+#
+#   - Baremetal Global Environment  
+#   - Definitions with Raw Data
+#      => Avoid any variable reference... preferred repeat values instead
+#      => Parametrization best in group_vars / host_vars
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
 all:
 
   #--------------------------------------------------------------------
@@ -54,4 +63,3 @@ all:
       vars:
         ansible_user: "javier"
         ansible_become_pass: "malo"
-        ansible_connection: "ssh"

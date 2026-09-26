@@ -1,4 +1,16 @@
 ---
+# genesis target/inventory
+#
+#   - Genesis Global Environment  
+#   - Definitions with Raw Data
+#      => Avoid any variable reference... preferred repeat values instead
+#      => genesis_hypervisor_become_pass... exception to allow sed replacement from genesisCli 
+#      => Parametrization best in group_vars / host_vars
+#
+#   - group_vars/all.yml -> URLs for local repo construction
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
 all:
 
   #--------------------------------------------------------------------
@@ -27,17 +39,8 @@ all:
     # => 2.- BMC Emulators shared credentials
     genesis_hypervisor_become_pass: "cesardg"
     genesis_bmc_credentials: 
-      manual-management:
-        ipv4: "192.168.1.133" # Proxmox Hypervisor 
-        port: "8000"          # Proxmox RedFish Daemon
-        username: "root@pam"
-        password: "cesardgm"
-        verify_ca: false
       redfish:
-        ipv4: "192.168.1.133" # Proxmox Hypervisor 
-        port: "8000"          # Proxmox RedFish Daemon
-        username: "root@pam"
-        password: "cesardgm"
+        port: "8000"     # Proxmox RedFish Daemon
         verify_ca: false
 
   #--------------------------------------------------------------------
@@ -49,8 +52,6 @@ all:
   
     proxmox:
       ansible_host: "192.168.1.133"
-      hypervisor_api_username: "root@pam"
-      hypervisor_api_password: "cesardgm"
 
     genesis:
       ansible_host: "10.10.51.5"
@@ -70,8 +71,13 @@ all:
       hosts:
         proxmox:
       vars:
+        # -> SSH Credentials (Proxmox Installer)
         ansible_user: root
         ansible_become_pass: "{{ genesis_hypervisor_become_pass | default('root') }}"
+	    
+        # -> API Credentials (Genesis Airgap Zone Installer Injection)
+        hypervisor_api_username: "javier@pam"
+        hypervisor_api_password: "javiermalo"
 
     emulation:
       hosts:
