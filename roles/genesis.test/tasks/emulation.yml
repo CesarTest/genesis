@@ -37,7 +37,6 @@
      # 1.- Deploy Emulation Environment in Hypervisor
      #-----------------------------------------------------------------------	  
     - ansible.builtin.include_tasks: "1_hypervisor.yml"
-      run_once: yes
     - ansible.builtin.include_tasks: "3_zone.yml"
       run_once: yes	
     - ansible.builtin.include_tasks: "4_nodes.yml"
