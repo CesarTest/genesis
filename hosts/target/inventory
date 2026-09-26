@@ -40,7 +40,8 @@ all:
     genesis_hypervisor_become_pass: "cesardgm"
     genesis_bmc_credentials: 
       redfish:
-        port: "8000"     # Proxmox RedFish Daemon
+        ipv4: "192.168.1.133" # Proxmox Hypervisor (force here, instead of node bmc nic)
+        port: "8000"          # Proxmox RedFish Daemon
         verify_ca: false
 
   #--------------------------------------------------------------------

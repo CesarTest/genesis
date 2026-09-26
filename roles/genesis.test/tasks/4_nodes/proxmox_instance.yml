@@ -70,6 +70,8 @@
         qm set {{ t4_cli_ref['vmid'] | default(500) }} \
           --smbios1 "uuid={{ t1_enroll_node_uuid | default('') }}" \
           --efidisk0 {{ t4_cli_ref['efi']['efidisk0'] }}
+        qm set {{ t4_cli_ref['vmid'] }} \
+          --args "{{ t4_cli_ref['args'] }}"
         qm start {{ t4_cli_ref['vmid'] }}
 
   block:
