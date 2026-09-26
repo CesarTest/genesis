@@ -76,8 +76,9 @@ all:
         ansible_become_pass: "{{ genesis_hypervisor_become_pass | default('root') }}"
     
         # -> API Credentials (Genesis Airgap Zone Installer Injection)
-        hypervisor_api_username: "javier@pve" # @pve=proxmox user / @pam=linux user
-        hypervisor_api_password: "javiermalo"
+        #     Proxmox Ansible Modules just work with root@pam (@pve=proxmox user / @pam=linux user) 
+        hypervisor_api_username: "root@pam" 
+        hypervisor_api_password: "{{ genesis_hypervisor_become_pass | default('root') }}"
 
     emulation:
       hosts:
