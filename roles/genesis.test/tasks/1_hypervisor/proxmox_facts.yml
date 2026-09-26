@@ -23,7 +23,7 @@
       ansible.builtin.set_fact:
         t1_hypervisor_api_hostname: "{{ genesis_hypervisor_api_hostname | default(t1_captured_hostname) }}"
       vars:
-        t1_captured_hostname: "{{ t1_pve_detected_node.stdout | trim | default(omit) }}"
+        t1_captured_hostname: "{{ t1_pve_detected_node.stdout | trim | default('pve') }}"
 
 
     #-----------------------------------------------------------------------
