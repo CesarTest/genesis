@@ -59,7 +59,11 @@
           3. PROXMOX CLUSTER LOCKED (Read-Only /etc/pve)
              The cluster might have lost quorum or 'pve-cluster' service is frozen.
           
+          4. INCORRECT USER REALM (@pam vs @pve)
+             @pve = Proxmox internal auth (Ideal for API/VM management. No host OS user required).
+             @pam = Linux system auth (Requires local system user via 'useradd' on host OS first).
+          
           --- Debug Context ---
-          Hypervisor Node: {{ t1_hypervisor_node | default('NOT_DEFINED') }}
-          .........Script: {{ t1_node_add_user_script | default('NOT_DEFINED') }}
+          Target Node (Hostname): [{{ t1_hypervisor_node | default('t1_hypervisor_node is NOT DEFINED', true) }}]
+          ................Script: [{{ t1_node_add_user_script | default('t1_node_add_user_script is EMPTY', true) }}]
       delegate_to: localhost
