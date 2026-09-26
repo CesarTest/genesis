@@ -33,7 +33,7 @@ all:
         mac: "bc:24:11:34:c8:96"
         ip: "192.168.1.40/24"
         gateway: "192.168.1.1" 
-        default_route: yes
+        default_route: true
         dns: "192.168.1.1"
 
     # => 2.- BMC Emulators shared credentials
@@ -76,7 +76,8 @@ all:
         ansible_become_pass: "{{ genesis_hypervisor_become_pass | default('root') }}"
     
         # -> API Credentials (Genesis Airgap Zone Installer Injection)
-        #     Proxmox Ansible Modules just work with root@pam (@pve=proxmox user / @pam=linux user) 
+        #     Proxmox Ansible Modules just work with @pam users (@pve=proxmox user / @pam=linux user)
+        #     TODO: genesis.test role: create operating system user if not using root@pam (meanwhile do not change)
         hypervisor_api_username: "root@pam" 
         hypervisor_api_password: "{{ genesis_hypervisor_become_pass | default('root') }}"
 
