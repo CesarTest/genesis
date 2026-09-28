@@ -1,0 +1,3041 @@
+#!/bin/bash
+#########################################################################################
+#  Genesis CLI (Genesis Command Line Interface)
+#---------------------------------------------------------------------------------------
+#   Goals:
+#     1.- Provide CLI interface for Genesis System, used for testing purposes
+#     2.- Menu interactive user interface without dependencies (fully bash written)
+#           Every command of the CLI can be used through the menu, instead command line
+#---------------------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date: 17-September-2022
+# Update: 02-Jul-2026
+########################################################################################
+
+#----------------------------
+# ECHO COLORS TABLE
+#----------------------------
+#Black        0;30     Dark Gray     1;30
+#Red          0;31     Light Red     1;31
+#Green        0;32     Light Green   1;32
+#Brown/Orange 0;33     Yellow        1;33
+#Blue         0;34     Light Blue    1;34
+#Purple       0;35     Light Purple  1;35
+#Cyan         0;36     Light Cyan    1;36
+#Light Gray   0;37     White         1;37
+
+#--------------------------------
+#  GENERAL PARAMETERS
+#--------------------------------
+
+# 1.- Constant Values
+#--------------------
+LOCALE="en_US.UTF-8"
+REEMPLAZA_LINEA_CNF="Yes"
+ERROR="1"
+OK="0"
+NC="0"
+BLACK="1" ; RED="2"    ; SEA="11"    ; BROWN="4"   ; BLUE="5"  ; PURPLE="6" ; CYAN="7" ; SILVER="5"
+GRAY="9"  ; PINK="10"  ; GREEN="11"  ; ORANGE="12" ; SKY="13"  ; YELLOW="14"; TEAL="15" ; WHITE="16"
+COLOR=( '\033[0m' \
+        '\033[0;30m'  '\033[0;31m' '\033[0;32m' '\033[0;33m' '\033[0;34m' '\033[0;35m' '\033[0;36m' '\033[0;37m' \
+        '\033[1;90m'  '\033[1;91m' '\033[1;92m' '\033[1;93m' '\033[1;94m' '\033[1;95m' '\033[1;96m' '\033[1;97m' \
+      )
+
+# 2.- Default Values
+#--------------------
+# 2.1.- Genesis Paths
+GENESIS_VIRTUAL_ENVIRONMENT="/opt/stack/bifrost/bin/activate"
+GENESIS_WORKING_PATH=$(dirname "$(readlink -f "$0")")
+GENESIS_PROJECT_ANSIBLE_CFG="${GENESIS_WORKING_PATH}/ansible.cfg"
+GENESIS_HOSTS_WORKING_PATH="${GENESIS_WORKING_PATH}/hosts"
+GENESIS_HOSTS_TARGET_FILE="${GENESIS_HOSTS_WORKING_PATH}/target/group_vars/target"
+GENESIS_BIFROST_WORKING_PATH="${GENESIS_WORKING_PATH}/roles/genesis.bifrost/genesis.bifrost"
+IRONIC_BIFROST_DYNAMIC_INVENTORY="${GENESIS_BIFROST_WORKING_PATH}/bifrost/inventory.py"
+IRONIC_CLOUD="bifrost"
+IRONIC_NODES_FILE='host_vars/baremetal.yml'
+IRONIC_BAREMETAL_NODES=$(cat ${GENESIS_PROJECT_ANSIBLE_CFG} | grep 'inventory=' | awk -F/ '{print $NF}' | tr -d '"' | tr -d ' ' )
+GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/${IRONIC_NODES_FILE}"
+GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES}/inventory"
+GENESIS_TARGET_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/target/inventory"
+GENESIS_COLLECTIONS_WORKING_PATH="${GENESIS_WORKING_PATH}/collections"
+GENESIS_INTERNET_IP_BLOCK="$( grep -A 6 "internet:" "${GENESIS_TARGET_INVENTORY_SOURCE}" )"
+GENESIS_INTERNET_IP_LINE="$( echo "${GENESIS_INTERNET_IP_BLOCK}" | grep 'ip:' | head -1 )"
+GENESIS_INTERNET_IP_VALUE="$( echo "${GENESIS_INTERNET_IP_LINE}" | cut -d':' -f2- | xargs )"
+genesis_internet_ipv4="$( echo "${GENESIS_INTERNET_IP_VALUE}" | tr -d ' ' )"
+
+# 2.2.- Installation OPTIONS
+DEBUG_ANSIBLE_FLAGS=''
+RUN_BACKGROUND="no"
+# Extracción de la IP del Hipervisor (Proxmox)
+GENESIS_INTERNET_HYPERVISOR_BLOCK="$( grep -A 3 "proxmox:" "${GENESIS_TARGET_INVENTORY_SOURCE}" )"
+GENESIS_INTERNET_HYPERVISOR_LINE="$( echo "${GENESIS_INTERNET_HYPERVISOR_BLOCK}" | grep 'ansible_host:' | head -1 )"
+GENESIS_INTERNET_HYPERVISOR_VALUE="$( echo "${GENESIS_INTERNET_HYPERVISOR_LINE}" | cut -d':' -f2- | xargs )"
+genesis_hypervisor_ip="$( echo "${GENESIS_INTERNET_HYPERVISOR_VALUE}" | tr -d ' ' )"
+
+# Extracción de la contraseña del Hipervisor
+genesis_hypervisor_become_pass=$(cat "${GENESIS_TARGET_INVENTORY_SOURCE}" | grep 'genesis_hypervisor_become_pass:' | awk -F: '{print $2}' | tr -d '"' | tr -d ' ')
+
+# Extracción de la contraseña de Emulación Genesis (Baremetal Root Password)
+GENESIS_BECOME_EMULATION_BLOCK="$( grep -A 10 "emulation:" "${GENESIS_TARGET_INVENTORY_SOURCE}" )"
+GENESIS_BECOME_EMULATION_LINE="$( echo "${GENESIS_BECOME_EMULATION_BLOCK}" | grep 'ansible_become_pass:' | head -1 )"
+GENESIS_BECOME_EMULATION_VALUE="$( echo "${GENESIS_BECOME_EMULATION_LINE}" | cut -d':' -f2- | xargs )"
+BAREMETAL_ROOT_PASSWORD="$( echo "${GENESIS_BECOME_EMULATION_VALUE}" | tr -d ' ' )"
+
+# 2.3.- Genesis Playbooks
+REFRESH="0" ; CREATE="1"   ; INIT="2"    ; SETUP="3" ; DEPLOY="4" ; PROVISION="5"  
+T5_DEPLOY="6" ; T5_ACTIVE="7" ; T5_CLEAN="8" ; T4_ENROLL="9"   ; T4_MANAGE="10" ; T4_INSPECT="11"
+A5_DEPLOY="12" ; A5_ACTIVE="13" ; A5_CLEAN="14" ; A4_ENROLL="15"   ; A4_MANAGE="16" ; A4_INSPECT="17"
+E1_PROXMOX="18" ; E1_PROXMOX_CLEAN="19"
+GENESIS_PLAYBOOKS=( \
+	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/genesis.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
+     "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/baremetal.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/test.yml" \
+     "None" \
+     "None" \
+     "None" \
+     "None" \
+     "None" \
+     "None" \
+	 "${GENESIS_WORKING_PATH}/playbooks/hypervisor.yml" \
+	 "${GENESIS_WORKING_PATH}/playbooks/hypervisor.yml" \
+)
+GENESIS_PLAYBOOKS_HEADER=( \
+        "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1- genesis.yml)${COLOR[$NC]}" \
+        "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2- genesis.yml.yml)${COLOR[$NC]}" \
+        "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3- genesis.yml)${COLOR[$NC]}" \
+        "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4- baremetal.yml)${COLOR[$NC]}" \
+        "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5- baremetal.yml)${COLOR[$NC]}" \
+        "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: integrate into deployment strategy (B6- baremetal.yml)${COLOR[$NC]}" \
+        "${COLOR[$NC]}[BAREMETAL] - TEST DEPLOY : OS Installation with Expected Conditions(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST ACTIVE : HW Drivers & OS Profile(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST CLEAN  : Wipe Disks(T5- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST ENROLL : Outband Connectivity, BMC Authentications(RedFish/iLO/iDRAC/IPMI), TLS Certificates Manager(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST MANAGE : Inband Connectivity,Power Cycle,Mantainance & Repair Cycles(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - TEST INSPECT: BMC versus Ramdisk Hardware Detection(T4- test.yml)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE DEPLOY : PXE, OS Conditions(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ACTIVE : Drivers, Graphics, Trust Relationships(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE CLEAN  : BMC & Inband Wipe Disks(A5)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE ENROLL : BMC Conectivity & Authentication(A4)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE MANAGE : Power Cycle, Firmware Updates(A4)${COLOR[$NC]}" \
+        "${COLOR[$SILVER]}[BAREMETAL] - ANALYZE INSPECT: IPA tooling(A4)${COLOR[$NC]}" \
+        "${COLOR[$NC]}[VIRTUAL] - PROXMOX ENVIRONMENT: Prepare Genesis VM(E1)${COLOR[$NC]}" \
+        "${COLOR[$NC]}[VIRTUAL] - PROXMOX ENVIRONMENT: Remove Airgap Zone from Hypervisor(E1)${COLOR[$NC]}" \
+)
+
+
+# 2.3.- Dependencies
+PIP=0; SCRIPTS=1; INSTALLER=2
+GENESIS_DEPENDENCIES=( 'collections/requirements.yml' \
+                       'roles/requirements.yml' \
+                     )
+
+GENESIS_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
+	                'ansible-galaxy role install --force -r ' \
+                  )
+
+PROXMOX_DEPENDENCIES=( '#' \
+                     )
+					 
+PROXMOX_INSTALLER=( "ansible-galaxy collection install --force community.proxmox -p ${GENESIS_COLLECTIONS_WORKING_PATH}" \
+                  )
+					 
+
+########################################################################################
+# MODULE 1 => MENU DEFINITION
+########################################################################################
+
+#========================================================
+#   Function: defineMenu
+#--------------------------------------------------------
+#   Menu properties to deploy
+#========================================================
+function defineMenu() {
+
+	#---------------------
+	#  LOCAL ENVIRONMENT
+	#---------------------
+    # 1.- Clean Menu Environment
+    unset MENU_TEXT           SOLICITA_PARAMETRO  PARAMETRO      VALOR_DEFECTO 
+	unset MENU_SKIP_PATHS     MENU_BREAK_TEXT     RUTA_OPCIONES  EXT_OPCIONES 
+    unset CNF_REEMPLAZA_LINEA CNF_REEMPLAZO       CNF_OLD_VALUE  CNF_SEPARADOR_CAMPO        
+
+    # 2.- Defaults
+    if [ ! -n "${MENU}" ] ; then MENU="0" ; fi
+
+	#---------------------
+	# MENU PROPERTIES
+	#---------------------
+	case "${MENU}" in
+	    0|"MAIN        : back to main menu")
+		      MENU_TEXT="INSTRUCTIONS: \n A.- Baremetal Nodes Installation Cycle: SETUP -> DEPLOY -> PROVISION \n B.- Genesis Node  Installation Cycle: REFRESH -> CREATE -> INIT \n C.- To Run Ironic Commands: . $HOME/env.sh ; baremetal node list \n ___________\n STATE TRANSITIONS MENU \n___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - REFRESH : Prepare Genesis Machine (G1- genesis.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - CREATE  : install Ironic in Genesis Node (G2- genesis.yml.yml)${COLOR[$NC]}" \
+                              "${COLOR[$ORANGE]}[IRONIC]   - INIT    : load operating system installation images to Ironic (G3- genesis.yml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - SETUP   : enroll inventory in Ironic (B4- baremetal.yml)${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - DEPLOY    : unattended installation (B5- baremetal.yml)${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}" \
+                              "${COLOR[$SEA]}[BAREMETAL] - PROVISIONING: integrate into deployment strategy (B6- baremetal.yml)${COLOR[$NC]}" \
+                              "${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}"
+                              "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
+							  "${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "0"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+       1|"${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}")
+	          if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/refresh.log"; fi
+			  if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			  
+		      MENU_TEXT="(1)___________ ${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}"
+	          PARAMETRO=(  "genesis_internet_ipv4"  "RUN_BACKGROUND" "LOG_FILE" )
+              VALOR_DEFECTO=( "${genesis_internet_ipv4}" "No"   "${LOG_FILE}")	  
+	          SOLICITA_PARAMETRO=("-----> Genesis Internet IP       [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File                  [${VALOR_DEFECTO[2]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}" '' '' )
+			  CNF_OLD_VALUE=( "${genesis_internet_ipv4}"       '' '' )
+			  #CNF_REEMPLAZA_LINEA=( 'Yes' '' ''   )
+			  CNF_SEPARADOR_CAMPO=( ': ' '' '' )
+              RETURNING_MENU="0"
+              RUN_ACTION="1"
+			  EXTRA_VARS="genesis_stage='G1'"
+              unset genesis_internet_ipv4 RUN_BACKGROUND LOG_FILE
+              ;;
+
+	   2|"${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}")
+	         if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/create.log" ; fi
+			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi			 
+		     MENU_TEXT="(2)___________ ${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}"
+	         PARAMETRO=(  "RUN_BACKGROUND" "LOG_FILE"   )
+             VALOR_DEFECTO=(  "No" \
+							  "${LOG_FILE}" \
+							  )
+
+			 SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
+								 "-----> Log File            [${VALOR_DEFECTO[1]}]:" \
+			                     )
+             RETURNING_MENU="0"
+             RUN_ACTION="2"
+			 EXTRA_VARS="genesis_stage='G2'"
+             unset network_interface  dhcp_address dhcp_pool_start  dhcp_pool_end RUN_BACKGROUND LOG_FILE
+             ;;
+
+	   3|"${GENESIS_PLAYBOOKS_HEADER[${INIT}]}")
+	         if [ ! -n "${LOG_FILE}"    ] ; then local LOG_FILE="${HOME}/init.log" ; fi
+			 if [ ! -n "${RUN_BACKGROUND}" ] ; then local RUN_BACKGROUND="No" ; fi
+		     MENU_TEXT="(3)___________ ${GENESIS_PLAYBOOKS_HEADER[${INIT}]}"
+	         PARAMETRO=(     "RUN_BACKGROUND" "LOG_FILE"    )
+             VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	         SOLICITA_PARAMETRO=("-----> Run Ansible in Background [${VALOR_DEFECTO[0]}]:" \
+			                     "-----> Log File    [${VALOR_DEFECTO[1]}]:" \
+                                )
+             RETURNING_MENU="0"
+             RUN_ACTION="3"
+			 EXTRA_VARS="genesis_stage='G3'"
+             unset RUN_BACKGROUND LOG_FILE
+		     ;;
+
+	   4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")
+	         if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/setup.log"  ; fi
+	         MENU_TEXT="(4)___________ ${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}"
+             RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	         PARAMETRO=(     "IRONIC_BAREMETAL_NODES"    "LOG_FILE"   )
+             VALOR_DEFECTO=( "0"  "${LOG_FILE}" )
+	         SOLICITA_PARAMETRO=("-----> Baremetal Nodes Descripion [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File                   [${VALOR_DEFECTO[1]}]:" \
+                                    )
+             MENU_SKIP_PATHS="1"
+			 MENU_SKIP_ELEMENT="target"
+			 RETURNING_MENU="0"
+             RUN_ACTION="4"
+			 EXTRA_VARS="genesis_stage='B4'"
+             unset IRONIC_BAREMETAL_NODES LOG_FILE
+		     ;;
+
+       5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")
+	         if [ ! -n "${TARGET}" ]    ; then local TARGET=''                     ; fi
+	         if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/deploy.log"  ; fi
+	         MENU_TEXT="(5)___________ ${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}"
+	         PARAMETRO=(  "TARGET"    "LOG_FILE" )
+             VALOR_DEFECTO=(  "${TARGET}" "${LOG_FILE}"   )
+	         SOLICITA_PARAMETRO=("-----> Target Machines   [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File          [${VALOR_DEFECTO[1]}]:" \
+                                    )
+             RETURNING_MENU="0"
+             RUN_ACTION="5"
+			 EXTRA_VARS="genesis_stage='B5'"
+             unset TARGET LOG_FILE
+	         ;;
+
+       6|"${COLOR[$NC]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}")
+		     MENU_TEXT="(6)___________ [BAREMETAL] - ANSIBLE     : Ansible Initial Setup"
+             RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	         PARAMETRO=(     "IRONIC_BAREMETAL_NODES"    "LOG_FILE"   )
+             VALOR_DEFECTO=( "0"  "${LOG_FILE}" )
+	         SOLICITA_PARAMETRO=("-----> Baremetal Nodes Descripion [${VALOR_DEFECTO[0]}]:" \
+	                             "-----> Log File                   [${VALOR_DEFECTO[1]}]:" \
+                                    )
+             MENU_SKIP_PATHS="1"
+			 MENU_SKIP_ELEMENT="target"
+             RETURNING_MENU="0"
+             RUN_ACTION="6"
+             unset IRONIC_BAREMETAL_NODES LOG_FILE
+             ;;
+
+
+	     7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}")
+	          if [ ! -n "${TARGET}" ]    ; then local TARGET=''                    ; fi
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/provision.log"  ; fi
+	          MENU_TEXT="(7)___________ ${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}"
+	          PARAMETRO=(     "TARGET"     "LOG_FILE")
+              VALOR_DEFECTO=(  "${TARGET}"  "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
+	                              "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
+                             )
+              RETURNING_MENU="0"
+              RUN_ACTION="7"
+			  EXTRA_VARS="genesis_stage='B6'"
+              unset INVENTORY TARGET LOG_FILE
+		  ;;
+
+       8|"${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}")
+		      MENU_TEXT="CERTIFICATION TESTS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${RUTA_OPCIONES[1]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+	    9|"${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}")
+		      MENU_TEXT="TROUBLESHOOTING TOOLS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[BAREMETAL] - TROUBLESHOOTING MENU: tools to validate installations ${COLOR[$NC]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+	    10|"${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}")
+		      MENU_TEXT="PREPARE GENESIS EMULATIONS: ___________"
+		      RUTA_OPCIONES=( "MAIN        : back to main menu" \
+                              "${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}" \
+                              "${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX_CLEAN}]}" \
+                              "Exit" \
+		                   )
+	          PARAMETRO=(     "MENU" )
+              VALOR_DEFECTO=( "${COLOR[$NC]}[VIRTUAL] - EMULATION MENU: Prepare Genesis on Hypervisor${COLOR[$NC]}"    )
+	          SOLICITA_PARAMETRO=("======> Please, Choose Action  [${VALOR_DEFECTO[0]}]" )
+	          unset MENU
+              ;;
+
+        11|"Exit")
+	         echo "Removing Temporal Files... rm -f ${OUT_TMP} 2> /dev/null"
+	         rm -f "${OUT_TMP}"
+             echo "Removing Temporal Files... rm -f ${TMP_FILE}"
+             rm -f "${TMP_FILE}" 2> /dev/null
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}     Thank you for using Genesis System... hoping you enjoy the experience !!!!  ${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+             exit 0
+             ;;
+			 
+        12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")
+		      MENU_TEXT="(12)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_deploy.log"  ; fi
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "No" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
+              RETURNING_MENU="8"
+              RUN_ACTION="12"
+              unset IRONIC_BAREMETAL_NODES 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH 
+			  unset RUN_BACKGROUND LOG_FILE 
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
+		      ;;
+
+        13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")
+		      MENU_TEXT="(13)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_active.log"  ; fi
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "No" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
+              RETURNING_MENU="8"
+              RUN_ACTION="13"
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH LOG_FILE 
+		      ;;			  
+			 
+        14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")
+		      MENU_TEXT="(14)___________ ${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t5_clean.log"  ; fi
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
+              RETURNING_MENU="8"
+              RUN_ACTION="14"
+              unset GENESIS_REFRESH LOG_FILE 
+		      ;;
+
+        15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")
+		      MENU_TEXT="(15)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_enroll.log"  ; fi
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
+              RETURNING_MENU="8"
+              RUN_ACTION="15"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+
+       16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")
+ 		      MENU_TEXT="(16)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_manage.log"  ; fi
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
+              RETURNING_MENU="8"
+              RUN_ACTION="16"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+
+       17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}")
+		      MENU_TEXT="(17)___________ ${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/t4_inspect.log"  ; fi
+              RUTA_OPCIONES=( "${GENESIS_HOSTS_WORKING_PATH}" )
+	          PARAMETRO=( "IRONIC_BAREMETAL_NODES"   \
+			              "genesis_hypervisor_ip" \
+						  "genesis_hypervisor_become_pass" \
+						  "genesis_internet_ipv4" \
+						  "GENESIS_REFRESH" \
+						  "BAREMETAL_REFRESH" \
+						  "RUN_BACKGROUND" \
+						  "LOG_FILE" \
+						 )
+			  VALOR_DEFECTO=( "${IRONIC_BAREMETAL_NODES}"   \
+			              "${genesis_hypervisor_ip}" \
+						  "${genesis_hypervisor_become_pass}" \
+						  "${genesis_internet_ipv4}" \
+						  "No" \
+						  "Yes" \
+						  "No" \
+						  "${LOG_FILE}" \
+						 )
+	          SOLICITA_PARAMETRO=("-----> Baremetal Nodes Description [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Hypervisor IP       [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Hypervisor Password [${VALOR_DEFECTO[2]}]:" \
+			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
+			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( '' \
+			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' )
+			  CNF_OLD_VALUE=( '' \
+			                  "${genesis_hypervisor_ip}" \
+							  "${genesis_hypervisor_become_pass}" \
+							  "${genesis_internet_ipv4}"   \
+							  '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '' ''    'Yes' ''    '' '' '' '' )
+			  CNF_SIN_COMILLA=(     '' 'Yes' ''    'Yes' '' '' '' '' )
+			  CNF_SEPARADOR_CAMPO=( '' ': '  ': '  ': '  '' '' '' '' )
+              MENU_SKIP_PATHS="1"
+			  MENU_SKIP_ELEMENT="target"
+              RETURNING_MENU="8"
+              RUN_ACTION="17"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+
+       22|"${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}")
+		      MENU_TEXT="(22)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_deploy.log"  ; fi
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+                                 )
+
+              RETURNING_MENU="9"
+              RUN_ACTION="22"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       23|"${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}")
+		      MENU_TEXT="(23)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_active.log"  ; fi
+			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+                                 )
+              RETURNING_MENU="9"
+              RUN_ACTION="23"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       24|"${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}")
+		      MENU_TEXT="(24)___________ ${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a5_clean.log"  ; fi
+ 			  VALOR_DEFECTO=( "No" "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[2]}]:" \
+                                 )
+              RETURNING_MENU="9"
+              RUN_ACTION="24"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       25|"${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}")
+		      MENU_TEXT="(25)___________ ${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a4_enroll.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="9"
+              RUN_ACTION="25"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       26|"${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}")
+		      MENU_TEXT="(26)___________ ${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a4_manage.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="9"
+              RUN_ACTION="26"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+       27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}")
+		      MENU_TEXT="(27)___________ ${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/a4_inspect.log"  ; fi
+              VALOR_DEFECTO=( "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Full Genesis Refresh [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[1]}]:" \
+                                 )
+              RETURNING_MENU="10"
+              RUN_ACTION="27"
+              unset GENESIS_REFRESH LOG_FILE 
+              ;;
+
+       33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}")
+		      MENU_TEXT="(33)___________ ${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/e1_proxmox.log"  ; fi
+              PARAMETRO=(     "genesis_hypervisor_ip" "genesis_hypervisor_become_pass"  "LOG_FILE" )
+              VALOR_DEFECTO=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Proxmox Hypervisor IP [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Proxmox Root Password [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File              [${VALOR_DEFECTO[2]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}" "${GENESIS_TARGET_INVENTORY_SOURCE}" '' )
+			  CNF_OLD_VALUE=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" '' )
+              CNF_REEMPLAZA_LINEA=( 'Yes' 'Yes' '' )
+			  CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' '' )
+              RETURNING_MENU="10"
+              RUN_ACTION="33"
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass LOG_FILE
+              ;;
+
+
+       34|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX_CLEAN}]}")
+		      MENU_TEXT="(33)___________ ${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX_CLEAN}]}"
+	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/e1_proxmox_clean.log"  ; fi
+              PARAMETRO=(     "genesis_hypervisor_ip" "genesis_hypervisor_become_pass"  "LOG_FILE" )
+              VALOR_DEFECTO=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Proxmox Hypervisor IP [${VALOR_DEFECTO[0]}]:" \
+			                      "-----> Proxmox Root Password [${VALOR_DEFECTO[1]}]:" \
+			                      "-----> Log File              [${VALOR_DEFECTO[2]}]:" \
+                                 )
+	          CNF_REEMPLAZO=( "${GENESIS_TARGET_INVENTORY_SOURCE}" "${GENESIS_TARGET_INVENTORY_SOURCE}" '' )
+			  CNF_OLD_VALUE=( "${genesis_hypervisor_ip}" "${genesis_hypervisor_become_pass}" '' )
+              CNF_REEMPLAZA_LINEA=( 'Yes' 'Yes' '' )
+			  CNF_SEPARADOR_CAMPO=( ': ' ': ' ': ' '' )
+              RETURNING_MENU="10"
+              RUN_ACTION="34"
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass LOG_FILE
+              ;;
+
+	     [?])
+	         echo "Removing Temporal Files... rm -f ${OUT_TMP} 2> /dev/null"
+	         rm -f "${OUT_TMP}" 2> /dev/null
+             echo "Removing Temporal Files... rm -f ${TMP_FILE}"
+             rm -f "${TMP_FILE}" 2> /dev/null
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}     Thank you for using Genesis System... hoping you enjoy the experience !!!!  ${COLOR[$NC]}"
+	         echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+             exit 0
+	         ;;
+	esac
+        OUT="$?"
+}
+
+########################################################################################
+# MODULE 2 => HELPERS
+#     Auxiliar functions
+#  I.e.: ayuda(), error(), etc.
+########################################################################################
+
+#========================================================
+#   Function: ayuda
+#--------------------------------------------------------
+#  Show help, the options of the command
+#========================================================
+function ayuda() {
+    echo -e "------------------------------------------------------"
+    echo -e "genesisCli -[hHRCISDAPi:t:a:v:e:] "
+    echo -e "  -h <HELP>        : Show this help"
+    echo -e "---------- Genesis Transitions -------"
+    echo -e "  -R <REFRESH>     : Shoot refresh Genesis Installation"
+    echo -e "  -C <CREATE>      : Shoot install Bifrost Ironic"
+    echo -e "  -I <INIT>        : Populate PXE Service"
+    echo -e "  -S <SETUP>       : Enroll & Manage & Inspect Baremetal Node"
+    echo -e "  -D <DEPLOY>      : Clean  & Deploy & Active Baremental Node"
+    echo -e "  -P <PROVISION>   : Deployment Strategy over Baremetal Nodes "
+	echo -e "------------ Playbook Parameters -----------"	
+    echo -e "  -i <INVENTORY>  [${genesis_DEFAULT_INVENTORY}] : Full path to inventory file"
+    echo -e "  -t <TARGET>        []: comma separated IP addresses of target machines"
+    echo -e "  -v <VAULT>     [root]: vault password where Genesis critical parameters are encrypted"
+    echo -e "  -a <TAGS>          []: playbook tags to shoot"
+    echo -e "  -e <EXTRA_VARS>    []: playbook additional environmental variables"	
+	echo -e "----------- Certification Testing ----------"		
+    echo -e "----------- Troubleshooting Tools ----------"
+    echo -e "--------- Prepare Virtual Enviroments ------"
+	echo -e "------------------------------------------------------"
+    OUT="$OK"
+}
+
+#========================================================
+#   Function: error
+#--------------------------------------------------------
+#  Print Error Messages
+#
+# Parameters:
+#    $1 Type of Error
+#    $2 Missing Parameters
+#========================================================
+function error() {
+
+	local RUTA_ACTUAL=`pwd`
+	local TIMESTAMP=$(date -R)
+    local LABEL="genesisCli"
+	case "$1" in
+		"-x"|"-noExec")   echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No {Exists/Execution Permisions} [$2] ${COLOR[$NC]}" ;;
+		"-w"|"-noWrite")  echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No {Exists/Write Permisions} [$2] ${COLOR[$NC]}" ;;
+		"-r"|"-noRead")   echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No {Exists/Read Permisions} [$2] ${COLOR[$NC]}" ;;
+		"-e"|"-noExist")  echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No {File/Folder} found [$2] ${COLOR[$NC]}" ;;
+		"-o"|"-noOwner")  echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: No owner of path [$2] ${COLOR[$NC]}"
+			              echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: Usually you need to be 'root' to shoot GENESIS ${COLOR[$NC]}" ;;
+		[?])              echo -e "[${TIMESTAMP}]: ${COLOR[$RED]} FATAL | [$LABEL] ABORTING: Undefined error: [$2] ${COLOR[$NC]}" ;;
+	esac
+
+	OUT="${ERROR}"
+}
+
+#===================================================
+#   Function: detectOS 
+#---------------------------------------------------
+#  Private Function
+#
+#  Detect Operating System
+#===================================================
+detectOS() {
+
+ # 1.- Detect OS
+ #--------------
+ if [ -f /etc/os-release ]; then
+    # freedesktop.org and systemd
+    . /etc/os-release
+    OS=$ID
+    VER=$VERSION_ID
+ elif type lsb_release >/dev/null 2>&1; then
+    # linuxbase.org
+    OS=$(lsb_release -si)
+    VER=$(lsb_release -sr)
+ elif [ -f /etc/lsb-release ]; then
+    # For some versions of Debian/Ubuntu without lsb_release command
+    . /etc/lsb-release
+    OS=$DISTRIB_ID
+    VER=$DISTRIB_RELEASE
+ elif [ -f /etc/debian_version ]; then
+    # Older Debian/Ubuntu/etc.
+    OS=Debian
+    VER=$(cat /etc/debian_version)
+ elif [ -f /etc/SuSe-release ]; then
+    # Older SuSE/etc.
+    local SUSE=$(head -1 /etc/SuSe-release)
+    local SUSE="${SUSE%%(*}"
+    OS="${SUSE%% *}"
+    VER=$(echo "${SUSE}" | tr -dc '0-9')
+ elif [ -f /etc/redhat-release ]; then
+    # Older Red Hat, CentOS, etc.
+    local RH=$(cat /etc/redhat-release)
+    OS="${RH%% *}"
+    VER=$(echo "${RH}" | tr -dc '0-9')
+ else
+    # Fall back to uname, e.g. "Linux <version>", also works for BSD, etc.
+    OS=$(uname -s)
+    VER=$(uname -r)
+ fi
+
+ # 2.- Formatting Output
+ #---------------
+ OS=$( echo "${OS}"  | tr -d ' ' | tr [:upper:] [:lower:] )
+ VER=$( echo "${VER}"  | tr -d ' ' | tr [:upper:] [:lower:] )
+ LOG_HEADER="[${OS}-${VER}]-"
+}
+
+#===================================================
+#   Function: {distro}Fixes
+#---------------------------------------------------
+#  Private Function
+#
+#  Pack Distro Specific fixes
+#===================================================
+ubuntuFixes() {
+
+  # 0.- Logging
+  #----------------------
+  echo "........ LOCALE=[${LOCALE}]"
+  
+  # 1.- Fix Locales
+  #----------------
+  echo "${LOG_HEADER} -> sudo locale-gen ${LOCALE}"
+  sudo locale-gen "${LOCALE}"
+
+  echo "${LOG_HEADER} -> dpkg-reconfigure --frontend=noninteractive locales"
+  sudo dpkg-reconfigure --frontend=noninteractive locales
+
+  echo "${LOG_HEADER} ->  update-locale LANG=${LOCALE}"
+  sudo update-locale LANG="${LOCALE}"
+
+  echo "export LC_ALL=C.UTF-8"
+  export LC_ALL="C.UTF-8"
+    
+}
+
+redhatFixes() {
+    
+	# 1.- Repositories
+	#-------------------
+	# EPEL 
+	echo "${LOG_HEADER} ->  sudo yum install epel-release -y"
+	sudo yum install epel-release -y
+    
+	echo "${LOG_HEADER} -> sudo yum update -y"
+    sudo yum update -y
+
+	# Change SSH Configuration
+	echo "${LOG_HEADER} ->  sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config"
+	sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+	
+	echo "${LOG_HEADER} -> echo '    StrictHostKeyChecking no' >> /etc/ssh/ssh_config"
+    sudo echo "    StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+	
+	echo "${LOG_HEADER} -> echo systemctl restart sshd.service" 
+    sudo systemctl restart sshd.service
+	
+	# 2.- locale
+	#-------------------	
+	echo "${LOG_HEADER} -> sudo localectl set-locale LANG=${LOCALE}"	
+	sudo localectl set-locale LANG="${LOCALE}"
+	
+	echo "${LOG_HEADER} -> localedef -v -c -i ${LOCALE%%.*} -f ${LOCALE##*.} ${LOCALE}"
+	sudo localedef -v -c -i "${LOCALE%%.*}" -f "${LOCALE##*.}" "${LOCALE}"
+	
+	echo "export LC_ALL=C.UTF-8"
+    export LC_ALL="C.UTF-8"
+  
+}
+
+#===================================================
+#   Function: firewallZone
+#---------------------------------------------------
+#  Private Function
+#
+#  Create Bifrost Firewall Zone
+#===================================================
+firewallZone() {
+
+    if systemctl is-active --quiet firewalld ; then
+       if [ -x "/bin/firewall-cmd" ] ; then
+	     echo "${LOG_HEADER} -> sudo /bin/firewall-cmd --permanent --new-zone=bifrost"
+         sudo /bin/firewall-cmd --permanent --new-zone=bifrost
+	     echo "${LOG_HEADER} -> sudo /bin/firewall-cmd --permanent --zone=bifrost --add-service=ssh"		 
+         sudo /bin/firewall-cmd --permanent --zone=bifrost --add-service=ssh
+	     echo "${LOG_HEADER} -> sudo /bin/firewall-cmd --reload"			 
+         sudo /bin/firewall-cmd --reload
+       elif [ -x "/sbin/firewall-cmd" ] ; then
+	     echo "${LOG_HEADER} -> sudo /sbin/firewall-cmd --permanent --new-zone=bifrost"
+         sudo /sbin/firewall-cmd --permanent --new-zone=bifrost
+	     echo "${LOG_HEADER} -> sudo /sbin/firewall-cmd --permanent --zone=bifrost --add-service=ssh"		 
+         sudo /sbin/firewall-cmd --permanent --zone=bifrost --add-service=ssh
+	     echo "${LOG_HEADER} -> sudo /sbin/firewall-cmd --reload"			 
+         sudo /sbin/firewall-cmd --reload	 
+	   fi 
+    else  
+	   echo "FIREWALL NOT ACTIVE IN THIS MACHINE -> Nothing to do"
+	   systemctl status firewalld
+    fi	
+}
+
+#===================================================
+#   Function: setEnvironment
+#---------------------------------------------------
+#  Private Function
+#
+#  Set environment
+#===================================================
+setEnvironment() {
+   # => 1.- OS Properties
+   case "${OS}" in
+     "ubuntu"|"debian")
+       DEP_INSTALLER=( 'python3' 'git' 'ansible' 'sshpass' ) 
+       DEP_DOCKER=( 'podman-docker' )
+       INSTALLER_CMD="sudo -H -E apt-get -y install"
+       CHECK_CMD="dpkg -s"
+       ;;
+     "redhat"|"centos")
+       DEP_INSTALLER=( 'python3' 'git' 'ansible' 'glibc-locale-source' 'glibc-langpack-en' 'sshpass' )
+       DEP_DOCKER=( 'podman-docker' )
+       PKG_MANAGER=$(/usr/bin/which dnf || /usr/bin/which yum)
+       INSTALLER_CMD="sudo -H -E ${PKG_MANAGER} -y install"
+       CHECK_CMD="rpm -q"
+       ;;
+     "suse"|"opensuse")
+       INSTALLER_CMD="zipper"
+       DEP_DOCKER=( 'podman-docker' )
+       ;;
+   esac
+}
+
+#===================================================
+#   Function: setEnvironment
+#---------------------------------------------------
+#  Private Function
+#
+#  Set environment
+#===================================================
+runOSfixes() {
+   case "${OS}" in
+     "ubuntu"|"debian")
+       ubuntuFixes
+       ;;
+     "redhat"|"centos")
+       redhatFixes
+       ;;
+     "suse"|"opensuse")
+       ;;
+   esac
+   
+}
+
+prepareImageCreation() {
+   case "${OS}" in
+     "ubuntu"|"debian")
+       echo "${LOG_HEADER} -> sudo systemctl disable --now apparmor"
+       sudo systemctl disable --now apparmor 
+       ;;
+     "redhat"|"centos")
+       echo "${LOG_HEADER} -> SELinux"
+       ;;
+   esac
+   
+   local USER=$(whoami)
+   local REPO_FOLDER=$(ls -d ${GENESIS_WORKING_PATH}/repo/* | grep -v mnt)
+   #echo "${LOG_HEADER} -> sudo chown -R $USER:ironic ${REPO_FOLDER[@]}"
+   #sudo chown -R $USER:ironic ${REPO_FOLDER[@]}
+}
+
+#===================================================
+#   Function: runScripts
+#---------------------------------------------------
+#  Private Function
+#
+#  Shoot Bifrost Script
+#===================================================
+runScripts() {
+
+   local FILE
+   for FILE in ${FILES[@]} ; do
+       if [ -n "$COMMAND" ] ; then   
+	      local F=$(echo $FILE | wc -m)
+          if [ "${F}" -gt 2 ] ; then
+              echo "${LOG_HEADER} -> ${COMMAND} ${RUTA}/${FILE}"		  
+		      ${COMMAND} ${RUTA}/${FILE}
+		  else
+              echo "${LOG_HEADER} -> ${COMMAND}"		  
+		      sudo bash -c "${COMMAND}"
+          fi
+       elif [ -x "${RUTA}/${FILE}" ] ; then
+          echo "${LOG_HEADER} -> ${RUTA}/${FILE}"
+	      ${RUTA}/${FILE}
+       else
+	      error "-x" "${RUTA}/${FILE}" 
+       fi
+   done
+}
+
+
+#===================================================
+#   Function: installDependencies
+#---------------------------------------------------
+#  Private Function
+#
+#  Chack Bifrost Installer Dependencies
+#===================================================
+installDependencies() {
+  if [ ! -n "${PACKAGES}" ] ; then local  PACKAGES=( ${DEP_INSTALLER[@]} ) ; fi
+  echo "${LOG_HEADER} -> ${INSTALLER_CMD} ${PACKAGES[@]}"
+  ${INSTALLER_CMD} ${PACKAGES[@]}
+}
+
+
+#===================================================
+#   Function: installEnvironment
+#---------------------------------------------------
+#  Private Function
+#
+#  Download Bifrost Dependencies
+#===================================================
+installEnvironment() {
+ 
+   
+   # Local Environment
+   #------------------
+   local RUTA_PROJECT="${GENESIS_WORKING_PATH}"
+
+   # Actions
+   #--------
+   local INDEX_DEP=0
+   local INDEX_CMD=0
+   setupCommand
+   while [[ "${INDEX_DEP}" < "${#DEPENDENCIES[@]}" ]] ; do
+
+	 # 1.- Get Command 
+	 if [ "${INDEX_CMD}" -lt "${#DEPENDENCIES_INSTALLER[@]}" ] ; then
+	     local COMMAND="${DEPENDENCIES_INSTALLER[${INDEX_CMD}]}"
+	     local INDEX_CMD=$(expr ${INDEX_CMD} + 1)
+	     echo "${LOG_HEADER} -> ..Command: [${COMMAND}]"
+	  fi
+          
+	  # 2.- Get CMD Result
+	  local FILES=( "${DEPENDENCIES[$INDEX_DEP]}" )
+	  echo "${LOG_HEADER} -> ..Files: [${FILES}]"
+	  
+	  # 3.- RUN Script	  
+	  local RUTA="${RUTA_PROJECT}"
+	  runScripts
+          #echo -e "${PRINT_NAME} ${COLOR[$SILVER]} ${PRINT_STATUS} ${COLOR[$NC]}"
+
+          # 4.- Update the loop		  
+	  local INDEX_DEP=$(expr ${INDEX_DEP} + 1)     
+   done
+  
+}
+
+
+#===================================================
+#   Function: bifrostScriptsWorkaround
+#---------------------------------------------------
+#  Private Function
+#
+#  Bifrost Scripts path detection depends on linux distro
+#  - This work around seems to fix the issue
+#===================================================
+bifrostScriptsWorkaround() {
+ 
+ if [ -x "${GENESIS_BIFROST_WORKING_PATH}/scripts/env-setup.sh" ] ; then
+    echo "${LOG_HEADER} -> cd ${GENESIS_BIFROST_WORKING_PATH} "
+    cd "${GENESIS_BIFROST_WORKING_PATH}"
+	
+	echo "${LOG_HEADER} -> ./scripts/env-setup.sh"
+    ./scripts/env-setup.sh
+	
+	echo "${LOG_HEADER} -> cd -"
+    cd -
+	
+  else
+    error -x "${GENESIS_BIFROST_WORKING_PATH}/scripts/env-setup.sh"
+  fi
+}
+
+#===================================================
+#   Function: prepareLocalMachine
+#---------------------------------------------------
+#  Private Function
+#
+#  Chack Bifrost Installer Dependencies
+#===================================================
+prepareLocalMachine() {
+  local ARRAY_ELEMENT
+  for ARRAY_ELEMENT in "${DEP_INSTALLER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
+  runOSfixes
+  installDependencies
+  firewallZone
+  installEnvironment
+  bifrostScriptsWorkaround
+}
+
+#===================================================
+#   Function: prepareProxmoxInstaller
+#---------------------------------------------------
+#  Private Function
+#
+#  Prepare a PC to create Airgap Virtual Environment
+#===================================================
+prepareProxmoxInstaller() {
+  local ARRAY_ELEMENT
+  for ARRAY_ELEMENT in "${DEP_INSTALLER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${PROXMOX_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${PROXMOX_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
+  runOSfixes  
+  installDependencies
+  installEnvironment
+}
+
+#========================================================
+#   Function: reloadUserEnvironment
+#--------------------------------------------------------
+#   Reload Bash Environment during execution without interruption
+#========================================================
+function reloadUserEnvironment() {
+   echo "${LOG_HEADER} - => Reloading User Environment in Hot Cache"
+   
+   # Cargamos los archivos de entorno en la shell actual
+   echo "${LOG_HEADER} - Sourcing profile and rc files..."
+   source /etc/profile
+   [ -f ~/.bash_profile ] && source ~/.bash_profile
+   [ -f ~/.bashrc ] && source ~/.bashrc
+}
+
+#========================================================
+#   Function: updateInventory
+#--------------------------------------------------------
+#    - Update Inventory in ansible.cfg
+#    - Update Environment Variables
+#========================================================
+function updateInventory() {
+   		
+	if [ -n "${IRONIC_BAREMETAL_NODES}" ] ; then
+	
+	   # Local Environment
+	   local POSICION=0
+	   local CNF_FILE="${GENESIS_PROJECT_ANSIBLE_CFG}"
+	   local VAR='inventory'
+	   local VALOR="hosts/target,hosts/${IRONIC_BAREMETAL_NODES##*/}"
+	   local REEMPLAZA_LINEA="Yes"
+	   local SIN_COMILLA="Si"
+	   
+	   # 1.- Replace Pattern
+	   echo "${LOG_HEADER} - reemplazaParametro Si"
+       reemplazaParametro "Si"
+       local PERMISSIONS=$(stat -c "%a %n" ${CNF_FILE} | awk '{print $1;}')
+	   echo "${LOG_HEADER} - chmod $PERMISSIONS ${OUT_TMP}"
+       chmod "$PERMISSIONS" "${OUT_TMP}"
+	   echo "${LOG_HEADER} - mv ${OUT_TMP} ${CNF_FILE}"
+	   mv "${OUT_TMP}" "${CNF_FILE}"	
+ 
+       # 2.- Update environment Variables
+       GENESIS_BIFROST_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES##*/}/${IRONIC_NODES_FILE}"
+       GENESIS_ANSIBLE_INVENTORY_SOURCE="${GENESIS_HOSTS_WORKING_PATH}/${IRONIC_BAREMETAL_NODES##*/}/inventory"
+       echo "${LOG_HEADER} -..... GENESIS_BIFROST_INVENTORY_SOURCE=[${GENESIS_BIFROST_INVENTORY_SOURCE}]"
+       echo "${LOG_HEADER} -... GENESIS_ANSIBLE_INVENTORY_SOURCE=[${GENESIS_ANSIBLE_INVENTORY_SOURCE}]"	
+       setupCommand
+	   
+	   # 3 Clean environment
+	   unset PERMISSIONS POSICION CNF_FILE REEMPLAZA_LINEA PARAMETRO inventory
+ 	  	     	   
+	fi
+}
+
+
+#===================================================
+#   Function: addGenesisToHosts
+#---------------------------------------------------
+#  Private Function
+#
+#  Add Genesis IP address to /etc/hosts 
+#     in order to use names in YAML group_vars profiles
+#===================================================
+addGenesisToHosts()  {
+
+   # 1.- Add Genesis to Hosts
+   local GENESIS_NAME="genesis.maas.lab"
+   if [ -r "$GENESIS_HOSTS_TARGET_FILE" ; then
+       local GENESIS_NAME=$(cat $GENESIS_HOSTS_TARGET_FILE | grep 'genesis_hostvars_name:' | head -1 | awk -F: '{print $NF}' | tr -d '"' )
+   fi
+   local ADDR=$( echo "${PXE[$DHCP_IP]}" | awk -F/ '{print $1}' | tr -d ' ' )
+   local NAME=$( echo "${GENESIS_NAME}" | tr -d ' ' )
+   echo "${LOG_HEADER} -...... GENESIS_NAME=[${NAME}]"
+   echo "${LOG_HEADER} -... GENESIS_ADDRESS=[${ADDR}]"
+   echo "${LOG_HEADER} -> sudo sed -i /${NAME}/d /etc/hosts"
+   sudo bash -c "sed -i /${NAME}/d /etc/hosts"
+   echo "${LOG_HEADER} -> sudo bash -c echo ${ADDR} ${NAME} >> /etc/hosts"
+   sudo bash -c "echo ${ADDR} ${NAME} >> /etc/hosts"
+   
+   # 2.- Add User to Ironic group 
+   local USER=$(whoami)
+   echo "${LOG_HEADER} -> sudo usermod -a -G ironic $USER"   
+   sudo usermod -a -G ironic "$USER"
+}
+
+
+#===================================================
+#   Function: enableIronicNetworkInterface
+#---------------------------------------------------
+#  Private Function
+#
+#  Before Installing Ironic, enable DHCP interface
+#===================================================
+enableIronicNetworkInterface() {
+
+   #---------------------
+   # Actions
+   #---------------------
+
+   # 0.- Logging
+   #----------------------
+   echo "..PXE[DHCP_NIC]=[${PXE[$DHCP_NIC]}]"
+   echo "...PXE[DHCP_IP]=[${PXE[$DHCP_IP]}]"
+
+
+   # 1.- Enable Network Interface
+   #----------------------
+   detectOS
+   case "${OS}" in
+     "ubuntu"|"debian")
+	    
+        echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false"
+        sudo netplan set ethernets.${PXE[$DHCP_NIC]}.dhcp4=false
+        
+        echo "${LOG_HEADER} -> sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=[${PXE[$DHCP_IP]}]"
+        sudo netplan set ethernets.${PXE[$DHCP_NIC]}.addresses=["${PXE[$DHCP_IP]}"]
+        
+        echo "${LOG_HEADER} -> sudo timeout 3s bash -c netplan apply"
+        sudo timeout 3s bash -c "netplan apply"
+
+		;;
+    *) 
+	    if [ -n "${DETECT_CONEXION}" ] ; then 
+    	  echo "${LOG_HEADER} ->  nmcli con add con-name pxe ifname ${PXE[$DHCP_NIC]} type ethernet ipv4.methodmanual ipv4.addresses=${PXE[$DHCP_IP]}"
+          nmcli con add con-name "pxe" ifname "${PXE[$DHCP_NIC]}" type "ethernet" ipv4.method="manual" ipv4.addresses="${PXE[$DHCP_IP]}"
+    	  echo "${LOG_HEADER} -> nmcli con up pxe"
+    	  nmcli con up "pxe"
+        fi	
+		;;
+	esac
+}
+
+
+#========================================================
+#   Function: passwordlessDetection
+#--------------------------------------------------------
+#  -Generate User SSH key in localhost
+#  -Ensure localhost passwordless access
+#========================================================
+function passwordlessDetection() {
+
+    #------------------
+    # LOCAL ENVIRONMENT
+    #------------------
+    local HOST="${1}"
+    local USER="${2}"
+    local USER_PASSWORD="${3}"	
+    local SSH_TIMEOUT="3"
+
+    #------------------
+    # ACTIONS
+    #------------------
+	
+	# 1.- Passwordless Detection
+    local PASSWORDLESS_DETECTED=$(ssh -oBatchMode='yes' -oConnectTimeout="${SSH_TIMEOUT}" -oStrictHostKeyChecking='no' ${USER}${HOST} 'echo DONE' 2> /dev/null)
+	if [ -n "${OKD_CLUSTER_NAME}" ] ; then 
+       local PASSWORDLESS_OKD=$(ssh -i "/home/okd/.ssh/${OKD_CLUSTER_NAME}" -oBatchMode='yes' -oConnectTimeout=${SSH_TIMEOUT} -oStrictHostKeyChecking='no' core@${HOST} 'echo DONE' 2> /dev/null)
+	fi
+	
+	# 2.- Trying to establish passwordless connection
+    if [[ "${PASSWORDLESS_DETECTED}" == "DONE" ]] ; then
+        echo -e "[genesisCli.passwordlessDetection] - ${COLOR[$SEA]}Passwordless already Enabled at ${USER}${HOST}${COLOR[$NC]}"
+	elif [[ "${PASSWORDLESS_OKD}" == "DONE" ]] ; then
+	    echo -e "[genesisCli.passwordlessDetection] - ${COLOR[$SEA]}Passwordless already Enabled at [su - okd] core@${HOST}${COLOR[$NC]}"
+    elif [ -x "/bin/ssh-copy-id" ] || [ -x "/sbin/ssh-copy-id" ] ; then
+
+        echo "rm -f ${HOME}/.ssh/known_hosts"		
+		rm -f "${HOME}/.ssh/known_hosts"
+		   
+	    if [ -n "${USER_PASSWORD}" ] ; then
+		   echo "[genesisCli.passwordlessDetection] -  sshpass -p ${USER_PASSWORD} ssh-copy-id -oConnectTimeout=${SSH_TIMEOUT} -oStrictHostKeyChecking='no' ${USER}${HOST} 2> ${OUT_TMP}" 
+           sshpass -p "${USER_PASSWORD}" ssh-copy-id -oConnectTimeout="${SSH_TIMEOUT}" -oStrictHostKeyChecking='no' "${USER}${HOST}" 2> "${OUT_TMP}"
+		else
+		   echo "[genesisCli.passwordlessDetection] - ssh-copy-id -oConnectTimeout=${SSH_TIMEOUT} -oStrictHostKeyChecking='no' ${USER}${HOST} 2> ${OUT_TMP}"
+		   ssh-copy-id -oConnectTimeout="${SSH_TIMEOUT}" -oStrictHostKeyChecking='no' "${USER}${HOST}" 2> "${OUT_TMP}"
+		fi 
+        local SUCCESS="$?"
+        local OUTPUT_COPY=$(cat ${OUT_TMP} | grep ERR)
+		
+		if [[ "${SUCCESS}" == "0" ]] ; then
+		    echo -e "[genesisCli.passwordlessDetection] - ${COLOR[$SEA]}Passwordless was successfully Established at ${USER}${HOST}? [$SUCCESS] (OK=$OK, ERROR=$ERROR) ${OUTPUT_COPY}${COLOR[$NC]}"
+		else
+             echo -e "[genesisCli.passwordlessDetection] - ${COLOR[$RED]}Passwordless was not successfully Established at ${USER}${HOST}? [$SUCCESS] (OK=$OK, ERROR=$ERROR) ${OUTPUT_COPY}${COLOR[$NC]}"		
+		fi
+
+    fi
+    OUT="$?"
+}
+
+#========================================================
+#   Function: sshUserKey
+#--------------------------------------------------------
+#  -Generate User SSH key in localhost
+#  -Ensure localhost passwordless access
+#========================================================
+function sshUserKey() {
+
+	#---------------------
+	#  ACTIONS
+	#---------------------
+	
+    # 1.- Create SSH folder
+    #-----------------------
+    if [ ! -e "${HOME}/.ssh" ] ; then
+       mkdir -p "${HOME}/.ssh"
+       chmod 700 "${HOME}/.ssh"
+    fi
+
+    # 2.- Detect SSH Keys
+    #-----------------------
+    local KEYS=$(ls ${HOME}/.ssh/*pub 2> /dev/null)
+    echo -e ".... User SSH Keys detected: \n$KEYS"
+    if [ ! -n "${KEYS}" ] ; then
+       if [ -x "/bin/ssh-keygen" ] || [ -x "/sbin/ssh-keygen" ] ; then
+          echo "............................................................................"
+          echo " No SSH Key detected on this user... we proceed with interactive generation"
+		  echo "     ssh-keygen -b 2048 -t rsa -f ${HOME}/id_rsa -q -N ' ' "
+          echo "............................................................................"
+          ssh-keygen -b 2048 -t rsa -f "${HOME}/.ssh/id_rsa" -q -N "" 
+      else
+	      error "-x" "[genesisCli.sshUserKey] - /bin/ssh-keygen || /sbin/ssh-keygen"
+       fi
+    else
+	   echo "[genesisCli.sshUserKey] - Detected Keys [${KEYS}]" 
+	fi
+
+    # 3.- Localhost Passwordless SSH Access
+    #-----------------------
+    local USER="$(whoami)"
+    passwordlessDetection "localhost" "${USER}@" "${GENESIS_ROOT_PASSWORD}"
+}
+
+#========================================================
+#   Function: trust_relationships
+#--------------------------------------------------------
+#  -Load Inventory list of hosts
+#  -Ensure String passwordless access
+#========================================================
+function trust_relationships() {
+
+    #---------------------------
+    # LOCAL ENVIRONMENT
+    #---------------------------
+	local USER_FORCED="${1}"
+    local LIST_OF_NODES_FILE="${2}"
+    if [ ! -n "${BAREMETAL_ROOT_PASSWORD}" ] ; then local BAREMETAL_ROOT_PASSWORD="root" ; fi	
+    if   [ -n "${USER_FORCED}" ] ; then local USER="${USER_FORCED}@" 
+    elif [ -n "${USER}"        ] ; then local USER="${USER}@" 
+	else local USER="root@"  
+	fi    
+	
+    #---------------------------
+    # ACTIONS
+    #---------------------------
+	
+	# 1.- Load list of IP nodes
+    echo "-----> Loading Nodes"
+    echo "${LOG_HEADER} -................. LIST_OF_NODES_FILE=[${LIST_OF_NODES_FILE}]"
+	if [ -r "${LIST_OF_NODES_FILE}" ] ; then
+        . "${LIST_OF_NODES_FILE}" 2> /dev/null
+    fi
+	
+	# 2.- Detect Passwordless 
+	echo "${LOG_HEADER} - NODES.... [${INVENTORY_LIST[@]}]"
+    if [ -n "${INVENTORY_LIST}" ] ; then
+       for NODE in "${INVENTORY_LIST[@]}" ; do
+	       echo "${LOG_HEADER} -passwordlessDetection ${NODE} ${USER} ${BAREMETAL_ROOT_PASSWORD}"
+           passwordlessDetection "${NODE}" "${USER}" "${BAREMETAL_ROOT_PASSWORD}"
+           OUT="$?"
+       done
+    else
+       echo -e "[genesisCli.trust_relationships] - ${COLOR[$YELLOW]} [WARN] - MISSING CONFIGURATION FILE: please try to SETUP Genesis before ${COLOR[$NC]}"
+       error "-r" "[genesisCli.trust_relationships] - ${GENESIS_ANSIBLE_INVENTORY_SOURCE}"
+    fi	
+    unset NODE INVENTORY_LIST LIST_OF_NODES_FILE
+}
+
+
+#========================================================
+#   Function: runChecks
+#--------------------------------------------------------
+#  Run verifications
+#========================================================
+function runChecks() {
+   if [ -n "${CHECK_CMD}" ] ; then 
+	   local INDEX_CMD="0"
+	   
+       while [[ "${INDEX_CMD}" < "${#CHECK_CMD[@]}" ]] ; do
+
+		  # 0.- Get Command	     
+	      local COMMAND="${CHECK_CMD[${INDEX_CMD}]}"
+  		  
+		  # 1.- Get Verification Name
+		  if [ -n "${CHECK_NAME}" ] ; then 
+		     if [ "${INDEX_CMD}" -lt "${#CHECK_NAME[@]}" ] ; then
+		        local PRINT_NAME="${CHECK_NAME[${INDEX_CMD}]}"
+		     fi
+		  fi
+		  
+		  # 2.- Get Ansible AdHoc Module
+		  if [ -n "${CHECK_MODULE}" ] ; then 
+		    unset ANSIBLE_MODULE
+		    if [ "${INDEX_CMD}" -lt "${#CHECK_MODULE[@]}" ] ; then
+		       local ANSIBLE_MODULE="${CHECK_MODULE[${INDEX_CMD}]}"
+		    fi
+         fi			
+          
+		  # 3.- Print Results
+          if [ -n "${CHECK_ANSIBLE}" ] ; then
+		     echo -e "${PRINT_NAME}"
+		     runAdHoc "${ANSIBLE_MODULE}" "${COMMAND}"  "${CALL_LOG}"
+		  else
+		     local PRINT_STATUS=$( timeout 3 ${COMMAND} )
+			 echo -e "${PRINT_NAME} ${COLOR[$SILVER]} ${PRINT_STATUS} ${COLOR[$NC]}"
+		  fi
+		  
+          # 5.- Update the loop		  
+		  local INDEX_CMD=$(expr ${INDEX_CMD} + 1)
+		  
+       done	   
+   fi   
+   unset ANSIBLE_MODULE COMMAND PRINT_NAME
+}
+
+#========================================================
+#   Function: state_status
+#--------------------------------------------------------
+#  Verify state reached after a transition
+#========================================================
+function state_status() {
+
+    #---------------------------
+    # LOCAL ENVIRONMENT
+    #---------------------------
+	local STATE_NAME="$1"	
+    local RPM_NAME="$2"
+	case "${STATE_NAME}" in
+       ${REFRESH}|"genesis_machine_ready") 
+	        local STATE_FULL_NAME="G-${REFRESH}: Genesis Machine Ready"		   
+	        local SSH_LOCALHOST="YES"
+	        local CHECK_NAME=( \
+			                   "...Script Working Folder: " \
+                               "........Operating System: " \
+                               "...........Repos Created: " \
+                               ".........Firewall Status: " \
+                               "..........SELinux Status: " \
+		                       )
+	        local CHECK_CMD=( \
+			                   "pwd" \
+			                   "cat /etc/os-release" \
+							   "ls ${GENESIS_WORKING_PATH}/repo/*" \
+							   "systemctl status firewalld" \
+							   "sestatus" \
+			                )
+	    ;;
+      ${CREATE}|"genesis_installed")   
+	        local STATE_FULL_NAME="G-${CREATE}: Genesis Created"	  
+	        local CHECK_NAME=( \
+                               "Service DNSMASQ: " \
+                               "..Service NGINX: " \
+							   ".Service IRONIC: " \
+							   "......PXE Files: " \
+							   "....DNS Active?: " \
+		                       )
+	        local CHECK_CMD=( \
+			                   'systemctl status dnsmasq'  \
+			                   'systemctl status nginx'    \
+			                   'systemctl status ironic'   \
+							   'ls /var/lib/tftpboot/*/'   \
+							   'nslookup genesis.maas.lab' \
+			                )
+	   ;;
+
+      ${INIT}|"genesis_init") 
+	        local STATE_FULL_NAME="G-${INIT}: Genesis Init"
+	        local CHECK_NAME=( \
+                               "Images Repo: "   \
+                               "ORAS Registry: "   \
+		                       )
+	        local CHECK_CMD=( \
+			                   "ls -la ${GENESIS_WORKING_PATH}/repo/dib/"  \
+			                   'oras version'  \
+			                )
+	   ;;
+	   
+      ${SETUP}|"baremetal_setup") 
+	        local STATE_FULL_NAME="B-${SETUP}: Baremetal Nodes Ready to Deploy"
+			unset INVENTORY PLAYBOOK
+			local ATARGET='localhost'
+	        local CHECK_NAME=( \
+                               "Ironic List State of Nodes: "   \
+                               "Ironic Deployment Ports: "   \							   
+		                       )							   
+	        local CHECK_CMD=( \
+			                   'baremetal node list'  \
+			                   'baremetal port list'  \							   
+			                )
+	   ;;	   
+	   
+      ${DEPLOY}|"baremetal_deploy") 
+	        local STATE_FULL_NAME="B-${DEPLOY}: Baremetal Nodes run OS unattended installation"
+			unset INVENTORY PLAYBOOK
+			local ATARGET='localhost'
+	        local CHECK_NAME=( \
+                               "Ironic List State of Nodes: "   \
+		                       )							   
+	        local CHECK_CMD=( \
+			                   'baremetal node list'  \
+			                )
+	   ;;	   
+      6|"baremetal_ansible") 
+	        local STATE_FULL_NAME="Ansible Pre-Ready: Baremetal Nodes ready to provision Software profile"	  
+	        local CHECK_ANSIBLE=1
+			unset INVENTORY PLAYBOOK
+			unset INVENTORY
+	        local CHECK_NAME=( \
+                               "Ansible Ping: " \
+		                       )
+	        local CHECK_MODULE=( \
+			                   'ping' \
+			                )							   
+	        local CHECK_CMD=( \
+			                   ' ' \
+			                )
+	   ;;		   
+    esac
+
+    #---------------------------
+    # ACTIONS
+    #---------------------------
+	if [ -n "${CHECK_CMD}" ] && [ -n "${CHECK_NAME}" ] ; then
+       echo -e "--------------------------------------------" 
+       echo -e "     STATE [${STATE_FULL_NAME}] - STATUS" 	   
+       echo -e "--------------------------------------------"
+	   if [ -n "${SSH_LOCALHOST}" ] ; then sshUserKey ; fi
+	   setupCommand
+       runChecks 	   
+       echo -e "--------------------------------------------" 
+       echo -e "     STATE [${STATE_FULL_NAME}] - STATUS" 	   
+       echo -e "--------------------------------------------" 
+	fi
+	unset CHECK_NAME CHECK_CMD SSH_LOCALHOST
+}
+
+########################################################################################
+# MODULE 3 => MENU OPTIONS CAPTURE: dynamic (list of files from a path) and static (list of strings)
+########################################################################################
+
+#========================================================
+#   Function: listaOpciones_Dinamica
+#--------------------------------------------------------
+#  List of files inside a folder is used as menu options
+#========================================================
+function listaOpciones_Dinamica() {
+
+	#------------------
+	# LOCAL ENVIRONMENT
+	#------------------
+	local INDICE="$1"
+	local REMOVE_PATH="$2"
+	local RUTA="${RUTA_OPCIONES[${INDICE}]}"
+	local EXT="${EXT_OPCIONES[${INDICE}]}"
+	local ELIMINA="${SUPRIME_EXT[${INDICE}]}"
+
+	#-----------------
+	# ACTIONS
+	#-----------------
+    if [ -r "${RUTA}" ] ; then
+            local LIST_FILES=$(ls -1 -d "${RUTA}/"*${EXT} 2> /dev/null)
+            if [ -n "${LIST_FILES[@]}" ] ; then
+	        local INDICE="0"
+	        for ELEMENTO in $(ls -1 -d "${RUTA}/"*${EXT} 2> /dev/null) ; do
+
+		        # Nombre de la opcion  (with/without path-extension)
+		        if [ -n "${REMOVE_PATH}" ] ; then local ELEMENTO="${ELEMENTO##*/}" ; fi
+		        if [ -n "${ELIMINA}"     ] ; then local ELEMENTO="${ELEMENTO%%.*}" ; fi
+
+                # Variables Publicas
+		        ELEMENTOS_MENU[${INDICE}]="${ELEMENTO}"
+		        NUM_OPCIONES="${INDICE}"
+
+		        # Listando Opciones
+				if [[ "$ELEMENTO" != *"${MENU_SKIP_ELEMENT}"* ]] ; then
+		           echo -e "${INDICE} .- ${ELEMENTO}"
+		           local INDICE=`expr "${INDICE}" + 1`
+				fi
+	        done
+        else
+           error "-r" "${RUTA}/*${EXT}"
+        fi
+    else
+        error "-r" "${RUTA}"
+    fi
+}
+
+#========================================================
+#   Function: listaOpciones_Estatica
+#--------------------------------------------------------
+#  List of strings already provided in data model
+#========================================================
+function listaOpciones_Estatica() {
+
+	#------------------
+	# LOCAL ENVIRONMENT
+	#------------------
+	local INDICE="$1"
+
+	#-----------------
+	# ACTIONS
+	#-----------------
+	local INDICE="0"
+	for ELEMENTO in "${RUTA_OPCIONES[@]}" ; do
+        
+		if [ ! -n "${MENU_SKIP_PATHS}" ] || [ ! -d "${ELEMENTO}" ] ; then	
+        
+			# Variables Publicas
+			ELEMENTOS_MENU[${INDICE}]="${ELEMENTO}"
+			NUM_OPCIONES="${INDICE}"
+
+			# Listando Opciones
+			echo -e "${INDICE} .- ${ELEMENTO}"
+		fi
+		
+		local INDICE=`expr "${INDICE}" + 1`
+
+	done
+}
+
+#========================================================
+#   Function: capturaOpcionLista
+#--------------------------------------------------------
+#  Capture option value from list of available options
+#========================================================
+function capturaOpcionLista() {
+
+	# 1.- Espera Entrada
+	#--------------------
+	eval read -e INDICE_OPCION
+
+	# 2.- Evalua Entrada
+	#--------------------
+	# Se introdujo una opcion ----------------------------- COMPROBACION 1
+	if [ -n "${INDICE_OPCION}" ] ; then
+		VALOR=""
+		while [ ! -n "$VALOR" ] ; do
+
+			# La opcion es un numero  ------------- COMPROBACION 2
+			if [ "${INDICE_OPCION}" -eq "${INDICE_OPCION}" 2> /dev/null ]; then
+
+				# La opcion es numero valido -- COMPROBACION 3
+				if [ "${INDICE_OPCION}" -le "${NUM_OPCIONES}" ] ; then
+					VALOR="${ELEMENTOS_MENU[${INDICE_OPCION}]}"
+
+				# La opcion es numero valido -- COMPROBACION 3
+				else
+					echo -e "[${INDICE_OPCION}] - No valid Option [0-${NUM_OPCIONES}], please try again"
+					eval read -e INDICE_OPCION
+					if [ ! -n "${INDICE_OPCION}" ] ; then break ; fi
+				fi
+
+			# La opcion es un numero  ------------- COMPROBACION 2
+			else
+				echo -e "[${INDICE_OPCION}] - No numeric value introduced, please try again"
+				eval read -e INDICE_OPCION
+				if [ ! -n "${INDICE_OPCION}" ] ; then break ; fi
+			fi
+		done
+	fi
+}
+
+#========================================================
+#   Function: capturaValor
+#--------------------------------------------------------
+#  Capture Value in two different use cases
+#    Case 1.- List of Values
+#         1.1.- Display list of Strings as options
+#         1.2.- Display list of files from a folder
+#    Case 2.- Text input
+#========================================================
+function capturaValor() {
+
+	#------------------
+	# LOCAL ENVIRONMENT
+	#------------------
+	local INDICE="$1"
+	local RUTA_LISTA="${RUTA_OPCIONES[${INDICE}]}"
+
+	#-----------------
+	# ACTIONS
+	#-----------------
+
+	# 1.- List of Options
+	#--------------------
+	if [ -n "${RUTA_LISTA}" ] ; then
+
+	    # 1.1.- List of files from a folder as Options
+		if [ -r "${RUTA_LISTA}" ] ; then
+
+		    # 1.1.1.- Build list and Capture option
+		    listaOpciones_Dinamica "${INDICE}" "${MENU_SKIP_PATHS}"
+		    capturaOpcionLista
+
+		    # 1.1.2.- Assign default value
+            if [ ! -n "${VALOR}" ] ; then
+                 local INDICE_OPCION="${VALOR_DEFECTO[${POSICION}]}"
+                 VALOR="${ELEMENTOS_MENU[${INDICE_OPCION}]}"
+		    fi
+
+        # 1.2.- List of Strings as Options
+		else
+			listaOpciones_Estatica "${INDICE}"
+			capturaOpcionLista
+		fi
+
+	# 2.- Plain Input
+	#--------------------
+	else
+		eval read -e VALOR
+	fi
+
+	# 3.- Default Value
+	#--------------------
+    if [ ! -n "${VALOR}" ] ; then
+		VALOR="${VALOR_DEFECTO[${POSICION}]}"
+    fi
+}
+
+########################################################################################
+# MODULE 4 - DEPLOY MENU
+########################################################################################
+
+#========================================================
+#   Function: reemplazoParametro
+#--------------------------------------------------------
+#   Replace text in configuration file
+#========================================================
+function reemplazaParametro() {
+	
+	if [ -w "${CNF_FILE}" ] ; then
+	
+       # 1.- NO HAY CAMBIOS => FIN
+	   #-----------------------------------	
+        if [ -n "${OLD_VALUE}" ] && [[ "${OLD_VALUE}" == "${VALOR}" ]]; then
+            cp -f "${CNF_FILE}" "${OUT_TMP}"
+            OUT="$?"
+            return
+        fi
+
+       # 2.- CONSTRUCCIÓN PATRON REEMPLAZO
+	   #-----------------------------------
+	   local SEPARADOR_CAMPO='='
+	   if [ -n "${CNF_SEPARADOR}" ] ; then local SEPARADOR_CAMPO="${CNF_SEPARADOR}" ; fi 	   
+	   
+	   # 1.1.- Input Pattern Types	   
+	   if [ -z "${REEMPLAZA_LINEA}" ] ; then
+	     # CASE 1: <old value> -> <new value>
+	     local OLD="${OLD_VALUE}"   
+	   elif [ -n "${OLD_VALUE}" ] ; then
+	     # CASE 2: variable=<old value> -> variable=<new value>
+		 if [ ! -n "${SIN_COMILLA}" ] ; then 
+	        local OLD="^([[:space:]]*)${VAR}${SEPARADOR_CAMPO}\"${OLD_VALUE}\"\r?\$"
+         else
+		    local OLD="^([[:space:]]*)${VAR}${SEPARADOR_CAMPO}${OLD_VALUE}\r?\$"
+		 fi
+	   else
+	     # CASE 3: variable=.* -> variable=<new value>
+	     local OLD="^([[:space:]]*)${VAR}${SEPARADOR_CAMPO}.*\r?\$"
+	   fi  
+
+	   # 1.2.- Replacement Pattern Types
+       if [ -n "${REEMPLAZA_LINEA}" ] ; then	   
+	      if [ -z "${SIN_COMILLA}" ] ; then 
+		     local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}\"${PREPO}${VALOR}\""
+	      else                                
+		     local VAL_NUEVO="${VAR}${SEPARADOR_CAMPO}${PREPO}${VALOR}" 
+	      fi
+	   else
+		   if [ -z "${SIN_COMILLA}" ] ; then  
+		       local VAL_NUEVO="\"${VALOR}\""
+		   else
+		       local VAL_NUEVO="${VALOR}"
+		   fi
+       fi
+	   
+	   # CASE 1: Add Identation on Line Replacements
+	   if [ -n "${REEMPLAZA_LINEA}" ] ; then 
+	      local REPLN="\1${VAL_NUEVO}"
+	   # CASE 2: No Identation
+	   else 
+	      local REPLN="${VAL_NUEVO}"  
+	   fi
+	 
+       # 3.- EJECUCION PATRON REEMPLAZO
+	   #-----------------------------------	 
+	   if [[ "${REPLN}" != "${OLD}" ]]; then
+         echo "===> sed -E \"s|${OLD}|${REPLN}|\" \"${CNF_FILE}\" > \"${OUT_TMP}\""
+	   	 sed -E "s|${OLD}|$REPLN|" "${CNF_FILE}" > "${OUT_TMP}"
+		 REPLACEMENT_APPLIED="Yes"
+	   fi	   
+	else
+	   error "-w" "[genesisCli.reemplazaParametro]-[${CNF_FILE}]"
+	fi
+    OUT="$?"
+}
+
+#========================================================
+#   Function: deployMenu
+#--------------------------------------------------------
+#   Deploy menu according to properties in data model
+#========================================================
+function deployMenu() {
+
+    #------------------
+	# ENTORNO LOCAL
+	#------------------
+	local POSICION="0"
+    local VAR VALOR PREPO
+
+	#------------------
+	# ACCIONES
+	#------------------
+
+	# 1.- Display Text of the Menu
+	#--------------------
+	if [ -n "${MENU_TEXT}" ] ; then
+	   echo -e "${MENU_TEXT}"
+	   unset MENU_TEXT
+	fi
+
+	# 2.- Capture sequence of parameters
+	#--------------------
+	while [ "${POSICION}" -lt "${#PARAMETRO[@]}" ] ; do
+
+		# 2.1.- Capture Variable and Value
+		#--------------------------------
+		VAR="${PARAMETRO[${POSICION}]}"
+		VALOR="${!VAR}"
+
+		# 2.2.- Request and Capture Value
+		#------------------------------------
+		if [ ! -n "${VALOR}" ] && [ -n "${SOLICITA_PARAMETRO[${POSICION}]}" ] ; then
+
+			# 2.2.1.- Capture Parameter
+			echo ""
+			echo -e "${SOLICITA_PARAMETRO[${POSICION}]}"
+			capturaValor "${POSICION}"
+
+			# 2.2.2.- Print resulting value
+			echo -e " Resulting Option: [${VALOR}]"
+
+            # 2.2.3.- Break Menu Display 
+			if [ -n "${MENU_BREAK_TEXT}" ] ; then
+			   if [ "${MENU_BREAK_TEXT}" == "${POSICION}" ] ; then unset RUTA_OPCIONES ; fi
+			fi
+		fi
+		
+		# 2.3.- Value Treatment
+		#-----------------------------
+		PREPO=""
+
+		# 2.3.1.- CNF for text Replacement
+		if [ -n "$VALOR" ] && [ -n "${CNF_REEMPLAZO[$POSICION]}" ] ; then
+
+			PREPO="${PREPOSICION[${POSICION}]}"
+            if [ -n "${CNF_REEMPLAZO[${POSICION}]}" ] ; then
+
+			     #   2.3.1.1.- Set Replacement Environment
+				 local CNF_FILE="$(echo ${CNF_REEMPLAZO[${POSICION}]} | tr -d ' ')"
+			     if [ -n "${CNF_OLD_VALUE[${POSICION}]}"    ] ; then local OLD_VALUE="${CNF_OLD_VALUE[${POSICION}]}" ; fi
+				 if [ -n "${CNF_REEMPLAZA_LINEA[${POSICION}]}" ] ; then local REEMPLAZA_LINEA="${CNF_REEMPLAZA_LINEA[${POSICION}]}" ; fi
+				 if [ -n "${CNF_REEMPLAZA_LINEA[${POSICION}]}" ] ; then  local REEMPLAZA_LINEA="${CNF_REEMPLAZA_LINEA[${POSICION}]}" ; fi
+                 if [ -n "${CNF_SEPARADOR_CAMPO[${POSICION}]}" ] ; then  local CNF_SEPARADOR="${CNF_SEPARADOR_CAMPO[${POSICION}]}" ; fi
+                 if [ -n "${CNF_SIN_COMILLA[${POSICION}]}" ] ; then  local SIN_COMILLA="${CNF_SIN_COMILLA[${POSICION}]}" ; fi				 
+
+			     #   2.3.1.2.- Execute CNF Replacement to TMP file			 
+			     reemplazaParametro 
+				 
+			     #   2.3.1.3.- Restore TMP file with right permissions 	
+                 if [ "${OUT}" -eq "${OK}" ] && [ -n "${REPLACEMENT_APPLIED}" ] ; then
+				    local PERMISSIONS=$(stat -c "%a %n" ${CNF_FILE} | awk '{print $1;}')
+			        chmod "$PERMISSIONS" "${OUT_TMP}"
+		            mv "${OUT_TMP}" "${CNF_FILE}"
+				 fi
+				 unset CNF_FILE CNF_SEPARADOR OLD_VALUE REEMPLAZA_LINEA SIN_COMILLA
+				 unset REPLACEMENT_APPLIED PERMISSIONS 
+            fi
+		fi 
+
+		# 2.3.2.- Capture List Value
+		if [ -n "$VALOR" ] ; then
+            echo "${VAR}='${VALOR}'" > "${OUT_TMP}"
+            . "${OUT_TMP}"
+		fi
+
+		# 2.4.- Loop index update
+		#----------------------------
+		POSICION=$(expr "${POSICION}" +  1)
+	done
+
+
+	# 3.- Restore loop Environment
+	#--------------------
+    OUT="$?"
+	unset VALOR VAL PREPO POSICION 
+}
+
+########################################################################################
+# MODULE 5 - ACTIONS HELPERS
+########################################################################################
+
+#========================================================
+#   Function: replacePattern
+#--------------------------------------------------------
+#   Replace pattern in a text file
+#========================================================
+function replacePattern() {
+
+   #---------------------
+   # LOCAL ENVIRONMENT
+   #---------------------
+   local DEST_FILE="$1"
+   local REPLACE_PATTERN="$2"
+   local DETECTION_PATTERN="$3"
+
+   #---------------------
+   # ACTIONS
+   #---------------------
+   if [ -w "${DEST_FILE}" ] ; then
+      if [ -n "${REPLACE_PATTERN}" ] ; then
+         if [ -n "${DETECTION_PATTERN}" ] ; then
+           echo "-> Replacing pattern: sed -i s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| ${DEST_FILE}"
+           sed -i "s|^${DETECTION_PATTERN}.*|${REPLACE_PATTERN}| " "${DEST_FILE}"
+         fi
+      fi
+   else
+      error -w "${DEST_FILE}"
+   fi
+}
+
+#========================================================
+#   Function: vaultPass
+#--------------------------------------------------------
+#  -Create Vault File with encripted password
+#========================================================
+function vaultPass() {
+
+   #---------------------
+   # LOCAL ENVIRONMENT
+   #---------------------
+   local TMP_PATH="$1"
+   local PASSWORD
+   if [ ! -n "${TMP_PATH}" ] ; then local TMP_PATH="/tmp/" ; fi
+
+   #---------------------
+   # ACTIONS
+   #---------------------
+
+   # 1.- Removing Old Temp File
+   #----------------
+   if [ -w "${TMP_FILE}" ]  ; then
+        echo "Removing Temporal Files... rm -f ${TMP_FILE}"
+        rm -f "${TMP_FILE}" 2> /dev/null
+        OUT="$?"
+   fi
+
+   # 2.- Create New Temp File
+   #----------------
+   if [ -w "${TMP_PATH}" ]  ; then
+
+	  # 2.1.- Create Temp File with password encrypted
+      if [ -x "/bin/mktemp" ] ||  [ -x "/sbin/mktemp" ] ; then
+		 TMP_FILE=$(mktemp ${TMP_PATH}ansible.xsVtj.XXXX)
+      else
+         error "-x" "/bin/mktemp || /sbin/mktemp"
+      fi		 
+	  	 
+	  # 2.2.- Create Encrypted Password	 
+	  if [ -x "/bin/python" ] ||  [ -x "/sbin/python" ] ; then
+         PASSWORD=$(python - <<END
+import hashlib, base64, hmac
+hash_code= hmac.HMAC(b"", b'${VAULT}', hashlib.sha512).digest()
+base64_bytes = base64.b64encode(hash_code)
+base64_string = base64_bytes.decode("ascii")
+print(base64_string)
+END
+)
+      elif [ -x "/bin/python3" ] ||  [ -x "/sbin/python3" ] ; then
+         PASSWORD=$(python3 - <<END
+import hashlib, base64, hmac
+hash_code= hmac.HMAC(b"", b'${VAULT}', hashlib.sha512).digest()
+base64_bytes = base64.b64encode(hash_code)
+base64_string = base64_bytes.decode("ascii")
+print(base64_string)
+END
+)		 
+	  else
+		  error "-x" "/bin/python3 || /sbin/python3 || /bin/python || /sbin/python"
+	  fi
+	  
+      # 2.3.- Dump Encrypted Password in Temp File
+	  if [ -n "${PASSWORD}" ] ; then
+         if [ -w "${TMP_FILE}" ] ; then 	  
+           echo "${PASSWORD}" > "${TMP_FILE}"
+           OUT="$?"
+		 else
+		   error "-w" "${TMP_FILE}"
+		 fi 
+	  fi
+
+   else
+     error "-w" "${TMP_PATH}"
+   fi
+
+   # 3.- Clean Local Environment
+   #----------------
+   unset PASSWORD TMP_PATH
+}
+
+#========================================================
+#   Function: buildCommand
+#--------------------------------------------------------
+#  -Build Playbook Options
+#========================================================
+function buildCommand() {
+
+        # 0.- Defaults
+        #----------------------
+        if [ -n "${TARGET}"      ] ; then local PTARGET="localhost,${TARGET}"         ; fi
+
+        # 1.- Build Playbook Options
+        #----------------------
+        OPTIONS=''
+		if [ -n "${DEBUG_ANSIBLE_FLAGS}" ] ; then OPTIONS="${DEBUG_ANSIBLE_FLAGS} "  ; fi
+        if [ -n "${INVENTORY}"      ] ; then OPTIONS="${OPTIONS} -i ${INVENTORY}"    ; fi
+		if [ -n "${ADHOC_MODULE}"   ] ; then OPTIONS="${OPTIONS} -m ${ADHOC_MODULE}" ; fi
+		if [ -n "${ADHOC_CALL}"     ] ; then OPTIONS="${OPTIONS} -a ${ADHOC_CALL}"   ; fi
+		if [ -n "${ADHOC_LISTHOSTS}" ] ; then OPTIONS="${OPTIONS} --list-hosts"      ; fi
+        if [ -n "${PTARGET}"        ] ; then OPTIONS="${OPTIONS} -l ${PTARGET}"      ; fi
+		if [ -n "${FLUSH_CACHE}"    ] ; then OPTIONS="${OPTIONS} --flush-cache"      ; fi
+        if [ -n "${EXTRA_VARS}"     ] ; then
+		   local EXTRA_VARS_ARRAY=( $(echo "${EXTRA_VARS}" | sed 's/#/\n/g') )
+		   local EXTRA_VARS_ANSIBLE="$(printf " -e %s" "${EXTRA_VARS_ARRAY[@]}")"
+		   OPTIONS="${OPTIONS} ${EXTRA_VARS_ANSIBLE}"  
+		fi	
+        if [ -n "${TAGS}"           ] ; then OPTIONS="${OPTIONS} --tags ${TAGS}"  ; fi
+        if [ -n "${VAULT}"          ] ; then
+             vaultPass "/tmp/"
+             OPTIONS="${OPTIONS} --vault-password-file ${TMP_FILE}"
+        fi
+		
+        OUT="$?"
+		
+        # 3.- Logging
+        #----------------------
+        if [ ! "${LOG}" == "/dev/null" ] ; then
+           echo "........ INVENTORY=[${INVENTORY}]"
+           echo "........... TARGET=[${PTARGET}]"
+           echo "............. TAGS=[${TAGS}]"		   
+           echo "............ VAULT=[${VAULT}]"
+           echo "....... EXTRA_VARS=[${EXTRA_VARS}]"
+           echo "..... ADHOC_MODULE=[${ADHOC_MODULE}]"
+           echo "....... ADHOC_CALL=[${ADHOC_CALL}]"
+        fi
+}
+
+#===================================================
+#   Function: shootPlaybook
+#---------------------------------------------------
+#  Private Function
+#
+#  Shoot Playbook not depending on enviromental parameters
+#===================================================
+function shootPlaybook() {
+   if [ -r "${PLAYBOOK}" ] ; then
+   
+      if [ -x /opt/stack/bifrost/bin/ansible-playbook ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+            echo "[${TIMESTAMP}] : nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > ${LOG}.nohup &"
+            nohup /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  > "${LOG}.nohup" 2>&1 &
+			unset PLAYBOOK 
+          else
+            echo "[${TIMESTAMP}] : /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+            /opt/stack/bifrost/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} | tee  "${LOG}.human"
+			unset PLAYBOOK
+          fi   
+       elif [ -x /usr/bin/ansible-playbook ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} &"
+             nohup /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
+	         unset PLAYBOOK
+          else
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+             /usr/bin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
+			 unset PLAYBOOK 
+          fi
+       elif [ -x /usr/sbin/ansible-playbook ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} &"
+             nohup /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 & 
+			 unset PLAYBOOK
+          else
+             echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+             /usr/sbin/ansible-playbook ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
+			 unset PLAYBOOK
+          fi
+		  			
+       elif [ -x /usr/bin/ansible-playbook-3 ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} &"
+             nohup /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
+			 unset PLAYBOOK
+          else
+             echo "[${TIMESTAMP}] : /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+             /usr/bin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
+			 unset PLAYBOOK
+          fi
+	   
+       elif [ -x /usr/sbin/ansible-playbook-3 ] ; then
+          if [ -n "${RUN_BACKGROUND}" ] ; then
+            echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} &"
+            nohup /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK} > "${LOG}.nohup" 2>&1 &
+			unset PLAYBOOK 
+          else
+            echo "[${TIMESTAMP}] : /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  ${LOG}.human"
+            /usr/sbin/ansible-playbook-3 ${OPTIONS} ${PLAYBOOK}  | tee  "${LOG}.human"
+			unset PLAYBOOK
+          fi
+       else
+          echo "ANSIBLE INSTALLATION NOT FOUND: please try to REFRESH GENESIS build installation (option 1)"
+          error "-x" "ansible-playbook/ansible-playbook-3"
+       fi
+       OUT="$?"
+	   
+   else
+     echo -e "${COLOR[$YELLOW]} [WARN] - GENESIS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH Genesis installation (option 1)"
+     error "-r" "${PLAYBOOK}"
+   fi
+   
+   unset OPTIONS PLAYBOOK
+}
+
+#===================================================
+#   Function: detectBackgroundExecution
+#---------------------------------------------------
+#  Private Function
+#
+#  Detect Background execution
+#===================================================
+detectBackgroundExecution() {
+   local INPUT=$( echo "${RUN_BACKGROUND}" | tr '[:upper:]' '[:lower:]' )
+   case "${INPUT}" in
+       "s"|"si"|"y"|"yes" ) echo '---> Run Playbook in Background'
+	   ;;
+	  *) unset RUN_BACKGROUND 
+	    ;;
+   esac
+}
+
+#===================================================
+#   Function: setupCommand
+#---------------------------------------------------
+#  Private Function
+#
+#  Detect Background execution
+#===================================================
+function setupCommand() {
+   local TIMESTAMP=$(date -R)
+   local MUTE="${1}"
+   detectBackgroundExecution
+   if [ -n "${GENESIS_PROJECT_ANSIBLE_CFG}" ] ; then
+      if [ ! -n "${MUTE}" ] ; then echo  "[$TIMESTAMP] -> export ANSIBLE_CONFIG=${GENESIS_PROJECT_ANSIBLE_CFG}"  ; fi
+      export ANSIBLE_CONFIG="${GENESIS_PROJECT_ANSIBLE_CFG}"
+   fi
+   
+   if [ -n "${GENESIS_VIRTUAL_ENVIRONMENT}" ] ; then
+       if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> source ${GENESIS_VIRTUAL_ENVIRONMENT}"
+       source "${GENESIS_VIRTUAL_ENVIRONMENT}"  ; fi
+       if [ ! -n "${MUTE}" ] ; then echo "-> echo source ${GENESIS_VIRTUAL_ENVIRONMENT} > $HOME/env.sh"  ; fi
+       if [ ! -n "${MUTE}" ] ; then echo "source ${GENESIS_VIRTUAL_ENVIRONMENT}" > "$HOME/env.sh"  ; fi
+   fi
+   
+   if [ -n "${IRONIC_CLOUD}" ] ; then
+       if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> export OS_CLOUD=${IRONIC_CLOUD}"  ; fi
+       export OS_CLOUD="${IRONIC_CLOUD}"
+       if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> echo export OS_CLOUD=${IRONIC_CLOUD} >> $HOME/env.sh"  ; fi
+       if [ ! -n "${MUTE}" ] ; then echo "export OS_CLOUD=${IRONIC_CLOUD}" >> "$HOME/env.sh"  ; fi
+   fi 
+   
+   if [ ! -n "${MUTE}" ] ; then echo "[$TIMESTAMP] -> export  BIFROST_INVENTORY_SOURCE=${GENESIS_BIFROST_INVENTORY_SOURCE}"  ; fi
+   export BIFROST_INVENTORY_SOURCE="${GENESIS_BIFROST_INVENTORY_SOURCE}" 
+}
+
+#===================================================
+#   Function: shootAdhoc
+#---------------------------------------------------
+#  Private Function
+#
+#  Shoot AdHoc ansible command
+#===================================================
+function shootAdhoc() {
+
+   local MUTE="${1}"
+   export ANSIBLE_FORCE_COLOR=false
+   export ANSIBLE_NOCOLOR=1
+   
+   # 0.- Trace Entry
+   if [ ! -n "${ATARGET}" ] ; then  local ATARGET="all" ; fi
+   if [ ! -n "${MUTE}"    ] ; then 
+      echo "[${TIMESTAMP}] shootAdHoc:  ansible ${ATARGET} ${OPTIONS}"
+   fi
+   
+   # 1.- Shoot Ad-Hoc Command
+   if   [ -x /opt/stack/bifrost/bin/ansible ] ; then
+        /opt/stack/bifrost/bin/ansible ${ATARGET} ${OPTIONS} 
+   elif [ -x /usr/bin/ansible    ] ; then
+        /usr/bin/ansible ${ATARGET} ${OPTIONS} 
+   elif [ -x /usr/sbin/ansible   ] ; then
+        /usr/sbin/ansible ${ATARGET} ${OPTIONS} 		 
+   elif [ -x /usr/bin/ansible-3  ] ; then
+        /usr/bin/ansible-3 ${ATARGET} ${OPTIONS} 
+   elif [ -x /usr/sbin/ansible-3 ] ; then
+       /usr/sbin/ansible-3 ${ATARGET} ${OPTIONS} 
+   else
+     echo -e "${COLOR[$YELLOW]} [WARN] - GENESIS INSTALLATION FAILURE: ${COLOR[$NC]} please try to REFRESH Genesis Node (option 1)"
+     error "-x" "ansible ${ATARGET} ${OPTIONS}"
+   fi	
+   
+   unset OPTIONS 
+   unset ANSIBLE_FORCE_COLOR 
+   unset ANSIBLE_NOCOLOR
+}
+
+#===================================================
+#   Function: shootCommand
+#---------------------------------------------------
+#  Private Function
+#
+#  Shoot Playbook not depending on enviromental parameters
+#===================================================
+function shootCommand() {
+
+   #--------------------
+   #  LOCAL ENVIRONMENT
+   #--------------------
+   local LOG="${1}"    
+   local LOG_PATH="${LOG%/*}"
+   local LOG_NAME="${LOG##*/}"
+   local TIMESTAMP=$(date -R)
+
+   #--------------------
+   #  ACTIONS
+   #--------------------
+
+   # 0.- Trace values
+   if [[ ! "${LOG}" == "/dev/null" ]] ; then   
+      echo "......... PLAYBOOK=[${PLAYBOOK}]"
+      echo ".......... OPTIONS=[${OPTIONS}]"
+      echo ".............. LOG=[${LOG}]"
+   fi
+   
+   # 1.- Ansible Logging Options
+   export ANSIBLE_LOG_PATH
+   export ANSIBLE_ACTION_WARNINGS ANSIBLE_COMMAND_WARNINGS ANSIBLE_DEPRECATION_WARNINGS ANSIBLE_DEVEL_WARNING ANSIBLE_LOCALHOST_WARNING ANSIBLE_SYSTEM_WARNINGS
+   if [ -w "${LOG_PATH}" ] ; then export ANSIBLE_LOG_PATH="${LOG}"  ; fi
+   if [ -n "${DISABLE_WARNS}" ] ; then
+      export ANSIBLE_ACTION_WARNINGS=false
+      export ANSIBLE_COMMAND_WARNINGS=false
+      export ANSIBLE_DEPRECATION_WARNINGS=false
+      export ANSIBLE_DEVEL_WARNING=false
+      export ANSIBLE_LOCALHOST_WARNING=false
+      export ANSIBLE_SYSTEM_WARNINGS=false
+   fi
+
+   # 2.- Shoot Playbook
+   if [ -n "${PLAYBOOK}" ] ; then
+      shootPlaybook "${PLAYBOOK}"
+      
+   elif  [ -n "${ADHOC_MODULE}" ] || [ -n "${ADHOC_LISTHOSTS}" ] ; then
+      shootAdhoc "quiet"
+   fi
+   
+}
+
+#========================================================
+#   Function: runPlaybook
+#--------------------------------------------------------
+#  -Run diferent playbooks with the options captured
+#========================================================
+function runPlaybook() {
+   local LOG="${1}"
+   if [ ! -n "${LOG}" ] ; then local LOG="${HOME}/nolog.log" ; fi     
+   buildCommand
+   setupCommand
+   shootCommand "${LOG}"
+   unset INVENTORY PTARGET SLOT VAULT EXTRA_VARS ADHOC_MODULE ADHOC_CALL
+ 
+}
+
+#========================================================
+#   Function: runAdHoc
+#--------------------------------------------------------
+#  -Run diferent playbooks with the options captured
+#========================================================
+function runAdHoc() {
+   
+   local LOG="${1}"
+   
+   if [ ! -n "${LOG}" ] ; then local LOG="/dev/null" ; fi  
+   buildCommand
+   setupCommand "quiet"
+   shootCommand "${LOG}"
+   
+   unset INVENTORY ATARGET SLOT VAULT EXTRA_VARS ADHOC_MODULE ADHOC_CALL
+}
+
+########################################################################################
+# MODULE 6 - MENU ACTIONS
+########################################################################################
+
+#========================================================
+#   Function: ansibleListHosts
+#--------------------------------------------------------
+#  -Capture List of Inventory Hosts via adHoc Command
+#========================================================
+function ansibleListHosts() {
+
+   if [ -r "${INVENTORY_SOURCE_FILE}" ] ; then
+      local TMP_ADHOC="/tmp/adhoc"
+      local DEBUG_ANSIBLE_FLAGS=''
+      local INVENTORY="${INVENTORY_SOURCE_FILE}"
+      local ADHOC_LISTHOSTS="--list-host"
+      local LIST_HOSTS_RAW="$(runAdHoc 2> /dev/null)"
+      echo "${LIST_HOSTS_RAW}" > "${TMP_ADHOC}"
+      LIST_HOSTS=$(awk 'NR>1 {printf "%s ", $1}' ${TMP_ADHOC})
+      rm -f "${TMP_ADHOC}"
+   else
+      echo -e "${COLOR[$YELLOW]} [WARN] - [genesisCli.ansibleListHosts] - ANSIBLE LIST OF HOSTS: ${COLOR[$NC]}"
+      error "-r" "[${INVENTORY_SOURCE_FILE}]"
+   fi	
+}
+
+#========================================================
+#   Function: ansibleInventoryUserCredentials
+#--------------------------------------------------------
+#  -Capture Credentials of a Host  from Inventory via adHoc Command
+#========================================================
+function ansibleInventoryUserCredentials() {
+
+   if [ -r "${INVENTORY_SOURCE_FILE}" ] ; then
+   
+      # 1.- AdHoc Call Properties
+      local TMP_ADHOC="/tmp/${ATARGET}.credentials"
+      local DEBUG_ANSIBLE_FLAGS=''
+      local ADHOC_MODULE="debug"
+      local INVENTORY="${INVENTORY_SOURCE_FILE}"
+	  
+      # 2.- Capture User Credentials   
+      local USER_CREDENTIAL_VARS="ansible_host ansible_user ansible_become_pass" 
+      echo '' > "${TMP_ADHOC}"
+      for ANSIBLE_VAR in ${USER_CREDENTIAL_VARS} ; do
+        local ADHOC_CALL="var=${ANSIBLE_VAR}"
+        local LIST_HOSTS_RAW="$(runAdHoc 2> /dev/null)"
+        echo "${LIST_HOSTS_RAW}" | grep "${ANSIBLE_VAR}" | tr ':' '=' | tr -d '" ' >> "${TMP_ADHOC}"
+      done
+   else
+      echo -e "${COLOR[$YELLOW]} [WARN] - [genesisCli.ansibleInventoryUserCredentials] - ANSIBLE USER CREDENTIALS OF HOST: ${COLOR[$NC]}"
+      error "-r" "[${INVENTORY_SOURCE_FILE}]"
+   fi	
+}
+
+#========================================================
+#   Function: inventoryHostCredentials
+#--------------------------------------------------------
+#  - Upload User Credentials of Inventory File
+#========================================================
+function inventoryHostCredentials() {
+
+   if [ -r "${INVENTORY_SOURCE_FILE}" ] ; then
+ 
+      # => 1.- Target Hosts
+      ansibleListHosts
+      BAREMENTAL_LIST_OF_HOSTS=( ${LIST_HOSTS} )
+      unset LIST_HOSTS NODE
+      
+      # => 2.- Target Credential files
+	  for NODE in ${BAREMENTAL_LIST_OF_HOSTS[@]} ; do
+         local ATARGET="${NODE}"
+         ansibleInventoryUserCredentials
+	  done
+	  unset NODE
+
+   else
+      echo -e "${COLOR[$YELLOW]} [WARN] - [genesisCli.inventoryHostCredentials] - ANSIBLE INVENTORY CREDENTIALS DETECTION: ${COLOR[$NC]}"
+      error "-r" "[${INVENTORY_SOURCE_FILE}]"
+   fi	
+}  
+
+#========================================================
+#   Function: baremetalTrustRelationships
+#--------------------------------------------------------
+#  - Upload User Credentials of Inventory File
+#========================================================
+function baremetalTrustRelationships() {
+   local INVENTORY_SOURCE_FILE="${GENESIS_ANSIBLE_INVENTORY_SOURCE}"
+   inventoryHostCredentials
+   for NODE in ${BAREMENTAL_LIST_OF_HOSTS[@]} ; do
+        source "/tmp/${NODE}.credentials"
+		local INVENTORY_LIST=( "${ansible_host}" )
+		local BAREMETAL_ROOT_PASSWORD="${ansible_become_pass:-root}"
+        trust_relationships "${ansible_user:-root}"
+
+		echo "-----> rm -f /tmp/${NODE}.credentials"
+		rm -f "/tmp/${NODE}.credentials"
+   done
+   unset NODE
+}
+
+#========================================================
+#   Function: underConstruction
+#--------------------------------------------------------
+#   Warning Message: Under Construction 
+#========================================================
+function underConstruction() {
+   
+   echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   echo -e "${COLOR[$ORANGE]}  UNDER CONSTRUCTION ${COLOR[$NC]}"
+   echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   echo -e "${COLOR[$ORANGE]}  ---> Options not implemented yet are marked with grey color${COLOR[$NC]}"
+   echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+}
+
+#========================================================
+#   Function: printBackgroundMessageExecution
+#--------------------------------------------------------
+#   Warning Message: Under Construction 
+#========================================================
+function printBackgroundMessageExecution() {
+   if [ -n "${RUN_BACKGROUND}" ] ; then
+      echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+      echo -e "${COLOR[$ORANGE]}  BACKGROUND ANSIBLE EXECUTION ${COLOR[$NC]}"
+      echo -e "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+      echo -e  "  ---> Activity Details: ${COLOR[$NC]}"
+      echo -e  "      ...Human Readable Log: "
+      echo -e  "           ${COLOR[$ORANGE]} tail -f ${LOG_FILE}.nohup ${COLOR[$NC]}"
+      echo -e  "           ${COLOR[$ORANGE]} less -R ${LOG_FILE}.nohup ${COLOR[$NC]}"
+      echo -e  "      ....Machine Ready Log: ${COLOR[$ORANGE]}"
+      echo -e  "           ${COLOR[$ORANGE]} tail -f ${LOG_FILE} ${COLOR[$NC]}"
+      echo -e  "           ${COLOR[$ORANGE]} vi ${LOG_FILE} ${COLOR[$NC]}"
+      echo -e  "${COLOR[$ORANGE]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+   fi
+}     
+
+#========================================================
+#   Function: printEmulationInstructions
+#--------------------------------------------------------
+#   Warning Message: Under Construction 
+#========================================================
+function printEmulationInstructions() {
+    echo -e "${COLOR[$SEA]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+    echo -e "${COLOR[$SEA]}  PREPARING EMULATED ENVIRONMENT ${COLOR[$NC]}"
+    echo -e "${COLOR[$SEA]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+    echo -e  "  --> STEP 1: Install Ubuntu Noble 24.04 from ISO on Genesis Virtual Machine just created"
+    echo -e  "      ... 1.1.- Download: ${COLOR[$SEA]}https://releases.ubuntu.com/noble/ubuntu-24.04.5-live-server-amd64.iso${COLOR[$NC]}"  
+    echo -e  "      ... 1.2.- Upload ISO to Proxmox"
+    echo -e  "      ... 1.3.- In Genesis VM -> Hardware -> CDROM -> Choose ISO"
+    echo -e  "      ... 1.4.- Wait until VM boot from CDROM"
+    echo -e  "      ... 1.5.- From Ubuntu Installer, all default options, but do not forget to select openSSH Server Installation"
+    echo -e  "  --> STEP 2: Clone the Project in Genesis"
+    echo -e  "      ... 2.1.- Open SSH Terminal to Connect Genesis VM, you can use MobaXterm or similar"
+    echo -e  "      ... 2.2.- Clone from GIT:         ${COLOR[$SEA]}git clone https://github.com/CesarTest/genesis.git ${COLOR[$NC]}"
+    echo -e  "      ... 2.3.- Move to Working Folder: ${COLOR[$SEA]}cd genesis${COLOR[$NC]}"
+    echo -e  "  --> STEP 3: Proceed with a Full Genesis Lifecycle"
+    echo -e  "      ... 3.1.- Open Menu User Interface: ${COLOR[$SEA]}./genesisCli${COLOR[$NC]}"
+    echo -e  "      ... 3.2.- Choose OPTION 8 - Certification Menu"
+    echo -e  "      ... 3.3.- Choose OPTION 2 - Deploy Tests"
+    echo -e  "      ... 3.4.- Defaults Values usually OK, but Full lifecycle requires select three options: "
+    echo -e  "      ..................Full Genesis Refresh: ${COLOR[$SEA]}Yes${COLOR[$NC]}"
+    echo -e  "      ..Full Baremetal Virtual Nodes Refresh: ${COLOR[$SEA]}Yes${COLOR[$NC]}"
+    echo -e  "      .............Run Ansible in Background: ${COLOR[$SEA]}Yes${COLOR[$NC]}"
+    echo -e  "${COLOR[$SEA]}------------------------------------------------------------------------------------------------------ ${COLOR[$NC]}"
+}     
+
+
+#========================================================
+#   Function: 0_call
+#--------------------------------------------------------
+#   Basic playbook call without special context
+#========================================================
+function 0_call() {
+	
+   #--------------------
+   #  LOCAL ENVIRONMENT
+   #--------------------	
+    local CALL="${1}"   
+    local PLAYBOOK="${GENESIS_PLAYBOOKS[${CALL}]}"
+    #if [ ! -n "${INVENTORY}" ] ; then local INVENTORY="${genesis_DEFAULT_INVENTORY}" ; fi	
+	local CALL_LOG="${HOME}/${CALL}.log"
+    if [ -n "${LOG_FILE}" ] ; then local CALL_LOG="${LOG_FILE}"   ; fi
+   
+   #--------------------
+   #  ACTIONS
+   #--------------------	
+   # 1.- Trace Entry
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e "    [${IRONIC_BAREMETAL_NODES}] -  ${GENESIS_PLAYBOOKS_HEADER[${CALL}]} - #${PLAYBOOK}#"
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e "${COLOR[$SEA]}----> To run Ironic commands:${COLOR[$NC]}"
+   echo -e "${COLOR[$SEA]}. $HOME/env.sh${COLOR[$NC]}"
+   echo -e "${COLOR[$SEA]}baremetal node list${COLOR[$NC]}"
+   # 2.- Run Playbook
+   runPlaybook "${CALL_LOG}"
+   printBackgroundMessageExecution
+   
+   # 4.- Clean Environments 
+   echo "Removing Temporal Files... rm -f ${TMP_FILE}"
+   rm -f "${TMP_FILE}" 2> /dev/null
+   unset PLAYBOOK TMP_FILE CALL LOG_FILE 
+}	 
+
+#========================================================
+#   Function: 1_refresh
+#--------------------------------------------------------
+#  - Prepare Local Machine
+#  - Bootstrap Ironic Target Machine
+#     - Download OpenStack Components
+#     - Create Local Repository from Internet
+#  - Check Status "G1: Genesis Refresh"
+#========================================================
+function 1_refresh() {
+      
+   #--------------------
+   #  ACTIONS
+   #--------------------
+   # 1.- load Configuration
+   prepareLocalMachine
+   
+   # 2.- Call
+   if [ ! -n "${ONLINE}" ] ; then
+      #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}" 
+      0_call "${REFRESH}"
+	  state_status "${REFRESH}"
+   fi  
+   
+   # 3.- Clean environment
+   unset PXE_DHCP_IP PXE_DHCP_NIC CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
+   echo -e '......................................................................................................'
+   echo -e "   BEWARE !!!! ====> Don't forget DEPLOY (option 2) and SETUP (option 4) GENESIS"
+   echo -e '......................................................................................................'
+}
+
+#========================================================
+#   Function: 2_create
+#--------------------------------------------------------
+#  - Load Baremetal Data Model
+#  - Run installPxe playbook
+#========================================================
+function 2_create() {
+
+   #--------------------
+   #  LOCAL ENVIRONMENT
+   #--------------------
+   local FLUSH_CACHE="yes"
+   #DISABLE_WARNS="Yes"
+   
+   #--------------------
+   #  ACTIONS
+   #--------------------  
+   # 1.- Load Configurations
+   #enableIronicNetworkInterface
+   #addGenesisToHosts
+   
+   # 2.- Call
+   #local INVENTORY="${GENESIS_TARGET_INVENTORY_SOURCE}"
+   0_call "${CREATE}"
+   state_status "${CREATE}"
+   
+   # 3.- Clean Environemnt
+   unset LOG_FILE CNF_REEMPLAZO CNF_SEPARADOR_CAMPO EXTRA_VARS
+   
+   echo -e '......................................................................................................'
+   echo -e "   BEWARE !!!! ====> Don't forget SETUP (option 4) GENESIS"
+   echo -e '......................................................................................................'
+}
+
+#========================================================
+#   Function: 3_init
+#--------------------------------------------------------
+#  - Create OS Image
+#  - Load OS Image to Ironic
+#========================================================
+function 3_init() {
+
+   prepareImageCreation
+   0_call "${INIT}" 
+   state_status "${INIT}"
+   unset LOG_FILE  EXTRA_VARS
+}
+
+#========================================================
+#   Function: 4_setup
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 4_setup() {
+   #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"
+   updateInventory
+   0_call "${SETUP}" 
+   state_status "${SETUP}"
+   unset IRONIC_BAREMETAL_NODES LOG_FILE EXTRA_VARS
+}
+
+#========================================================
+#   Function: 5_deploy
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 5_deploy() {
+   #local INVENTORY="${IRONIC_BIFROST_DYNAMIC_INVENTORY}"      
+   0_call "${DEPLOY}" 
+   state_status "${DEPLOY}"
+   unset TARGET LOG_FILE EXTRA_VARS
+}
+
+#========================================================
+#   Function: 6_ansible
+#--------------------------------------------------------
+#  - Prepare Ansible SSH Relationships
+#========================================================
+function 6_ansible() {
+   echo -e '------------------------------------------------------------------------------------------------------'
+   echo -e "   [${IRONIC_BAREMETAL_NODES}] - [BAREMETAL] - ANSIBLE     : Ansible Initial Setup "
+   echo -e '------------------------------------------------------------------------------------------------------'
+   if [ -n "${LOG_FILE}"    ] ; then local CALL_LOG="${LOG_FILE}" ; fi
+   updateInventory
+   baremetalTrustRelationships
+   state_status "6"
+}
+
+#========================================================
+#   Function: 7_provision
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 7_provision() {
+         
+   0_call "${PROVISION}" 
+   state_status "${PROVISION}"
+   unset TARGET LOG_FILE EXTRA_VARS
+}
+
+#========================================================
+#   Function: 8_test
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 8_test() {
+
+   #--------------------
+   #  LOCAL ENVIRONMENT
+   #--------------------
+   # 1.- Capture Local Environment
+   local TEST_CYCLE="${1:-0}"
+    
+   # 2.- Set Shoot Conditions
+   local REFRESH_INSTALL=no
+   local REFRESH_ENVIRONMENT=no   
+   local GENESIS_REFRESH_NORM=$(echo "${GENESIS_REFRESH}" | tr '[:upper:]' '[:lower:]')
+   case "${GENESIS_REFRESH_NORM}" in
+    y|yes|si|s|true|1)
+        local REFRESH_INSTALL='yes'
+        ;;
+   esac
+
+   local BAREMETAL_REFRESH_NORM=$(echo "${BAREMETAL_REFRESH}" | tr '[:upper:]' '[:lower:]')
+   case "${BAREMETAL_REFRESH_NORM}" in
+    y|yes|si|s|true|1)
+        local REFRESH_ENVIRONMENT='yes'
+        ;;
+    esac
+	
+   # 3.- Prepare Playbook Call
+   EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}" 
+   
+   #--------------------
+   #   ACTIONS
+   #--------------------
+   
+   # 1.- Switch Testing Environment in ansible.cfg 
+   updateInventory
+   
+   # 2.- Refresh Emulation Environment 
+   if [[ "${REFRESH_INSTALL}" == 'yes' ]] ; then prepareLocalMachine ; fi
+   if [[ "${REFRESH_ENVIRONMENT}" == 'yes' ]] ; then
+      BAREMETAL_ROOT_PASSWORD="${genesis_hypervisor_become_pass}"
+      local INVENTORY_LIST=( "${genesis_hypervisor_ip}" )
+	  trust_relationships 'root'
+   fi
+   
+   # 3.- Shoot Tests 
+   0_call "${TEST_CYCLE}" 
+   
+   # 4.- Clean Environment 
+   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH 
+   unset INVENTORY_LIST EMULATION EMULATION_IP 
+}
+
+#========================================================
+#   Function: 18_hypervisor
+#--------------------------------------------------------
+#  - Enroll Nodes to Ironic
+#========================================================
+function 18_hypervisor() {
+
+   # 1.- Treat Menu Entries  
+   local PLAYBOOK_INDEX="${1:-18}"
+   local EMULATION=$(echo "${HYPERVISOR}" | tr '[:upper:]' '[:lower:]')
+   local EMULATION_IP=$(echo "${genesis_hypervisor_ip}" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+   local BAREMETAL_ROOT_PASSWORD="${genesis_hypervisor_become_pass}"
+   local INVENTORY_LIST=( "${EMULATION_IP}" )
+   
+   # 2.- Actions  
+   case "${EMULATION}" in
+    "proxmox")
+	    EXTRA_VARS="target_hypervisor=proxmox"
+        prepareProxmoxInstaller
+		trust_relationships 'root'
+        if [[ "${PLAYBOOK_INDEX}" == "${E1_PROXMOX_CLEAN}" ]]; then
+           EXTRA_VARS="target_hypervisor=proxmox#airgap_remove=true" 
+		fi
+		0_call "${PLAYBOOK_INDEX}"
+        ;;
+   esac
+   
+   # 3.- Provide Further Instructions to User
+   if [[ "${PLAYBOOK_INDEX}" -eq "${E1_PROXMOX}" ]] ; then
+      printEmulationInstructions
+   fi
+   
+   # 4.- Clean Environment
+   unset EMULATION EMULATION_IP HYPERVISOR BAREMETAL_ROOT_PASSWORD
+   unset PLAYBOOK_INDEX  
+}
+
+#========================================================
+#   Function: runActions
+#--------------------------------------------------------
+#  Execute Menu actions
+#========================================================
+function runActions() {
+
+    local ACTION="$1" 
+    case "${ACTION}" in
+        1|"${GENESIS_PLAYBOOKS_HEADER[${REFRESH}]}") 1_refresh ;;
+        2|"${GENESIS_PLAYBOOKS_HEADER[${CREATE}]}")  2_create  ;;
+        3|"${GENESIS_PLAYBOOKS_HEADER[${INIT}]}")    3_init    ;;
+        4|"${GENESIS_PLAYBOOKS_HEADER[${SETUP}]}")   4_setup   ;;
+        5|"${GENESIS_PLAYBOOKS_HEADER[${DEPLOY}]}")  5_deploy  ;;
+        6|"${COLOR[$NC]}[BAREMETAL] - ANSIBLE (pre-ready): Ansible Initial Setup${COLOR[$NC]}") 6_ansible ;;		
+        7|"${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}") 7_provision ;;
+        12|"${GENESIS_PLAYBOOKS_HEADER[${T5_DEPLOY}]}")  8_test "${T5_DEPLOY}"  ;;
+        13|"${GENESIS_PLAYBOOKS_HEADER[${T5_ACTIVE}]}")  underConstruction ;;
+        14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")   underConstruction ;;
+        15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")  underConstruction ;;
+        16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")  underConstruction ;;
+        17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}") underConstruction ;;
+        22|"${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}")  underConstruction ;;
+        23|"${GENESIS_PLAYBOOKS_HEADER[${A5_ACTIVE}]}")  underConstruction ;;
+        24|"${GENESIS_PLAYBOOKS_HEADER[${A5_CLEAN}]}")   underConstruction ;;
+        25|"${GENESIS_PLAYBOOKS_HEADER[${A4_ENROLL}]}")  underConstruction ;;
+        26|"${GENESIS_PLAYBOOKS_HEADER[${A4_MANAGE}]}")  underConstruction ;;
+        27|"${GENESIS_PLAYBOOKS_HEADER[${A4_INSPECT}]}") underConstruction ;;
+        33|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX}]}")       local HYPERVISOR='proxmox' ; 18_hypervisor "${E1_PROXMOX}" ;;
+        34|"${GENESIS_PLAYBOOKS_HEADER[${E1_PROXMOX_CLEAN}]}") local HYPERVISOR='proxmox' ; 18_hypervisor "${E1_PROXMOX_CLEAN}" ;;
+    esac
+}
+
+########################################################################################
+# MODULO 7 => MENU SYSTEM
+########################################################################################
+
+#========================================================
+#   Function: initParameters
+#--------------------------------------------------------
+#   Set all parameters to Run Direct Action
+#========================================================
+function initParameters() {
+  
+   local ACTION="$1"
+   
+   # => 1.- Set common default values
+   if [ ! -n "${LOG_FILE}"  ] ; then LOG_FILE="${HOME}/tests.log"     ; fi
+   INVENTORY=$(echo ${INVENTORY} | tr -d ' ' )
+   PROJECT_NAME=$(echo ${PROJECT_NAME} | tr -d ' ' | tr [:lower:] [:upper:] )
+   TARGET=$(echo ${TARGET} | tr -d ' ' )
+   LOG_FILE=$(echo ${LOG_FILE} | tr -d ' ' )
+  
+   # => 2.- Avoid startMenu
+   unset MENU
+}
+
+
+#========================================================
+#   Function: startMenu
+#--------------------------------------------------------
+#   Run the menu system
+#========================================================
+function startMenu() {
+
+    # 0.- Trazado Inicial
+    #--------------------
+    echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}               WELCOME TO GENESIS PROVISIONING SYSTEM !!!!!! ${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}---------------------------------------------------------------------------------${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}  -> New Features Requests: Cesar Delgado (cesar.delgado.gonzalez@alumnos.upm.es) ${COLOR[$NC]}"
+    echo -e "${COLOR[$SILVER]}*********************************************************************************${COLOR[$NC]}"
+
+    # 1.- Menu System
+    #--------------------
+    while [ -n "${MENU}" ] ; do
+
+         # 1.1.- Interactive Menu 
+         defineMenu	 
+         deployMenu "${REEMPLAZA_LINEA_CNF}"
+         echo "................ RETURNING_MENU= [${RETURNING_MENU}]" 
+		 
+         # 1.2.- Actions (menu = 2 loops: display + parameters, it must be avoided runAction twice)
+         if [ -n "${RUN_ACTION}"     ] ; then runActions "${RUN_ACTION}" ; fi
+         if [ -n "${RETURNING_MENU}" ] ; then MENU="${RETURNING_MENU}"   ; fi
+
+         # 1.3.- Clean Loop Environment
+ 		 unset RUN_ACTION RETURNING_MENU CALL_LOG 
+
+    done
+}
+
+########################################################################################
+# MAIN
+########################################################################################
+if [ -w "/dev/null" ] ; then
+
+    # ..... Move to home folder in order to avoid REFRESH issues
+    if [ -w "${HOME}" ] ; then
+         cd "${HOME}"
+    else
+         error -w "${HOME}"
+    fi
+
+    # ..... Load Context + Start Menu System
+    if [ -O "./" ] ; then
+
+		#=========================
+		# ENVIRONMENT
+		#=========================
+		OUT_TMP="/tmp/reemplazo.out"
+		MENU="0"
+
+		#=============================
+		# CAPTURE COMMAND FLAGS
+		#=============================
+		while getopts "hHRCISDAPi:t:a:v:" OPCION ; do
+			case "$OPCION" in
+				h|H)   ayuda ; exit 1 ;;
+				R)   RUN_ACTION="1"  ; unset MENU ;;
+				C)   RUN_ACTION="2"  ; unset MENU ;;
+				I)   RUN_ACTION="3"  ; unset MENU ;;
+				S)   RUN_ACTION="4"  ; unset MENU ;;
+				D)   RUN_ACTION="5"  ; unset MENU ;;
+				A)   RUN_ACTION="6"  ; unset MENU ;;
+				P)   RUN_ACTION="7"  ; unset MENU ;;
+                i)   if [ -n "$OPTARG" ] ; then INVENTORY="$OPTARG"  ; fi ;;
+                t)   if [ -n "$OPTARG" ] ; then TARGET="$OPTARG"     ; fi ;;
+                a)   if [ -n "$OPTARG" ] ; then TAGS="$OPTARG"       ; fi ;;				
+                v)   if [ -n "$OPTARG" ] ; then VAULT="$OPTARG"      ; fi ;;
+				[?]) ayuda ;; # Unknown parameter
+			esac
+		done
+		
+		#=============================
+		# ACTIONS
+		#=============================
+        
+		# 0.- Set Script Environemt 
+        detectOS
+        setEnvironment
+
+        # 1.- Direct Action
+        if [ -n "${RUN_ACTION}"     ] ; then
+            initParameters "${RUN_ACTION}"
+	        state_status "genesis_machine_ready" 2>&1 > "${LOG_FILE}"
+            runActions     "${RUN_ACTION}"    2>&1 >>"${LOG_FILE}"
+        fi
+
+        # 2.- Menu System
+        if [ -n "${MENU}" ] ; then
+		   state_status "genesis_machine_ready"
+		   startMenu 
+		fi
+
+        # 4.- Exit
+		exit "$OUT"
+	else
+		error -noOwner "./"
+        exit "$ERROR"
+	fi
+else
+	error -noWrite "/dev/null"
+    exit "$ERROR"
+fi
+#=======================================================================================================
+#  END GENESISCLI.SH
+#=======================================================================================================

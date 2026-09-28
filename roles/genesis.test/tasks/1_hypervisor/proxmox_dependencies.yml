@@ -1,0 +1,32 @@
+---
+# genesis.test 1_hypervisor/proxmox_dependendcies.yml
+#  - Working Conditions on Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T1 - PROXMOX_DEPENDENCIES -1- Hypervisor: 2) Install Dependencies"
+  block:
+
+    - name: "T1 - PROXMOX_DEPENDENCIES -1- Hypervisor: 2.1) Linux Packages"
+      become: true
+      ansible.builtin.package:
+        name: 
+        - python3 
+        - python3-pip 
+        - python3-venv
+        - python3-pip
+        - python3-setuptools
+        - unzip
+        - git 
+        - jq
+        state: present
+
+    - name: "T1 - PROXMOX_DEPENDENCIES -1- Hypervisor: 2.2) PIP modules"
+      become: true
+      ansible.builtin.pip:
+        name: 
+          - "proxmoxer>=2.3.0"
+          - "requests"
+        state: present
+        extra_args: "--break-system-packages"

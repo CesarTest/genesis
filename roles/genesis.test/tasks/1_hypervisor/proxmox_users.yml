@@ -1,0 +1,69 @@
+---
+# genesis.test 1_hypervisor/proxmox.yml
+#  - Working Conditions on Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T1 - PROXMOX_USERS -2- Hypervisor: 3) Proxmox Testing User Provisioning"
+  vars: 
+    t1_node_add_user_script: "{{ t1_hypervisor_add_user_script[t1_hypervisor] | default('') }}"
+
+  #-----------------------------------------------------------------------
+  # 1.- Create Users
+  #-----------------------------------------------------------------------
+  block:
+    - name: "T1 - PROXMOX_USERS -2- Hypervisor: 3.1) Check if user already exists in Proxmox"
+      become: true
+      ansible.builtin.shell: "{{ t1_node_add_user_script }}"
+      register: t1_proxmox_script_result
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T1 - PROXMOX_USERS -2- Hypervisor: 3.2) Show user provisioning success status"
+      ignore_errors: true
+      ansible.builtin.debug:
+        msg: "{{ debug_success_msg.splitlines() }}"
+      vars:
+        debug_success_msg: |
+          --- SUCCESS: USER PROVISIONING COMPLETED ---
+          The Proxmox initialization script completed successfully.
+          
+          Execution Details:
+          User Account:  {{ ansible_user | default('root') }}
+          Target Node:   {{ t1_hypervisor_node | default('NOT_DEFINED') }}
+          Script Status: {{ t1_proxmox_script_result.stdout_lines | last | default('OK') }}
+      when: 
+        - t1_proxmox_script_result.rc is defined
+        - t1_proxmox_script_result.rc == 0
+      delegate_to: localhost
+
+  #-----------------------------------------------------------------------
+  # 2.- Failed
+  #-----------------------------------------------------------------------
+  rescue:
+
+    - name: "T1 - PROXMOX_USERS -2- Hypervisor: 3.3)  Handle user provisioning failure"
+      ansible.builtin.fail:
+        msg: |
+          --- CRITICAL ERROR: PROXMOX USER PROVISIONING FAILED ---
+          The connection works, but the user creation script failed to execute.
+          
+          Possible Causes:
+          
+          1. SCRIPT IS EMPTY (Hypervisor Not Supported)
+             The node name may not match the key inside 't1_hypervisor_add_user_script'.
+          
+          2. INSUFFICIENT PERMISSIONS (Sudo Missing)
+             The user needs root privileges. Ensure 'become: true' works or 'sudo' is installed.
+          
+          3. PROXMOX CLUSTER LOCKED (Read-Only /etc/pve)
+             The cluster might have lost quorum or 'pve-cluster' service is frozen.
+          
+          4. INCORRECT USER REALM (@pam vs @pve)
+             @pve = Proxmox internal auth (Ideal for API/VM management. No host OS user required).
+             @pam = Linux system auth (Requires local system user via 'useradd' on host OS first).
+          
+          --- Debug Context ---
+          Target Node (Hostname): [{{ t1_hypervisor_node | default('t1_hypervisor_node is NOT DEFINED', true) }}]
+          ................Script: [{{ t1_node_add_user_script | default('t1_node_add_user_script is EMPTY', true) }}]
+      delegate_to: localhost

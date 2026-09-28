@@ -1,0 +1,75 @@
+---
+# genesis.setup 2_manage/4_lifecycle.yml
+#   - Configure Instance Properties
+#      - Map lifecycle data model into Ironic API
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "B4 SETUP - 2.- Manage: 4) Set Node Lifecycle Stages Particulars"
+  delegate_to: localhost
+  when: 
+    - b4_lifecycle_instructions is defined 
+    - b4_lifecycle_instructions is not none 
+    - b4_lifecycle_instructions is not string
+    - b4_lifecycle_instructions is not mapping
+  vars:
+    b4_ironic_base_url:    "http://127.0.0.1" # {{  b4_url_genesis_ip }}"
+    b4_ironic_port:        "{{ b4_url_ironic_port         | default(':6385') }}" 
+    b4_ironic_api_version: "{{ genesis_ironic_api_version | default('1.31')  }}"
+    b4_uuid:               "{{ uuid | default(name) | default(inventory_hostname_short) | default(inventory_hostname) | default('nohost') }}"
+    b4_ironic_api_default_status: [200, 202, 204]
+  block:
+
+    - name: "B4 SETUP - 2.- Manage: 4.1) Set Node Lifecycle Stages Particulars vía URI"
+      ansible.builtin.uri:
+        body_format: json
+        url:         "{{ b4_ironic_url         | default(omit) }}"
+        method:      "{{ b4_ironic_method      | default(omit) }}"
+        body:        "{{ b4_ironic_body        | default(omit) }}"
+        status_code: "{{ b4_ironic_status_code | default(omit) }}"
+        headers:
+          X-OpenStack-Ironic-API-Version: "{{ b4_ironic_api_version | default(omit) }}"  
+      register: b4_pipeline_results
+      vars:
+        b4_ironic_base_path:   "/v1/{{ lifecycle_stage.target  | default('nodes') }}"
+        b4_ironic_node_path:   "{{ b4_ironic_base_path }}/{{ b4_uuid }}"
+        b4_ironic_path:        "{{ lifecycle_stage.target is defined | ternary(b4_ironic_base_path,b4_ironic_node_path,b4_ironic_node_path) }}"
+        b4_ironic_uri:         "{{ b4_ironic_base_url }}{{ b4_ironic_port }}{{ b4_ironic_path }}"
+        b4_ironic_status_code: "{{ lifecycle_stage.status_code | default(b4_ironic_api_default_status) }}"
+        b4_ironic_body:        "{{ lifecycle_stage.body        | default(omit)  }}"
+        b4_ironic_method:      "{{ lifecycle_stage.method      | default('GET') }}"
+        b4_ironic_endpoint:    "{{ lifecycle_stage.path        | default('')    }}"
+        b4_ironic_url:         "{{ b4_ironic_uri }}{{ b4_ironic_endpoint }}"
+      loop: "{{ b4_lifecycle_instructions | default([]) }}"
+      loop_control:
+         loop_var: "lifecycle_stage"
+
+  rescue:
+
+    - name: "B4 SETUP - 2.- Manage: 4.1) Set Node Lifecycle Stages Particulars vía cURL"
+      ansible.builtin.shell: |
+        curl -X "{{ b4_ironic_method }}" \
+          -s -k \
+          -H "Content-Type: application/json" \
+          -H "X-OpenStack-Ironic-API-Version: {{ b4_ironic_api_version }}" \
+          {% if b4_ironic_method in ['POST', 'PUT', 'PATCH'] and b4_ironic_body is defined and b4_ironic_body and '__ansible_omit_place_holder__' not in b4_ironic_body | string %}
+          -d '{{ b4_ironic_body | to_json }}' \
+          {% endif %}
+          "{{ b4_ironic_url }}"
+      register: b4_pipeline_results
+      changed_when: true
+      failed_when: false
+      vars:
+        b4_ironic_base_path:   "/v1/{{ lifecycle_stage.target  | default('nodes') }}"
+        b4_ironic_node_path:   "{{ b4_ironic_base_path }}/{{ b4_uuid }}"
+        b4_ironic_path:        "{{ lifecycle_stage.target is defined | ternary(b4_ironic_base_path,b4_ironic_node_path,b4_ironic_node_path) }}"
+        b4_ironic_uri:         "{{ b4_ironic_base_url }}{{ b4_ironic_port }}{{ b4_ironic_path }}"
+        b4_ironic_status_code: "{{ lifecycle_stage.status_code | default(b4_ironic_api_default_status) }}"
+        b4_ironic_body:        "{{ lifecycle_stage.body        | default(omit)  }}"
+        b4_ironic_method:      "{{ lifecycle_stage.method      | default('GET') }}"
+        b4_ironic_endpoint:    "{{ lifecycle_stage.path        | default('')    }}"
+        b4_ironic_url:         "{{ b4_ironic_uri }}{{ b4_ironic_endpoint }}"
+      loop: "{{ b4_lifecycle_instructions | default([]) }}"
+      loop_control:
+         loop_var: "lifecycle_stage"

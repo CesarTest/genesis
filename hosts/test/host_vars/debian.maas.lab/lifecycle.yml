@@ -1,0 +1,61 @@
+---
+# lifecycle.ymnl
+#
+#   - Lifecycle Stages Definition - Overwrite default values
+#      B4) Genesis SETUP
+#         - B4.1) Enroll  - Out-Band BMC Connectivity Assurance
+#         - B4.2) Manage  - In-Band Connectivity Assurance
+#         - B4.3) Inspect - BMC/IPA Steps for Gathering Hardware Details
+#      B5) Genesis DEPLOY
+#         - B5.4) Clean   - BMC/IPA Steps to wipe and setup physical disks (RAIDs, etc.)
+#         - B5.5) Deploy  - Install Operating System
+#         - B5.6) Active  - Hearbeat + Tenant networks
+#      B6) Genesis PROVISION
+#         - B6.7) Strategy- Apply Integrated Bundles of Software Profiles
+#         - B6.8) Repair  - BMC/IPA Steps to Flash Hardware Firmwares
+#         - B6.9) Delete  - Un-enroll, remove the node
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#-----------------
+# 1.- Enroll - Ensure Out-Band Access to the Node
+#-----------------
+enroll:
+
+   # 1.1.- Out-of-Band BMC Information       
+   uuid: "71c53041-8d71-496a-896e-1069acea4ad6"
+   driver: "{{ baremetal_bmc_driver | default('redfish') }}"
+   node_id: "106"
+
+   # 1.2.- Chassis Information
+   name: "{{ inventory_hostname_short }}"
+   capabilities: 
+     boot_mode: "{{ baremetal_boot_mode | default('uefi') }}"  
+     secure_boot: false
+   properties:
+     cpu_arch: "x86_64"
+     ram: "4096"
+     disk_size: "32"
+     cpus: "4"  
+
+   # 1.3.- Network Devices Description    
+   nics:
+     outband:
+       - mac: "BC:24:11:3F:E9:FF"
+         ipv4: "10.10.41.154/24" 
+     inband:
+       - provision: yes
+         mac: "BC:24:11:3F:D5:FF"
+         ipv4: "{{ ansible_host }}/24"
+
+#-----------------
+# 5.- Deploy Stage
+#-----------------
+deploy:   
+   boot_interface:   "{{ baremetal_boot_interface   | default('ipxe') }}"
+   deploy_interface: "{{ baremetal_deploy_interface | default('ramdisk') }}"
+   os:
+     name: "{{ os_name }}"
+     version: "{{ os_version }}"

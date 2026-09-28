@@ -1,0 +1,145 @@
+{#############################################################################
+#                    ANSIBLE GENERATED AUTOYAST FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.0
+#############################################################################} 
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
+{###############################
+         CAPTURE VALUES 
+ ##############################}
+{%- set blank = " " -%}
+{%- set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%- set amanda_model = j2_profile | default('none') -%}
+
+{%- set preins_candidatos = [
+      j2_node_profiles[amanda_model]['preinstall'] | default(none),
+      j2_system_profiles[amanda_model]['preinstall'] | default(none),
+      j2_os_profiles[amanda_model]['preinstall'] | default(none),
+      j2_input['preinstall'] | default(none)
+    ] 
+-%}
+{%- set system_candidatos = [
+      j2_node_profiles[amanda_model]['system'] | default(none),
+      j2_system_profiles[amanda_model]['system'] | default(none),
+      j2_os_profiles[amanda_model]['system'] | default(none),
+      j2_input['system'] | default(none)
+    ] 
+-%}
+{%- set auth_candidatos = [
+      j2_node_profiles[amanda_model]['auth'] | default(none),
+      j2_system_profiles[amanda_model]['auth'] | default(none),
+      j2_os_profiles[amanda_model]['auth'] | default(none),
+      j2_input['auth'] | default(none)
+    ] 
+-%}
+{%- set user_candidatos = [
+      j2_node_profiles[amanda_model]['user'] | default(none),
+      j2_system_profiles[amanda_model]['user'] | default(none),
+      j2_os_profiles[amanda_model]['user'] | default(none),
+      j2_input['user'] | default(none)
+    ] 
+-%}
+{%- set ssh_candidatos = [
+      j2_node_profiles[amanda_model]['ssh'] | default(none),
+      j2_system_profiles[amanda_model]['ssh'] | default(none),
+      j2_os_profiles[amanda_model]['ssh'] | default(none),
+      j2_input['ssh'] | default(none)
+    ] 
+-%}
+{%- set network_candidatos = [
+      j2_node_profiles[amanda_model]['network'] | default(none),
+      j2_system_profiles[amanda_model]['network'] | default(none),
+      j2_os_profiles[amanda_model]['network'] | default(none),
+      j2_input['network'] | default(none)
+    ] 
+-%}
+{%- set packages_candidatos = [
+      j2_node_profiles[amanda_model]['packages'] | default(none),
+      j2_system_profiles[amanda_model]['packages'] | default(none),
+      j2_os_profiles[amanda_model]['packages'] | default(none),
+      j2_input['packages'] | default(none)
+    ] 
+-%}
+{%- set storage_candidatos = [
+      j2_node_profiles[amanda_model]['storage'] | default(none),
+      j2_system_profiles[amanda_model]['storage'] | default(none),
+      j2_os_profiles[amanda_model]['storage'] | default(none),
+      j2_input['storage'] | default(none)
+    ] 
+-%}
+{%- set postins_candidatos = [
+      j2_node_profiles[amanda_model]['postinstall'] | default(none),
+      j2_system_profiles[amanda_model]['postinstall'] | default(none),
+      j2_os_profiles[amanda_model]['postinstall'] | default(none),
+      j2_input['postinstall'] | default(none)
+    ] 
+-%}
+{%- set logging_candidatos = [
+      j2_node_profiles[amanda_model]['logging'] | default(none),
+      j2_system_profiles[amanda_model]['logging'] | default(none),
+      j2_os_profiles[amanda_model]['logging'] | default(none),
+      j2_input['logging'] | default(none)
+    ] 
+-%}
+{%- set yast_system      = system_candidatos   | select | first | default('') -%}
+{%- set yast_preins      = preins_candidatos   | select | first | default('') -%}
+{%- set yast_user        = user_candidatos     | select | first | default('') -%}
+{%- set yast_ssh         = ssh_candidatos      | select | first | default('') -%}
+{%- set yast_network     = network_candidatos  | select | first | default('') -%}
+{%- set yast_storage     = storage_candidatos  | select | first | default('') -%}  
+{%- set yast_postinstall = postins_candidatos  | select | first | default('') -%}
+{%- set yast_logging     = logging_candidatos  | select | first | default('') -%}
+{#......... 2.- AutoYaST Sections Definition ..... #}
+{%- set yast_sections = [  
+    { "header": "<software>", "end": "</software>", "content": yast_preins },
+    { "header": " ", "content": yast_system, "indent": 2 },
+    { "header": "<users config:type='list'>", "end": "</users>", "content": yast_user },
+    { "header": "<services-manager>", "end": "</services-manager>", "content": yast_ssh },
+    { "header": "<networking>", "end": "</networking>", "content": yast_network },
+    { "header": "<partitioning config:type='list'>", "end": "</partitioning>", "content": yast_storage },
+    { "header": "<report>", "end": "</report>", "content": yast_logging },
+    { "header": "<scripts>", "end": "</scripts>", "content": yast_postinstall, "indent": 0 }
+  ]			  
+-%}
+{###############################
+         RENDERING FILE
+ ##############################}
+<?xml version="1.0"?>
+<!-- ============================================================================== -->
+<!-- AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)          -->
+<!-- Generated dynamically by Genesis Core Engine Mesh                              -->
+<!-- Deployment Context: SuSE Automated OS Provisioning Profile                     -->
+<!-- Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}                           -->
+<!-- ============================================================================== -->
+<!DOCTYPE profile SYSTEM "/usr/share/autoyast/dtd/profile.dtd">
+<profile xmlns="http://suse.com" xmlns:config="http://suse.com">{{ eol -}}
+{%- for section in yast_sections -%}
+  {%- if section.content -%}
+    {%- set id = section.indent | default(4) | int -%}
+    {%- set padding = (' ' * (id - 2)) if id > 2 else '' -%}{{ eol -}}
+{{ padding }}{{ section.header | default('') }}{{ eol -}}
+{{ section.content | indent(id, first=true) }}{{ eol -}}
+{{ padding }}{{ section.end | default('') }}{{ eol }}
+  {%- endif -%}
+{%- endfor -%}
+</profile>
+{###############################
+              END
+ ##############################}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED AUTOYAST FILE 
+#############################################################################}

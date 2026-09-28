@@ -1,0 +1,307 @@
+---
+# genesis.bootstrap defaults
+#   - Adjust Bifrost Variables to Download dependencies 
+#       for Airgap environments
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  GENESIS PATHS (global for update all genesis roles at once)
+######################################################
+# 1.- Repos Paths
+genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+# 2.- Bifrost Role Paths
+genesis_bifrost_role_name: "genesis.bifrost"
+genesis_bifrost_path:      "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles:     "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles | realpath }}/bifrost-ironic-install"
+genesis_bifrost_dest_folder:
+  - "{{ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
+  - "{{http_boot_folder | default('/var/lib/ironic/httpboot') }}"
+  - "{{bifrost_iso_folder | default('/var/lib/ironic/isos') }}"
+genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles }}/bifrost-ironic-install"
+genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+
+# 3.- Repositories
+genesis_default_repos:
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+ 
+genesis_os_definitions:
+  ubuntu:
+    ansible_distribution: "Ubuntu"
+    alias:
+      "26": "plucky"
+      "24": "oracular"
+      "24": "noble"
+      "22": "jammy"
+      "20": "focal"
+
+  debian:
+    ansible_distribution: "Debian"
+    alias:
+      "13": "trixie"
+      "12": "bookworm"
+      "11": "bullseye"
+      "10": "buster"
+
+  suse:
+    ansible_distribution: "openSUSE"
+    alias:
+      "16": "openSUSE_Leap"      
+      "15": "openSUSE"          
+      "12": "SLES"      
+
+  sles:
+    ansible_distribution: "SLES"    
+    alias:
+      "16": "SLES"                
+      "15": "SUSE_SLE"
+      "12": "SLES"
+  
+genesis_os_netinstaller_url:
+   tarball:
+      debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+   iso:
+      debian: "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION].0/[ARCH]/iso-cd/debian-[VERSION].0-[ARCH]-netinst.iso"
+g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
+ 
+# 4.- Bifrost Root Paths
+git_root: "{{ genesis_repo_path | realpath }}/openstack"
+git_url_root: https://opendev.org
+tarballs_base_url: "https://tarballs.opendev.org/openstack/ironic-python-agent"
+oras_upstream_root: "https://github.com/oras-project/oras/releases/download" 
+ 
+ # 5.- Locally Generated Checksums File
+genesis_local_checksum_file:
+  path: "{{ genesis_repo_path | realpath }}/checksum"
+  content: |
+   8ffd0d0fc218eae95c578ec12839fe598d60f96de85fab63d424ad021ed1a62f *fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso
+   360c3b6b4cc8a58807fca8ac6947c8ec578e482af52d2311ae99ef02fe9d8dc5 *fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img 
+   b0389e187ed951727560f517d589f3daa2736dc34dc9aa245b986d72b6f6c3ee *fedora-coreos-44.20260707.3.1-live-kernel.x86_64
+   376a1025e24a9f36b0e5e8a2ee8ca8b2c30d29a06e61f0dfe7edf9a9c76ed77b *fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img
+   3c0ace903c0a78b13a09d5649ffc4409370f6d8dab2a79fea310b20ac20a2ac2 *Leap-16.0-offline-installer-x86_64-Build178.27.install.iso
+
+# 6.- Default OS Names 
+genesis_default_os_image_name:
+  qcow: "partition.qcow"
+  qcow2: "partition.qcow2"
+  img: "partition.img"
+  raw: "wholedisk.raw" 
+  iso:  "netboot.iso"
+
+######################################################
+# G1 BOOTSTRAP PATHS
+###################################################### 
+g1_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default('os') }}"
+g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
+g1_repo_ipa_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['ipa'] | default('dib/files')}}"
+g1_repo_openstack_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['components'] | default('dib/files')}}"
+g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
+g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
+g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
+
+
+######################################################
+# G1 BOOTSTRAP NETWORK DETAILS
+######################################################
+
+#--------------------------------------------------------------------------
+# Genesis NICs Particulars 
+#--------------------------------------------------------------------------
+g1_nics: "{{ genesis_nics | default({}) }}"
+
+# => INTERNET NIC
+g1_nic_internet_mac:    "{{ g1_nics.internet.mac | default('') | lower }}"
+g1_nic_internet_ipv4:   "{{ g1_nics.internet.ip  | default('') }}"
+g1_nic_internet_ip:     "{{ g1_nic_internet_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_internet_prefix: "{{ g1_nic_internet_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_internet_gw:     "{{ g1_nics.internet.gateway | default(g1_nic_internet_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+g1_nic_internet_dns:    "{{ g1_nics.internet.dns     | default('') }}"
+
+# => INBAND NIC
+g1_nic_inband_mac:      "{{ g1_nics.inband.mac | default('') | lower }}"
+g1_nic_inband_ipv4:     "{{ g1_nics.inband.ip  | default('') }}"
+g1_nic_inband_ip:       "{{ g1_nic_inband_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_inband_prefix:   "{{ g1_nic_inband_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_inband_gw:       "{{ g1_nics.inband.gateway | default(g1_nic_inband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+
+# => OUTBAND NIC
+g1_nic_outband_mac:     "{{ g1_nics.outband.mac | default('') | lower }}"
+g1_nic_outband_ipv4:    "{{ g1_nics.outband.ip  | default('') }}"
+g1_nic_outband_ip:      "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_outband_prefix:  "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_outband_gw:      "{{ g1_nics.outband.gateway | default(g1_nic_outband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+
+######################################################
+#  DOWNLOAD OPENSTACK COMPONENTS FROM GIT
+######################################################
+copy_from_local_path: false
+ironicclient_source_install: true
+openstacksdk_source_install: true
+ironicinspector_source_install: true
+ironicinspectorclient_source_install: true
+sushy_source_install: true
+staging_drivers_source_install: true
+prometheus_exporter_source_install: true
+enable_inspector: true
+enable_keystone: true
+enable_prometheus_exporter: true
+staging_drivers_include: true
+enable_networking_generic_switch_driver: true
+staging_drivers_git_branch: "master"
+
+######################################################
+#  OS IMAGES RESPOSITORIES
+######################################################
+create_image_via_dib: true
+ironic_tftp_master_path: "{{ g1_repo_os_path }}"
+g1_default_checksum_algorithm: "sha256"
+g1_native_os_installer:
+   #- distribution: "Rocky"
+   # distribution_version: "8"
+   # os_image_name: "x86_64.iso"
+   # image: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/Rocky-8.10-x86_64-dvd1.iso"
+   # checksum: "https://download.rockylinux.org/pub/rocky/8/isos/x86_64/CHECKSUM"
+   # checksum_algorithm: "sha256"
+   # extract_ramdisk: yes
+   # mount: yes
+  - distribution: "CentOS"
+    distribution_version: "9"
+    os_image_name: "x86_64.iso"
+    image: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso"
+    checksum: "https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-dvd1.iso.SHA256SUM"
+    checksum_algorithm: "sha256"
+    extract_ramdisk: yes
+    mount: yes
+
+  - distribution: "Ubuntu"
+    distribution_version: "24.04"
+    os_image_name: "x86_64.iso"
+    image: "https://releases.ubuntu.com/noble/ubuntu-24.04.4-live-server-amd64.iso"
+    checksum: "https://releases.ubuntu.com/noble/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    extract_ramdisk: yes
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    os_image_name: "x86_64.iso"  
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso"
+    checksum: "{{ g1_local_checksum_url }}"
+    checksum_algorithm: "sha256" 
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    os_image_name: "vmlinuz"
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-kernel.x86_64"
+    checksum: "{{ g1_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    os_image_name: "initrd" 
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260707.3.1/x86_64/fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img"
+    checksum: "{{ g1_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    os_image_name: "install.img" 
+    image: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/44.20260802.3.1/x86_64/fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img"
+    checksum: "{{ g1_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+
+  - distribution: "Debian"
+    distribution_version: "13.6"
+    os_image_name: "x86_64.iso"
+    image: https://cdimage.debian.org/mirror/cdimage/archive/13.6.0/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso"
+    checksum: https://cdimage.debian.org/mirror/cdimage/archive/13.6.0/amd64/iso-dvd/SHA256SUMS"
+    checksum_algorithm: "sha256"
+    netinstall_ramdisk: "iso"
+    mount: yes
+
+  - distribution: "SuSE"
+    distribution_version: "16.0"
+    os_image_name: "x86_64.iso"
+    image: "https://download.opensuse.org/distribution/leap/16.0/offline/Leap-16.0-offline-installer-x86_64-Build178.27.install.iso"
+    checksum: "{{ g1_local_checksum_url }}"
+    checksum_algorithm: "sha256"
+    extract_ramdisk: yes
+    mount: yes
+    
+g1_cloud_os_installer:
+  - distribution: "CentOS"
+    distribution_version: "9"
+    os_image_name: "partition.qcow2"
+    image: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+    checksum: "https://cloud.centos.org/centos/9-stream/x86_64/images/CHECKSUM"
+    checksum_algorithm: "sha256"
+genesis_all_installers_download: "{{ g1_native_os_installer + g1_cloud_os_installer }}"
+download_image_sources: "{{ genesis_download_images | default(genesis_all_installers_download) | default([]) }}"
+
+######################################################
+#  IPA IMAGES RESPOSITORIES
+######################################################
+ipa_local_repo: "{{ g1_repos['ipa'] | default('dib/files') }}"
+update_ipa: true
+ipa_upstream_release: "master"
+ipa_download_headers: {}
+download_ipa: true
+update_ipa: true
+ipa_add_ssh_key: false
+ipa_download_url_username:
+ipa_download_url_password:
+ipa_download_force_basic_auth:
+ipa_download_unredirected_headers:
+ipa_kernel_download_url_username: "{{ ipa_download_url_username }}"
+ipa_kernel_download_url_password: "{{ ipa_download_url_password }}"
+ipa_kernel_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_kernel_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+ipa_ramdisk_download_url_username: "{{ ipa_download_url_username }}"
+ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
+ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+genesis_default_ipa_image_sources:
+  - kernel: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.kernel"
+    kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.kernel.sha256"
+    kernel_checksum_algo: "sha256"
+    ramdisk: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs"
+    ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.initramfs.sha256"
+    ramdisk_checksum_algo: "sha256"
+
+  - kernel: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel"
+    kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.kernel.sha256"
+    kernel_checksum_algo: "sha256"
+    ramdisk: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs"
+    ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.initramfs.sha256"
+    ramdisk_checksum_algo: "sha256"
+ipa_image_sources: "{{ genesis_ipa_image_sources | default(genesis_default_ipa_image_sources) | default([]) }}"
+
+######################################################
+#  ORAS URL
+######################################################
+oras_arch_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+oras_arch: "{{ oras_arch_map[ansible_architecture] }}"           
+oras_version: "1.3.0"
+oras_checksums:
+  linux_amd64: "6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64"
+  linux_arm64: "7649738b48fde10542bcc8b0e9b460ba83936c75fb5be01ee6d4443764a14352"
+oras_tarball_name: "oras_{{ oras_version }}_linux_{{ oras_arch }}.tar.gz"
+oras_tarball_path: "v{{ oras_version }}/{{oras_tarball_name}}" 
+oras_checksum: "{{ oras_checksums['linux_' + oras_arch] }}"
+oras_git_url: "https://github.com/oras-project/oras/releases/download"
+oras_download_url: "{{ oras_git_url }}/{{ oras_tarball_path }}/{{ oras_tarball_name }}"
+
+proxmox_download_url: "https://github.com/v1k0d3n/proxmox-redfish/archive/refs/heads/release/0.2.1.zip"
+proxmox_download_name: "proxmox-redfish.zip"

@@ -1,0 +1,27 @@
+---
+# genesis.bootstrap main.yml
+#   - Bootstrap Genesis Node for Airgap Ironic Install
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "------------------> G1- REFRESH GENESIS NODE <------------------" 
+  block:
+
+    #-------------------------------------
+    # 1.- Bootsrap the Node
+    #-------------------------------------
+    - ansible.builtin.include_tasks: "1_prepare/1_repos.yml"
+    - ansible.builtin.include_tasks: "2_download.yml"
+    - ansible.builtin.include_tasks: "3_ready/1_setup.yml"
+    - ansible.builtin.include_tasks: "3_ready/2_network.yml"
+        
+  rescue:
+
+    - name: "G1 - REFRESH : Try to Recover Network Configuration"
+      ansible.builtin.include_tasks: "3_ready/2_network.yml"		
+ 
+    - debug:
+        msg: |
+          --------> G1 - REFRESH [genesis.bootstrap] - ERROR - Common errors:
+           => 1.- Localhost User credentials in Inventory (hosts/{env}/inventory)

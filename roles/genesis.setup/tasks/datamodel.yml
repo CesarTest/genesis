@@ -1,0 +1,128 @@
+---
+# genesis.setup datamodel.yml
+#   - Dump Bifrost DataModel into JSON File 
+#      - JSON rendering is up to 50x faster than YAML
+#      - JSON can be successfully loaded by include_vars module faster than yaml files.
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+
+#------------------
+# 1.- Freeze Instance Information in Facts for Performance
+#------------------
+# 1.0.- Log Instance Info
+- name: "B4 SETUP - Data Model -  Verify resolved OS installer definition"
+  ignore_errors: true
+  ansible.builtin.debug:
+    msg: "{{ t4_os_profile_block.splitlines() }}"
+  vars:
+    t4_os_profile_block: |
+      --- OS Definition Profile ---
+      b4_node_os_definitions:
+      {{ b4_node_os_definitions | default({'STATUS': 'NOT DEFINED'}) | to_nice_json | replace('\"', '') | indent(2, first=true) }}
+      b4_node_os_installer:   [{{ b4_node_os_installer | default('NOT_DEFINED') }}]
+
+# 1.1.- Bootloader Information
+- name: "B4 SETUP - Data Model - Freeze Bootloader Instance Data"
+  ansible.builtin.set_fact:
+    b4_node_os_installer_bootloader_info: "{{ b4_os_installer_bootloader_call[b4_node_os_installer] | default({}) }}"
+  delegate_to: localhost
+
+- name: "B4 SETUP - Data Model - Flatten Bootloader Instance Data"
+  ansible.builtin.set_fact:
+    b4_node_os_installer_bootloader_ramdisk: "{{ b4_node_os_installer_bootloader_info['initram'] | default('initramfs') }}"
+    b4_node_os_installer_bootloader_kernel:  "{{ b4_node_os_installer_bootloader_info['kernel'] | default('vmlinuz') }}"
+    b4_node_os_installer_bootloader_menu_raw: "{{ b4_node_os_installer_bootloader_info['menu'] | default('') }}"
+  delegate_to: localhost
+
+- name: "B4 SETUP - Data Model -  Format Flatten Bootloader Instance Data"
+  ansible.builtin.set_fact:
+    b4_node_os_installer_bootloader_menu: "{{ b4_node_os_installer_bootloader_menu_raw.split() | join(' ') }}"
+  delegate_to: localhost
+
+# 1.2.- Deploy Profiles Information
+- name: "B4 SETUP - Data Model - Freeze Deploy Interface Profiles"
+  ansible.builtin.set_fact:
+    b4_deploy_interface_instance_info:
+      ramdisk:
+        driver_info:
+          deploy_kernel: "{{ b4_node_os_installer_bootloader_kernel }}"
+          deploy_ramdisk: "{{ b4_node_os_installer_bootloader_ramdisk }}"
+          pxe_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+        instance_info:
+          image_source: "{{ b4_netinstall_os_iso_url }}"
+          kernel:       "{{ b4_node_os_installer_bootloader_kernel }}"
+          ramdisk:      "{{ b4_node_os_installer_bootloader_ramdisk }}" 
+          kernel_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+      anaconda:
+        driver_info:
+          pxe_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+        instance_info:
+          image_source: "{{ b4_netinstall_os_iso_url }}"
+          kernel:       "{{ b4_node_os_installer_bootloader_kernel }}"
+          ramdisk:      "{{ b4_node_os_installer_bootloader_ramdisk }}" 
+          kernel_append_params: "{{ b4_node_os_installer_bootloader_menu }}"
+          image_type: "anaconda"
+  delegate_to: localhost
+
+# 1.2.- Instance Information
+- name: "B4 SETUP - Data Model - Step 1: Capture Deploy Profile"
+  ansible.builtin.set_fact:
+    b4_node_deploy_instance_info: "{{ b4_deploy_interface_instance_info[b4_node_deploy_interface] | default({}) }}"
+  delegate_to: localhost
+
+- name: "B4 SETUP - Data Model - Step 2: Freeze Instance Information"
+  ansible.builtin.set_fact:
+    b4_node_instance_info: "{{ vars['b4_node_deploy_instance_info']['instance_info'] | default({}) }}"
+  delegate_to: localhost
+
+# 1.3.- Driver Information
+- name: "B4 SETUP - Data Model - Freeze Driver Info according to Deploy Profile"
+  ansible.builtin.set_fact:
+    b4_node_driver_info_credentials: "{{ b4_enroll_node_bmc_driver_info[b4_enroll_node_bmc_driver] | default({}) }}"
+    b4_node_driver_info_pxe: "{{ b4_node_deploy_instance_info['driver_info'] | default({}) }}"
+  delegate_to: localhost
+  
+- name: "B4 SETUP - Data Model - Freeze Instance Driver Info "
+  ansible.builtin.set_fact:
+    b4_node_driver_info: "{{ vars['b4_node_driver_info_credentials']  | combine(vars['b4_node_driver_info_pxe']) }}"
+  delegate_to: localhost
+
+#------------------
+# 2.- Dump Bifrost Data Model Into File
+#------------------
+- name: "B4 SETUP - Dump Bifrost Data Model to JSON File"
+  connection: local
+  ansible.builtin.copy:
+    dest: "{{ b4_datamodel_file }}"
+    content: >-
+      {{
+        {
+          'uuid':        b4_enroll_node_uuid | default(''),
+          'name':        b4_enroll_node_name | default(''),
+          'properties':  b4_enroll_node_chassis_properties | default({}),
+          'driver':      b4_enroll_node_bmc_driver | default('redfish'),
+          'driver_info': b4_node_driver_info | default({}),
+          'nics':        b4_enroll_node_nics | default([]),
+          'mac':              b4_enroll_nic_provision_mac | default(''),
+          'ipv4_address':     b4_enroll_nic_provision_ip | default('127.0.0.1'),
+          'ipv4_subnet_mask': b4_enroll_nic_provision_netmask | default('255.255.255.0'),
+          'ipv4_router':      b4_enroll_nic_provision_gateway | default('127.0.0.1'),
+          'boot_interface':   b4_node_boot_interface | default('ipxe'),
+          'deploy_interface': b4_node_deploy_interface | default('direct'),
+          'instance_info':    b4_node_instance_info | default({}),
+          'provisioning_ipv4_address': b4_enroll_nic_provision_ip | default('127.0.0.1'),
+          'power_interface':  b4_power_cycle.power_interface | default(b4_enroll_node_bmc_driver) | default('redfish'),
+          'management_interface': b4_power_cycle['management_interface'] | default(b4_enroll_node_bmc_driver) | default('noop'),
+          'hardware_type':    b4_power_cycle.hardware_type | default(b4_enroll_node_bmc_driver) | default('redfish'),
+          'clean_steps':      b4_power_cycle.clean_steps  | default([]),
+          'power_cycle':      b4_power_cycle | default({}),
+          'power_cycle_profile':   b4_node_power_cycle_profile | default('manual') | lower
+        } | to_json
+      }}
+  when:
+    - b4_datamodel_file is defined
+    - b4_datamodel_file | length > 0
+  delegate_to: localhost

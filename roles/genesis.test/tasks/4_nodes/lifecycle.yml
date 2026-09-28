@@ -1,0 +1,117 @@
+---
+# genesis.setup 4_nodes/2_lifecycle.yml
+#   - Configure Instance Properties
+#      - Autologin & Map lifecycle data model into Proxmox API (Pure HTTP)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "T4 - LIFECYCLE -4- Modes: 2) Set VM Instance Lifecycle Stages Particulars"
+  delegate_to: localhost
+  
+  # Hypervisor Selector  
+  when:  
+    - t4_lifecycle_api_calls is defined 
+    - t4_lifecycle_api_calls is not none 
+    - t4_lifecycle_api_calls is not string
+    - t4_lifecycle_api_calls | length > 0
+
+  vars:
+
+    # 1.- Call Instructions	
+    t4_selector: "{{ t4_vm_state | default('status', true) }}"
+    t4_lifecycle_instructions: "{{ t4_lifecycle_api_calls[t4_selector] | default([], true) }}"
+
+    # 2.- Node Details (same for all instructions of the loop)
+    t4_pve_node: "{{ t1_hypervisor_api_hostname }}"
+    t4_pve_port: "{{ t1_hypervisor_api_port | default('8006', true) }}"
+    t4_hypervisor_api_host: "{{ t1_hypervisor_ansible_host | default('127.0.0.1', true) }}"
+    t4_pve_base_url: "https://{{ t4_hypervisor_api_host }}:{{ t4_pve_port }}"
+    t4_pve_user: "{{ t1_hypervisor_api_user | default('root@pam', true) }}"
+    t4_pve_password: "{{ t1_hypervisor_api_password | default('root', true) }}"
+    t4_pve_api_default_status: [200, 204]
+
+  block:
+   
+    #-----------------------------------------------------------------------
+    # 1.- VM Instance Lifecycle Instruction via Ansible Modules
+    #-----------------------------------------------------------------------
+    # 1.1.- Ticket Generation
+    - name: "T4 - LIFECYCLE -4- Nodes: 2.1) PVE LOGIN - Request Session Ticket & CSRF Token"
+      ansible.builtin.uri:
+        url: "{{ t4_pve_base_url }}/api2/json/access/ticket"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          username: "{{ t4_pve_user }}"
+          password: "{{ t4_pve_password }}"
+        validate_certs: false
+      register: t4_pve_login_raw
+      no_log: true # Oculta la clave en los logs de la terminal
+
+    # 1.2.- Instructions Pipeline
+    - name: "T4 - LIFECYCLE -4- Nodes: 2.2) Set VM Instance Lifecycle Stages Particulars vía URI contra Proxmox"
+      ansible.builtin.uri:
+        url:         "{{ t4_pve_uri }}"
+        method:      "{{ t4_pve_method }}"
+        body:        "{{ t4_pve_body | default(omit) }}"
+        status_code: "{{ t4_pve_status_code }}"
+        body_format: form-urlencoded
+        validate_certs: false
+        headers:
+          Cookie: "PVEAuthCookie={{ t4_pve_login_raw.json.data.ticket }}"
+          CSRFPreventionToken: "{{ t4_pve_login_raw.json.data.CSRFPreventionToken }}"
+      register: t4_pipeline_results
+      vars:
+        t4_pve_vmid: "{{ lifecycle_stage.vmid | default(t1_enroll_default_node_id | default(201, true), true) }}"
+        t4_pve_api_endpoint_root_path: "/api2/json/nodes/{{ t4_pve_node }}/qemu/{{ t4_pve_vmid }}"
+        t4_pve_method:   "{{ lifecycle_stage.method | default('GET', true) }}"
+        t4_pve_endpoint: "{{ lifecycle_stage.endpoint | default('status', true) }}"
+        t4_pve_body:     "{{ lifecycle_stage.body | default(omit) }}" 
+        t4_pve_status_code: "{{ lifecycle_stage.status_code | default(t4_pve_api_default_status, true) }}"
+        t4_pve_uri: "{{ t4_pve_base_url }}{{ t4_pve_api_endpoint_root_path }}/{{ t4_pve_endpoint }}"	     
+      loop: "{{ t4_lifecycle_instructions }}"
+      loop_control:
+        loop_var: "lifecycle_stage"
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- VM Instance Lifecycle Instruction via cURL
+    #-----------------------------------------------------------------------
+    # 2.1.- Ticket Generation
+    - name: "T4 - LIFECYCLE -4- Nodes: 2.3) RESCUE LOGIN - Request Session Ticket via Raw cURL"
+      ansible.builtin.shell: |
+        curl -X POST -k -s \
+          -d "username={{ t4_pve_user }}&password={{ t4_pve_password }}" \
+          "{{ t4_pve_base_url }}/api2/json/access/ticket"
+      register: t4_rescue_login_raw
+      failed_when: false
+      no_log: true
+
+    # 2.2.- Instructions Pipeline
+    - name: "T4 - LIFECYCLE -4- Nodes: 2.4)  RESCUE EXEC - Fallback Force Execution via Raw cURL Shell"
+      ansible.builtin.shell: |
+        curl -X "{{ t4_pve_method }}" \
+          -k -s \
+          -H "Cookie: PVEAuthCookie={{ (t4_rescue_login_raw.stdout | from_json).data.ticket }}" \
+          -H "CSRFPreventionToken: {{ (t4_rescue_login_raw.stdout | from_json).data.CSRFPreventionToken }}" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          {% if t4_pve_method == 'POST' and t4_pve_body is defined and t4_pve_body and '__ansible_omit_place_holder__' not in t4_pve_body | string %}
+          -d "{{ t4_pve_body | urlencode }}" \
+          {% endif %}
+          "{{ t4_pve_uri }}"
+      register: t4_rescue_curl_output
+      changed_when: true
+      failed_when: false
+      vars:
+        t4_pve_vmid: "{{ lifecycle_stage.vmid | default(t1_enroll_default_node_id | default(201, true), true) }}"
+        t4_pve_api_endpoint_root_path: "/api2/json/nodes/{{ t4_pve_node }}/qemu/{{ t4_pve_vmid }}"
+        t4_pve_method:   "{{ lifecycle_stage.method | default('GET', true) }}"
+        t4_pve_endpoint: "{{ lifecycle_stage.endpoint | default('status', true) }}"
+        t4_pve_body:     "{{ lifecycle_stage.body | default(omit) }}" 
+        t4_pve_status_code: "{{ lifecycle_stage.status_code | default(t4_pve_api_default_status, true) }}"
+        t4_pve_uri: "{{ t4_pve_base_url }}{{ t4_pve_api_endpoint_root_path }}/{{ t4_pve_endpoint }}"	     
+      loop: "{{ t4_lifecycle_instructions }}"
+      loop_control:
+        loop_var: "lifecycle_stage"

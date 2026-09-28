@@ -1,0 +1,87 @@
+{#############################################################################
+#                    ANSIBLE GENERATED IGNITION FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   29/08/2026
+# Version: 1.0 
+#############################################################################} 
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
+{###############################
+         CAPTURE VALUES 
+ ##############################}
+{%- set blank = " " -%}
+{%- set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%- set ign_model = j2_profile | default('none') -%}
+{%- set system_candidatos = [
+      j2_node_profiles[ign_model]['system'] | default(none),
+      j2_system_profiles[ign_model]['system'] | default(none),
+      j2_os_profiles[ign_model]['system'] | default(none),
+      j2_input['system'] | default(none)
+    ] 
+-%}
+{%- set user_candidatos = [
+      j2_node_profiles[ign_model]['user'] | default(none),
+      j2_system_profiles[ign_model]['user'] | default(none),
+      j2_os_profiles[ign_model]['user'] | default(none),
+      j2_input['user'] | default(none)
+    ] 
+-%}
+{%- set storage_candidatos = [
+      j2_node_profiles[ign_model]['storage'] | default(none),
+      j2_system_profiles[ign_model]['storage'] | default(none),
+      j2_os_profiles[ign_model]['storage'] | default(none),
+      j2_input['storage'] | default(none)
+    ] 
+-%}
+{%- set ign_user     = user_candidatos     | select | first | default(none) -%}
+{%- set ign_storage  = storage_candidatos  | select | first | default(none) -%}  
+{%- set ign_system   = system_candidatos   | select | first | default(none) -%}
+{#......... 2.- Ignition Sections Definition ..... #}
+{%- set ign_sections = [  
+    { "header": "passwd", "content": ign_user   },
+    { "header": "storage", "content": ign_storage  },
+    { "header": "systemd", "content": ign_system  }
+  ]			  
+-%}
+{###############################
+         RENDERING FILE
+ ##############################}
+{#
+==============================================================================
+ AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY
+ Generated dynamically by Genesis Core Engine Mesh
+ Deployment Context: Ignition Automated OS Provisioning Profile
+ Timestamp: 2026
+==============================================================================
+#}
+{
+  "ignition": {
+    "version": "3.4.0"
+  }
+{%- for section in ign_sections -%}
+  {%- if section.content -%},
+  "{{ section.header }}": { 
+      {{ section.content | safe | trim | indent(width=6, first=false) }}
+   }
+  {%- endif -%}
+{%- endfor -%}
+{{ eol }} 
+}
+{###############################
+              END
+ ##############################}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED IGNITION FILE 
+#############################################################################}

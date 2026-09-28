@@ -1,0 +1,39 @@
+---
+# genesis.test main.yml
+#   - Set Hypervisor Conditions
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#-----------------------------------------------------------------------
+# 1.- Create Emulation Environment on Hypervisor
+#-----------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_tasks: "emulation.yml"
+  when:
+    - t1_refresh_environment | default(false) | bool
+
+#-----------------------------------------------------------------------
+# 2.- Run Baremetal Certification Tests
+#-----------------------------------------------------------------------
+# 2.1.- Setup Instance
+- vars:
+    t4_vm_state: "stop"
+  block:
+    - ansible.builtin.include_tasks: "power_cycle.yml"
+      when: "'fake' in (baremetal_power_cycle | default('manual', true))"
+    - ansible.builtin.include_role: 
+        name: "genesis.setup"
+  when:
+    - not (t1_skip_tests | default(false) | bool)
+
+# 2.2.- Deploy Instance
+- vars:
+    t4_vm_state: "start"
+  block:
+    - ansible.builtin.include_tasks: "power_cycle.yml"
+      when: "'fake' in (baremetal_power_cycle | default('manual', true))"
+    - ansible.builtin.include_role: 
+        name: "genesis.deploy"
+  when:
+    - not (t1_skip_tests | default(false) | bool)
