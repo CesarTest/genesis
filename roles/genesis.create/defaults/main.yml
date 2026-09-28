@@ -1,0 +1,155 @@
+---
+# genesis.create defaults
+#   - Adjust Bifrost Variables install Ironic in Airgap environments
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  PATHS
+######################################################
+# 1.- Repos Paths
+genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+# 2.- Bifrost Role Paths
+genesis_bifrost_role_name: "genesis.bifrost"
+genesis_bifrost_path:       "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles:      "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles | realpath }}/bifrost-ironic-install"
+
+######################################################
+#  ENSURE TO USE LOCAL REPOS
+######################################################
+download_custom_deploy_image: false
+download_ipa: false
+git_url_root:      "{{ genesis_local_repo_url }}"
+tarballs_base_url: "{{ genesis_local_repo_url }}"
+oras_url_root:     "{{ git_url_root }}"   
+
+######################################################
+#  IRONIC + KEYSTONE SETUP
+######################################################
+
+# Default network interface that bifrost will be attached to.
+# This is used in ipa_* so it must be before
+network_interface: "virbr0"
+ans_network_interface: "{{ network_interface | replace('-', '_') }}"
+internal_interface: "{{ hostvars[inventory_hostname]['ansible_' + ans_network_interface]['ipv4'] }}"
+internal_ip: "{{ internal_interface['address'] }}"
+
+# Default parameter if keystone is enabled, or disabled.
+enable_keystone: false
+
+# Service URLs used for communication with them.
+api_protocol: "{{ 'https' if enable_tls | bool else 'http' }}"
+ironic_api_url: "{{ api_protocol }}://{{ internal_ip }}:6385"
+keystone_api_url: "{{ api_protocol }}://{{ internal_ip }}:5000/v3"
+
+# Directory (on the controller) to keep the passwords
+password_dir: "{{ lookup('env', 'HOME') }}/.config/bifrost"
+
+# Various credentials
+default_username: bifrost_user
+default_password: "{{ lookup('password', password_dir + '/default_password') }}"
+
+admin_username: admin
+admin_password: "{{ lookup('password', password_dir + '/admin_password') }}"
+
+# NOTE(dtantsur): various URLs in configuration files don't like special
+# symbols in passwords.
+service_password: "{{ lookup('password', password_dir + '/service_password chars=ascii_letters,digits') }}"
+
+# TODO(dtantsur): deprecate in favor of service_password
+ironic_db_password: "{{ service_password }}"
+ironic:
+  service_catalog:
+    username: "ironic"
+    password: "{{ service_password }}"
+    auth_url: "{{ keystone_api_url }}"
+    project_name: "service"
+  keystone:
+    default_username: "{{ default_username }}"
+    default_password: "{{ default_password }}"
+  database:
+    name: "ironic"
+    username: "ironic"
+    password: "{{ ironic_db_password }}"
+    host: "localhost"
+
+# NOTE(dtantsur): keep in sync with bifrost-keystone-install
+keystone:
+  debug: true
+  bootstrap:
+    enabled: true
+    username: "{{ admin_username }}"
+    password: "{{ admin_password }}"
+    project_name: admin
+    admin_url: "{{ keystone_api_url }}"
+    public_url: "{{ keystone_api_url }}"
+    internal_url: "{{ api_protocol }}://127.0.0.1:5000/v3/"
+    region_name: "RegionOne"
+  message_queue:
+    username: keystone
+    password: "{{ service_password }}"
+    host: localhost
+    port: 5672
+  database:
+    name: keystone
+    username: keystone
+    password: "{{ service_password }}"
+    host: localhost
+
+######################################################
+#  IRONIC CONFIG 
+######################################################
+genesis_ironic_hardware_types: "fake_hardware,ipmi,redfish"
+genesis_ironic_deploy_interfaces: "direct,ramdisk,anaconda,bootc,ansible"
+genesis_ironic_install_roles:
+   - name: "bifrost-prep-for-install"
+     condition: "{{ not (skip_install | default(false) | bool) }}" 
+   - name: "bifrost-keystone-install"
+   - name: "bifrost-ironic-install"
+   - name: "bifrost-logrotate-install"
+   - name: "bifrost-registry-install"
+     condition: "{{ enable_registry | default(true) | bool }}"
+genesis_ironic_config_file: "/etc/ironic/ironic.conf"
+genesis_create_setup_ironic:
+   - file: "/etc/systemd/system/bifrost-registry.service"
+     regexp: "^User="
+     line: "User=root"
+   - file: "{{ genesis_ironic_config_file }}"
+     regexp: '^automated_clean'
+     line: 'automated_clean = false'
+   - file: "{{ genesis_ironic_config_file }}"
+     regexp: '^enabled_deploy_interfaces '
+     line: "enabled_deploy_interfaces = {{ genesis_ironic_deploy_interfaces }}" 
+#   - file: "{{ genesis_ironic_config_file }}"
+#     regexp: '^enabled_hardware_types  '
+#     line: "enabled_hardware_types  = {{ genesis_ironic_hardware_types }}" 
+#    - file: "{{ genesis_ironic_config_file }}"  
+#      regexp: '[DEFAULT]'
+#      insertafter: '[DEFAULT]'
+#      line: 'configdrive_format = iso9660'
+#    - file: "{{ genesis_ironic_config_file }}"    
+#      regexp: '[agent]'
+#      insertafter: '[agent]'    
+#      line: 'require_agent_token = False'   
+
+######################################################
+#   REGISTRY PROPERTIES
+######################################################
+oras_arch_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+oras_arch: "{{ oras_arch_map[ansible_architecture] }}"           
+oras_version: "1.3.0"
+oras_checksums:
+  linux_amd64: "6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64"
+  linux_arm64: "7649738b48fde10542bcc8b0e9b460ba83936c75fb5be01ee6d4443764a14352"
+oras_tarball_name: "oras_{{ oras_version }}_linux_{{ oras_arch }}.tar.gz"
+oras_tarball_path: "v{{ oras_version }}/{{oras_tarball_name}}" 
+oras_download_url: "{{oras_url_root}}/{{oras_tarball_name}}"
+oras_checksum: "{{ oras_checksums['linux_' + oras_arch] }}"

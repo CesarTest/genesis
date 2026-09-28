@@ -1,0 +1,10 @@
+---
+# genesis.create handlers
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "Restart Ironic"
+  service:
+    name: ironic
+    state: restarted

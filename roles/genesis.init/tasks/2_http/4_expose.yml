@@ -1,0 +1,98 @@
+---
+# genesis.init 2_http/4_expose.yml
+#   - Expones Image Repositories
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. MAC - Mandatory Access Control to Contents
+#---------------------------------------  
+- name: "G3 - INIT: Setup PXE-HTTP: 2.4.1 - MAC (Mandatory Access Control) to Contents"
+  block: 
+  
+    # ----> 1.1. Linux Permissions: Ownership of Folders to Expose (Web Server Owner = Ironic)
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.4.1.1 - MAC Grant Web Server Permission to Base Repo Path"
+      ansible.builtin.file:
+        path: "{{ http_exposure_subdir | realpath }}"
+        mode: 'o+x'
+      when:
+        - http_exposure_subdir != '//'      
+        - (http_exposure_subdir | realpath) != '/'
+        - (http_exposure_subdir | realpath) != ''
+      loop: "{{ g3_base_list_subfolders_base_path | default([ g3_base_path ]) }}"
+      loop_control:
+        loop_var: "http_exposure_subdir"
+    
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.4.1.2 - MAC Ownership Before exposure"
+      ansible.builtin.file:
+        path:  "{{ http_exposure.repo }}"
+        owner: "{{ g3_webserver_user | default(omit) }}"
+        group: "{{ g3_webserver_group | default(omit) }}"
+        recurse: "{{ g3_avoid_loops_in_iso }}"
+      vars: 
+        g3_path_to_expose_is_mounted_iso: "{{ (g3_repo_mount_path | default('mnt') in http_exposure.repo) }}"
+        g3_avoid_loops_in_iso: "{{ g3_path_to_expose_is_mounted_iso | ternary(false, true, true) }}" 
+      loop: "{{ g3_paths_to_expose | default([]) }}"
+      loop_control:
+        loop_var: "http_exposure"
+
+    # ----> 1.2. AppArmor
+    # ----> 1.3. SELinux 
+    # ----> 1.4. Crypto Policies 
+
+#---------------------------------------
+# 2. HTTP EXPOSURE - Ensure Access to Public Web Folder
+#---------------------------------------     
+- name: "G3 - INIT: Setup PXE-HTTP: 2.4.2 - HTTP EXPOSURE - Ensure Access to Web Public Folder"
+  block: 
+      
+    # ----> 2.1. Create Symbolik Links to HTTP folder
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.4.2.1 - HTTP EXPOSURE - Expose Image Repositories"
+      file:
+        src:   "{{ http_exposure.repo }}"
+        dest:  "{{ http_exposure.expose }}"
+        owner: "{{ g3_webserver_user  | default(omit) }}"
+        group: "{{ g3_webserver_group | default(omit) }}"  
+        state: link
+      loop: "{{ g3_paths_to_expose | default([]) }}"
+      loop_control:
+        loop_var: "http_exposure"  
+
+    # ----> 2.2. Create Symbolik Links to Mounted ISOs
+    #- name: "G3 - INIT: Setup PXE-HTTP: 3 - FIND OS - Search ISO mounted Folders"
+    #  ansible.builtin.find:
+    #    paths: "{{ g3_mnt_repo_path }}"
+    #    file_type: directory
+    #    recurse: false
+    #  register: g3_found_os_directories
+    #
+    #- name: "G3 - INIT: Setup PXE-HTTP: 4 - HTTP EXPOSURE - Expose OS Repositories"
+    #  ansible.builtin.file:
+    #    src:   "{{ http_os_exposure.path }}"
+    #    dest:  "{{ g3_http_path }}/{{ http_os_exposure.path | basename | lower | replace('.', '') }}"
+    #    owner: "{{ g3_webserver_user  | default(omit) }}"
+    #    group: "{{ g3_webserver_group | default(omit) }}"  
+    #    state: link
+    #    force: yes
+    #  loop: "{{ g3_found_os_directories.files | default([], true) }}"
+    #  loop_control:
+    #    loop_var: "http_os_exposure"
+    #  when: 
+    #    - g3_found_os_directories.matched is defined
+    #    - g3_found_os_directories.matched is not none	
+    #    - g3_found_os_directories.matched > 0
+
+    # ----> 2.3. WebServer Update
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.4.2.2 - HTTP EXPOSURE - adjust Webserver Configurations Files"
+      ansible.builtin.lineinfile:
+        path:        "{{ g3_web.file        | default(omit) }}"
+        regexp:      "{{ g3_web.regexp      | default(omit) }}"
+        line:        "{{ g3_web.line        | default(omit) }}"    
+        insertafter: "{{ g3_web.insertafter | default(omit) }}" 
+      loop: "{{ g3_setup_webserver | default([]) }}"
+      loop_control:
+        loop_var: "g3_web"
+      notify:
+        - Restart Web Server

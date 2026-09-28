@@ -1,0 +1,24 @@
+---
+# genesis.init 1_tftp/2_os_installer.yml
+#   - Unpack OS Installers to TFTP + HTTP Folders
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Extract OS Native Installer to HTTP Folder
+#---------------------------------------  
+- name: "G3 - INIT: Setup PXE-TFTP: Unpack OS Installer from ISO"
+  become: yes
+  community.general.iso_extract:
+    image: "{{ g3_repo_image }}"
+    dest:  "{{ g3_deploy_os_path }}"
+    files: "{{ g3_ramdisk_files }}"   
+    
+  vars:
+    g3_repo_image:    "{{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}"    
+
+  when: 
+    - g3_image.extract_ramdisk     | default(false) | bool
+    - (g3_image.netinstall_ramdisk | default('iso')) == 'iso'

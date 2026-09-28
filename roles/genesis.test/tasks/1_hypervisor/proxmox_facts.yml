@@ -1,0 +1,54 @@
+---
+# genesis.test 1_hypervisor/proxmox_facts.yml
+#  - Working Conditions on Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4) Properties required by API Calls"
+  block:
+
+    #-----------------------------------------------------------------------
+    # 1.- Node Name
+    #-----------------------------------------------------------------------
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.1) Proxmox Query Proxmox API node name dynamically"
+      become: true
+      ansible.builtin.shell: |
+        pvesh get /nodes --output-format json | awk -F'\"node\":\"' '{print $2}' | awk -F'\"' '{print $1}'
+      register: t1_pve_detected_node
+      changed_when: false
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.2) Proxmox Register node name as a runtime fact"
+      ansible.builtin.set_fact:
+        t1_hypervisor_api_hostname: "{{ genesis_hypervisor_api_hostname | default(t1_captured_hostname) }}"
+      vars:
+        t1_captured_hostname: "{{ t1_pve_detected_node.stdout | trim | default('pve') }}"
+
+
+    #-----------------------------------------------------------------------
+    # 2.- Internet Bridge
+    #-----------------------------------------------------------------------
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.3) Extract Internet Bridge from Ansible Facts"
+      set_fact:
+        t1_proxmox_internet_bridge: >-
+          {{
+            ansible_facts | dict2items
+            | selectattr('value.device', 'defined')
+            | selectattr('value.type', 'defined')
+            | selectattr('value.type', 'equalto', 'bridge')
+            | selectattr('value.active', 'equalto', true)
+            | map(attribute='key')
+            | first | default('vmbr0')
+          }}
+
+    #-----------------------------------------------------------------------
+    # 2.- Declared SDN Zones
+    #-----------------------------------------------------------------------
+    #- name: "T1 - NETWORK: Probe existing SDN zones via PVE API CLI"
+    #  become: true
+    #  ansible.builtin.shell: "pvesh get /cluster/sdn/zones --output-format json 2>/dev/null || echo '[]'"
+    #  register: t1_pve_sdn_zones_raw
+    #  changed_when: false
+    #  failed_when: false
+    #  delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"

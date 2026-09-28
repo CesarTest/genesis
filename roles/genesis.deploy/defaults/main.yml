@@ -1,0 +1,113 @@
+---
+# genesis.deploy default
+#  - Unattended OS installation
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+######################################################
+#  GENESIS PATHS (global for update all genesis roles at once)
+######################################################
+# 1.- Repos Paths
+genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+genesis_http_path: "{{ ironic_http_path | default('/var/lib/ironic/httpboot') | realpath }}"
+
+# 2.- Bifrost Role Paths
+genesis_bifrost_role_name: "genesis.bifrost"
+genesis_bifrost_path:  "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles: "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+
+# 3.- Bifrost Data Model Create on SetUp Stage
+# Corregido: Añadidas comillas obligatorias en YAML
+b5_baremetal_fact_caching_connection: "{{ lookup('ansible.builtin.config', 'fact_caching_connection', plugin_type='cache', plugin_name='jsonfile', errors='ignore') }}"
+b5_baremetal_setup_vars_path: "{{ b5_baremetal_fact_caching_connection | default('/tmp', boolean=True) }}"
+b5_baremetal_vars_filename: "genesis_{{ inventory_hostname }}.json"
+b5_baremetal_vars_file: "{{ b5_baremetal_setup_vars_path }}/{{ b5_baremetal_vars_filename }}"
+
+######################################################
+#  BIFROST ROLES DEFINITION 
+######################################################
+b5_baremetal_deploy_roles:
+   - name: "bifrost-deploy-nodes-dynamic"
+
+######################################################
+#  DEPLOY URLS
+######################################################
+#------------------
+# 1.- Inband Provision URLs
+#------------------
+b5_url_protocol: "http"
+b5_url_genesis_ipv4:    "{{ hostvars[groups['target'][0]]['dhcp_address'] | default('127.0.0.1/24') }}"
+b5_url_genesis_ip:      "{{ b5_url_genesis_ipv4 | ansible.utils.ipaddr('address') }}"
+b5_url_genesis_gateway: "{{ b5_url_genesis_ipv4 | ansible.utils.ipaddr('first_usable') }}"
+b5_url_genesis_netmask: "{{ b5_url_genesis_ipv4 | ansible.utils.ipaddr('netmask') }}"
+
+b5_genesis_port:
+  http:  "{{ genesis_http_port  | default(file_url_port)     | default('8080') }}"
+  https: "{{ genesis_https_port | default(file_url_port_tls) | default('8083') }}" 
+  oci:   "{{ genesis_https_oci  | default(registry_port)     | default('5500') }}"
+  ironic: "{{ genesis_ironic_port  | default(ironic_api_port)     | default('6385') }}"
+
+b5_url_genesis_port: "{{ b5_genesis_port[b5_url_protocol] is defined | ternary (':','','') }}{{ b5_genesis_port[b5_url_protocol] | default('') }}"
+b5_url_genesis_url: "{{ genesis_address | default(b5_url_genesis_ip) }}{{ b5_url_genesis_port }}"
+b5_url_ironic_port: "{{ b5_genesis_port['ironic'] is defined | ternary (':','','') }}{{ b5_genesis_port['ironic'] | default('') }}"
+b5_url_ironic_url: "{{b5_url_protocol}}://{{ genesis_address | default(b5_url_genesis_ip) }}{{ b5_url_ironic_port }}"
+
+#------------------
+# 3.- Type or Machine
+#------------------
+b5_bios_machine: >-
+ {{ capabilities is defined and 
+     'boot_mode:bios' in capabilities }}
+b5_proxmox_hypervisor: >-
+  {{ b5_redfish_username is defined and	  
+     b5_redfish_username is not none and
+     '@pam' in b5_redfish_username }}
+
+#------------------
+# 2.- Proxmo Bypass
+#------------------
+#b5_proxmox_root_password: "cesardgm"
+b5_proxmox_hypervisor_ip: "10.10.51.1"
+b5_proxmox_pxe_boot_order: "{{ capabilities.pxe_boot_order | default('net1;virtio0') }}"
+b5_proxmox_os_boot_order:  "{{ capabilities.os_boot_order | default('virtio0;net1') }}"
+
+######################################################
+#  NODE LIFE CYCLE
+######################################################
+b5_lifecycle_api_calls:
+  poweron:
+    - method: "PUT"
+      path: "/states/power"
+      body:
+        target: "power on"
+  clean:
+    - method: "PUT"
+      path: "/states/provision"
+      body:
+        target: "clean"
+        clean_steps: "{{ clean_steps | default({}) }}"
+  boot_pxe:
+    - method: "PATCH"
+      target: "ports"
+      path: "/{{ b4_enroll_nic_provision_mac | lower }}" 
+      body:
+        - op: "replace"
+          path: "/pxe_enabled"
+          value: true
+    - method: "PUT"
+      path: "/management/boot_device"
+      body:
+        boot_device: "pxe"
+        persistent: true   
+  boot_disk:   
+    - method: "PUT"
+      path: "/management/boot_device"
+      body:
+        boot_device: "disk"
+        persistent: true  
+
+ 

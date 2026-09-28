@@ -1,0 +1,102 @@
+---
+# The ironic API URL for bifrost operations.  Defaults to localhost.
+# ironic_url: "http://localhost:6385/"
+
+# The network interface that bifrost will be operating on.  Defaults
+# to virbr0 in roles, can be overridden here.
+genesis_target_mac: "{{ genesis_nics['inband']['mac'] | default('') | lower }}"
+genesis_system_interfaces: "{{ ansible_facts | dict2items | selectattr('value.macaddress', 'defined') | list }}"
+genesis_matched_interface_list: "{{ genesis_system_interfaces | selectattr('value.macaddress', '==', genesis_target_mac) | map(attribute='key') | list }}"
+genesis_interface_found: "{{ genesis_matched_interface_list | first | default('') }}"
+genesis_interfaces_fallback: "{{ ansible_interfaces | default([]) | reject('sameas', 'lo') | list | first }}"
+genesis_default_nic: "{{ ansible_default_ipv4.interface | default(genesis_interfaces_fallback) | default('ens19') }}"
+network_interface: "{{ genesis_interface_found | default(genesis_default_nic) }}"
+
+# DHCP properties for static IP to MAC assignation (global for all roles)
+#  - DNSmasq propeties
+enable_dhcp: true
+dhcp_provider: "dnsmasq"
+
+#  - DNSmasq static IP <-> MAC Assignation
+#bifrost_static_dhcp: true
+#inventory_dhcp: true
+#inventory_dhcp_static_ip: true
+#inventory_dns: true
+
+# - DHCP IP range base (Baremetal Nodes + 2)
+dhcp_ipv4_default: '10.10.51.5/24'
+dhcp_ipv4:    "{{ genesis_nics.inband.ip | default(genesis_nics.outband.ip) | default(genesis_nics.internet.ip) | default(dhcp_ipv4_default) }}"
+dhcp_address:     "{{ dhcp_ipv4 | ansible.utils.ipaddr('address') }}"
+dhcp_static_mask: "{{ dhcp_ipv4 | ansible.utils.ipaddr('netmask') }}"
+dhcp_prefix:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('prefix') }}"
+dhcp_subnet:      "{{ dhcp_ipv4 | ansible.utils.ipaddr('network') }}"
+dhcp_subnet_cidr: "{{ dhcp_ipv4 | ansible.utils.ipaddr('network/prefix') }}"
+dhcp_raw_node_count: "{{ groups['baremetal'] | default([]) | length }}" # Number of Baremetal Nodes
+dhcp_range_size:  "{{ (dhcp_raw_node_count | int > 0) | ternary(dhcp_raw_node_count | int + 2, 10) }}"
+dhcp_last_usable: "{{ dhcp_subnet_cidr | ansible.utils.ipaddr('last_usable') }}"
+dhcp_pool_end:    "{{ dhcp_last_usable | ansible.utils.ipmath(-1) }}"
+dhcp_pool_start:  "{{ dhcp_last_usable | ansible.utils.ipmath(-1 * dhcp_range_size | int) }}"
+
+# password to use between services
+noauth_mode: true
+#admin_password: "JavierMalo."
+#service_password: "JavierMalo."
+#default_password: "JavierMalo."
+ 
+# mysql_username: Default mysql admin username
+mysql_username: root
+# mysql_password: Default mysql admin user password
+mysql_password: 
+
+# The path to the SSH key to be utilized for testing and burn-in
+# to configuration drives. When set, it should be set in both baremetal
+# and localhost groups, however this is only an override to the default.
+# ssh_public_key_path: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
+
+# If testing is true, then the environment is setup for using libvirt
+# virtual machines for the hardware instead of real hardware.
+# testing: true
+
+# The default port to download files via.  Required for IPA URL generation.
+# Presently the defaults are located in the roles, however if changed both
+# the localhost and baremetal group files must be updated.
+# file_url_port: 8080
+
+# IPA Image parameters.  If these are changed, they must be changed in
+# Both localhost and baremetal groups.  Presently the defaults
+# in each role should be sufficient for proper operation.
+# ipa_kernel: "{{http_boot_folder}}/ipa.kernel"
+# ipa_ramdisk: "{{http_boot_folder}}/ipa.initramfs"
+# ipa_kernel_url: "http://{{ hostvars[inventory_hostname]['ansible_' + ens19]['ipv4']['address'] }}:{{file_url_port}}/ipa.kernel"
+# ipa_ramdisk_url: "http://{{ hostvars[inventory_hostname]['ansible_' + ens19]['ipv4']['address'] }}:{{file_url_port}}/ipa.initramfs"
+
+# The http_boot_folder defines the root folder for the webserver.
+# If this setting is changed, it must be applied to both the baremetal
+# and localhost groups. Presently the role defaults are set to the value
+# below.
+# http_boot_folder: /var/lib/ironic/httpboot
+
+# The settings for the name of the image to be deployed along with the
+# on disk location are below.  If changed, these settings must be applied
+# to both the baremetal and localhost groups.  If the file is already on
+# disk, then the image generation will not take place, otherwise an image
+# will be generated using diskimage-builder.
+# deploy_image_filename: "deployment_image.qcow2"
+# deploy_image: "{{http_boot_folder}}/{{deploy_image_filename}}"
+
+# Registry
+install_dib: true
+enable_registry: true
+enable_oci_registry_upload: true
+#registry_username: "admin"
+#registry_password: "admin"
+
+# Dnsmasq default route for clients. If not defined, dnsmasq will push to
+# clients as default route the same IP of the dnsmasq server.
+# Default: undefined
+# dnsmasq_router: "{{ ipv4_gateway }}"
+
+# Dnsmasq default nameserver for clients. If not defined, this setting
+# will be ignored.
+# Default: undefined
+# dnsmasq_dns_servers: 8.8.8.8,8.8.4.4

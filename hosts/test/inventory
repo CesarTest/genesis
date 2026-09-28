@@ -1,0 +1,65 @@
+---
+# genesis test/inventory
+#
+#   - Baremetal Global Environment  
+#   - Definitions with Raw Data
+#      => Avoid any variable reference... preferred repeat values instead
+#      => Parametrization best in group_vars / host_vars
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+all:
+
+  #--------------------------------------------------------------------
+  #  GLOBAL ENVIRONMENT
+  #--------------------------------------------------------------------
+  vars:
+
+    # 1.- BMC: Test Configuration Parameters
+    baremetal_bmc_driver:       "manual-management"
+    baremetal_boot_mode:        "uefi"
+    baremetal_power_cycle:      "fake"
+
+    # 2.- OS DEPLOY STAGE: Test Configuration Parameters	
+    baremetal_boot_interface:   "ipxe"
+    baremetal_deploy_interface: "ramdisk"
+
+  #--------------------------------------------------------------------
+  #  HOST_VARS: HARDWARE PROFILE DECLARED IN IRONIC API FORMAT
+  #--------------------------------------------------------------------
+  hosts:  
+
+    ubuntu.maas.lab:
+      ansible_host: "10.10.51.150"
+      os_name: "Ubuntu"
+      os_version: "24.04"
+
+    centos.maas.lab:      
+      ansible_host: "10.10.51.151"
+      os_name: "CentOS"
+      os_version: "9"
+ 
+    suse.maas.lab:        
+      ansible_host: "10.10.51.152"
+      os_name: "SuSE"
+      os_version: "16.0"
+ 
+    debian.maas.lab:
+      ansible_host: "10.10.51.153"
+      os_name: "Debian"
+      os_version: "13.7"
+
+  #--------------------------------------------------------------------
+  #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
+  #--------------------------------------------------------------------
+  children:
+
+    baremetal:
+      hosts:
+        ubuntu.maas.lab:        
+        centos.maas.lab: 
+        suse.maas.lab:
+        debian.maas.lab:
+      vars:
+        ansible_user: "javier"
+        ansible_become_pass: "malo"

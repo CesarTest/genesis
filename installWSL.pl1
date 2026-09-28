@@ -1,0 +1,187 @@
+# ==============================================================================
+# GENESIS CORE ENGINE - WSL BOOTSTRAPPER
+# - Enabling Power Shell Scripts:
+#   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
+#
+# Author: Cesar Delgado
+# Date: 03/Sep/2026
+# ==============================================================================
+#  cd "$env:USERPROFILE\Desktop"
+
+# ---> CONFIGURACIÓN GLOBAL (VARIABLES CENTRALIZADAS)
+$USUARIO       = "javier"
+$CONTRASENA    = "malo"
+
+$GIT_NAME      = "Cesar DGM"
+$GIT_EMAIL     = "cesar.delgado.gonzalez@alumnos.upm.es"
+$REPO_URL      = "https://github.com/CesarTest/genesis.git"
+$TARGET_DIR    = "/home/$USUARIO/genesis"
+
+$DISTRO        = "Debian"
+$SSH_PORT      = "2222"
+
+# ------------------------------------------------------------------------------
+# FASE 0: Deteccion Distro ya instalada
+# ------------------------------------------------------------------------------
+function Detectar-Entorno {
+	
+    # ===> Comprueba si la distribucion ya esta instalada
+    $instalada = (wsl --list --quiet) -contains $DISTRO
+    
+	# CASO 1 => La distro Ya esta en el Sistema
+    if ($instalada) {
+        Write-Host "La distribucion $DISTRO ya esta instalada." -ForegroundColor Yellow
+      
+	    # 1.1. Pregunta al usuario si desea formatear/reinstalar todo de nuevo
+        $respuesta = Read-Host "Deseas proceder con una instalacion limpia desde cero? (S/N)"
+        
+        # 1.2.- Si dice que SI a Reinstalar => False=Refrescar Instalacion
+        if ($respuesta -match "^[sSyY]([iI]|[eE][sS])?$") {
+            return $false 
+        }
+        
+        # 1.3. Cualquier Otra Respuesta => True=Acceder a la instancia instalada
+        return $true
+    }
+	
+	# CASO 2 => La distro no esta en el sistema => False=Refrescar Instalacion
+    return $false
+}
+
+# ------------------------------------------------------------------------------
+# FASE 1: Saneamiento del hipervisor local
+# ------------------------------------------------------------------------------
+function Sanear-Entorno {
+    Write-Host "[1/6] Sanear-Entorno: Deteniendo servicios y pulverizando instancias..." -ForegroundColor Cyan
+    
+    # 1. Apagamos el motor WSL para liberar cualquier archivo bloqueado
+    wsl --shutdown 2>$null
+    Stop-Service -Name "WslService" -Force -ErrorAction SilentlyContinue
+    
+    # 2. Eliminamos el registro interno de WSL
+    $distrosActuales = (wsl --list --quiet) -replace "`0", "" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+    $nombreReal = $distrosActuales | Where-Object { $_ -match $DISTRO }
+    if ($nombreReal) {
+        wsl --unregister $nombreReal 2>$null
+    }
+
+    # Desinstala la App de Windows Store para que NO diga "ya existe"
+    Get-AppxPackage -AllUsers | Where-Object { $_.Name -match $DISTRO } | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
+
+
+    # 3. Levantamos el servicio limpio
+    Start-Service -Name "WslService" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}
+
+# ------------------------------------------------------------------------------
+# FASE 2: Instalacion limpia del sistema operativo (Primer plano visible)
+# ------------------------------------------------------------------------------
+function Instalar-Distribucion {
+    Write-Host "[2/6] Instalar-Distribucion: Lanzando instalacion de $DISTRO en primer plano..." -ForegroundColor Cyan
+    
+    # Quitamos --no-launch para que Windows inicialice la maquina de forma sincrona y visible
+    wsl --install -d $DISTRO 
+    
+    # Pausa de seguridad para asegurar que el subsistema ha terminado de registrarse en Windows
+    Write-Host "Esperando 5 segundos para el asentamiento del contenedor..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
+}
+
+# ------------------------------------------------------------------------------
+# FASE 3: Reinicio y asentamiento del motor
+# ------------------------------------------------------------------------------
+function Reiniciar-Motor {
+    Write-Host "[3/6] Reiniciar-Motor: Reiniciando el hipervisor WSL..." -ForegroundColor Cyan
+    wsl --terminate $DISTRO
+    Start-Sleep -Seconds 2
+}
+
+# ------------------------------------------------------------------------------
+# FASE 4: Inyeccion de herramientas del sistema base
+# ------------------------------------------------------------------------------
+function Inyectar-Paquetes {
+    Write-Host "[4/6] Inyectar-Paquetes: Actualizando APT e instalando Git..." -ForegroundColor Cyan
+    $PackScript = @"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y git curl jq python3-pip python3-venv openssh-server
+"@
+    wsl -d $DISTRO -u root exec bash -c $PackScript
+}
+
+# ------------------------------------------------------------------------------
+# FASE 6: Configuración del Servidor SFTP/SSH para Notepad++
+# ------------------------------------------------------------------------------
+function Configurar-SSH {
+    Write-Host "[5/6] Configurar-SSH: Ajustando puerto $SSH_PORT y habilitando SFTP..." -ForegroundColor Cyan
+
+    # Encapsulamos las órdenes de Linux limpiando configuraciones previas
+    $LinuxCommands = "echo 'Configurando sshd_config...'; " +
+                     "sed -i 's/#Port 22/Port $SSH_PORT/' /etc/ssh/sshd_config; " +
+                     "sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config; " +
+                     "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config; " +
+                     "echo 'Generando llaves de host SSH esenciales...'; " +
+                     "ssh-keygen -A; " +
+                     "echo 'Reiniciando servicio OpenSSH...'; " +
+                     "service ssh restart"
+
+    # Se ejecuta obligatoriamente como ROOT (-u root) para poder modificar /etc/ y levantar el servicio
+    wsl -d $DISTRO -u root -e bash -c $LinuxCommands
+}
+
+# ------------------------------------------------------------------------------
+# FASE 6: Sincronizacion del repositorio de Genesis
+# ------------------------------------------------------------------------------
+function Clonar-Repositorio {
+    Write-Host "[6/6] Clonar-Repositorio: Configurando Git y descargando Genesis..." -ForegroundColor Cyan
+
+    $LinuxCommands = "git config --global user.name '$GIT_NAME'; " +
+                     "git config --global user.email '$GIT_EMAIL'; " +
+                     "git config --global http.sslVerify false; " +
+                     "git config --global core.sshCommand 'ssh -o StrictHostKeyChecking=no'; " +
+                     "echo 'Clonando repositorio en $TARGET_DIR...'; " +
+                     "mkdir -p `$(dirname '$TARGET_DIR'); " + 
+                     "git clone '$REPO_URL' '$TARGET_DIR'"
+
+    # Ejecutamos de forma correcta en WSL
+    wsl -d $DISTRO -u $USUARIO -e bash -c $LinuxCommands
+}
+
+
+# ==============================================================================
+# FUNCIÓN PRINCIPAL (ORQUESTADOR MAIN)
+# ==============================================================================
+function Main {
+    $cronometro = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Host "====================================================================" -ForegroundColor Magenta
+    Write-Host "      GENESIS MESH - INICIALIZANDO PIPELINE DE DESPLIEGUE WSL       " -ForegroundColor Magenta
+    Write-Host "====================================================================" -ForegroundColor Magenta
+
+    try {
+        if (-not (Detectar-Entorno)) {
+            Sanear-Entorno
+            Instalar-Distribucion
+            Reiniciar-Motor
+            Inyectar-Paquetes
+            Configurar-SSH
+            Clonar-Repositorio
+            $cronometro.Stop()
+            Write-Host "¡Victoria! Entorno operativo completo generado en $($cronometro.Elapsed.Seconds) segundos." -ForegroundColor Green
+            Write-Host "Usuario WSL: $USUARIO" -ForegroundColor Green
+            Write-Host "Repositorio listo en: $TARGET_DIR" -ForegroundColor Green
+        } else {
+            Write-Host "Saltando el pipeline de instalacion a peticion del usuario." -ForegroundColor Yellow
+        }
+
+        # Te mete dentro de la terminal de WSL en la ruta correcta en ambos casos
+        wsl -d $DISTRO -u $USUARIO --cd $TARGET_DIR
+    }
+    catch {
+        Write-Host "Error critico durante el pipeline de Genesis: $_" -ForegroundColor Red
+        exit 1
+    }
+}
+
+# LUNCH: Disparador automatico del script
+Main

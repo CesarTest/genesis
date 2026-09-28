@@ -1,0 +1,20 @@
+---
+# ==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Infrastructure Deployment (Testing Env)
+#  FILE:         Ansible Collections (Galaxy)
+#
+#  INSTALLATION COMMAND:
+#  ansible-galaxy collection install -r meta/requirements.yml
+# ==============================================================================
+
+collections:
+  - name: community.general
+    version: ">=9.0.0"
+  - name: community.proxmox
+    version: ">=2.0.0"
+
+- src: "https://github.com/v1k0d3n/proxmox-redfish.git"
+  scm: git
+  version: release/0.2.1 
+  name: pve-redfish

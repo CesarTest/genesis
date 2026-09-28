@@ -1,0 +1,14 @@
+---
+# genesis.test power_cycle.yml
+#   - Fake Power Cycle Emulation through Hypervisor API cals
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+- name: "T1 - EMULATION - Certification: Airgap Zone with VMs for Baremetal Emulation"
+  block:
+    - ansible.builtin.set_fact:
+        t1_hypervisor_api_hostname: "{{ t1_hypervisor_api_hostname_default | default('pve') }}"
+      when: t1_hypervisor_api_hostname is not defined
+    - ansible.builtin.include_tasks: "4_nodes/lifecycle.yml"

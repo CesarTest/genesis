@@ -1,0 +1,20 @@
+---
+# genesis.test 4_nodes.yml
+#   - Create Airgap Zone
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#-----------------------------------------------------------------------
+# 1.- Refresh Testing Virtual Machine
+#-----------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_instance.yml"
+      vars:
+        t4_vm_state: "absent"
+    - ansible.builtin.include_tasks: "4_nodes/{{ t1_hypervisor }}_instance.yml"
+      vars:
+        t4_vm_state: "present"
+      when: not ( t1_remove_airgap_zone | default(false) | bool )
+  when:
+    - t1_refresh_vms | default(true) | bool

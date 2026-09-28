@@ -1,0 +1,72 @@
+---
+# genesis playbooks/hypervisor.yml
+#  - Prepare Hypervisor for Genesis deployment
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------
+#  GATHERING FACT
+#---------------------------------
+- name: "Gather facts on hypervisor"
+  hosts: "hypervisor"
+  become: no
+  gather_facts: yes
+
+#---------------------------------
+#  HYPERVISOR CREATE ENVIRONMENT
+#--------------------------------
+- hosts: "hypervisor"
+  become: no
+  gather_facts: no
+  vars: 
+    genesis_refresh_environment: yes
+    genesis_refresh_hypervisor: yes  
+    genesis_refresh_vms: no
+    genesis_skip_tests: yes
+  pre_tasks:
+    - name: "GENESIS CLI: Capture shell script variables"
+      ansible.builtin.set_fact:
+        genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
+        genesis_remove_airgap_zone: "{{ true if airgap_remove is defined else false }}"
+  roles: 
+    - role: "genesis.test"
+
+#---------------------------------
+# CREATE GENESIS NODE
+#--------------------------------
+- hosts: "emulation"
+  become: no
+  gather_facts: no
+  vars: 
+    genesis_refresh_environment: yes
+    genesis_refresh_hypervisor: no  
+    genesis_refresh_vms: yes
+    genesis_skip_tests: yes
+  pre_tasks:
+    - name: "GENESIS CLI: Capture shell script variables"
+      ansible.builtin.set_fact:
+        genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
+        genesis_remove_airgap_zone: "{{ true if airgap_remove is defined else false }}"
+  roles: 
+    - role: "genesis.test"
+
+#---------------------------------
+# REMOVE BAREMETAL NODE
+#--------------------------------
+- hosts: "baremetal"
+  become: no
+  gather_facts: no
+  vars: 
+    genesis_refresh_environment: yes
+    genesis_refresh_hypervisor: no  
+    genesis_refresh_vms: yes
+    genesis_skip_tests: yes
+  pre_tasks:
+    - name: "GENESIS CLI: Capture shell script variables"
+      ansible.builtin.set_fact:
+        genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
+        genesis_remove_airgap_zone: "{{ true if airgap_remove is defined else false }}"
+  roles: 
+    - role: "genesis.test"
+      when: (genesis_remove_airgap_zone | default(false)) | bool
