@@ -1,0 +1,90 @@
+---
+# genesis target/inventory
+#
+#   - Genesis Global Environment  
+#   - Definitions with Raw Data
+#      => Avoid any variable reference... preferred repeat values instead
+#      => genesis_hypervisor_become_pass... exception to allow sed replacement from genesisCli 
+#      => Parametrization best in group_vars / host_vars
+#
+#   - group_vars/all.yml -> URLs for local repo construction
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+all:
+
+  #--------------------------------------------------------------------
+  #  GLOBAL ENVIRONMENT
+  #--------------------------------------------------------------------
+  vars:
+  
+    # => 1.- Genesis Node NICs
+    git_branch: "stable/2026.1"
+    genesis_nics:
+      inband: 
+        mac: "bc:24:11:4c:37:14"
+        ip: "10.10.51.5/24"
+        gateway: "10.10.51.1"
+      outband: 
+        mac: "bc:24:11:c1:ec:1a"
+        ip: "10.10.41.5/24"
+        gateway: "10.10.41.1"
+      internet: 
+        mac: "bc:24:11:34:c8:96"
+        ip: "192.168.1.40/24"
+        gateway: "192.168.1.1" 
+        default_route: true
+        dns: "192.168.1.1"
+
+    # => 2.- BMC Emulators shared credentials
+    genesis_hypervisor_become_pass: "cesardgm"
+    genesis_bmc_credentials: 
+      redfish:
+        ipv4: "192.168.1.133" # Proxmox Hypervisor (force here, instead of node bmc nic)
+        port: "8000"          # Proxmox RedFish Daemon
+        verify_ca: false
+
+  #--------------------------------------------------------------------
+  #  HOST_VARS: HARDWARE PROFILE DECLARED IN IRONIC API FORMAT
+  #--------------------------------------------------------------------
+  hosts:   
+    localhost:
+      ansible_host: "127.0.0.1"
+  
+    proxmox:
+      ansible_host: "192.168.1.133"
+
+    genesis:
+      ansible_host: "10.10.51.5"
+  
+  #--------------------------------------------------------------------
+  #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
+  #-------------------------------------------------------------------- 
+  children:
+    target:
+      hosts: 
+        localhost:
+      vars:
+        ansible_user: "javier"
+        ansible_become_pass: "malo"
+
+    hypervisor:
+      hosts:
+        proxmox:
+      vars:
+        # -> SSH Credentials (Proxmox Installer)
+        ansible_user: root
+        ansible_become_pass: "{{ genesis_hypervisor_become_pass | default('root') }}"
+    
+        # -> API Credentials (Genesis Airgap Zone Installer Injection)
+        #     Proxmox Ansible Modules just work with @pam users (@pve=proxmox user / @pam=linux user)
+        #     TODO: genesis.test role: create operating system user if not using root@pam (meanwhile do not change)
+        hypervisor_api_username: "root@pam" 
+        hypervisor_api_password: "{{ genesis_hypervisor_become_pass | default('root') }}"
+
+    emulation:
+      hosts:
+        genesis:
+      vars:
+        ansible_user: "javier"
+        ansible_become_pass: "malo"

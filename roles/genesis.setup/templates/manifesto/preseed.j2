@@ -1,0 +1,155 @@
+{#############################################################################
+#                    ANSIBLE GENERATED PRESEED FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.1
+#############################################################################} 
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
+{###############################
+         CAPTURE VALUES 
+ ##############################}
+{%-  set blank = " " -%}
+{%-  set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%-  set preseed_model    = j2_profile | default('none') -%}
+
+{%- set preins_candidatos = [
+      j2_node_profiles[preseed_model]['preinstall'] | default(none),
+      j2_system_profiles[preseed_model]['preinstall'] | default(none),
+      j2_os_profiles[preseed_model]['preinstall'] | default(none),
+      j2_input['preinstall'] | default(none)
+    ] 
+-%}
+{%- set system_candidatos = [
+      j2_node_profiles[preseed_model]['system'] | default(none),
+      j2_system_profiles[preseed_model]['system'] | default(none),
+      j2_os_profiles[preseed_model]['system'] | default(none),
+      j2_input['system'] | default(none)
+    ] 
+-%}
+{%- set network_candidatos = [
+      j2_node_profiles[preseed_model]['network'] | default(none),
+      j2_system_profiles[preseed_model]['network'] | default(none),
+      j2_os_profiles[preseed_model]['network'] | default(none),
+      j2_input['network'] | default(none)
+    ] 
+-%}
+{%- set repos_candidatos = [
+      j2_node_profiles[preseed_model]['repos'] | default(none),
+      j2_system_profiles[preseed_model]['repos'] | default(none),
+      j2_os_profiles[preseed_model]['repos'] | default(none),
+      j2_input['repos'] | default(none)
+    ]
+-%}
+{%- set auth_candidatos = [
+      j2_node_profiles[preseed_model]['auth'] | default(none),
+      j2_system_profiles[preseed_model]['auth'] | default(none),
+      j2_os_profiles[preseed_model]['auth'] | default(none),
+      j2_input['auth'] | default(none)
+    ] 
+-%}
+{%- set user_candidatos = [
+      j2_node_profiles[preseed_model]['user'] | default(none),
+      j2_system_profiles[preseed_model]['user'] | default(none),
+      j2_os_profiles[preseed_model]['user'] | default(none),
+      j2_input['user'] | default(none)
+    ] 
+-%}
+{%- set ssh_candidatos = [
+      j2_node_profiles[preseed_model]['ssh'] | default(none),
+      j2_system_profiles[preseed_model]['ssh'] | default(none),
+      j2_os_profiles[preseed_model]['ssh'] | default(none),
+      j2_input['ssh'] | default(none)
+    ] 
+-%}
+{%- set storage_candidatos = [
+      j2_node_profiles[preseed_model]['storage'] | default(none),
+      j2_system_profiles[preseed_model]['storage'] | default(none),
+      j2_os_profiles[preseed_model]['storage'] | default(none),
+      j2_input['storage'] | default(none)
+    ] 
+-%}
+{%- set packages_candidatos = [
+      j2_node_profiles[preseed_model]['packages'] | default(none),
+      j2_system_profiles[preseed_model]['packages'] | default(none),
+      j2_os_profiles[preseed_model]['packages'] | default(none),
+      j2_input['packages'] | default(none)
+    ] 
+-%}
+{%- set postins_candidatos = [
+      j2_node_profiles[preseed_model]['postinstall'] | default(none),
+      j2_system_profiles[preseed_model]['postinstall'] | default(none),
+      j2_os_profiles[preseed_model]['postinstall'] | default(none),
+      j2_input['postinstall'] | default(none)
+    ] 
+-%}
+{%- set logging_candidatos = [
+      j2_node_profiles[preseed_model]['logging'] | default(none),
+      j2_system_profiles[preseed_model]['logging'] | default(none),
+      j2_os_profiles[preseed_model]['logging'] | default(none),
+      j2_input['logging'] | default(none)
+    ] 
+-%}
+
+{%- set preseed_preinstall  = preins_candidatos   | select('string') | first | default('') -%}
+{%- set preseed_system      = system_candidatos   | select('string') | first | default('') -%}
+{%- set preseed_network     = network_candidatos  | select('string') | first | default('') -%}
+{%- set preseed_repos       = repos_candidatos    | select('string') | first | default('') -%}
+{%- set preseed_auth        = auth_candidatos     | select('string') | first | default('') -%}
+{%- set preseed_user        = user_candidatos     | select('string') | first | default('') -%}
+{%- set preseed_ssh         = ssh_candidatos      | select('string') | first | default('') -%}
+{%- set preseed_storage     = storage_candidatos  | select('string') | first | default('') -%}  
+{%- set preseed_packages    = packages_candidatos | select('string') | first | default('') -%} 
+{%- set preseed_postinstall = postins_candidatos  | select('string') | first | default('') -%}
+{%- set preseed_logging     = logging_candidatos  | select('string') | first | default('') -%}
+
+{#......... 2.- Preseed Correct Sequential Order Lifecycle ..... #}
+{%-  set preseed_sections = [  
+        { "header": "# ------> Installer & Initialization",  "content": preseed_preinstall },
+        { "header": "# ------> System Localization",         "content": preseed_system     },
+        { "header": "# ------> Network Information",         "content": preseed_network    },
+        { "header": "# ------> Mirror Repositories",         "content": preseed_repos      },
+        { "header": "# ------> System Authorization Info",   "content": preseed_auth       },	  
+        { "header": "# ------> Users & Passwords",           "content": preseed_user       },
+        { "header": "# ------> SSH Keys",                    "content": preseed_ssh        },	
+        { "header": "# ------> Installation Logging Level",  "content": preseed_logging    },
+        { "header": "# ------> Partitions & Storage Layout", "content": preseed_storage    }, 
+        { "header": "# ------> Packages & Task Selection",   "content": preseed_packages   },
+        { "header": "# ------> Post Install & Execution",    "content": preseed_postinstall }
+      ]			  
+-%}
+{###############################
+         RENDERING FILE
+ ##############################}
+# ==============================================================================
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                             
+# Generated dynamically by Genesis Core Engine Mesh                              
+# Deployment Context: Preseed Debian / Automated OS Provisioning Profile    
+# Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+# ==============================================================================
+{{ eol }}
+{%- for section in preseed_sections -%}
+  {%- if section.content and section.content | trim | length > 0 -%}
+{{ section.header | default('') }}
+{{ section.content }}
+{{ section.end | default(eol) }}
+  {%- endif -%}
+{%- endfor -%}
+{###############################
+              END
+ ##############################}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED PRESEED FILE 
+#############################################################################}

@@ -1,0 +1,119 @@
+---
+# genesis.bootstrap 5_tarball.yml
+#   - Download ORAS registry from Internet
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- vars:
+   # ------------------------
+   # Debian PXE
+   #   -> Refrence Documentation: https://wiki.debian.org/DebianInstaller/NetbootFirmware
+   #   -> Tarball NetInstaller is a must
+   #   -> Firmware must be added to the RamDisk
+   # ------------------------
+    g1_concat_command_validate: |
+      # 1. Validar el archivo origen base
+      if [ ! -f "{{ g1_tarball.concat_src }}" ] || [ ! -r "{{ g1_tarball.concat_src }}" ]; then
+        echo "[ERROR] El archivo origen base no existe o no se puede leer: {{ g1_tarball.concat_src }}" >&2
+        exit 1
+      fi
+     
+      # 2. Validar el archivo de firmware adicionado
+      if [ ! -f "{{ g1_tarball.concat_addition }}" ] || [ ! -r "{{ g1_tarball.concat_addition }}" ]; then
+        echo "[ERROR] El archivo de firmware no existe o no se puede leer: {{ g1_tarball.concat_addition }}" >&2
+        exit 1
+      fi
+      
+      # 3. Validar permisos de escritura en el destino (comprobando el directorio base)
+      TARGET_DIR=$(dirname "{{ g1_tarball.concat_dest }}")
+      if [ ! -d "$TARGET_DIR" ] || [ ! -w "$TARGET_DIR" ]; then
+        echo "[ERROR] El directorio destino no existe o no tiene permisos de escritura: $TARGET_DIR" >&2
+        exit 1
+      fi
+
+    # -> Reference Documentation: https://wiki.debian.org/DebianInstaller/NetbootFirmware
+    g1_concat_command:
+      # Variante 1: Ambos en Gzip (Debian, Ubuntu moderno, CentOS)
+      direct: |
+        # 1. Hacemos el backup .orig si es la primera pasada desde cero
+        if [ ! -f "{{ g1_tarball.concat_src }}.orig" ]; then  
+          cp -p "{{ g1_tarball.concat_src }}" "{{ g1_tarball.concat_src }}.orig"
+        fi
+        # 2. Leemos SIEMPRE del .orig limpio para evitar machacados y duplicados en bucle
+        cat "{{ g1_tarball.concat_src }}.orig" "{{ g1_tarball.concat_addition }}" > "{{ g1_tarball.concat_dest }}"
+      
+      # Variante 2: Firmware descomprimido PRIMERO + Initrd base DESPUÉS (SuSE viejo)
+      traditional: |
+        # 1. Hacemos el backup .orig si es la primera pasada desde cero
+        if [ ! -f "{{ g1_tarball.concat_src }}.orig" ]; then  
+          cp -p "{{ g1_tarball.concat_src }}" "{{ g1_tarball.concat_src }}.orig"
+        fi
+        # 2. Procesamos el firmware en paralelo
+        TMP_CPIO=$(mktemp)
+        zcat "{{ g1_tarball.concat_addition }}" > "$TMP_CPIO" 2>/dev/null || gunzip -c "{{ g1_tarball.concat_addition }}" > "$TMP_CPIO"
+        # 3. Leemos SIEMPRE del .orig limpio
+        cat "$TMP_CPIO" "{{ g1_tarball.concat_src }}.orig" > "{{ g1_tarball.concat_dest }}"
+        rm -f "$TMP_CPIO"
+
+  block:
+  
+    - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.1) Download Source Code"
+      get_url:
+         url:      "{{ g1_tarball.url      | default(omit) }}"
+         dest:     "{{ g1_tarball.dest     | default(omit) }}"
+         checksum: "{{ g1_tarball.checksum | default(omit) }}"
+         owner:    "{{ansible_user | default('ironic') }}"
+         group:    "{{ansible_user | default('ironic') }}"
+         mode: '0644'
+      loop: "{{ g1_tarball_download | default([]) }}"
+      loop_control:
+        loop_var: "g1_tarball"
+    
+    - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.2) Untar Source Code"
+      ansible.builtin.unarchive:
+        src:  "{{ g1_tarball_src           | default(omit) }}"
+        dest: "{{ g1_image_os_local_folder | default(omit) }}"
+        owner: "{{ansible_user | default('ironic') }}"
+        group: "{{ansible_user | default('ironic') }}"
+        remote_src: true
+        mode: "a+rX"
+        extra_opts:
+          - '--no-same-owner'       
+          - '--no-same-permissions'
+      vars:
+        g1_unzip_tarball_detect: "{{ g1_tarball.unzip | default(g1_unzip_tarball, true) | default(false, true)  }}"
+        g1_tarball_filename: "{{ g1_tarball.url | default('')  | basename }}"
+        g1_tarball_src:      "{{ g1_image_os_local_folder }}/{{ g1_tarball_filename }}"	
+      loop: "{{ g1_tarball_download | default([]) }}"
+      loop_control:
+        loop_var: "g1_tarball"
+      when: 
+        - g1_unzip_tarball_detect | default(false) | bool
+        - g1_tarball.dest is defined
+        - g1_tarball.dest is not none
+        - g1_tarball.dest | length > 0
+    
+    - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.3) Concatenate Firmware and Initrd"
+      ansible.builtin.shell:
+        cmd: |
+          {{ g1_concat_command_validate | default('') }}
+          {{ g1_cmd_concat              | default('') }}
+      vars: 
+        g1_cmd_type:   "{{ g1_tarball.concat_type | default('direct') }}" 
+        g1_cmd_concat: "{{ g1_concat_command[g1_cmd_type] | default('') }}"
+        g1_cmd_compress_type: "{{ g1_tarball.concat_compress_type | default('xz') }}"
+        g1_cmd_compress: "{{ g1_compress_command[g1_cmd_compress_type] | default('') }}"
+      loop: "{{ g1_tarball_download | default([]) }}"
+      loop_control:
+        loop_var: "g1_tarball"
+      when: 
+        - g1_tarball.concat_src is defined
+        - g1_tarball.concat_src is not none
+        - g1_tarball.concat_src | length > 0
+        - g1_tarball.concat_addition is defined 
+        - g1_tarball.concat_addition is not none 
+        - g1_tarball.concat_addition | length > 0
+        - g1_tarball.concat_dest is defined 
+        - g1_tarball.concat_dest is not none
+        - g1_tarball.concat_dest | length > 0    

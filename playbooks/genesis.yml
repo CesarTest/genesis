@@ -1,0 +1,115 @@
+---
+# genesis playbooks/genesis.yml
+#   - Download Bifrost Dependencies
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#---------------------------------------
+# G1 - REFRESH: BootStrap Genesis Node
+#---------------------------------------    
+- hosts: "target"
+  become: true
+  connection: local
+  vars:
+    bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+    genesis_repo_path: "{{ playbook_dir }}/../repo"   
+  pre_tasks:
+    - ansible.builtin.set_fact:
+        genesis_refresh_install: "{{ genesis_reinstall | default(true) | bool }}"
+
+  roles:
+    - role: "genesis.bootstrap"
+      when: 
+        - genesis_refresh_install | default(true) | bool
+        - (genesis_stage is not defined)  or  (genesis_stage=='G1') 
+      
+#---------------------------------------
+#    - Refresh Ansible Conditions -
+#---------------------------------------    
+- hosts: "target"
+  become: true
+  gather_facts: false
+  connection: local
+  pre_tasks:
+    - ansible.builtin.set_fact:
+        genesis_refresh_install: "{{ genesis_reinstall | default(true) | bool }}"
+  tasks:
+    - ansible.builtin.meta: clear_facts
+      when: genesis_refresh_install | default(true) | bool
+    - ansible.builtin.setup:
+      when: genesis_refresh_install | default(true) | bool
+
+#---------------------------------------
+# G2 - CREATE + G3 INIT: Spawn Genesis Node
+#---------------------------------------       
+- hosts: "target"
+  become: yes
+  gather_facts: yes
+  connection: local
+  vars:
+    bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+    genesis_repo_path: "{{ playbook_dir }}/../repo"    
+    genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
+    genesis_hypervisor_ip: "{{ hostvars[genesis_hypervisor_node]['ansible_host'] | default('127.0.0.1') }}"
+  
+  # 2.1. Pre-Tasks: Prepare Bifrost Python Virtual Environment 
+  #--------------------------------------- 
+  pre_tasks:
+    - ansible.builtin.set_fact:
+        genesis_refresh_install: "{{ genesis_reinstall | default(true) | bool }}"
+
+    - name: install pip (and venv) to system
+      package:
+        name: "{{ packages | select | list }}"
+      vars:
+        packages:
+          - python3-pip
+          - "{{ (ansible_facts['os_family'] == 'Debian') | ternary('python3-venv', '') }}"
+
+    - name: create venv
+      command: python3 -m venv {{ bifrost_venv_dir }}
+      args:
+        creates: "{{ bifrost_venv_dir }}/bin/python3"
+
+    # NOTE(ebbex): (in case it's missing, which it shouldn't normally be)
+    - name: install setuptools in venv
+      command: "{{ bifrost_venv_dir }}/bin/pip3 install setuptools"
+      args:
+        creates: "{{ bifrost_venv_dir }}/lib/python*/site-packages/setuptools"
+
+    - name: override ansible_python_interpreter to venv
+      set_fact:
+        ansible_python_interpreter: "{{ bifrost_venv_dir + '/bin/python3' }}"
+
+  # 2.2. Tasks: Spawn & Init Genesis Node
+  #--------------------------------------- 
+  roles:
+    
+    # ----> G2: Create
+    - role: "genesis.create"
+      when: 
+        - genesis_refresh_install | default(true) | bool
+        - (genesis_stage is not defined)  or  (genesis_stage=='G2')   
+ 
+    # ----> G3: Init
+    - role: "genesis.init"
+      when: 
+        - genesis_refresh_install | default(true) | bool
+        - (genesis_stage is not defined)  or  (genesis_stage=='G3')          
+
+
+  # 2.3. Posts-Tasks: Refresh Ansible Facts
+  #---------------------------------------  
+  post_tasks:
+    - ansible.builtin.meta: clear_facts
+      when: genesis_refresh_install | default(true) | bool
+    - ansible.builtin.setup:
+      when: genesis_refresh_install | default(true) | bool
+ 
+  # 2.3. Bifrost Environment
+  #--------------------------------------- 
+  environment:
+    http_proxy: "{{ lookup('env','http_proxy') }}"
+    https_proxy: "{{ lookup('env','https_proxy') }}"
+    no_proxy: "{{ lookup('env', 'no_proxy') }}" 

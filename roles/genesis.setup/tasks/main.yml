@@ -1,0 +1,128 @@
+---
+# genesis.setup main.yml
+#   - Lifecycle Stages Definition - Overwrite default values
+#      B4) Genesis SETUP
+#         - B4.1) Enroll  - Out-Band BMC Connectivity Assurance
+#         - B4.2) Manage  - In-Band Connectivity Assurance
+#         - B4.3) Inspect - BMC/IPA Steps for Gathering Hardware Details
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#-----------------------------------------------------------------------
+# 1.- Create Bifrost Data Model
+#-----------------------------------------------------------------------
+- block:
+
+    # 1.1.- Render Values into a Persistent Audit Ledger File 
+    - name: "B4 SETUP - A) Commit Data Model Layout into Ledger"
+      ansible.builtin.include_tasks: "datamodel.yml"
+      vars: 
+        b4_datamodel_file: "{{ b4_baremetal_vars_file | default('/tmp/datamodel.json') }}"
+
+    # 2.2.- Dump File on Screen 
+    - name: "B4 SETUP - B) Dump Local File Content to Terminal (Pure Local Cat)"
+      ignore_errors: true
+      ansible.builtin.debug:
+        msg: "{{ b4_final_output_block.splitlines() }}"
+      vars:
+        # 1.- Recuperación y parseo nativo de tu lógica original
+        b4_baremetal_vars_file: "/tmp/genesis_{{ inventory_hostname }}.json" # Asegúrate de que herede tu path real
+        b4_raw_content: "{{ lookup('ansible.builtin.file', b4_baremetal_vars_file, errors='ignore') | default('{}', true) }}"
+        b4_parsed_dict: "{{ b4_raw_content if (b4_raw_content is mapping) else (b4_raw_content | from_json) }}"
+        b4_manifesto_nice_json: "{{ b4_parsed_dict | default({'STATUS': 'INVALID MANIFESTO'}, true) | to_nice_json | replace('\"', '') }}"
+        b4_final_output_block: |
+          ===[ BAREMETAL OVERVIEW PROFILE MANIFESTO ]===
+          Target Manifesto Node: [{{ inventory_hostname }}]
+          Manifesto Source File: [{{ b4_baremetal_vars_file }}]
+          --- JSON Manifest Content Payload ---
+          {{ b4_manifesto_nice_json | indent(4) }}
+      delegate_to: localhost
+
+
+  when:
+    - not b4_skip_setup | default(false) | bool
+    - b4_baremetal_vars_file is defined
+    - b4_baremetal_vars_file is not none
+    - b4_baremetal_vars_file is string
+    - b4_baremetal_vars_file is not mapping
+    - b4_baremetal_vars_file | length > 0
+  delegate_to: localhost
+
+#-----------------------------------------------------------------------
+# 2.- Load Bifrost Data Model
+#-----------------------------------------------------------------------
+- block:
+    - name: "B4 SETUP - C) Read Ledger File into Isolated Memory Buffer"
+      ansible.builtin.include_vars:
+        file: "{{ b4_baremetal_vars_file }}"
+        name: "b4_rehydrated_data_buffer"
+      delegate_to: localhost
+
+    - name: "B4 SETUP - D) Commit and Freeze Buffer into Persistent RAM Facts"
+      ansible.builtin.set_fact:
+        uuid:                      "{{ b4_rehydrated_data_buffer.uuid | default('') | string }}"
+        name:                      "{{ b4_rehydrated_data_buffer.name | default('') | string }}"
+        driver:                    "{{ b4_rehydrated_data_buffer.driver | default('redfish') | string }}"
+        driver_info:               "{{ b4_rehydrated_data_buffer.driver_info | default({}) }}"
+        nics:                      "{{ b4_rehydrated_data_buffer.nics | default([]) }}"
+        mac:                       "{{ b4_rehydrated_data_buffer.mac | default('') | string }}"
+        ipv4_address:              "{{ b4_rehydrated_data_buffer.ipv4_address | default('127.0.0.1') | string }}"
+        ipv4_subnet_mask:          "{{ b4_rehydrated_data_buffer.ipv4_subnet_mask | default('255.255.255.0') | string }}"
+        ipv4_router:               "{{ b4_rehydrated_data_buffer.ipv4_router | default('127.0.0.1') | string }}"
+        boot_interface:            "{{ b4_rehydrated_data_buffer.boot_interface | default('ipxe') | string }}"
+        deploy_interface:          "{{ b4_rehydrated_data_buffer.deploy_interface | default('direct') | string }}"
+        power_interface:           "{{ b4_rehydrated_data_buffer.power_interface | default('redfish') | string }}"
+        management_interface:      "{{ b4_rehydrated_data_buffer.management_interface | default('noop') | string }}"
+        instance_info:             "{{ b4_rehydrated_data_buffer.instance_info | default({}) }}"
+        provisioning_ipv4_address: "{{ b4_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
+        clean_steps:               "{{ b4_rehydrated_data_buffer.clean_steps | default([]) }}"
+        power_cycle:               "{{ b4_rehydrated_data_buffer.power_cycle | default({})  }}"
+        power_cycle_profile:       "{{ b4_rehydrated_data_buffer.power_cycle_profile | default('') | string }}"
+
+  rescue:
+    - name: "B4 SETUP - ABORT: Failure In Data Model Rehydration Process"
+      ansible.builtin.fail: 
+        msg: "CRITICAL: The Genesis system was unable to rehydrate the persistent local ledger file into RAM facts. Deploy pipeline aborted to prevent cleaning stage to start."
+  when:
+    - not b4_skip_setup | default(false) | bool
+
+#-----------------------------------------------------------------------
+# 3.-Remove the Node from Ironic
+#-----------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_tasks: "1_enroll/1_clean_ironic.yml"
+    - ansible.builtin.include_tasks: "1_enroll/4_delete.yml"
+      when: not b4_skip_setup | default(false) | bool
+  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+  
+#-----------------------------------------------------------------------
+# 4.- Setup the Node in Ironic
+#-----------------------------------------------------------------------
+- block:
+ 
+    # => 4.1.- Stage 1: Enroll - Outband Control
+    #.................................
+    - ansible.builtin.include_tasks: "1_enroll/3_os_manifesto.yml"
+    #- ansible.builtin.include_tasks: "1_enroll/4_config_drive.yml"
+    - ansible.builtin.include_tasks: "1_enroll/5_outband.yml"
+ 
+    # => 4.2.- Stage 2: Manage - Inband Provision
+    #.................................
+    - ansible.builtin.include_tasks: "2_manage/1_inband.yml"
+    - ansible.builtin.include_tasks: "2_manage/2_boot_order.yml"
+      when:
+        - power_cycle_profile is defined
+        - power_cycle_profile is not none
+        - power_cycle_profile is string
+        - not ("'manual' in power_cycle_profile") 
+    - ansible.builtin.include_tasks: "2_manage/3_power_cycle.yml"
+    - ansible.builtin.include_tasks: "2_manage/4_lifecycle.yml"
+      vars:
+        b4_lifecycle_instructions: "{{ b4_lifecycle_api_calls.setup + b4_lifecycle_api_calls.poweroff }}" 
+    - ansible.builtin.include_tasks: "2_manage/5_available.yml"
+  when:
+    - not b4_skip_setup | default(false) | bool
+    - genesis_clean_node is not defined
+  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"

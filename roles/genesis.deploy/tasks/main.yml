@@ -1,0 +1,96 @@
+---
+# genesis.deploy main.yml
+#   - Lifecycle Stages Definition - Overwrite default values
+#      B5) Genesis DEPLOY
+#         - B5.4) Clean   - BMC/IPA Steps to wipe and setup physical disks (RAIDs, etc.)
+#         - B5.5) Deploy  - Install Operating System
+#         - B5.6) Active  - Hearbeat + HW Drivers + Tenant networks
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------------------------------------------
+# 0 - Atomic Data Model Rehydration Layout (Variables to Facts)
+#---------------------------------------------------------------------------
+- when:
+    - b5_baremetal_vars_file is defined
+    - b5_baremetal_vars_file is not none
+    - b5_baremetal_vars_file is string
+    - b5_baremetal_vars_file is not mapping
+    - b5_baremetal_vars_file | length > 0
+  block:
+    - name: "B5 - DEPLOY - A) Read Ledger File into Isolated Memory Buffer"
+      ansible.builtin.include_vars:
+        file: "{{ b5_baremetal_vars_file }}"
+        name: "b5_rehydrated_data_buffer"
+      delegate_to: localhost
+
+    - name: "B5 - DEPLOY - B) Commit and Freeze Buffer into Persistent RAM Facts"
+      ansible.builtin.set_fact:
+        uuid:                      "{{ b5_rehydrated_data_buffer.uuid | default('') | string }}"
+        name:                      "{{ b5_rehydrated_data_buffer.name | default('') | string }}"
+        driver:                    "{{ b5_rehydrated_data_buffer.driver | default('redfish') | string }}"
+        driver_info:               "{{ b5_rehydrated_data_buffer.driver_info | default({}) }}"
+        nics:                      "{{ b5_rehydrated_data_buffer.nics | default([]) }}"
+        mac:                       "{{ b5_rehydrated_data_buffer.mac | default('') | string }}"
+        ipv4_address:              "{{ b5_rehydrated_data_buffer.ipv4_address | default('127.0.0.1') | string }}"
+        ipv4_subnet_mask:          "{{ b5_rehydrated_data_buffer.ipv4_subnet_mask | default('255.255.255.0') | string }}"
+        ipv4_router:               "{{ b5_rehydrated_data_buffer.ipv4_router | default('127.0.0.1') | string }}"
+        boot_interface:            "{{ b5_rehydrated_data_buffer.boot_interface | default('ipxe') | string }}"
+        deploy_interface:          "{{ b5_rehydrated_data_buffer.deploy_interface | default('direct') | string }}"
+        power_interface:           "{{ b5_rehydrated_data_buffer.power_interface | default('redfish') | string }}"
+        management_interface:      "{{ b5_rehydrated_data_buffer.management_interface | default('noop') | string }}"
+        instance_info:             "{{ b5_rehydrated_data_buffer.instance_info | default({}) }}"
+        provisioning_ipv4_address: "{{ b5_rehydrated_data_buffer.provisioning_ipv4_address | default('127.0.0.1') | string }}"
+        clean_steps:               "{{ b5_rehydrated_data_buffer.clean_steps | default([]) }}"
+        power_cycle:               "{{ b5_rehydrated_data_buffer.power_cycle | default([]) }}"
+        power_cycle_profile:       "{{ b5_rehydrated_data_buffer.power_cycle_profile | default([]) }}"
+
+    - name: "B5 - DEPLOY - C) Dump Local File Content to Terminal (Pure Local Cat)"
+      ansible.builtin.debug:
+        msg: "{{ lookup('ansible.builtin.file', b5_baremetal_vars_file) | string }}"
+      delegate_to: localhost
+
+  rescue:
+    - name: "B5 - DEPLOY - ABORT: Failure In Data Model Rehydration Process"
+      ansible.builtin.fail: 
+        msg: "CRITICAL: The Genesis system was unable to rehydrate the persistent local ledger file into RAM facts. Deploy pipeline aborted to prevent cleaning stage to start."
+
+#---------------------------------------------------------------------------
+# 1.- Clean Disks
+#---------------------------------------------------------------------------
+#- ignore_errors: yes
+#  block:
+#    - ansible.builtin.include_tasks: "1_clean/1_manual.yml"
+#  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+ 
+#---------------------------------------------------------------------------
+# 2.- Deploy Instance
+#---------------------------------------------------------------------------
+- block:
+    - ansible.builtin.include_tasks: "2_deploy/1_instance.yml"
+  delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
+- block:
+    - ansible.builtin.include_tasks: "1_clean/1_manual.yml"
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    b5_wipedisks_delay: "{{ power_cycle['clean_timeout'] | default('180') | int }}"
+  when:
+    - power_cycle_profile is defined
+    - power_cycle_profile is not none
+    - power_cycle_profile is string
+    - "'manual' in power_cycle_profile"
+
+#-----------------------
+# 3.- Activate Instance
+#-----------------------
+#- name: "B5 - DEPLOY - Stage 3:  Active - HeartBeat, Network Connection, Hardware Configuration"
+#  ansible.builtin.include_tasks: "{{ b5_active | default ('3_active/1_hearbeat.yml') }}"
+#  loop:
+#     - "3_active/1_hearbeat.yml"
+#     - "3_active/2_hardware.yml"
+#     - "3_active/3_network.yml"
+#  loop_control:
+#    loop_var: "b5_active"

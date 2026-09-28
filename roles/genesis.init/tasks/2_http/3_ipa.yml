@@ -1,0 +1,8 @@
+---
+# genesis.init 2_http/3_ipa.yml
+#   - Create & Upload Ironic Python Agent (IPA)
+#       Image Cloud Installer
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
