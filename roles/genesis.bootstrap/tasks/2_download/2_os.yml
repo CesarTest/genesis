@@ -136,7 +136,7 @@
     - g1_image.netinstall_ramdisk is defined
     - g1_image.netinstall_ramdisk is not none
     - g1_image.netinstall_ramdisk is string
-    - "'iso' in g1_image.netinstall_ramdisk"
+    - g1_image.netinstall_ramdisk in ['iso', 'mini']
     - g1_image_os_netinstaller_url is defined
     - g1_image_os_netinstaller_url is not none
     - g1_image_os_netinstaller_url is string

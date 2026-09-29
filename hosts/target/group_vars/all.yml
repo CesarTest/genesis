@@ -80,7 +80,7 @@ genesis_download_images:
     image: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/debian-13.7.0-amd64-DVD-1.iso"
     checksum: "https://cdimage.debian.org/cdimage/release/current/amd64/iso-dvd/SHA256SUMS"
     checksum_algorithm: "sha256"
-    netinstall_ramdisk: "tarball"
+    netinstall_ramdisk: "mini"
     extract_ramdisk: yes
     mount: yes
 

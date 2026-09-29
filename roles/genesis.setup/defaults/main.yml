@@ -69,8 +69,8 @@ genesis_os_definitions:
     ansible_distribution: "Debian"
     installer: "preseed"
     ext: ".cfg"
-    ramdisk: "debian-installer/amd64/initrd.gz"
-    kernel: "debian-installer/amd64/linux"
+    ramdisk: "mini.iso"
+    kernel: "syslinux/memdisk"
     alias:
       "13": &debian_13 "trixie"
       "12": &debian_12 "bookworm"

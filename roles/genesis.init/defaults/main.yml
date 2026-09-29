@@ -108,9 +108,9 @@ g3_extract_os_installer:
     - src: "casper/initrd"
       dest: "initrd"	
   debian:
-    - src: "debian-installer/amd64/linux"
+    - src: "install.amd/vmlinuz"
       dest: "linux"	
-    - src: "debian-installer/amd64/initrd.gz"
+    - src: "install.amd/initrd.gz"
       dest: "initrd.gz"
   suse: 
     - src: "boot/x86_64/loader/linux"
@@ -119,7 +119,7 @@ g3_extract_os_installer:
       dest: "initrd"
     - src: "LiveOS/squashfs.img"
       dest: "install.img"
-  suse_old: 
+  sles: 
     - src: "boot/x86_64/loader/linux"
       dest: "vmlinuz"
     - src: "boot/x86_64/loader/initrd"  
@@ -189,7 +189,7 @@ g3_native_os_installer:
     image: "https://cdimage.debian.org/mirror/cdimage/archive/13.6.0/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso"
     checksum: "https://cdimage.debian.org/mirror/cdimage/archive/13.6.0/amd64/iso-dvd/SHA256SUMS"
     checksum_algorithm: "sha256"
-    netinstall_ramdisk: "iso"
+    netinstall_ramdisk: "mini"
     mount: yes
 
   - distribution: "SuSE"

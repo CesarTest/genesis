@@ -70,8 +70,8 @@ genesis_os_definitions:
     ansible_distribution: "Debian"
     installer: "preseed"
     ext: ".cfg"
-    ramdisk: "debian-installer/amd64/initrd.gz"
-    kernel: "debian-installer/amd64/linux"
+    #ramdisk: "debian-installer/amd64/initrd.gz"
+    #kernel: "debian-installer/amd64/linux"
     alias:
       "13": &debian_13 "trixie"
       "12": &debian_12 "bookworm"
@@ -162,10 +162,12 @@ genesis_os_definitions:
 genesis_os_netinstaller_url:
    tarball:
       debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+   mini:
+      debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/mini.iso"
    iso:
       debian: "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION].0/[ARCH]/iso-cd/debian-[VERSION].0-[ARCH]-netinst.iso"
    firmware:
-      debian: "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"
+      debian: "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"  
 g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
  
 # 4.- Bifrost Root Paths

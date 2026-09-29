@@ -10,6 +10,26 @@
 # 1. Extract OS Native Installer to HTTP Folder
 #---------------------------------------  
 - name: "G3 - INIT: Setup PXE-TFTP: Unpack OS Installer from ISO"
+  ansible.builtin.debug:
+    msg: "{{ debug_raw_text.splitlines() }}"
+  vars:
+    debug_raw_text: |
+      =================== 1.- OS PARTICULARS ===================
+      Detected Distro:    {{ g3_image_os_distro | default('g3_image_os_distro NOT DEFINED OR EMPTY', true) }}
+      Detected Version:   {{ g3_image_os_distro_version | default('g3_image_os_distro_version NOT DEFINED OR EMPTY', true) }}
+      HTTP Destination:   {{ g3_deploy_os_path | default('g3_deploy_os_path NOT DEFINED OR EMPTY', true) }}
+      TFTP Destination:   {{ g3_deploy_tftp_path | default('g3_deploy_tftp_path NOT DEFINED OR EMPTY', true) }}
+      Mount Point Path:   {{ g3_deploy_mount_path | default('g3_deploy_mount_path NOT DEFINED OR EMPTY', true) }}
+      
+      =================== 2.- IMAGE LOGIC ===================
+      Selected Type:      {{ g3_netinstall_ramdisk | default('g3_netinstall_ramdisk NOT DEFINED OR EMPTY', true) }}
+      Source ISO Name:    {{ g3_deploy_image_name | default('g3_deploy_image_name NOT DEFINED OR EMPTY', true) }}
+     
+      =================== 3.- FILES TO EXTRACT ===================
+      Mapping List:       {{ g3_iso_files | default('g3_iso_files NOT DEFINED OR EMPTY', true) }}
+      Sources (src):      {{ g3_ramdisk_files | default('g3_ramdisk_files NOT DEFINED OR EMPTY', true) }}
+
+- name: "G3 - INIT: Setup PXE-TFTP: Unpack OS Installer from ISO"
   become: yes
   community.general.iso_extract:
     image: "{{ g3_repo_image }}"
