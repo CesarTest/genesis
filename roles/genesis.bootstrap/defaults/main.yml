@@ -158,18 +158,47 @@ genesis_os_definitions:
     installer: "ubcore"
     prefix: "ubcore_"
     ext: ".xml"
-  
+
 genesis_os_netinstaller_url:
-   tarball:
-      debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
-   mini:
-      debian: "http://ftp.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/mini.iso"
-   iso:
-      debian: "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION].0/[ARCH]/iso-cd/debian-[VERSION].0-[ARCH]-netinst.iso"
-   firmware:
-      debian: "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"  
-g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
+  debian:
+    latest:
+      # --- Componentes de Imagen Física (Flujo Offline / CDROM) ---
+      dvd:               "https://cdimage.debian.org/cdimage/release/current/[ARCH]/iso-dvd/debian-[VERSION]-[ARCH]-DVD-1.iso"
+      iso:               "https://cdimage.debian.org/cdimage/release/current/[ARCH]/iso-cd/debian-[VERSION]-[ARCH]-netinst.iso"
+      checksum:          "https://cdimage.debian.org/cdimage/release/current/[ARCH]/iso-cd/SHA256SUMS"
+      checksum_algo:     "sha256"
+
+      # --- Componentes Ligeros / PXE (Flujo Online / RAM Disk) ---
+      firmware:          "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"
+      mini:              "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/mini.iso"
+      drivers:           "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/udeb.list" 
+      net_checksum:      "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/SHA256SUMS"
+      net_checksum_algo: "sha256"
+      tarball:           "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+      tarball_paths:
+        ramdisk:         "debian-installer/[ARCH]/initrd.gz"
+        kernel:          "debian-installer/[ARCH]/linux"
+
+    version:
+      # --- Componentes de Imagen Física (Flujo Offline / CDROM Histórico) ---
+      dvd:               "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-dvd/debian-[VERSION]-[ARCH]-DVD-1.iso"
+      iso:               "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-cd/debian-[VERSION]-netinst.iso"
+      checksum:          "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-cd/SHA256SUMS"
+      checksum_algo:     "sha256"
+
+      # --- Componentes Ligeros / PXE (Flujo Online / RAM Disk Histórico) ---
+      firmware:          "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/firmware/firmware.cpio.gz"
+      mini:              "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/mini.iso"
+      drivers:           "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/udeb.list" 
+      net_checksum:      "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/SHA256SUMS"
+      net_checksum_algo: "sha256"
+      tarball:           "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+      tarball_paths:
+        ramdisk:         "debian-installer/[ARCH]/initrd.gz"
+        kernel:          "debian-installer/[ARCH]/linux"
  
+g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
+
 # 4.- Bifrost Root Paths
 git_root: "{{ genesis_repo_path | realpath }}/openstack"
 git_url_root: https://opendev.org

@@ -1,6 +1,7 @@
 ---
 # genesis.bootstrap 3_os.yml
 #   - Download OS Images from Internet
+#   - Download NetINstaler Associated from whhch extract installer RAM Disk/Kernel
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -8,14 +9,14 @@
 - name: "G1 - BOOTSTRAP - 2.- Download OS: Tasks for element of the List"
   vars:
     # Image Source: URL Details
-    deploy_image_upstream_url: "{{ g1_deploy_image_url  | default('') }}"
-    deploy_image_checksum_url: "{{ g1_image.checksum   | default('') }}"
+    deploy_image_upstream_url:       "{{ g1_deploy_image_url         | default('') }}"
+    deploy_image_checksum_url:       "{{ g1_image.checksum           | default('') }}"
     deploy_image_checksum_algorithm: "{{ g1_image.checksum_algorithm | default(g1_default_checksum_algorithm) | default('sha256') }}" 
     
     # Image Destination: Path Details
-    http_boot_folder: "{{ g1_image_os_local_folder }}"
+    http_boot_folder:      "{{ g1_image_os_local_folder }}"
     deploy_image_filename: "{{ g1_deploy_image_name }}"
-    deploy_image: "{{ http_boot_folder }}/{{ deploy_image_filename }}"
+    deploy_image:          "{{ http_boot_folder }}/{{ deploy_image_filename }}"
 
   #---------------------------------------
   # 1. Download OS
@@ -29,40 +30,49 @@
       vars:
         t4_download_properties_block: |
           --- 1. OS Particulars ---
-          Distro:       {{ g1_image_os_distro | default('[g1_image_os_distro is NOT DEFINED]') }}
-          Version:      {{ g1_image_os_distro_version | default('[g1_image_os_distro_version is NOT DEFINED]') }}
-          Major Ver:    {{ g1_image_os_distro_version_main | default('[g1_image_os_distro_version_main is NOT DEFINED]') }}
-          Arch:         {{ g1_image_os_distro_arch | default('[g1_image_os_distro_arch is NOT DEFINED]') }}
-          Alias:        {{ g1_image_os_distro_alias | default('[g1_image_os_distro_alias is NOT DEFINED]') }}
-          
+          Distro:       [{{ g1_image_os_distro              | default('[g1_image_os_distro is NOT DEFINED]') }}]
+          Version:      [{{ g1_image_os_distro_version      | default('[g1_image_os_distro_version is NOT DEFINED]') }}]
+          Latest Mode:  [{{ g1_image_os_distro_version_latest| default('[g1_image_os_distro_version_latest is NOT DEFINED]') }}]
+          Major Ver:    [{{ g1_image_os_distro_version_main | default('[g1_image_os_distro_version_main is NOT DEFINED]') }}]
+          Arch:         [{{ g1_image_os_distro_arch         | default('[g1_image_os_distro_arch is NOT DEFINED]') }}]
+          Alias:        [{{ g1_image_os_distro_alias        | default('[g1_image_os_distro_alias is NOT DEFINED]') }}]
+          Netinst Type: [{{ g1_image_os_netinstaller_type   | default('[g1_image_os_netinstaller_type is NOT DEFINED]') }}]
+           
           --- Provision Paths ---
-          OS Path:      {{ g1_deploy_os_path | default('[g1_deploy_os_path is NOT DEFINED]') }}
-          TFTP Path:    {{ g1_deploy_tftp_path | default('[g1_deploy_tftp_path is NOT DEFINED]') }}
+          OS Path:      [{{ g1_deploy_os_path   | default('[g1_deploy_os_path is NOT DEFINED]') }}]
+          TFTP Path:    [{{ g1_deploy_tftp_path | default('[g1_deploy_tftp_path is NOT DEFINED]') }}]
           
-          --- Netinstaller URLs ---
+          --- Installer URL Cascade Trace ---
+          Pattern:      [{{ g1_image_os_installer_url_pattern    | default('[g1_image_os_installer_url_pattern is NOT DEFINED]') }}]
+          After Arch:   [{{ g1_image_os_installer_url_arch       | default('[g1_image_os_installer_url_arch is NOT DEFINED]') }}]
+          After Ver:    [{{ g1_image_os_installer_url_version    | default('[g1_image_os_installer_url_version is NOT DEFINED]') }}]
+          Default:      [{{ g1_image_os_installer_url_default    | default('[g1_image_os_installer_url_default is NOT DEFINED]') }}]
+          Final URL:    [{{ g1_image_os_installer_url            | default('[g1_image_os_installer_url is NOT DEFINED]') }}]
+          
+          --- Netinstaller URL Cascade Trace ---
           Pattern:      [{{ g1_image_os_netinstaller_url_pattern | default('[g1_image_os_netinstaller_url_pattern is NOT DEFINED]') }}]
-          Arch URL:     [{{ g1_image_os_netinstaller_url_arch | default('[g1_image_os_netinstaller_url_arch is NOT DEFINED]') }}]
-          Version URL:  [{{ g1_image_os_netinstaller_url_version | default('[g1_image_os_netinstaller_url_version is NOT DEFINED]') }}]
-          Default URL:  [{{ g1_image_os_netinstaller_url_default | default('[g1_image_os_netinstaller_url_default is NOT DEFINED]') }}]
-          Final URL:    [{{ g1_image_os_netinstaller_url | default('[g1_image_os_netinstaller_url is NOT DEFINED]') }}] 
+          After Arch:   [{{ g1_image_os_netinstaller_url_arch    | default('[g1_image_os_netinstaller_url_arch is NOT DEFINED]') }}]
+          After Ver:    [{{ g1_image_os_netinstaller_url_version | default('[g1_image_os_netinstaller_url_version is NOT DEFINED]') }}]
+          Default:      [{{ g1_image_os_netinstaller_url_default | default('[g1_image_os_netinstaller_url_default is NOT DEFINED]') }}]
+          Final URL:    [{{ g1_image_os_netinstaller_url         | default('[g1_image_os_netinstaller_url is NOT DEFINED]') }}] 
           
+          --- Netinstaller Checksum URL Cascade Trace ---
+          Pattern:      [{{ g1_image_os_netinstaller_checksum_pattern | default('[g1_image_os_netinstaller_checksum_pattern is NOT DEFINED]') }}]
+          Default:      [{{ g1_image_os_netinstaller_checksum_default | default('[g1_image_os_netinstaller_checksum_default is NOT DEFINED]') }}]
+          Final URL:    [{{ g1_image_os_netinstaller_checksum_url     | default('[g1_image_os_netinstaller_checksum_url is NOT DEFINED]') }}]
+          Algorithm:    [{{ g1_image_os_netinstaller_checksum_algo    | default('[g1_image_os_netinstaller_checksum_algo is NOT DEFINED]') }}]
+                    
           --- Firmware URLs ---
-          Pattern:      [{{ g1_image_os_firmware_url_pattern | default('[g1_image_os_firmware_url_pattern is NOT DEFINED]') }}]
-          Arch URL:     [{{ g1_image_os_firmware_url_arch | default('[g1_image_os_firmware_url_arch is NOT DEFINED]') }}]
-          Version URL:  [{{ g1_image_os_firmware_url_version | default('[g1_image_os_firmware_url_version is NOT DEFINED]') }}]
-          Default URL:  [{{ g1_image_os_firmware_url_default | default('[g1_image_os_firmware_url_default is NOT DEFINED]') }}]
-          Final URL:    [{{ g1_image_os_firmware_url | default('[g1_image_os_firmware_url is NOT DEFINED]') }}] 
-          
+          Pattern URL:  [{{ g1_image_os_firmware_url_pattern | default('[g1_image_os_firmware_url_pattern is NOT DEFINED]') }}]
+          Final URL:    [{{ g1_image_os_firmware_url         | default('[g1_image_os_firmware_url is NOT DEFINED]') }}] 
+         
           --- 2. Image Naming ---
-          Image URL:    {{ g1_deploy_image_url | default('[g1_deploy_image_url is NOT DEFINED]') }}
-          Basename:     {{ g1_deploy_image_default_name | default('[g1_deploy_image_default_name is NOT DEFINED]') }}
-          Extension:    {{ g1_deploy_image_default_ext | default('[g1_deploy_image_default_ext is NOT DEFINED]') }}
-          Default Name: {{ g1_default_os_image_name | default('[g1_default_os_image_name is NOT DEFINED]') }}
-          Final Name:   {{ g1_deploy_image_name | default('[g1_deploy_image_name is NOT DEFINED]') }}
+          Image URL:    [{{ g1_deploy_image_url          | default('[g1_deploy_image_url is NOT DEFINED]') }}]
+          Final Name:   [{{ g1_deploy_image_name         | default('[g1_deploy_image_name is NOT DEFINED]') }}]
           
           --- 3. Download Folders ---
-          Default Path: {{ g1_image_os_default_local_path | default('[g1_image_os_default_local_path is NOT DEFINED]') }}
-          Dest Folder:  {{ g1_image_os_local_folder | default('[g1_image_os_local_folder is NOT DEFINED]') }}
+          Default Path: [{{ g1_image_os_default_local_path | default('[g1_image_os_default_local_path is NOT DEFINED]') }}]
+          Dest Folder:  [{{ g1_image_os_local_folder       | default('[g1_image_os_local_folder is NOT DEFINED]') }}]
       ansible.builtin.debug:
         msg: "{{ t4_download_properties_block.splitlines() }}"
 
@@ -88,12 +98,12 @@
         t4_rescue_base_block: |
           [WARN] G1 - BOOTSTRAP - 2.- Download OS: Base Image Download Problem.
           ------------------------------------------------------------------------------------
-          Distro Target: {{ g1_image_os_distro | default('g1_image_os_distro is NOT DEFINED') }} {{ g1_image_os_distro_version | default('g1_image_os_distro_version is NOT DEFINED') }}
+          Distro Target: [{{ g1_image_os_distro | default('g1_image_os_distro is NOT DEFINED') }}/{{ g1_image_os_distro_version | default('g1_image_os_distro_version is NOT DEFINED') }}]
           
           Potential Issues (Execution continues):
-            => 1. Upstream URL could be unreachable: [{{ deploy_image_upstream_url }}]
-            => 2. Checksum validation failed or file not present: [{{ deploy_image_checksum_url }}]
-            => 3. Local directory path issue: {{ g1_image_os_local_folder | default('N/A') }}
+            => 1. Upstream URL could be unreachable: [{{ deploy_image_upstream_url              | default('deploy_image_upstream_url NOT DEFINED') }}]
+            => 2. Checksum validation failed or file not present: [{{ deploy_image_checksum_url | default('deploy_image_checksum_url NOT DEFINED') }}]
+            => 3. Local directory path issue: [{{ g1_image_os_local_folder                      | default('g1_image_os_local_folder NOT DEFINED')  }}]
       ansible.builtin.debug:
         msg: "{{ t4_rescue_base_block.splitlines() }}"
 
@@ -101,11 +111,16 @@
   # 2.  Download ISO NetInstaller
   #---------------------------------------  
 - vars:
-    deploy_image_filename: "netinstaller.iso"
-    deploy_image_upstream_url: "{{ g1_image_os_netinstaller_url | default('') }}"
-    deploy_image_checksum_url: "{{ g1_image_os_netinstaller_url | default('') | dirname }}/SHA256SUMS"
-    deploy_image_checksum_algorithm: "sha256"
-    deploy_image: "{{ g1_image_os_local_folder | default('') }}/{{ deploy_image_filename }}"
+
+    # Image Source: URL Details
+    deploy_image_upstream_url:       "{{ g1_image_os_netinstaller_url           | default('') }}"
+    deploy_image_checksum_url:       "{{ g1_image_os_netinstaller_checksum_url  | default('') }}"
+    deploy_image_checksum_algorithm: "{{ g1_image_os_netinstaller_checksum_algo | default('sha256') }}"
+
+    # Image Destination: Path Details
+    http_boot_folder:      "{{ g1_image_os_local_folder }}"
+    deploy_image_filename: "netboot/{{ g1_image_os_netinstaller_url | default('') | basename }}"
+    deploy_image:          "{{ http_boot_folder }}/{{ deploy_image_filename | default('') | basename }}"
 
   block:
     - name: "G1 - BOOTSTRAP - 2.- Download OS: 2.3) Download NetInstall Bootloader ISO Version"
@@ -117,13 +132,13 @@
         t4_rescue_iso_block: |
           [WARN] G1 - BOOTSTRAP - 2.- Download OS: ISO NetInstaller Component Problem.
           -----------------------------------------------------------------------------------
-          Target ISO Filename: {{ deploy_image_filename }}
+          Target ISO Filename: [{{ deploy_image_filename   | default('deploy_image_filename NOT DEFINED') }}]
           
           --- Runtime Variables Dump ---
-          Upstream ISO URL: [{{ deploy_image_upstream_url | default('NOT DEFINED') }}]
-          Checksum URL:     [{{ deploy_image_checksum_url | default('NOT DEFINED') }}]
-          Checksum Algo:    {{ deploy_image_checksum_algorithm }}
-          Local Target Dest: {{ deploy_image | default('NOT DEFINED') }}
+          Upstream ISO URL:  [{{ deploy_image_upstream_url | default('deploy_image_upstream_url NOT DEFINED') }}]
+          Checksum URL:      [{{ deploy_image_checksum_url | default('deploy_image_checksum_url NOT DEFINED') }}]
+          Checksum Algo:     [{{ deploy_image_checksum_algorithm | default('deploy_image_checksum_algorithm NOT DEFINED') }}]
+          Local Target Dest: [{{ deploy_image              | default('deploy_image NOT DEFINED') }}]
           
           Potential Issues (Execution continues):
             => 1. ISO Netinstaller URL is down, misconfigured or unreachable.
@@ -146,60 +161,56 @@
   # 3.  Download TARBALL NetInstaller
   #---------------------------------------  
 - vars:
-    g1_distro_definitions: "{{ genesis_os_definitions[g1_image_os_distro] | default({}) }}"
-    g1_image_os_ramdisk: "{{ g1_distro_definitions['ramdisk'] | default(g1_image_os_local_folder ~ 'initrd.gz')  | default('') }}"
-    g1_concat_addition_filename: "{{ g1_image_os_firmware_url | default('') | basename | default('firmware.cpio.gz', true) }}"
-    g1_concat_addition: "{{ g1_image_os_local_folder  | default('') }}/{{ g1_concat_addition_filename }}"
-    g1_concat_src:      "{{ g1_image_os_local_folder  | default('') }}/{{ g1_image_os_ramdisk  | default('') }}" 
-    g1_concat_dest:     "{{ g1_image_os_local_folder  | default('') }}/{{ g1_image_os_ramdisk  | default('') }}" 
-    g1_tarball_download: 
-      - url:  "{{ g1_image_os_netinstaller_url | default(omit) }}"
-        dest: "{{ g1_image_os_local_folder     | default(omit) }}"
-        unzip: true
-      - url:  "{{ g1_image_os_firmware_url     | default(omit) }}"
-        dest: "{{ g1_image_os_local_folder     | default(omit) }}"
-        unzip: false
-        concat_addition: "{{ g1_concat_addition | default('') }}"
-        concat_src:      "{{ g1_concat_src      | default('') }}"
-        concat_dest:     "{{ g1_concat_dest     | default('') }}"
-
+    g1_tarball_download_src:
+      tarball:
+        - url:  "{{ g1_image_os_netinstaller_url | default(omit) }}"
+          dest: "{{ g1_image_os_local_folder     | default(omit) }}"
+          unzip: true
+        - url:  "{{ g1_image_os_firmware_url     | default(omit) }}"
+          dest: "{{ g1_image_os_local_folder     | default(omit) }}"
+          unzip: false
+        - url:  "{{ g1_image_os_drivers_url      | default(omit) }}"
+          dest: "{{ g1_image_os_local_folder     | default(omit) }}"
+          unzip: false
+      mini:
+        - url:  "{{ g1_image_os_firmware_url     | default(omit) }}"
+          dest: "{{ g1_image_os_local_folder     | default(omit) }}"
+          unzip: false
+        - url:  "{{ g1_image_os_drivers_url      | default(omit) }}"
+          dest: "{{ g1_image_os_local_folder     | default(omit) }}"
+          unzip: false
+    g1_netinstall_type:  "{{ g1_image.netinstall_ramdisk                 | default('none',true) }}"
+    g1_tarball_download: "{{ g1_tarball_download_src[g1_netinstall_type] | default([],true) }}"
   block:
     - name: "G1 - BOOTSTRAP - 2.- Download OS: 2.4) Download NetInstall Bootloader Tarball Version"
       ansible.builtin.include_tasks: "3_tarball.yml"
 
   rescue:
-    - name: "G1 - BOOTSTRAP - 2.- Download OS: Handle Tarball Warning"
+    - name: "G1 - BOOTSTRAP - 2.- Download OS: Netinstall Tarball Warning"
       vars:
         t4_rescue_tarball_block: |
-          [WARN] G1 - BOOTSTRAP - 2.- Download OS: Tarball / Firmware Processing Flow Problem.
+          [WARN] G1 - BOOTSTRAP - 2.- Download OS: Netinstall Tarball Flow Problem.
           ------------------------------------------------------------------------------------
-          Target Distro: {{ g1_image_os_distro | default('N/A') }} {{ g1_image_os_distro_version | default('') }}
+          Target Distro:    [{{ g1_image_os_distro | default('g1_image_os_distro NOT DEFINED') }}]
+          Target Version:   [{{ g1_image_os_distro_version | default('g1_image_os_distro_version NOT DEFINED') }}]
+          Netinstall Type:  [{{ g1_netinstall_type | default('NOT DEFINED') }}]
           
           --- Runtime Variables Dump ---
           Netinstaller URL: [{{ g1_image_os_netinstaller_url | default('NOT DEFINED') }}]
+          Checksum URL:     [{{ g1_image_os_netinstaller_checksum_url | default('NOT DEFINED') }}]
+          Checksum Algo:    [{{ g1_image_os_netinstaller_checksum_algo | default('NOT DEFINED') }}]
           Firmware URL:     [{{ g1_image_os_firmware_url | default('NOT DEFINED') }}]
-          Local Folder:     {{ g1_image_os_local_folder | default('NOT DEFINED') }}
-          
-          --- Pipeline Concatenation Specs ---
-          Concat Src:       {{ g1_concat_src | default('NOT DEFINED') }}
-          Concat Addition:  {{ g1_concat_addition | default('NOT DEFINED') }}
-          Concat Dest:      {{ g1_concat_dest | default('NOT DEFINED') }}
+          Drivers URL:      [{{ g1_image_os_drivers_url | default('NOT DEFINED') }}]
+          Local Folder:     [{{ g1_image_os_local_folder | default('NOT DEFINED') }}]
           
           Potential Issues (Execution continues):
-            => 1. Netinstaller components or Firmware URL could not be pulled from upstream.
-            => 2. Post-download pipeline issue (Unarchive tasks or binary concatenation crashed).
-            => 3. Permissions / Lock issues on destination folder or missing base 'initrd.gz'.
+            => 1. Netinstaller components, Integrity Checksums, Firmware, or Drivers URL could not be pulled from upstream.
+            => 2. Mismatch on expected vs actual cryptographic signature/hash during the download stage.
+            => 3. Permissions / Lock issues on destination folder or network timeout.
             => 4. Check '3_tarball.yml' execution logs for specific step details.
       ansible.builtin.debug:
         msg: "{{ t4_rescue_tarball_block.splitlines() }}"
 
+
   when:
-    - g1_image.firmware_ramdisk | default(false) | bool
-    - g1_image.netinstall_ramdisk is defined
-    - g1_image.netinstall_ramdisk is not none
-    - g1_image.netinstall_ramdisk is string
-    - "'tarball' in g1_image.netinstall_ramdisk"
-    - g1_image_os_netinstaller_url is defined
-    - g1_image_os_netinstaller_url is not none
-    - g1_image_os_netinstaller_url is string
-    - g1_image_os_netinstaller_url | length > 0
+    - g1_tarball_download | default([],true) | length > 0

@@ -17,38 +17,56 @@
 - name: "G1 - BOOTSTRAP - 2.- Download: 2) OS Images"
   ansible.builtin.include_tasks: "2_download/2_os.yml"
   vars:
-  
     # 1.- OS Particulars
-    g1_image_os_distro:         "{{ g1_image.distribution         | default('RedHat') | lower }}"
-    g1_image_os_distro_version: "{{ g1_image.distribution_version | default('8') }}"
-    g1_image_os_distro_arch:    "{{ g1_image.distribution_arch    | default('amd64') | lower }}"
-    g1_image_os_netinstaller_type:        "{{ g1_image.netinstall_ramdisk | default('mini') | lower }}"
-    g1_image_os_distro_version_main:      "{{ g1_image_os_distro_version | string | split('.') | first }}"
-    g1_image_os_netinstaller_url_pattern: "{{ g1_os_netinstaller_url[g1_image_os_netinstaller_type][g1_image_os_distro] | default('') }}"
+    g1_image_os_distro:                   "{{ g1_image.distribution         | default('RedHat') | lower }}"
+    g1_image_os_distro_version:           "{{ g1_image.distribution_version | default('8') }}"
+    g1_image_os_distro_arch:              "{{ g1_image.distribution_arch    | default('amd64') | lower }}"
+    g1_image_os_netinstaller_type:        "{{ g1_image.netinstall_ramdisk   | default('mini')  | lower }}"
+    g1_image_os_installer_type:           "{{ g1_image.installer            | default('dvd')   | lower }}"
+    g1_image_os_distro_version_latest:    "{{ g1_image.latest | bool | default(false)  | ternary('latest','version') }}"
+    g1_image_os_distro_version_main:      "{{ g1_image_os_distro_version    | string | split('.') | first }}"
     g1_image_os_distro_alias:             "{{ genesis_os_definitions[g1_image_os_distro]['alias'][g1_image_os_distro_version_main] | default('') }}"
+
+    # 2.- OS NetInstaller Particulars	  
+    g1_image_os_netinstaller_definition_distro:  "{{ g1_os_netinstaller_url[g1_image_os_distro] | default({}) }}"
+    g1_image_os_netinstaller_definition:  "{{ g1_image_os_netinstaller_definition_distro[g1_image_os_distro_version_latest] | default({}) }}"
+    g1_image_os_netinstaller_url_pattern: "{{ g1_image_os_netinstaller_definition[g1_image_os_netinstaller_type] | default('') }}"
     g1_image_os_netinstaller_url_arch:    "{{ g1_image_os_netinstaller_url_pattern | replace('[ARCH]', g1_image_os_distro_arch) }}"
-    g1_image_os_netinstaller_url_version: "{{ g1_image_os_netinstaller_url_arch | replace('[VERSION]', g1_image_os_distro_version) }}"
+    g1_image_os_netinstaller_url_version: "{{ g1_image_os_netinstaller_url_arch    | replace('[VERSION]', g1_image_os_distro_version) }}"
     g1_image_os_netinstaller_url_default: "{{ g1_image_os_netinstaller_url_version | replace('[ALIAS]', g1_image_os_distro_alias) }}"
-    g1_image_os_netinstaller_url:         "{{ g1_image.netinstall_url | default(g1_image_os_netinstaller_url_default) }}"
-    g1_image_os_firmware_url_pattern: "{{ g1_os_netinstaller_url['firmware'][g1_image_os_distro] | default('') }}"
-    g1_image_os_firmware_url_arch:    "{{ g1_image_os_firmware_url_pattern | replace('[ARCH]', g1_image_os_distro_arch) }}"
-    g1_image_os_firmware_url_version: "{{ g1_image_os_firmware_url_arch | replace('[VERSION]', g1_image_os_distro_version) }}"
-    g1_image_os_firmware_url_default: "{{ g1_image_os_firmware_url_version | replace('[ALIAS]', g1_image_os_distro_alias) }}"
-    g1_image_os_firmware_url:         "{{ g1_image.firmware_url | default(g1_image_os_firmware_url_default) }}"
-    g1_deploy_os_path:   "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
-    g1_deploy_tftp_path: "{{ g1_tftp_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
+    g1_image_os_netinstaller_url:         "{{ g1_image.netinstall_url               | default(g1_image_os_netinstaller_url_default) }}"
+    g1_image_os_netinstaller_checksum_pattern: "{{ g1_image_os_netinstaller_definition['checksum'] | default('') }}"
+    g1_image_os_netinstaller_checksum_arch:    "{{ g1_image_os_netinstaller_checksum_pattern | replace('[ARCH]', g1_image_os_distro_arch) }}"
+    g1_image_os_netinstaller_checksum_version: "{{ g1_image_os_netinstaller_checksum_arch    | replace('[VERSION]', g1_image_os_distro_version) }}"
+    g1_image_os_netinstaller_checksum_default: "{{ g1_image_os_netinstaller_checksum_version | replace('[ALIAS]', g1_image_os_distro_alias) }}"
+    g1_image_os_netinstaller_checksum_url:     "{{ g1_image.netinstall_checksum | default(g1_image_os_netinstaller_checksum_default,true) | default(g1_image.checksum,true) | default('') }}"
+    g1_image_os_netinstaller_checksum_algo:    "{{ g1_image.netinstall_checksum_algo | default(g1_image_os_netinstaller_definition['checksum_algo']) | default('sha256') }}"
+    g1_image_os_firmware_url_pattern:     "{{ g1_image_os_netinstaller_definition['firmware'] | default('') }}"
+    g1_image_os_firmware_url_arch:        "{{ g1_image_os_firmware_url_pattern | replace('[ARCH]', g1_image_os_distro_arch) }}"
+    g1_image_os_firmware_url_version:     "{{ g1_image_os_firmware_url_arch    | replace('[VERSION]', g1_image_os_distro_version) }}"
+    g1_image_os_firmware_url_default:     "{{ g1_image_os_firmware_url_version | replace('[ALIAS]', g1_image_os_distro_alias) }}"
+    g1_image_os_firmware_url:             "{{ g1_image.firmware_url | default(g1_image_os_firmware_url_default) }}"
 
-    # 2.- Image Name Default Values
-    g1_deploy_image_url:          "{{ g1_image.image | default('')  }}"
-    g1_deploy_image_default_name: "{{ g1_deploy_image_url | basename }}"
-    g1_deploy_image_default_ext:  "{{ g1_deploy_image_default_name | ansible.builtin.splitext | last }}"
-    g1_default_os_image_name:     "{{ genesis_default_os_image_name[g1_deploy_image_default_ext] |  default(g1_deploy_image_default_name) }}" 
-    g1_deploy_image_name: "{{ g1_image.os_image_name | default(g1_default_os_image_name) | lower }}" 
+    # 3.- OS NetInstaller Particulars	  
+    g1_image_os_installer_url_pattern:     "{{ g1_image_os_netinstaller_definition[g1_image_os_installer_type] | default('') }}"
+    g1_image_os_installer_url_arch:        "{{ g1_image_os_installer_url_pattern | replace('[ARCH]', g1_image_os_distro_arch) }}"
+    g1_image_os_installer_url_version:     "{{ g1_image_os_installer_url_arch    | replace('[VERSION]', g1_image_os_distro_version) }}"
+    g1_image_os_installer_url_default:     "{{ g1_image_os_installer_url_version | replace('[ALIAS]', g1_image_os_distro_alias) }}"
+    g1_image_os_installer_url:             "{{ g1_image.firmware_url | default(g1_image_os_installer_url_default) }}"
+ 
+    # 4.- Image Name Default Values
+    g1_deploy_os_path:                    "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
+    g1_deploy_tftp_path:                  "{{ g1_tftp_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
+    g1_deploy_image_url:                  "{{ g1_image.image | default(g1_image_os_installer_url) | default('')  }}"
+    g1_deploy_image_default_name:         "{{ g1_deploy_image_url | basename }}"
+    g1_deploy_image_default_ext:          "{{ g1_deploy_image_default_name | ansible.builtin.splitext | last }}"
+    g1_default_os_image_name:             "{{ genesis_default_os_image_name[g1_deploy_image_default_ext] |  default(g1_deploy_image_default_name) }}" 
+    g1_deploy_image_name:                 "{{ g1_image.os_image_name | default(g1_default_os_image_name) | lower }}" 
 
-    # 3.- Download Folders
-    g1_image_os_default_local_path: "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
-    g1_image_os_local_folder: "{{ image_src.local_folder | default(g1_image_os_default_local_path) | realpath }}"
-  
+    # 5.- Download Folders
+    g1_image_os_default_local_path:       "{{ g1_repo_os_path | realpath }}/{{ g1_image_os_distro }}/{{ g1_image_os_distro_version }}"
+    g1_image_os_local_folder:             "{{ image_src.local_folder | default(g1_image_os_default_local_path) | realpath }}"
+
   loop: "{{ download_image_sources | default([]) }}"
   loop_control:
      loop_var: "g1_image"
