@@ -31,6 +31,7 @@ genesis_download_images:
   - distribution: "CentOS"
     distribution_version: "9"
     distribution_arch: "x86_64"
+    os_image_name: "x86_64.iso"
     extract_ramdisk: yes
     mount: yes
 
@@ -38,7 +39,7 @@ genesis_download_images:
     distribution_version: "24.04"
     distribution_version_minor: "5"
     distribution_arch: "amd64"
-    os_image_name: "amd64.iso" 
+    os_image_name: "x86_64.iso" 
     extract_ramdisk: yes
     mount: yes
 
@@ -55,7 +56,7 @@ genesis_download_images:
   - distribution: "Debian"
     distribution_version: "13.7"
     distribution_arch: "amd64"
-    os_image_name: "amd64.iso" 
+    os_image_name: "x86_64.iso" 
     latest: yes # Debian URLs: current / historical Repository
     mount: yes
 
