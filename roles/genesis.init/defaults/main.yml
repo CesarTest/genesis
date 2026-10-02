@@ -86,51 +86,65 @@ g3_setup_webserver:
 #  G3 - OS IMAGES RESPOSITORIES
 ######################################################
 g3_extract_os_installer:
-  centos:
-    - src: "images/pxeboot/vmlinuz"
-      dest: "vmlinuz"
-    - src: "images/pxeboot/initrd.img"
-      dest: "initrd"
-    - src: "images/install.img"
-      dest: "install.img"
-  redhat:
-    - src: "images/pxeboot/vmlinuz"
-      dest: "vmlinuz"
-    - src: "images/pxeboot/initrd.img"
-      dest: "initrd"
-    - src: "images/install.img"
-      dest: "install.img" 
-  rocky:
-    - src: "images/pxeboot/vmlinuz"
-      dest: "vmlinuz"
-    - src: "images/pxeboot/initrd.img"
-      dest: "initrd"
-    - src: "images/install.img"
-      dest: "install.img" 
-  ubuntu:
-    - src: "casper/vmlinuz"
-      dest: "vmlinuz"
-    - src: "casper/initrd"
-      dest: "initrd"	
-  debian:
-    - src: "install.amd/vmlinuz"
-      dest: "linux"	
-    - src: "install.amd/initrd.gz"
-      dest: "initrd.gz"
-  suse: 
-    - src: "boot/x86_64/loader/linux"
-      dest: "vmlinuz"
-    - src: "boot/x86_64/loader/initrd"
-      dest: "initrd"
-    - src: "LiveOS/squashfs.img"
-      dest: "install.img"
-  sles: 
-    - src: "boot/x86_64/loader/linux"
-      dest: "vmlinuz"
-    - src: "boot/x86_64/loader/initrd"  
-      dest: "initrd"   
-    - src: "boot/x86_64/root"
-      dest: "root"        
+   iso:
+     centos:
+       - src: "images/pxeboot/vmlinuz"
+         dest: "vmlinuz"
+       - src: "images/pxeboot/initrd.img"
+         dest: "initrd"
+       - src: "images/install.img"
+         dest: "install.img"
+     redhat:
+       - src: "images/pxeboot/vmlinuz"
+         dest: "vmlinuz"
+       - src: "images/pxeboot/initrd.img"
+         dest: "initrd"
+       - src: "images/install.img"
+         dest: "install.img" 
+     rocky:
+       - src: "images/pxeboot/vmlinuz"
+         dest: "vmlinuz"
+       - src: "images/pxeboot/initrd.img"
+         dest: "initrd"
+       - src: "images/install.img"
+         dest: "install.img" 
+     ubuntu:
+       - src: "casper/vmlinuz"
+         dest: "vmlinuz"
+       - src: "casper/initrd"
+         dest: "initrd"	
+     debian:
+       - src: "install.amd/vmlinuz"
+         dest: "linux"	
+       - src: "install.amd/initrd.gz"
+         dest: "initrd.gz"
+     suse: 
+       - src: "boot/[ARCH]/loader/linux"
+         dest: "vmlinuz"
+       - src: "boot/[ARCH]/loader/initrd"
+         dest: "initrd"
+       - src: "LiveOS/squashfs.img"
+         dest: "install.img"
+     sles: 
+       - src: "boot/[ARCH]/loader/linux"
+         dest: "vmlinuz"
+       - src: "boot/[ARCH]/loader/initrd"  
+         dest: "initrd"   
+       - src: "boot/[ARCH]/root"
+         dest: "root"
+   tarball:
+     debian:
+       - src: "debian-installer/[ARCH]/initrd.gz"
+         dest: "initrd.gz"
+       - src: "debian-installer/[ARCH]/linux"
+         dest: "vmlinuz"
+   mini:
+     debian:
+       - src:  "initrd.gz"
+         dest: "initrd.gz"
+       - src:  "linux"
+         dest: "vmlinuz"
+
 
 g3_native_os_installer:
 
@@ -215,7 +229,7 @@ g3_cloud_os_installer:
     distribution_version: "9"
     installer: 'qcow'
     os_image_name: "partition.qcow2"
-genesis_all_installers_download: "{{ g1_native_os_installer + g1_cloud_os_installer }}"
+genesis_all_installers_download: "{{ g3_native_os_installer + g3_cloud_os_installer }}"
 
 # Using bifrost internal variable name
 genesis_installers_download: "{{ g3_native_os_installer + g3_cloud_os_installer }}"

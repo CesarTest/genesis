@@ -5,27 +5,32 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- vars:
-    g3_deploy_default_path: "{{ g3_deploy_mount_path | default('') }}" 
-    g3_deploy_path: "{{ g3_image.mount_path | default( g3_deploy_default_path ) | realpath }}"
-    g3_src_path:    "{{ g3_deploy_os_path | default('') }}" 
-    g3_src_image:   "{{ g3_src_path | realpath }}/{{ g3_deploy_image_name }}"       
-  block:
+- block:
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.0 - Display Mount Details"
+      ansible.builtin.debug:
+        msg: "{{ debug_mount_text.splitlines() }}"
+      vars:
+        debug_mount_text: |
+          =================== ISO MOUNT PARTICULARS ===================
+          Target Mount Path:  {{ g3_dest_mount | default('g3_mount_path NOT DEFINED OR EMPTY', true) }}
+          Source Image Path:  {{ g3_src_image  | default('g3_src_image NOT DEFINED OR EMPTY', true) }}
+          Mount Properties:   {{ g3_iso_mount_properties | default('default properties (omit)', true) }}
+      delegate_to: localhost
+      connection: local
+      ignore_errors: yes
+
     - name: "G3 - INIT: Setup PXE-HTTP: 2.1 - Create Mount Folder"
       become: yes
       ansible.builtin.file:
-        path: "{{ g3_deploy_path }}" 
+        path: "{{ g3_dest_mount }}" 
         state: directory
-        owner: "{{ g3_webserver_user | default(omit) }}"
+        owner: "{{ g3_webserver_user  | default(omit) }}"
         group: "{{ g3_webserver_group | default(omit) }}"  
-      when: 
-        - g3_image.mount is defined
-        - g3_image.mount   
 
     - name: "G3 - INIT: Setup PXE-HTTP: 2.2 Mount ISO Image"
       become: yes
       ansible.posix.mount:
-        path: "{{ g3_deploy_path }}"
+        path: "{{ g3_dest_mount }}"
         src:  "{{ g3_src_image }}"
         fstype: iso9660
         opts:  "{{ g3_iso_mount_properties | default(omit) }}"
@@ -35,6 +40,24 @@
         - mounted
       loop_control:
         loop_var: "g3_mount_state"
-      when: 
-        - g3_image.mount is defined
-        - g3_image.mount
+
+  rescue:
+    - name: "G3 - INIT: WARNING: Failed to mount ISO image"
+      ansible.builtin.debug:
+        msg: "{{ rescue_mount_text.splitlines() }}"
+      vars:
+        rescue_mount_text: |
+          [WARNING] The ISO mounting process has failed or been interrupted.
+          Target Mount Path:  {{ g3_dest_mount | default('g3_dest_mount NOT DEFINED OR EMPTY', true) }}
+          Source Image Path:  {{ g3_src_image  | default('g3_src_image NOT DEFINED OR EMPTY', true) }}
+          
+          POSSIBLE CAUSE: The loop device might be locked, the destination folder permissions are incorrect, or the ISO file is corrupted/missing.
+          REMEDY: Check the existence of the source file, verify manually with `mount -o loop {{ g3_src_image | default('g3_src_image NOT DEFINED', true) }} {{ g3_dest_mount | default('g3_dest_mount NOT DEFINED', true) }}`, or check system logs via `dmesg | tail`.
+      delegate_to: localhost
+      connection: local
+      ignore_errors: yes
+
+
+  when: 
+    - g3_image.mount is defined
+    - g3_image.mount | bool

@@ -70,8 +70,6 @@ genesis_os_definitions:
     ansible_distribution: "Debian"
     installer: "preseed"
     ext: ".cfg"
-    #ramdisk: "debian-installer/amd64/initrd.gz"
-    #kernel: "debian-installer/amd64/linux"
     alias:
       "13": &debian_13 "trixie"
       "12": &debian_12 "bookworm"
@@ -205,9 +203,6 @@ genesis_os_netinstaller_url:
         checksum:      "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/SHA256SUMS"
         checksum_algo: "sha256"
         firmware:      "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"
-        tarball_paths:
-          ramdisk: "debian-installer/[ARCH]/initrd.gz"
-          kernel: "debian-installer/[ARCH]/linux"
     version:
       dvd:
         url:           "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-dvd/debian-[VERSION].[MINOR]-[ARCH]-DVD-1.iso"
@@ -228,9 +223,7 @@ genesis_os_netinstaller_url:
         checksum:      "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/SHA256SUMS"
         checksum_algo: "sha256"
         firmware:      "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"
-        tarball_paths:
-          ramdisk: "debian-installer/[ARCH]/initrd.gz"
-          kernel: "debian-installer/[ARCH]/linux"
+
 
   ubuntu:
     version: &ubuntu_data
