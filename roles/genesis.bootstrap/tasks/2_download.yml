@@ -82,9 +82,9 @@
     # - Default Naming:  { g1_image.os_image_name ->  distribution_arch.iso -> genesis_default_os_name[installer] -> url basename }
     g1_deploy_image_default_name:     "{{ g1_deploy_image_url | basename }}"
     g1_default_os_image_name_default_arch: "{{ (g1_image.distribution_arch | length > 0) | ternary(g1_image_os_distro_arch ~ '.iso','') }}"
-    g1_deploy_image_default_ext:      "{{ g1_deploy_image_default_name | ansible.builtin.splitext | last }}"
-    g1_default_os_image_name_default: "{{ genesis_default_os_image_name[g1_deploy_image_default_ext] | default(g1_deploy_image_default_name) }}"
-    g1_default_os_image_name:         "{{ g1_default_os_image_name_default_arch | default(genesis_default_os_image_name[g1_image_os_installer_type],true) | default(g1_deploy_image_default_name,true) | default('x86_64.iso') }}"
+    g1_deploy_image_default_ext:      "{{ g1_deploy_image_default_name | ansible.builtin.splitext | last | replace('.','') }}"
+    g1_default_os_image_name_default: "{{ genesis_default_os_image_name[g1_image_os_installer_type] | default(genesis_default_os_image_name[g1_deploy_image_default_ext]) | default(g1_deploy_image_default_name) | default('') }}"
+    g1_default_os_image_name:         "{{ g1_default_os_image_name_default | default(g1_default_os_image_name_default_arch,true) | default('x86_64.iso') }}"
     g1_deploy_image_name:             "{{ g1_image.os_image_name | default(g1_default_os_image_name) | default('x86_64.iso') | lower }}" 
 
     # 5.- Download Folders

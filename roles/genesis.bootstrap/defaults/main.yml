@@ -169,7 +169,21 @@ genesis_os_definitions:
     prefix: "ubcore_"
     ext: ".xml"
 
+# 5.- Locally Generated Checksums File
+genesis_local_checksum_file:
+  path: "{{ genesis_repo_path | realpath }}/checksum"
+  content: |
+   aef4855862bffea1086d59becf67fbe10c90d3d2a21fd74a01770eb75d138ac8 *fedora-coreos-44.20260913.3.2-live-iso.x86_64.iso
+   6a728775cde8cdc5a68de2b1db9ed9a73e2d3a37dc79a6bbc1fb12c075a70fac *fedora-coreos-44.20260913.3.2-live-initramfs.x86_64.img 
+   fc48ea53cf994d2f2e4e3969824a643498b31d9be5540270a53040159a874820 *fedora-coreos-44.20260913.3.2-live-kernel.x86_64
+   f453f83d177fde78ee2630f5769a8c8458137065a67bfa3bff879f27bf0cadaf *fedora-coreos-44.20260913.3.2-live-rootfs.x86_64.img
+   3c0ace903c0a78b13a09d5649ffc4409370f6d8dab2a79fea310b20ac20a2ac2 *Leap-16.0-offline-installer-x86_64-Build178.27.install.iso
+genesis_local_checksum_url: "file://{{ genesis_local_checksum_file.path }}"
+
+ # 3.- Distro URLs
 genesis_os_netinstaller_url:
+
+  # --------------------------------------> SERVER <-------------------------------------
   debian:
     latest:
       dvd:
@@ -234,7 +248,7 @@ genesis_os_netinstaller_url:
         checksum_algo: "sha256"
     latest: *ubuntu_data
 
-  centos:
+  centos: # RHEL Testing Bed
     version: &centos_data
       dvd:                                                         
         url:           "https://mirror.stream.centos.org/[MAIN]-stream/BaseOS/[ARCH]/iso/CentOS-Stream-[MAIN]-latest-[ARCH]-dvd1.iso"
@@ -250,67 +264,78 @@ genesis_os_netinstaller_url:
         checksum_algo: "sha256"
     latest: *centos_data
 
+  rocky: # RHEL OpenSource
+    version: &rocky_data
+      dvd:                                                         
+        url:           "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-dvd1.iso"
+        checksum:      "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-dvd1.iso.SHA256SUM"
+        checksum_algo: "sha256"
+      cd:
+        url:           "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-boot.iso"
+        checksum:      "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-boot.iso.SHA256SUM"
+        checksum_algo: "sha256"
+      qcow:
+        url:           "https://dl.rockylinux.org/pub/rocky/[MAIN]/images/[ARCH]/Rocky-[MAIN]-GenericCloud-Base.latest.[ARCH].qcow2"
+        checksum:      "https://dl.rockylinux.org/pub/rocky/[MAIN]/images/[ARCH]/Rocky-[MAIN]-GenericCloud-Base.latest.[ARCH].qcow2.SHA256SUM"
+        checksum_algo: "sha256"
+    latest: *rocky_data
+
   suse:
     version: &suse_data
       dvd:
         url: "https://download.opensuse.org/distribution/leap/offline/[ALIAS]-[VERSION]-offline-installer-[ARCH]-[MINOR].install.iso"
-        checksum: "file://{{ genesis_repo_path | realpath }}/checksum"
+        checksum: "{{ genesis_local_checksum_url }}"
         checksum_algo: "sha256"
       cd:
         url: "https://download.opensuse.org/distribution/leap/online/[ALIAS]-[VERSION]-online-installer-[ARCH]-[MINOR].install.iso"
-        checksum: "file://{{ genesis_repo_path | realpath }}/checksum"
+        checksum: "{{ genesis_local_checksum_url }}"
         checksum_algo: "sha256"
       qcow:
         url: "https://download.opensuse.org/distribution/leap/appliances/[ALIAS]-[VERSION]-Minimal-VM-[ARCH]-[MINOR].Cloud.qcow2"
-        checksum: "file://{{ genesis_repo_path | realpath }}/checksum"
+        checksum: "{{ genesis_local_checksum_url }}"
         checksum_algo: "sha256"
     latest: *suse_data
-   
+
+  # --------------------------------------> CLUSTER <-------------------------------------  
   coreos:
     version: &coreos_data
       dvd:
         url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-iso.[ARCH].iso"
-        checksum: "file://{{ genesis_repo_path | realpath }}/checksum"
+        checksum: "{{ genesis_local_checksum_url }}"
         checksum_algo: "sha256"
       kernel:
         url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-kernel.[ARCH]"
-        checksum: "file://{{ genesis_repo_path | realpath }}/checksum"
+        checksum: "{{ genesis_local_checksum_url }}"
         checksum_algo: "sha256"
       ramdisk:
         url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-initramfs.[ARCH].img"
-        checksum: "file://{{ genesis_repo_path | realpath }}/checksum"
+        checksum: "{{ genesis_local_checksum_url }}"
         checksum_algo: "sha256"
       rootfs:
         url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-rootfs.[ARCH].img"
-        checksum: "file://{{ genesis_repo_path | realpath }}/checksum"
+        checksum: "{{ genesis_local_checksum_url }}"
         checksum_algo: "sha256"
     latest: *coreos_data
    
 g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
 
-# 4.- Bifrost Root Paths
+# 7.- Bifrost Root Paths
 git_root: "{{ genesis_repo_path | realpath }}/openstack"
 git_url_root: https://opendev.org
 tarballs_base_url: "https://tarballs.opendev.org/openstack/ironic-python-agent"
 oras_upstream_root: "https://github.com/oras-project/oras/releases/download" 
- 
- # 5.- Locally Generated Checksums File
-genesis_local_checksum_file:
-  path: "{{ genesis_repo_path | realpath }}/checksum"
-  content: |
-   8ffd0d0fc218eae95c578ec12839fe598d60f96de85fab63d424ad021ed1a62f *fedora-coreos-44.20260707.3.1-live-iso.x86_64.iso
-   360c3b6b4cc8a58807fca8ac6947c8ec578e482af52d2311ae99ef02fe9d8dc5 *fedora-coreos-44.20260707.3.1-live-initramfs.x86_64.img 
-   fc48ea53cf994d2f2e4e3969824a643498b31d9be5540270a53040159a874820 *fedora-coreos-44.20260707.3.1-live-kernel.x86_64
-   376a1025e24a9f36b0e5e8a2ee8ca8b2c30d29a06e61f0dfe7edf9a9c76ed77b *fedora-coreos-44.20260802.3.1-live-rootfs.x86_64.img
-   3c0ace903c0a78b13a09d5649ffc4409370f6d8dab2a79fea310b20ac20a2ac2 *Leap-16.0-offline-installer-x86_64-Build178.27.install.iso
 
-# 6.- Default OS Names 
+# 8.- Default OS Names 
 genesis_default_os_image_name:
   qcow: "partition.qcow"
   qcow2: "partition.qcow2"
   img: "partition.img"
   raw: "wholedisk.raw" 
-  iso:  "netboot.iso"
+  cd:  "netboot.iso"
+  dvd: "x86_64.iso"
+  kernel: "vmlinuz" 
+  ramdisk: "initrd"
+  rootfs: "image.img"
 
 ######################################################
 # G1 BOOTSTRAP PATHS
@@ -381,6 +406,7 @@ create_image_via_dib: true
 ironic_tftp_master_path: "{{ g1_repo_os_path }}"
 g1_default_checksum_algorithm: "sha256"
 g1_native_os_installer:
+
    #-----------------------------------
    # Server OS
    #-----------------------------------
@@ -394,15 +420,16 @@ g1_native_os_installer:
     distribution_version: "24.04"
     distribution_version_minor: "5"
     distribution_arch: "amd64"
+    os_image_name: "amd64.iso" 
     extract_ramdisk: yes
     mount: yes
 
   - distribution: "Debian"
     distribution_version: "13.7"
     distribution_arch: "amd64"
-    installer: 'cd'
     os_image_name: "netboot.iso"  
-    latest: yes # Debian URLs: current / historical
+    latest: yes # Debian URLs: current / historical Repository
+    installer: 'cd'
     netinstall_ramdisk: "mini"
     extract_ramdisk: yes
     mount: yes
@@ -410,15 +437,18 @@ g1_native_os_installer:
   - distribution: "Debian"
     distribution_version: "13.7"
     distribution_arch: "amd64"
-    latest: yes # Debian URLs: current / historical
+    os_image_name: "amd64.iso" 
+    latest: yes # Debian URLs: current / historical Repository
     mount: yes
 
+    # SuSE 16 has different Product Name (for Amanda Installer) / ISO Name (for URL download) 
+    #   Alias for Amanda Installer is a must => URL [ALIAS] pattern replacement will fail 
   - distribution: "SuSE"
     distribution_version: "16.0"
     distribution_minor: "Build178.27"
     distribution_arch: "x86_64"
-    image: "https://download.opensuse.org/distribution/leap/16.0/offline/Leap-16.0-offline-installer-x86_64-Build178.27.install.iso"
     os_image_name: "x86_64.iso"
+    image: "https://download.opensuse.org/distribution/leap/16.0/offline/Leap-16.0-offline-installer-x86_64-Build178.27.install.iso"
     extract_ramdisk: yes
     mount: yes
 
@@ -429,28 +459,29 @@ g1_native_os_installer:
     distribution_version: "44"
     distribution_version_minor: "20260913.3.2"
     distribution_arch: "x86_64"
-    os_image_name: "x86_64.iso" 
+    os_image_name: "x86_64.iso"
 
   - distribution: "CoreOS"
     distribution_version: "44"
     distribution_version_minor: "20260913.3.2"
     distribution_arch: "x86_64"
-    installer: 'kernel'
     os_image_name: "vmlinuz" 
+    installer: 'kernel'
+
 
   - distribution: "CoreOS"
     distribution_version: "44"
     distribution_version_minor: "20260913.3.2"
     distribution_arch: "x86_64"
-    installer: 'ramdisk'
     os_image_name: "initrd"
+    installer: 'ramdisk'
 
   - distribution: "CoreOS"
     distribution_version: "44"
     distribution_version_minor: "20260913.3.2"
     distribution_arch: "x86_64"
-    installer: 'rootfs'
     os_image_name: "install.img"
+    installer: 'rootfs'
     
 g1_cloud_os_installer:
   - distribution: "CentOS"

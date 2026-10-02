@@ -132,7 +132,7 @@
     # Image Destination: Path Details
     http_boot_folder:      "{{ g1_image_os_local_folder }}"
     deploy_image_filename: "{{ g1_image_os_netinstaller_url | default('') | basename }}"
-    deploy_image:          "{{ http_boot_folder }}/{{ deploy_image_filename | default('') | basename }}"
+    deploy_image:          "{{ http_boot_folder }}/{{ deploy_image_filename | default('mini.iso') }}"
 
   block:
     - name: "G1 - BOOTSTRAP - 2.- Download OS: 2.3) Download NetInstall Bootloader ISO Version"

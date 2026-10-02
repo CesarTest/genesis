@@ -24,7 +24,16 @@ genesis_bifrost_roles: "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost
 genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
 genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 
-# 3.- Repositories
+# 4.- Default Image Names (for URL subpath) 
+genesis_default_os_image_name:
+  qcow: "partition.qcow"
+  qcow2: "partition.qcow2"
+  img: "partition.img"
+  raw: "wholedisk.raw" 
+  cd:  "netboot.iso"
+  dvd: "x86_64.iso"
+  
+# 5.- Repositories
 genesis_http_path: "{{ ironic_http_path | default('/var/lib/ironic/httpboot') | realpath }}"
 genesis_default_repos:
   os: "os"
@@ -34,7 +43,7 @@ genesis_default_repos:
   ipa: "dib/files" 
   repo: "mnt"
 
-# 4.- OS Definitions
+# 6.- OS Definitions
 genesis_os_definitions:
 
   redhat: &redhat_keys
@@ -158,7 +167,7 @@ genesis_os_definitions:
     prefix: "ubcore_"
     ext: ".xml"
 
-# 4.- OS Locale Definitions
+# 7.- OS Locale Definitions
 genesis_locale_matrix:
   us:
     keyboard: "us"                   # El estándar internacional de sistemas
