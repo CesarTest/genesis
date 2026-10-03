@@ -113,6 +113,13 @@ g3_extract_os_installer:
          dest: "vmlinuz"
        - src: "casper/initrd"
          dest: "initrd"	
+     fai:
+       - src: "boot/vmlinuz"
+         dest: "vmlinuz"	
+       - src: "boot/initrd.img"
+         dest: "initrd"
+       - src: "LiveOS/squashfs.img" 
+         dest: "install.img"
      debian:
        - src: "install.amd/vmlinuz"
          dest: "linux"	

@@ -43,11 +43,16 @@ genesis_download_images:
     extract_ramdisk: yes
     mount: yes
 
+    # Debian DVD/CD does not include storage drivers
+    #   FAI (Fully Automater Installation): https://fai-project.org/fai-guide/
   - distribution: "Debian"
     distribution_version: "13.7"
     distribution_arch: "amd64"
     os_image_name: "netboot.iso"  
     latest: yes # Debian URLs: current / historical Repository
+    #image:    "https://fai-project.org/fai-cd/debian13-live-xfce.iso"
+    #checksum: "https://fai-project.org/fai-cd/sha256sums.asc"
+    checksum_algo: "sha256"
     installer: 'cd'
     netinstall_ramdisk: "mini"
     extract_ramdisk: yes

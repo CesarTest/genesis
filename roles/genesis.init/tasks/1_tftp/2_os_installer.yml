@@ -12,8 +12,8 @@
 - vars:
     # ------------------------
     # Debian PXE
-    #   -> Reference Documentation: https://debian.org
-    #   -> Tarball NetInstaller is a must
+    #   -> Reference Documentation: https://wiki.debian.org/DebianInstaller/NetbootFirmware
+    #   -> Tarball/Mini NetInstaller is a must
     #   -> Proprietary Firmware must be added to the RamDisk
     # ------------------------
     g3_distro_definitions: "{{ genesis_os_definitions[g3_image_os_distro] | default({}) }}"
@@ -43,7 +43,7 @@
         exit 1
       fi
 
-    # -> Reference Documentation: https://debian.org
+    # -> Reference Documentation: https://wiki.debian.org/DebianInstaller/NetbootFirmware
     g3_concat_command:
       # Variante 1: Ambos en Gzip (Debian, Ubuntu moderno, CentOS)
       direct: |
@@ -97,17 +97,41 @@
       connection: local
       ignore_errors: yes
 
+    - name: "G3 - INIT: Setup PXE-TFTP: Clean Old Installers"
+      become: true
+      ansible.builtin.file:
+        path: "{{ g3_ramdisk_file_dest | default(omit) }}"
+        state: absent
+      loop: "{{ g3_ramdisk_files | default([]) }}"
+      loop_control:
+        loop_var: "g3_ramdisk_file"
+      vars:
+        g3_ramdisk_filename_src: "{{ g3_ramdisk_file | default('vmlinuz', true) | basename }}"
+        g3_ramdisk_file_dest: "{{ g3_deploy_os_path | realpath }}/{{ g3_ramdisk_filename_src }}"
+
     - name: "G3 - INIT: Setup PXE-TFTP: Unpack OS Installer from ISO"
-      become: yes
+      become: true
       community.general.iso_extract:
         image: "{{ g3_repo_image }}"
         dest:  "{{ g3_deploy_os_path }}"
-        files: "{{ g3_ramdisk_files }}"   
+        files: "{{ g3_ramdisk_files }}"
       vars:
         g3_repo_image: "{{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}"    
-      when: 
-        - not (g3_image.netinstall_ramdisk | default('iso')) in 'tarball'
-    
+
+    - name: "G3 - INIT: Setup PXE-TFTP: Set Permissions to Installer just extracted"
+      become: true
+      ansible.builtin.file:
+        path:  "{{ g3_ramdisk_file_dest | default(omit) }}"
+        owner: "{{ ansible_user | default('ironic') }}"        
+        group: "{{ ansible_user | default('ironic') }}"
+        mode: "0644"       
+      loop: "{{ g3_ramdisk_files | default([]) }}"
+      loop_control:
+        loop_var: "g3_ramdisk_file"
+      vars:
+        g3_ramdisk_filename_src: "{{ g3_ramdisk_file | default('vmlinuz', true) | basename }}"
+        g3_ramdisk_file_dest: "{{ g3_deploy_os_path | realpath }}/{{ g3_ramdisk_filename_src }}"
+
     - name: "G3 - INIT: Setup PXE-TFTP: Concatenate Firmware to Initrd"
       ansible.builtin.shell:
         cmd: |
@@ -129,23 +153,37 @@
         - g3_tarball.concat_dest is defined 
         - g3_tarball.concat_dest is not none
         - g3_tarball.concat_dest | length > 0
-  
+    
   rescue:
+
+    - name: "G3 - INIT: [CONTINGENCY] Run internal ISO layout diagnostics"
+      ansible.builtin.command: >
+        isoinfo -l -i {{ g3_repo_image }}
+      vars:
+        g3_repo_image: "{{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}"    
+      register: g3_diagnostico_iso
+      failed_when: false
+      changed_when: false
+
     - name: "G3 - INIT: WARNING: Failed to extract assets from image"
       ansible.builtin.debug:
         msg: "{{ rescue_raw_text.splitlines() }}"
       vars:
         rescue_raw_text: |
-          [WARNING] The PXE-TFTP unpacking process has skipped or failed for distro '{{ g3_image_os_distro }}'.
-          Image Source Path: {{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}
-          Expected Mapped Files: {{ g3_ramdisk_files }}
+          [WARNING] PXE-TFTP unpacking skipped or failed for distro '{{ g3_image_os_distro }}'.
+          -> ISO Path: {{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}
+          -> Expected Files: {{ g3_ramdisk_files }}
           
-          POSSIBLE CAUSE: If you are using a 'mini.iso' or netboot image, the internal paths of the files change.
-          REMEDY: Mount the ISO manually (`mount -o loop file.iso /mnt`) or use `isoinfo -l -i file.iso` 
-          to inspect the true internal layout and update the mapping keys in your role.
+          CAUSE: Custom or minimal ISOs alter internal paths.
+          REMEDY: Check the real structure below and update your mapping variables.
+          
+          --- REAL ISO INTERNAL LAYOUT ---
+          {{ g3_diagnostico_iso.stdout | default('[ERROR] Unable to read ISO layout or file missing') }}
+          --------------------------------
       delegate_to: localhost
       connection: local
       ignore_errors: yes
 
-  when:
-    - g3_image.extract_ramdisk | default(false) | bool
+  when: 
+    - g3_image.extract_ramdisk     | default(false) | bool
+    - "'tarball' not in (g3_image.netinstall_ramdisk | default('iso'))"

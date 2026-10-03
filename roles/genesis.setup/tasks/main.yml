@@ -39,7 +39,7 @@
           --- JSON Manifest Content Payload ---
           {{ b4_manifesto_nice_json | indent(4) }}
       delegate_to: localhost
-
+      connection: local
 
   when:
     - not b4_skip_setup | default(false) | bool

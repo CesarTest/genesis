@@ -11,4 +11,5 @@
     - ansible.builtin.set_fact:
         t1_hypervisor_api_hostname: "{{ t1_hypervisor_api_hostname_default | default('pve') }}"
       when: t1_hypervisor_api_hostname is not defined
+    - ansible.builtin.include_tasks: "5_pxe/dhcp.yml"
     - ansible.builtin.include_tasks: "4_nodes/lifecycle.yml"
