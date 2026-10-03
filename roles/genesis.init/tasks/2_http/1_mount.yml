@@ -5,7 +5,13 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- block:
+
+#-----------------------
+# 1.- Clean Mount Point 
+#-----------------------
+- name: "G3 - INIT: Setup PXE-HTTP: 2.1 - [BLOCK] Sanitize and Destroy Old Mount Path"
+  become: true
+  block:
     - name: "G3 - INIT: Setup PXE-HTTP: 2.0 - Display Mount Details"
       ansible.builtin.debug:
         msg: "{{ debug_mount_text.splitlines() }}"
@@ -15,49 +21,62 @@
           Target Mount Path:  {{ g3_dest_mount | default('g3_mount_path NOT DEFINED OR EMPTY', true) }}
           Source Image Path:  {{ g3_src_image  | default('g3_src_image NOT DEFINED OR EMPTY', true) }}
           Mount Properties:   {{ g3_iso_mount_properties | default('default properties (omit)', true) }}
-      delegate_to: localhost
-      connection: local
-      ignore_errors: yes
+      ignore_errors: true
 
-    - name: "G3 - INIT: Setup PXE-HTTP: 2.1 - Create Mount Folder"
-      become: yes
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.1.1 - Unmount current path if exists"
+      ansible.posix.mount:
+        path: "{{ g3_dest_mount }}"
+        state: unmounted
+
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.1.2 - Delete mount directory physically"
       ansible.builtin.file:
-        path: "{{ g3_dest_mount }}" 
+        path: "{{ g3_dest_mount }}"
+        state: absent
+  rescue:
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.1.3 - [RESCUE] Force destroy zombi mount via shell loop"
+      ansible.builtin.shell: |
+        umount -f "{{ g3_dest_mount }}" 
+        rm -rf "{{ g3_dest_mount }}"
+      args:
+        executable: /bin/bash
+      register: g3_rescue_purge_status
+      failed_when: false
+  delegate_to: localhost
+  connection: local
+  when:
+    - g3_image.mount is defined
+    - g3_image.mount | bool
+
+#-----------------------
+# 2.- Mount ISO 
+#-----------------------
+- name: "G3 - INIT: Setup PXE-HTTP: 2.2 - [BLOCK] Rebuild Folder and Mount ISO with Masks"
+  become: true
+  block:
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.2.1 - Create fresh mount directory"
+      ansible.builtin.file:
+        path: "{{ g3_dest_mount }}"
         state: directory
         owner: "{{ g3_webserver_user  | default(omit) }}"
-        group: "{{ g3_webserver_group | default(omit) }}"  
+        group: "{{ g3_webserver_group | default(omit) }}"
+        mode: "0755"
 
-    - name: "G3 - INIT: Setup PXE-HTTP: 2.2 Mount ISO Image"
-      become: yes
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.2.2 - Mount ISO Image with 0755 masks"
       ansible.posix.mount:
         path: "{{ g3_dest_mount }}"
         src:  "{{ g3_src_image }}"
-        fstype: iso9660
-        opts:  "{{ g3_iso_mount_properties | default(omit) }}"
-        state: "{{ g3_mount_state          | default('present') }}"     
-      loop:
-        - unmounted
-        - mounted
-      loop_control:
-        loop_var: "g3_mount_state"
-
+        fstype: "iso9660"
+        opts:  "{{ g3_iso_mount_properties | default('loop,ro,dir_mode=0755,file_mode=0644', true) }}"
+        state: mounted
   rescue:
-    - name: "G3 - INIT: WARNING: Failed to mount ISO image"
-      ansible.builtin.debug:
-        msg: "{{ rescue_mount_text.splitlines() }}"
-      vars:
-        rescue_mount_text: |
-          [WARNING] The ISO mounting process has failed or been interrupted.
-          Target Mount Path:  {{ g3_dest_mount | default('g3_dest_mount NOT DEFINED OR EMPTY', true) }}
-          Source Image Path:  {{ g3_src_image  | default('g3_src_image NOT DEFINED OR EMPTY', true) }}
-          
-          POSSIBLE CAUSE: The loop device might be locked, the destination folder permissions are incorrect, or the ISO file is corrupted/missing.
-          REMEDY: Check the existence of the source file, verify manually with `mount -o loop {{ g3_src_image | default('g3_src_image NOT DEFINED', true) }} {{ g3_dest_mount | default('g3_dest_mount NOT DEFINED', true) }}`, or check system logs via `dmesg | tail`.
-      delegate_to: localhost
-      connection: local
-      ignore_errors: yes
-
-
-  when: 
+    - name: "G3 - INIT: Setup PXE-HTTP: 2.2.3 - [RESCUE] Force create directory and mount via shell loop"
+      ansible.builtin.shell: |
+        mkdir -p "{{ g3_dest_mount }}" 
+        mount -o {{ g3_iso_mount_properties | default('loop,ro,dir_mode=0755,file_mode=0644', true) }} "{{ g3_src_image }}" "{{ g3_dest_mount }}"
+      args:
+        executable: /bin/bash
+  delegate_to: localhost
+  connection: local
+  when:
     - g3_image.mount is defined
     - g3_image.mount | bool

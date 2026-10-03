@@ -6,10 +6,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 - name: "G3 - INIT: Setup PXE-TFTP: Copy OS Installer to TFTP folders"
-  become: yes
+  become: true
+  ignore_errors: true
   ansible.builtin.copy:
     src:  "{{ g3_src_file }}"
-    dest: "{{ g3_dest_file }}"  
+    dest: "{{ g3_dest_file }}"
+    force: true
   vars:
     g3_os_installer_src:  "{{ g3_os_installer_file.src  | basename }}"
     g3_os_installer_dest: "{{ g3_os_installer_file.dest | basename }}"

@@ -128,11 +128,13 @@
     deploy_image_upstream_url:       "{{ g1_image_os_netinstaller_url           | default('') }}"
     deploy_image_checksum_url:       "{{ g1_image_os_netinstaller_checksum_url  | default('') }}"
     deploy_image_checksum_algorithm: "{{ g1_image_os_netinstaller_checksum_algo | default('sha256') }}"
-
+    
     # Image Destination: Path Details
     http_boot_folder:      "{{ g1_image_os_local_folder }}"
-    deploy_image_filename: "{{ g1_image_os_netinstaller_url | default('') | basename }}"
-    deploy_image:          "{{ http_boot_folder }}/{{ deploy_image_filename | default('mini.iso') }}"
+    g1_os_detection:       "{{ g1_os_distro | lower }}"
+    g1_os_image_name_path: "{{ ('debian' in g1_os_detection) | ternary('netboot/','')  }}"
+    deploy_image_filename: "{{ g1_os_image_name_path }}{{ g1_image_os_netinstaller_url | default('') | basename }}"
+    deploy_image:          "{{ http_boot_folder }}/{{ deploy_image_filename | default('mini.iso')  | basename }}"
 
   block:
     - name: "G1 - BOOTSTRAP - 2.- Download OS: 2.3) Download NetInstall Bootloader ISO Version"

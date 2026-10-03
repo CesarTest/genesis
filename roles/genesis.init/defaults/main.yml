@@ -114,10 +114,12 @@ g3_extract_os_installer:
        - src: "casper/initrd"
          dest: "initrd"	
      debian:
-       - src: "install.amd/vmlinuz"
-         dest: "linux"	
-       - src: "install.amd/initrd.gz"
-         dest: "initrd.gz"
+       - src: "boot/vmlinuz"
+         dest: "vmlinuz"	
+       - src: "boot/initrd.img"
+         dest: "initrd"
+       - src: "LiveOS/squashfs.img" 
+         dest: "install.img"
      suse: 
        - src: "boot/[ARCH]/loader/linux"
          dest: "vmlinuz"
