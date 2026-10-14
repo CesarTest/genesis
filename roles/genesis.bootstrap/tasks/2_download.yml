@@ -5,6 +5,18 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
+
+
+#---------------------------------------
+# 4. OCI
+#--------------------------------------- 
+- name: "G1 - BOOTSTRAP - 2.- Download: 4) OCI Containers"
+  ansible.builtin.include_tasks: "2_download/4_oci.yml"
+  loop: "{{ b1_sylva_oci_repos | default([]) }}"
+  loop_control:
+     loop_var: "g1_oci"
+
+
 #---------------------------------------
 # 1. OpenStack Components
 #--------------------------------------- 
@@ -98,7 +110,7 @@
 #---------------------------------------
 # 3. Tarballs
 #--------------------------------------- 
-- name: "G1 - BOOTSTRAP - 2.- Download: 4) Tarballs"
+- name: "G1 - BOOTSTRAP - 2.- Download: 3) Tarballs"
   ansible.builtin.include_tasks: "2_download/3_tarball.yml"
   vars:
     g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
@@ -112,10 +124,19 @@
        dest: "{{ g1_proxmox_dest_path }}"
  
 #---------------------------------------
-# 4. IPA
+# 4. OCI
 #--------------------------------------- 
-- name: "G1 - BOOTSTRAP - 2.- Download: 3) IPA (Ironic Python Agent) for Cloud OS Installation"
-  ansible.builtin.include_tasks: "2_download/4_ipa.yml"
+- name: "G1 - BOOTSTRAP - 2.- Download: 4) OCI Containers"
+  ansible.builtin.include_tasks: "2_download/4_oci.yml"
+  loop: "{{ b1_sylva_oci_repos | default([]) }}"
+  loop_control:
+     loop_var: "g1_oci"
+
+#---------------------------------------
+# 5. IPA
+#--------------------------------------- 
+- name: "G1 - BOOTSTRAP - 2.- Download: 5) IPA (Ironic Python Agent) for Cloud OS Installation"
+  ansible.builtin.include_tasks: "2_download/5_ipa.yml"
   loop: "{{ ipa_image_sources | default([]) }}"
   loop_control:
      loop_var: "g1_ipa_image"

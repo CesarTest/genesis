@@ -133,24 +133,25 @@ GENESIS_PLAYBOOKS_HEADER=( \
         "${COLOR[$NC]}[VIRTUAL] - PROXMOX ENVIRONMENT: Remove Airgap Zone from Hypervisor(E1)${COLOR[$NC]}" \
 )
 
-
 # 2.3.- Dependencies
 PIP=0; SCRIPTS=1; INSTALLER=2
+BIFROST_DEPENDENCIES=( 'roles/requirements.yml' \
+                     )
+BIFROST_INSTALLER=( 'ansible-galaxy role install --force -r ' \
+                  )
+
 GENESIS_DEPENDENCIES=( 'collections/requirements.yml' \
                        'roles/requirements.yml' \
                      )
-
 GENESIS_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                'ansible-galaxy role install --force -r ' \
                   )
 
 PROXMOX_DEPENDENCIES=( '#' \
                      )
-					 
 PROXMOX_INSTALLER=( "ansible-galaxy collection install --force community.proxmox -p ${GENESIS_COLLECTIONS_WORKING_PATH}" \
                   )
-					 
-
+ 
 ########################################################################################
 # MODULE 1 => MENU DEFINITION
 ########################################################################################
@@ -1029,20 +1030,20 @@ setEnvironment() {
    case "${OS}" in
      "ubuntu"|"debian")
        DEP_INSTALLER=( 'python3' 'git' 'ansible' 'sshpass' ) 
-       DEP_DOCKER=( 'podman-docker' )
+       DEP_DOCKER=( 'podman' )
        INSTALLER_CMD="sudo -H -E apt-get -y install"
        CHECK_CMD="dpkg -s"
        ;;
      "redhat"|"centos")
        DEP_INSTALLER=( 'python3' 'git' 'ansible' 'glibc-locale-source' 'glibc-langpack-en' 'sshpass' )
-       DEP_DOCKER=( 'podman-docker' )
+       DEP_DOCKER=( 'podman' )
        PKG_MANAGER=$(/usr/bin/which dnf || /usr/bin/which yum)
        INSTALLER_CMD="sudo -H -E ${PKG_MANAGER} -y install"
        CHECK_CMD="rpm -q"
        ;;
      "suse"|"opensuse")
        INSTALLER_CMD="zipper"
-       DEP_DOCKER=( 'podman-docker' )
+       DEP_DOCKER=( 'podman' )
        ;;
    esac
 }
@@ -1207,14 +1208,23 @@ bifrostScriptsWorkaround() {
 #===================================================
 prepareLocalMachine() {
   local ARRAY_ELEMENT
+  
+  # 1.- Prepare Bifrost Dependencias
   for ARRAY_ELEMENT in "${DEP_INSTALLER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
-  for ARRAY_ELEMENT in "${GENESIS_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
-  for ARRAY_ELEMENT in "${GENESIS_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${BIFROST_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${BIFROST_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
   runOSfixes
   installDependencies
   firewallZone
   installEnvironment
   bifrostScriptsWorkaround
+  
+  # 2.- Prepare Genesis Dependencies
+  for ARRAY_ELEMENT in "${DEP_DOCKER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
+  installDependencies
+  installEnvironment
 }
 
 #===================================================

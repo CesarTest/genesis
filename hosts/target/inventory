@@ -65,8 +65,8 @@ all:
       hosts: 
         localhost:
       vars:
-        ansible_user: "javier"
-        ansible_become_pass: "malo"
+        ansible_user: "cesar"
+        ansible_become_pass: "cesar"
 
     hypervisor:
       hosts:
@@ -86,5 +86,5 @@ all:
       hosts:
         genesis:
       vars:
-        ansible_user: "javier"
-        ansible_become_pass: "malo"
+        ansible_user: "cesar"
+        ansible_become_pass: "cesar"

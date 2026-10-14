@@ -15,5 +15,5 @@
 collections:
   - name: community.general
   - name: community.proxmox
+  - name: containers.podman
   - name: fedora.linux_system_roles
-  - name: robertdebock.roles

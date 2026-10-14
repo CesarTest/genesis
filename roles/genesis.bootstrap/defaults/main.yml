@@ -34,6 +34,8 @@ genesis_default_repos:
   components: "openstack"
   cloud: "dib"
   ipa: "dib/files" 
+  sylva: "sylva"
+  oci: "sylva/oci"
  
 # 4.- OS Definitions
 genesis_os_definitions:
@@ -338,6 +340,8 @@ g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default
 g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
 g1_repo_ipa_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['ipa'] | default('dib/files')}}"
 g1_repo_openstack_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['components'] | default('dib/files')}}"
+g1_repo_sylva_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva')}}"
+g1_repo_sylva_oci_path:  "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva/oci')}}"
 g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
 g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
@@ -540,3 +544,103 @@ oras_download_url: "{{ oras_git_url }}/{{ oras_tarball_path }}/{{ oras_tarball_n
 
 proxmox_download_url: "https://github.com/v1k0d3n/proxmox-redfish/archive/refs/heads/release/0.2.1.zip"
 proxmox_download_name: "proxmox-redfish.zip"
+
+######################################################
+#  SILVA REPOSITORIES
+######################################################
+b1_sylva_git_branch: "release-1.8"
+b1_sylva_oci_branch: "latest"
+b1_sylva_os_branch:  "1.8.0"
+b1_sylva_registry_user:  "{{ genesis_secret_gitlab_user  | default('43372026') }}"
+b1_sylva_registry_token: "{{ genesis_secret_gitlab_token | default('683930') }}"
+
+#-----------------------------------------------------------------------
+# 1.- Sylva GIT
+#-----------------------------------------------------------------------
+b1_sylva_git_sylva_core_name: "sylva-core"
+b1_sylva_git_sylva_core_url: "https://gitlab.com/sylva-projects/sylva-core.git"
+b1_sylva_git_sylva_core_folder:  "{{ g1_repo_sylva_path | default('/tmp') }}/{{ b1_sylva_git_sylva_core_name }}"
+b1_sylva_git_repos:
+  - git_folder: "{{ b1_sylva_git_sylva_core_folder | default('/tmp') }}"
+    git_url:    "{{ b1_sylva_git_sylva_core_url    | default('') }}"
+    git_branch: "{{ b1_sylva_git_branch            | default('main') }}"
+    name:       "{{ b1_sylva_git_sylva_core_name   | default('sylva_core') }}"
+
+#-----------------------------------------------------------------------
+# 2.- Sylva OCI - Structured Base Variables
+#-----------------------------------------------------------------------
+b1_sylva_oci_root_url: "registry.gitlab.com/sylva-projects/sylva-elements"
+b1_sylva_oci_local_repo: "{{ g1_repo_sylva_oci_path | default('/tmp') }}"
+
+# Official GitLab Registry Subgroups
+b1_sylva_oci_images_url: "{{ b1_sylva_oci_root_url }}/container-images"
+b1_sylva_oci_charts_url: "{{ b1_sylva_oci_root_url }}/helm-charts"
+b1_sylva_oci_os_url:     "{{ b1_sylva_oci_root_url }}/diskimage-builder"
+
+# Block 1 Pre-constructed Variables (Container Images)
+b1_sylva_oci_sylva_toolbox: "sylva-toolbox:{{ b1_sylva_oci_branch }}"
+b1_sylva_oci_sylva_toolbox_path: "{{ b1_sylva_oci_local_repo }}/sylva-toolbox"
+b1_sylva_oci_sylva_toolbox_url: "{{ b1_sylva_oci_images_url }}/{{ b1_sylva_oci_sylva_toolbox }}"
+
+b1_sylva_oci_sylva_units: "sylva-units:{{ b1_sylva_oci_branch }}"
+b1_sylva_oci_sylva_units_path: "{{ b1_sylva_oci_local_repo }}/sylva-units"
+b1_sylva_oci_sylva_units_url: "{{ b1_sylva_oci_images_url }}/{{ b1_sylva_oci_sylva_units }}"
+
+# Block 2 Pre-constructed Variables (Helm Charts)
+b1_sylva_oci_capi_cluster_name: "sylva-capi-cluster"
+b1_sylva_oci_capi_cluster_path: "{{ b1_sylva_oci_local_repo }}/{{ b1_sylva_oci_capi_cluster_name }}"
+b1_sylva_oci_capi_cluster_url:  "{{ b1_sylva_oci_charts_url }}/{{ b1_sylva_oci_capi_cluster_name }}:{{ b1_sylva_oci_branch }}"
+
+b1_sylva_oci_image_server_name: "os-image-server"
+b1_sylva_oci_image_server_path: "{{ b1_sylva_oci_local_repo }}/{{ b1_sylva_oci_image_server_name }}"
+b1_sylva_oci_image_server_url:  "{{ b1_sylva_oci_charts_url }}/{{ b1_sylva_oci_image_server_name }}:{{ b1_sylva_oci_branch }}"
+
+#-----------------------------------------------------------------------
+# OCI Artifacts Repository List
+#-----------------------------------------------------------------------
+b1_sylva_oci_repos:
+
+  # --- BLOCK 1: UTILITIES AND BINARIES ---
+  - name: "sylva-toolbox"
+    local_path: "{{ b1_sylva_oci_sylva_toolbox_path }}"
+    oci_folder: "{{ b1_sylva_oci_sylva_toolbox_path }}:{{ b1_sylva_oci_branch }}"
+    oci_url:    "{{ b1_sylva_oci_sylva_toolbox_url }}"
+    auth: false
+
+  - name: "sylva-units"
+    local_path: "{{ b1_sylva_oci_sylva_units_path }}"
+    oci_folder: "{{ b1_sylva_oci_sylva_units_path }}:{{ b1_sylva_oci_branch }}"
+    oci_url:    "{{ b1_sylva_oci_sylva_units_url }}"
+    auth: true 
+
+  # --- BLOCK 2: CRITICAL OCI HELM CHARTS ---
+  - name: "sylva-capi-cluster-chart"
+    local_path: "{{ b1_sylva_oci_capi_cluster_path }}"
+    oci_folder: "{{ b1_sylva_oci_capi_cluster_path }}:{{ b1_sylva_os_branch }}"
+    oci_url:    "{{ b1_sylva_oci_capi_cluster_url }}"
+    auth: false
+
+  - name: "os-image-server-chart"
+    local_path: "{{ b1_sylva_oci_image_server_path }}"
+    oci_folder: "{{ b1_sylva_oci_image_server_path }}:{{ b1_sylva_os_branch }}"
+    oci_url:    "{{ b1_sylva_oci_image_server_url }}"
+    auth: false
+
+  # --- BLOCK 3: NODE OPERATING SYSTEMS ---
+  - name: "ubuntu-jammy"
+    local_path: "{{ g1_repo_os_path }}/ubuntu/22.04"
+    oci_folder: "{{ g1_repo_os_path }}/ubuntu/22.04:{{ b1_sylva_os_branch }}"
+    oci_url:    "{{ b1_sylva_oci_os_url }}/ubuntu-jammy:{{ b1_sylva_os_branch }}"
+    auth: false
+
+  - name: "rhel9"
+    local_path: "{{ g1_repo_os_path }}/rhel/9"
+    oci_folder: "{{ g1_repo_os_path }}/rhel/9:{{ b1_sylva_os_branch }}"
+    oci_url:    "{{ b1_sylva_oci_os_url }}/rhel9:{{ b1_sylva_os_branch }}"
+    auth: true 
+
+  - name: "rocky9"
+    local_path: "{{ g1_repo_os_path }}/rocky/9"
+    oci_folder: "{{ g1_repo_os_path }}/rocky/9:{{ b1_sylva_os_branch }}"
+    oci_url:    "{{ b1_sylva_oci_os_url }}/rocky9:{{ b1_sylva_os_branch }}"
+    auth: false
