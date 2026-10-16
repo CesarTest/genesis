@@ -112,16 +112,6 @@
 #--------------------------------------- 
 - name: "G1 - BOOTSTRAP - 2.- Download: 3) Tarballs"
   ansible.builtin.include_tasks: "2_download/3_tarball.yml"
-  vars:
-    g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
-    g1_proxmox_default_tarball_name: "{{ proxmox_download_url | basename }}" 
-    g1_proxmox_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ proxmox_download_name | default(g1_proxmox_default_tarball_name) }}"
-    g1_tarball_download:
-     - url:  "{{ oras_download_url }}"
-       dest: "{{ g1_oras_dest_path }}"
-       checksum: "sha256:{{ oras_checksum }}"
-     - url: "{{ proxmox_download_url }}"
-       dest: "{{ g1_proxmox_dest_path }}"
  
 #---------------------------------------
 # 4. OCI

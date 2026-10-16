@@ -36,6 +36,7 @@ genesis_default_repos:
   ipa: "dib/files" 
   sylva: "sylva"
   oci: "sylva/oci"
+  doc: "doc" 
  
 # 4.- OS Definitions
 genesis_os_definitions:
@@ -314,6 +315,7 @@ genesis_os_netinstaller_url:
    
 g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
 
+
 # 7.- Bifrost Root Paths
 git_root: "{{ genesis_repo_path | realpath }}/openstack"
 git_url_root: https://opendev.org
@@ -340,12 +342,12 @@ g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default
 g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
 g1_repo_ipa_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['ipa'] | default('dib/files')}}"
 g1_repo_openstack_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['components'] | default('dib/files')}}"
-g1_repo_sylva_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva')}}"
-g1_repo_sylva_oci_path:  "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva/oci')}}"
 g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
 g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
 g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
-
+g1_repo_sylva_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva') }}"
+g1_repo_sylva_oci_path:  "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva/oci') }}"
+g1_repo_doc_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['doc'] | default('doc') }}"
 
 ######################################################
 # G1 BOOTSTRAP NETWORK DETAILS
@@ -479,7 +481,7 @@ g1_native_os_installer:
     distribution_arch: "x86_64"
     os_image_name: "install.img"
     installer: 'rootfs'
-    
+   
 g1_cloud_os_installer:
   - distribution: "CentOS"
     distribution_version: "9"
@@ -487,43 +489,6 @@ g1_cloud_os_installer:
     os_image_name: "partition.qcow2"
 genesis_all_installers_download: "{{ g1_native_os_installer + g1_cloud_os_installer }}"
 download_image_sources: "{{ genesis_download_images | default(genesis_all_installers_download) | default([]) }}"
-
-######################################################
-#  IPA IMAGES RESPOSITORIES
-######################################################
-ipa_local_repo: "{{ g1_repos['ipa'] | default('dib/files') }}"
-update_ipa: true
-ipa_upstream_release: "master"
-ipa_download_headers: {}
-download_ipa: true
-update_ipa: true
-ipa_add_ssh_key: false
-ipa_download_url_username:
-ipa_download_url_password:
-ipa_download_force_basic_auth:
-ipa_download_unredirected_headers:
-ipa_kernel_download_url_username: "{{ ipa_download_url_username }}"
-ipa_kernel_download_url_password: "{{ ipa_download_url_password }}"
-ipa_kernel_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
-ipa_kernel_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
-ipa_ramdisk_download_url_username: "{{ ipa_download_url_username }}"
-ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
-ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
-ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
-genesis_default_ipa_image_sources:
-  - kernel: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.kernel"
-    kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.kernel.sha256"
-    kernel_checksum_algo: "sha256"
-    ramdisk: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs"
-    ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.initramfs.sha256"
-    ramdisk_checksum_algo: "sha256"
- #- kernel: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel"
- #  kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.kernel.sha256"
- #  kernel_checksum_algo: "sha256"
- #  ramdisk: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs"
- #  ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.initramfs.sha256"
- #  ramdisk_checksum_algo: "sha256"
-ipa_image_sources: "{{ genesis_ipa_image_sources | default(genesis_default_ipa_image_sources) | default([]) }}"
 
 ######################################################
 #  ORAS URL
@@ -544,6 +509,27 @@ oras_download_url: "{{ oras_git_url }}/{{ oras_tarball_path }}/{{ oras_tarball_n
 
 proxmox_download_url: "https://github.com/v1k0d3n/proxmox-redfish/archive/refs/heads/release/0.2.1.zip"
 proxmox_download_name: "proxmox-redfish.zip"
+
+######################################################
+#  TARBALL DEPENDENCENCIES
+######################################################
+g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
+g1_proxmox_default_tarball_name: "{{ proxmox_download_url | basename }}" 
+g1_proxmox_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ proxmox_download_name | default(g1_proxmox_default_tarball_name) }}"
+g1_tarball_download:
+ - url:  "{{ oras_download_url }}"
+   dest: "{{ g1_oras_dest_path }}"
+   checksum: "sha256:{{ oras_checksum }}"
+ - url:  "{{ proxmox_download_url }}"
+   dest: "{{ g1_proxmox_dest_path }}"
+ - url:  "https://getgrav.org/download/skeletons/learn2-with-git-sync-site"
+   dest: "{{ g1_repo_doc_path | realpath }}/learn2-skeleton.zip"
+ - url:  "https://github.com/getgrav/grav-theme-learn4/archive/refs/heads/develop.zip"
+   dest: "{{ g1_repo_doc_path | realpath }}/learn4-theme.zip"
+ - url:  "https://github.com/getgrav/grav-theme-quark/archive/refs/heads/develop.zip"
+   dest: "{{ g1_repo_doc_path | realpath }}/quark.zip"
+ - url:  "https://github.com/trilbymedia/grav-plugin-page-toc/archive/refs/heads/master.zip"
+   dest: "{{ g1_repo_doc_path | realpath }}/page-toc.zip"
 
 ######################################################
 #  SILVA REPOSITORIES
@@ -644,3 +630,47 @@ b1_sylva_oci_repos:
     oci_folder: "{{ g1_repo_os_path }}/rocky/9:{{ b1_sylva_os_branch }}"
     oci_url:    "{{ b1_sylva_oci_os_url }}/rocky9:{{ b1_sylva_os_branch }}"
     auth: false
+
+  # --- BLOCK 4: IRONIC PYTHON AGENT (IPA) FOR METAL3 ---
+  - name: "ironic-python-agent"
+    local_path: "{{ g1_repo_os_path }}/ironic-python-agent"
+    oci_folder: "{{ g1_repo_os_path }}/ironic-python-agent:{{ b1_sylva_os_branch }}"
+    oci_url:    "{{ b1_sylva_oci_os_url }}/ironic-python-agent:{{ b1_sylva_os_branch }}"
+    auth: false
+
+######################################################
+#  IPA IMAGES RESPOSITORIES
+######################################################
+ipa_local_repo: "{{ g1_repos['ipa'] | default('dib/files') }}"
+update_ipa: true
+ipa_upstream_release: "master"
+ipa_download_headers: {}
+download_ipa: true
+update_ipa: true
+ipa_add_ssh_key: false
+ipa_download_url_username:
+ipa_download_url_password:
+ipa_download_force_basic_auth:
+ipa_download_unredirected_headers:
+ipa_kernel_download_url_username: "{{ ipa_download_url_username }}"
+ipa_kernel_download_url_password: "{{ ipa_download_url_password }}"
+ipa_kernel_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_kernel_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+ipa_ramdisk_download_url_username: "{{ ipa_download_url_username }}"
+ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
+ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+genesis_default_ipa_image_sources:
+  - kernel: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.kernel"
+    kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.kernel.sha256"
+    kernel_checksum_algo: "sha256"
+    ramdisk: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs"
+    ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.initramfs.sha256"
+    ramdisk_checksum_algo: "sha256"
+ #- kernel: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel"
+ #  kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.kernel.sha256"
+ #  kernel_checksum_algo: "sha256"
+ #  ramdisk: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs"
+ #  ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.initramfs.sha256"
+ #  ramdisk_checksum_algo: "sha256"
+ipa_image_sources: "{{ genesis_ipa_image_sources | default(genesis_default_ipa_image_sources) | default([]) }}"

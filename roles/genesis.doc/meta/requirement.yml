@@ -1,0 +1,7 @@
+---
+roles:
+  # Web Server
+  - name: geerlingguy.apache 
+  # PHP Server
+  - name: geerlingguy.php 
+collections:

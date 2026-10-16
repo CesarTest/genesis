@@ -1,0 +1,12 @@
+---
+# genesis.doc main
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "------------------> B6- CREATE GENESIS DOCUMENTATION NODE <------------------" 
+  ignore_errors: yes 
+  block:
+    - ansible.builtin.include_tasks: "1_mac.yml"
+    - ansible.builtin.include_tasks: "2_web.yml"
+    - ansible.builtin.include_tasks: "3_doc.yml"

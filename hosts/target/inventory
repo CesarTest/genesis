@@ -56,6 +56,9 @@ all:
 
     genesis:
       ansible_host: "10.10.51.5"
+
+    doc:
+      ansible_host: "10.10.51.6"
   
   #--------------------------------------------------------------------
   #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
@@ -85,6 +88,7 @@ all:
     emulation:
       hosts:
         genesis:
+        doc:
       vars:
         ansible_user: "cesar"
         ansible_become_pass: "cesar"

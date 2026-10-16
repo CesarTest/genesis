@@ -1,0 +1,16 @@
+---
+# genesis.doc 2_web.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "B6 - PROVISION - Install Documentation Web Server"
+  ansible.builtin.include_role: 
+    name: "{{ b6_install_web_role.name }}"
+  when: 
+    - b5_install_web_role.name is defined
+    - b5_install_web_role.condition | default(true) | bool
+  loop: "{{ b5_install_web_roles | default([]) }}"
+  loop_control:
+    loop_var: "b5_install_web_role"  

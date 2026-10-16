@@ -42,3 +42,34 @@
         - g1_tarball.dest is defined
         - g1_tarball.dest is not none
         - g1_tarball.dest | length > 0
+
+  rescue:
+    - name: "G1 - BOOTSTRAP - RESCUE - 2.- Download Tarball: - 3.3) Download Source Code via Shell"
+      ansible.builtin.shell: |
+        curl -sSL -o "{{ g1_tarball.dest }}" "{{ g1_tarball.url }}"
+        chown {{ ansible_user | default('ironic') }}:{{ ansible_user | default('ironic') }} "{{ g1_tarball.dest }}"
+        chmod 0644 "{{ g1_tarball.dest }}"
+      loop: "{{ g1_tarball_download | default([]) }}"
+      loop_control:
+        loop_var: "g1_tarball"
+      when: 
+        - g1_tarball.url is defined and g1_tarball.url | length > 0
+        - g1_tarball.dest is defined and g1_tarball.dest | length > 0
+
+    - name: "G1 - BOOTSTRAP - RESCUE - 2.- Download Tarball: - 3.4) Untar Source Code via Shell"
+      ansible.builtin.shell: |
+        tar -xf "{{ g1_tarball_src }}" -C "{{ g1_image_os_local_folder | default(omit) }}" --no-same-owner --no-same-permissions
+        chown -R {{ ansible_user | default('ironic') }}:{{ ansible_user | default('ironic') }} "{{ g1_image_os_local_folder }}"
+        chmod -R a+rX "{{ g1_image_os_local_folder }}"
+      vars:
+        g1_unzip_tarball_detect: "{{ g1_tarball.unzip | default(g1_unzip_tarball, true) | default(false, true) }}"
+        g1_tarball_filename: "{{ g1_tarball.url | default('') | basename }}"
+        g1_tarball_src: "{{ g1_image_os_local_folder }}/{{ g1_tarball_filename }}"
+      loop: "{{ g1_tarball_download | default([]) }}"
+      loop_control:
+        loop_var: "g1_tarball"
+      when: 
+        - g1_unzip_tarball_detect | default(false) | bool
+        - g1_tarball.dest is defined
+        - g1_tarball.dest is not none
+        - g1_tarball.dest | length > 0

@@ -1,0 +1,13 @@
+---
+# genesis.doc grav/3_user.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "Create GRAV User Account at |{{ upload_dest | default('Empty') }}|"
+  template:
+    src: "user.j2"
+    dest:  "{{ upload_dest  | default('')     }}"
+    owner: "{{ apache_user  | default('root') }}"
+    group: "{{ apache_group | default('root') }}"
