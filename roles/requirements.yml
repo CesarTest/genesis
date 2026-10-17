@@ -16,3 +16,5 @@ roles:
   - name: "genesis.bifrost"
     src: "https://github.com/openstack/bifrost"
     version: "stable/2026.1"
+  - name: geerlingguy.apache
+  - name: geerlingguy.php

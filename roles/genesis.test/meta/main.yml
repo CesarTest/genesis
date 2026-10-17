@@ -39,5 +39,14 @@ galaxy_info:
     - testing
     - IaC
 
-# External role dependencies (none required as we rely on community.general collection)
+# Las COLECCIONES se declaran en su propia sección independiente:
+collections:
+  - community.general
+  - community.proxmox
+
+# Si no necesitas depender de otros ROLES, dejas esto vacío o eliminas la línea
 dependencies: []
+# - name: "genesis.bifrost"
+#   src: "https://github.com/openstack/bifrost"
+#   version: "stable/2026.1"
+#

@@ -17,7 +17,6 @@
   hosts: localhost
   become: no
   gather_facts: yes
- 
 
 #---------------------------------
 #  CLEAN IRONIC INSTANCE INFORMATION
@@ -30,6 +29,23 @@
       vars:
         b4_skip_setup: yes
         uuid: "{{ enroll.uuid }}" 
+
+#---------------------------------
+# INSTALL DOCUMENTATION
+#--------------------------------
+- hosts: "documentation"
+  become: no
+  gather_facts: no
+  pre_tasks:
+    - name: "GENESIS API: Cast global string variables to native booleans"
+      ansible.builtin.set_fact:
+        genesis_refresh_environment: "{{ genesis_refresh_testenv | default(false) | bool }}"
+        genesis_install_doc: "{{ genesis_install_documentation | default(false) | bool }}"
+  roles: 
+    - role: "genesis.test"
+      vars:
+        genesis_hypervisor: "proxmox"
+        genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
 
 #---------------------------------
 #  TEST NODES

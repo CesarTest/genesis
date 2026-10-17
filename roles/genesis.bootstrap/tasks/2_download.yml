@@ -6,21 +6,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-
 #---------------------------------------
-# 4. OCI
+# 1. OpenStack & Sylva Components
 #--------------------------------------- 
-- name: "G1 - BOOTSTRAP - 2.- Download: 4) OCI Containers"
-  ansible.builtin.include_tasks: "2_download/4_oci.yml"
-  loop: "{{ b1_sylva_oci_repos | default([]) }}"
-  loop_control:
-     loop_var: "g1_oci"
-
-
-#---------------------------------------
-# 1. OpenStack Components
-#--------------------------------------- 
-- name: "G1 - BOOTSTRAP - 2.- Download: 1) OpenStack Components from GIT"
+- name: "G1 - BOOTSTRAP - 2.- Download: 1) Software Components from GIT"
   ansible.builtin.include_tasks: "2_download/1_git.yml"
 
 #---------------------------------------

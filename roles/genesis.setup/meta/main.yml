@@ -1,4 +1,13 @@
 ---
+# ==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Bare Metal Provisioning & Lifecycle (Testing Env)
+#  PLATFORM:     OpenStack Ironic / Bifrost
+#  
+#  DESCRIPTION:
+#  This role automates the registration, enrollment, and hardware setup 
+#  stages for target machines within the Genesis platform lifecycle.
+# ==============================================================================
 galaxy_info:
   author: cesar-delgado
   role_name: genesis.setup
@@ -10,7 +19,7 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions:
-        - 24.04
+        - "24.04"
 
   galaxy_tags:
     - openstack
@@ -18,3 +27,7 @@ galaxy_info:
     - bifrost    
 
 dependencies: []
+#- name: "genesis.bifrost"
+#  src: "https://github.com/openstack/bifrost"
+#  version: "stable/2026.1"
+#

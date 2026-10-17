@@ -1,4 +1,13 @@
 ---
+#==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Automated OS Deployment (Testing Env)
+#  PLATFORM:     OpenStack Ironic / Bifrost
+#  
+#  DESCRIPTION:
+#  This role executes the unattended operating system installation and final
+#  provisioning stages on bare-metal target nodes using Bifrost.
+# ==============================================================================
 galaxy_info:
   author: cesar-delgado
   role_name: genesis.deploy
@@ -10,7 +19,7 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions:
-        - 24.04
+        - "24.04"
 
   galaxy_tags:
     - openstack
@@ -18,3 +27,6 @@ galaxy_info:
     - bifrost    
 
 dependencies: []
+  #- name: "genesis.bifrost"
+  #  src: "https://github.com/openstack/bifrost"
+  #  version: "stable/2026.1"

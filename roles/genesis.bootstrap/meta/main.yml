@@ -1,4 +1,13 @@
 ---
+# ==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Node Bootstrap & Environment Prep (Testing Env)
+#  PLATFORM:     OpenStack Ironic / Bifrost
+#  
+#  DESCRIPTION:
+#  This role prepares and bootstraps the core Genesis Node, installing system
+#  prerequisites for a Standalone Ironic environment deployment.
+# ==============================================================================
 galaxy_info:
   author: cesar-delgado
   role_name: genesis.bootstrap
@@ -18,3 +27,6 @@ galaxy_info:
     - bifrost    
 
 dependencies: []
+  #- name: "genesis.bifrost"
+  #  src: "https://github.com/openstack/bifrost"
+  #  version: "stable/2026.1"
