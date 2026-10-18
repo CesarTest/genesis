@@ -9,4 +9,4 @@
   block:
     - ansible.builtin.include_tasks: "1_mac.yml"
     - ansible.builtin.include_tasks: "2_web.yml"
-    - ansible.builtin.include_tasks: "3_doc.yml"
+    - ansible.builtin.include_tasks: "3_grav.yml"

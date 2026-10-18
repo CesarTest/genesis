@@ -1,0 +1,99 @@
+---
+# genesis.doc mac/firewall.yml
+#   - Mandatory Access Control Setup
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+######################################################
+# SERVER SERVICES 
+######################################################
+- name: "PREPARE SERVER - STAGE 2: Server Services"
+  become: true
+  vars:
+    services_emergency_commands:
+      # Operación 1: Gestión de servicios del sistema vía systemctl puro
+      - |
+        {% for service in server_services | default([]) %}
+        {% if service.name is defined and service.name is string %}
+        if systemctl list-unit-files | grep -q "^{{ service.name }}.service"; then
+          {% if service.state | default('stopped') in ['started', 'running'] %}
+          systemctl enable "{{ service.name }}" --now
+          systemctl start "{{ service.name }}"
+          {% else %}
+          systemctl disable "{{ service.name }}" --now
+          systemctl stop "{{ service.name }}"
+          {% endif %}
+        fi
+        {% endif %}
+        {% endfor %}
+
+      # Operación 2: Inyección de reglas de Firewalld por CLI directa
+      - |
+        if systemctl is-active firewalld &>/dev/null; then
+          {% for rule in server_firewall_rules | default([]) %}
+          {% if rule.service is defined %}
+          firewall-cmd --permanent --add-service="{{ rule.service }}"
+          {% elif rule.port is defined %}
+          firewall-cmd --permanent --add-port="{{ rule.port }}"
+          {% endif %}
+          {% endfor %}
+          
+          # Recarga forzada del cortafuegos para aplicar los cambios en caliente
+          firewall-cmd --reload
+        fi
+  block:
+    - name: 'Enable/Disable Server Services'
+      ignore_errors: yes
+      service:
+        name:   "{{ server_service.name }}"
+        state:  "{{ server_service.state | default('stopped') }}" 
+        enabled: "{{ server_service.state | bool }}" 
+      loop: "{{ server_services | default([]) }}"
+      loop_control:
+        loop_var: "server_service"
+      when: 
+        - "server_services is defined"
+        - "server_services is not none"
+        - "server_services is not string"
+        - "server_services is not mapping"
+        - "server_service.name is defined"
+        - "server_service.name is not none"
+        - "server_service.name is string"  
+        #- ansible_facts.services[server_service.name] is defined
+
+    - name: "Apply Firewall Rules"
+
+      firewalld:
+        port:      "{{ firewall_rule.port   | default(omit) }}"
+        service:   "{{ firewall_rule.service| default(omit) }}"
+        state:     "{{ firewall_rule.state  | default(omit) }}"
+        permanent: "{{ firewall_rule.permanent | default(omit) }}"
+        immediate: "{{ firewall_rule.immediate | default(omit) }}"
+        offline:   "{{ firewawall_rule.offline | default(omit) }}"
+      loop: "{{ server_firewall_rules | default([]) }}"
+      loop_control:
+        loop_var: "firewall_rule"
+      when:
+        - "server_firewall_rules is defined"
+        - "server_firewall_rules is not none"
+        - "server_firewall_rules is not string"
+        - "server_firewall_rules is iterable"
+        - "server_firewall_rules is not mapping"
+        - "(firewall_rule.port is defined) or (firewall_rule.service is defined)"
+        - "(firewall_rule.port is not none) or (firewall_rule.service is not none)"
+
+    - name: "Always reload firewalld"
+      ansible.builtin.service:
+        name: "firewalld"
+        state: "reloaded"    
+
+  rescue:
+
+    - name: "B6 - SELINUX [RESCUE] - Firewall Rules by CLI"
+      ansible.builtin.shell: "{{ emergency_command }}"
+      loop: "{{ services_emergency_commands }}"
+      loop_control:
+        loop_var: "emergency_command"
+      failed_when: false

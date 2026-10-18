@@ -28,6 +28,6 @@ galaxy_info:
     - apache
     - php
 
-dependencies:
-  - role: geerlingguy.apache
-  - role: geerlingguy.php
+dependencies: []
+ # - role: geerlingguy.apache
+ # - role: geerlingguy.php

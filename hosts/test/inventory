@@ -59,7 +59,7 @@ all:
         ubuntu.maas.lab:        
         centos.maas.lab: 
         suse.maas.lab:
-        debian.maas.lab:
+        #debian.maas.lab:
       vars:
         ansible_user: "javier"
         ansible_become_pass: "malo"

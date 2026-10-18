@@ -1,0 +1,60 @@
+---
+# genesis.deploy 2_deploy/2_ready.yml
+#   - Clean known_hosts, wait for connection and securely refresh metadata
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - Clean known_hosts, wait for connection and securely refresh metadata"
+  block:
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - Remove old SSH host key from known_hosts"
+      ansible.builtin.known_hosts:
+        name: "{{ ansible_host | default(inventory_hostname) }}"
+        state: absent
+      delegate_to: localhost  
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - Wait OS Installation to finish"
+      ansible.builtin.wait_for_connection:
+        connect_timeout: 10
+        sleep: 5
+        timeout: 600 
+      vars:
+        ansible_ssh_common_args: '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+
+  rescue:
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - [RESCUE] Remove old SSH host key from known_hosts"
+      ansible.builtin.known_hosts:
+        name: "{{ ansible_host | default(inventory_hostname) }}"
+        state: absent
+      delegate_to: localhost  
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - [RESCUE] Post-failure inventory refresh"
+      ansible.builtin.meta: refresh_inventory
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - [RESCUE] Verify core connectivity via explicit Ping"
+      ansible.builtin.ping:
+      register: ping_result
+      until: ping_result is success
+      retries: 6
+      delay: 10
+      vars:
+        ansible_ssh_common_args: '-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+      ignore_errors: true 
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - [RESCUE] Abort deployment if connectivity verification failed"
+      ansible.builtin.fail:
+        msg: "FATAL ERROR: Host {{ inventory_hostname }} ({{ ansible_host | default('No IP') }}) remains unreachable via SSH after rescue retries. Unable to move forward to B6 Provision State"
+      when: ping_result is failed
+
+  always:
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - Refresh inventory metadata"
+      ansible.builtin.meta: refresh_inventory
+      when: ping_result is not defined or ping_result is success
+
+    - name: "B5 - DEPLOY - 2.- Deploy: 2.2) Ready - Force gather fresh facts from the new OS"
+      ansible.builtin.setup:
+      when: ping_result is not defined or ping_result is success

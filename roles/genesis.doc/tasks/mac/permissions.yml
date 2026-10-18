@@ -1,0 +1,115 @@
+---
+# genesis.doc mac/permissions.yml
+#   - Mandatory Access Control Setup
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+######################################################
+# WEB FOLDERS
+######################################################
+- name: "B6 - 1- MAC PERMISSION - 3:  Web Folders"
+  become: true  
+  vars:
+    vhost_documentroot: "{{ ((apache_vhosts|default([])) | map(attribute='documentroot') ) | default([]) }}"
+    vhost_names: "{{ (vhost_documentroot | map('basename') | list) | default([]) }}"
+    vhost_logs: "{{  [] | zip_longest(vhost_names, fillvalue=apache_logs + '/') | map('join') | list  }}"
+    folders: "{{ (vhost_logs|default([])) +(vhost_documentroot|default([])) }}"
+    folder_emergency_commands:
+      # Operación 1: Creación forzada de grupos en Bash puro si falla la API
+      - |
+        {% for group in [apache_group | default('root'), php_group | default('root')] %}
+        getent group "{{ group }}" &>/dev/null || groupadd "{{ group }}"
+        {% endfor %}
+
+      # Operación 2: Creación forzada de usuarios de sistema y asignación de shells
+      - |
+        # Configuración para el usuario Apache
+        getent passwd "{{ apache_user | default('root') }}" &>/dev/null || \
+          useradd -g "{{ apache_group | default('root') }}" -s "{{ apache_shell | default('/sbin/nologin') }}" -m "{{ apache_user | default('root') }}"
+        
+        # Configuración para el usuario PHP
+        getent passwd "{{ php_user | default('root') }}" &>/dev/null || \
+          useradd -g "{{ php_group | default('root') }}" -s "{{ apache_shell | default('/sbin/nologin') }}" -m "{{ php_user | default('root') }}"
+
+      # Operación 3: Limpieza condicional de directorios de hosting (Flag Apache Refresh)
+      - |
+        {% if apache_refresh is defined and apache_refresh is boolean and apache_refresh is true %}
+        {% for folder in folders | default([]) %}
+        if [ -d "{{ folder }}" ] && [ "{{ folder }}" != "/" ] && [ "{{ folder }}" != "/tmp" ]; then
+          rm -rf "{{ folder }}"
+        fi
+        {% endfor %}
+        {% endif %}
+        true
+
+      # Operación 4: Despliegue forzado del árbol de directorios web y herencia de permisos chown
+      - |
+        {% for folder in folders | default([]) %}
+        mkdir -p "{{ folder }}"
+        chown -R {{ apache_user | default('root') }}:{{ apache_group | default('root') }} "{{ folder }}"
+        chmod -R 755 "{{ folder }}"
+        {% endfor %}
+
+  block:
+    - name: "B6 - 1- MAC PERMISSION - Create Group"
+      group:
+        name:  "{{ groupname | default(omit) }}" 
+      loop:
+        - "{{ apache_group|default('root')}}"
+        - "{{ php_group   |default('root')}}"
+      loop_control:
+        loop_var: "groupname"
+
+    - name: "B6 - 1- MAC PERMISSION - Create a user |{{ apache_user | default('Empty=root') }}|:|{{ apache_group | default('Empty=root') }}|"
+      user:
+        name:    "{{ userproperties.username | default(omit) }}"
+        groups:  "{{ userproperties.usergroup| default(omit) }}"
+        shell:   "{{ userpropeties.usershell | default(omit) }}"
+        create_home: "{{userproperties.create_home | default(omit)}}"
+      loop:
+        - username:  "{{ apache_user |default('root')}}"
+          usergroup: "{{ apache_group|default('root')}}"
+          usershell: "{{ apache_shell|default('/sbin/nologin')}}"
+          create_home: "yes"
+        - username:  "{{ php_user    |default('root')}}"
+          usergroup: "{{ php_group   |default('root')}}"
+          usershell: "{{ apache_shell|default('/sbin/nologin')}}"
+          create_home: "yes"
+
+      loop_control:
+        loop_var: "userproperties"
+
+    - name: "B6 - 1- MAC PERMISSION - Remove vhost directory according apache_refresh flag"
+      file:
+        path: "{{ vhost_www_folder | default('/tmp') }}"
+        state: "absent"
+      loop: "{{ folders | default([]) }}"
+      loop_control:
+        loop_var: "vhost_www_folder"  
+      when:
+       - "apache_refresh is defined"
+       - "apache_refresh is not none"
+       - "apache_refresh is boolean"
+       - "apache_refresh is true"
+
+    - name: "B6 - 1- MAC PERMISSION - Create vhost directory if they don't exist"
+      file:
+         path: "{{ vhost_www_folder | default('/tmp') }}"
+         state: "directory"
+         recurse: "true"
+         owner: "{{ apache_user | default('root') }}"
+         group: "{{ apache_group | default('root') }}"
+      loop: "{{ folders | default([]) }}"
+      loop_control: 
+         loop_var: "vhost_www_folder"
+ 
+  rescue:
+
+    - name: "B6 - 1- MAC PERMISSION -[RESCUE] - Permissions by CLI"
+      ansible.builtin.shell: "{{ emergency_command }}"
+      loop: "{{ folder_emergency_commands }}"
+      loop_control:
+        loop_var: "emergency_command"
+      failed_when: false

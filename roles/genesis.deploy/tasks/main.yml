@@ -13,7 +13,8 @@
 #---------------------------------------------------------------------------
 # 0 - Atomic Data Model Rehydration Layout (Variables to Facts)
 #---------------------------------------------------------------------------
-- when:
+- name: "B5 - DEPLOY - 0.- Data Model: Load Instance Data Model from JSON File"
+  when:
     - b5_baremetal_vars_file is defined
     - b5_baremetal_vars_file is not none
     - b5_baremetal_vars_file is string
@@ -79,20 +80,23 @@
 #---------------------------------------------------------------------------
 # 2.- Deploy Instance
 #---------------------------------------------------------------------------
-- block:
-    - ansible.builtin.include_tasks: "2_deploy/1_instance.yml"
+- name: "B5 - DEPLOY - 2.- Deploy Instance: Orchestrate Infrastructure Provisioning"
+  block:
+    - name: "B5 - DEPLOY - 2.- Deploy Instance: 1) Include deployment orchestration core tasks"
+      ansible.builtin.include_tasks: "2_deploy/1_instance.yml"
   delegate_to: "{{ groups['target'][0] if groups['target'] is defined else 'localhost' }}"
-- block:
-    - ansible.builtin.include_tasks: "1_clean/1_manual.yml"
-
+  
+- name: "B5 - DEPLOY - 2.- Deploy Instance: Post-deployment nodes initialization and cleanup environment"
   vars:
-    ansible_python_interpreter: /usr/bin/python3
-    b5_wipedisks_delay: "{{ power_cycle['clean_timeout'] | default('180') | int }}"
-  when:
-    - power_cycle_profile is defined
-    - power_cycle_profile is not none
-    - power_cycle_profile is string
-    - "'manual' in power_cycle_profile"
+    ansible_python_interpreter: "/usr/bin/python3"
+    b5_wipedisks_delay: "{{ power_cycle['clean_timeout'] | default('180') | int }}" 
+  block:
+    - name: "B5 - DEPLOY - 2.- Deploy Instance: 2) Wipe Disk Partition Table in Manual Power Cycle (legacy BIOS machines)"
+      ansible.builtin.include_tasks: "1_clean/1_manual.yml"
+      when: "'manual' in (power_cycle_profile | default(''))"
+      
+    - name: "B5 - DEPLOY - 2.- Deploy Instance: 3) Await connection stability and refresh runtime metadata"
+      ansible.builtin.include_tasks: "2_deploy/2_ready.yml"
 
 #-----------------------
 # 3.- Activate Instance

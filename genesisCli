@@ -2844,7 +2844,7 @@ function 8_test() {
    # 2.- Set Shoot Conditions
    local REFRESH_INSTALL='false'
    local REFRESH_ENVIRONMENT='false'
-   local DOCUMENTATION_UPDATE='false'
+   local REFRESH_DOCUMENTATION='false'
    
    local GENESIS_REFRESH_NORM=$(echo "${GENESIS_REFRESH}" | tr '[:upper:]' '[:lower:]')
    case "${GENESIS_REFRESH_NORM}" in
@@ -2863,12 +2863,12 @@ function 8_test() {
    local DOCUMENTATION_UPDATE_NORM=$(echo "${DOCUMENTATION_UPDATE}" | tr '[:upper:]' '[:lower:]')
    case "${DOCUMENTATION_UPDATE_NORM}" in
     y|yes|si|s|true|1)
-        local DOCUMENTATION_UPDATE='true'
+        local REFRESH_DOCUMENTATION='true'
         ;;
     esac
 	
    # 3.- Prepare Playbook Call
-   EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}#genesis_update_documentation=${DOCUMENTATION_UPDATE}" 
+   EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}#genesis_update_documentation=${REFRESH_DOCUMENTATION}" 
    
    #--------------------
    #   ACTIONS
@@ -2889,7 +2889,7 @@ function 8_test() {
    0_call "${TEST_CYCLE}" 
    
    # 4.- Clean Environment 
-   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH 
+   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
    unset INVENTORY_LIST EMULATION EMULATION_IP 
 }
 

@@ -42,9 +42,10 @@
 # 2.3.- Provision Instance - Documentatoin
 - vars:
     t4_vm_state: "start"
+    ansible_python_interpreter: "/usr/bin/python3"
   block:
     - ansible.builtin.include_role: 
         name: "genesis.doc"
   when:
     - not (t1_skip_tests | default(false) | bool)
-    - t1_install_doc | default(false) | bool
+    - t1_update_doc | default(false) | bool

@@ -1091,6 +1091,8 @@ b4_os_postinstall_script: |
   {{ b4_os_post_install_bash_lines[b4_node_os | trim].ssh_chown }} 
   chmod 700 /home/{{ b4_provision_user_name }}/.ssh
   chmod 600 /home/{{ b4_provision_user_name }}/.ssh/authorized_keys
+  chmod 750 /home/{{ b4_provision_user_name }}
+  chown {{ b4_provision_user_name }}:users /home/{{ b4_provision_user_name }} 2>/dev/null 
   
   # Hide account from greeting managers
   mkdir -p /var/lib/AccountsService/users/
@@ -1174,6 +1176,55 @@ b4_postinstall_netplan_script: |
   EOF
   fi
 
+b4_os_postinstall_rhel_repo_script:
+  modern: |
+    #!/bin/bash
+    # =======================================================================
+    # ENFORCING PERSISTENT REPOSITORIES LAYOUT (Modern Multi-Repo)
+    # =======================================================================
+    
+    # Purge default vendor repository profiles to avoid timeout conflicts
+    rm -f /etc/yum.repos.d/*.repo
+     
+    # Write clean, local-only repository targets directly into the root filesystem
+    cat << 'EOF' > /etc/yum.repos.d/genesis-internal.repo
+    [genesis-baseos]
+    name=Genesis System Modern BaseOS Repository - Local Mirror
+    baseurl={{ b4_netinstall_os_mounted_repo_url }}/BaseOS/
+    enabled=1
+    gpgcheck=0
+    cost=1
+    
+    [genesis-appstream]
+    name=Genesis System Modern AppStream Repository - Local Mirror
+    baseurl={{ b4_netinstall_os_mounted_repo_url }}/AppStream/
+    enabled=1
+    gpgcheck=0
+    cost=1
+    EOF
+    
+    echo "==> Modern repository profile injected successfully."
+
+  old: |
+    #!/bin/bash
+    # =======================================================================
+    # ENFORCING PERSISTENT REPOSITORIES LAYOUT (Legacy Systems)
+    # =======================================================================
+    
+    # Purge default vendor repository profiles to avoid timeout conflicts
+    rm -f /etc/yum.repos.d/*.repo
+    
+    # Write clean, local-only repository target directly into the root filesystem
+    cat << 'EOF' > /etc/yum.repos.d/genesis-internal.repo
+    [genesis-legacy-base]
+    name=Genesis System Legacy Base OS Repository - Local Mirror
+    baseurl={{ b4_netinstall_os_mounted_repo_url }}/
+    enabled=1
+    gpgcheck=0
+    EOF
+        
+    echo "==> Legacy repository profile injected successfully."
+
 b4_os_postinstall_apt_script: |
   # ---> Genesis Package Repository Configuration
   GENESIS_URL="{{ b4_netinstall_os_mounted_repo_url }}"
@@ -1198,7 +1249,6 @@ b4_os_postinstall_apt_script: |
   # Synchronize infrastructure software mirror parameters
   apt-get clean
   apt-get update -o Acquire::Languages="none"
-
 
 b4_os_postinstall_script_render: "{{ b4_os_postinstall_script | trim | regex_replace('(?m)(.+)$', '\\1 \\\\') }}"
 b4_os_postinstall_networkmanager_script_render: "{{ b4_os_postinstall_networkmanager_script | trim | regex_replace('(?m)(.+)$', '\\1 \\\\') }}"
@@ -1266,15 +1316,15 @@ b4_kickstart_template_defaults:
 
   repos: |
     {% if b4_os_version | default(9) | int >= 8 %}
-    repo --name="BaseOS" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/BaseOS/" --install 
-    repo --name="AppStream" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/AppStream/" --install
+    repo --name="BaseOS" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/BaseOS/" --install --cost=1
+    repo --name="AppStream" --baseurl="{{ b4_netinstall_os_mounted_repo_url }}/AppStream/" --install --cost=1
     {% endif %}
 
   packages: |
     @core
     tar
     bzip2
- 
+
   network: |
     network --bootproto=static --ip={{ b4_enroll_nic_provision_ip }} --netmask={{ b4_enroll_nic_provision_netmask }} --gateway={{ b4_url_genesis_ip }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
 
@@ -1303,6 +1353,10 @@ b4_kickstart_template_defaults:
     logvol /home --fstype=ext4 --name=LogVol03    --vgname=VolGroup00 --size=4096 --grow
     logvol swap                --name=lv_LogVol00 --vgname=VolGroup00 --size={{ swap_size if swap_size > 2048 else 2048 }}
 
+  postinstall: |
+    {{ b4_os_postinstall_rhel_repo_script['modern'] }}
+
+
 # 1.3.- Changes over Default Template according OS release
 b4_kickstart_template_os_profiles:
   "7": 
@@ -1313,24 +1367,7 @@ b4_kickstart_template_os_profiles:
       @core
     repos: ''
     postinstall: |
-      #!/bin/bash
-      # =======================================================================
-      # E. ENFORCING PERSISTENT REPOSITORIES LAYOUT (Legacy Systems)
-      # =======================================================================
-      
-      # Purge default vendor repository profiles to avoid timeout conflicts
-      rm -f /etc/yum.repos.d/*.repo
-      
-      # Write clean, local-only repository target directly into the root filesystem
-      cat << 'EOF' > /etc/yum.repos.d/genesis-internal.repo
-      [genesis-legacy-base]
-      name=Genesis System Legacy Base OS Repository - Local Mirror
-      baseurl={{ b4_netinstall_os_mounted_repo_url }}/
-      enabled=1
-      gpgcheck=0
-      EOF
-          
-      echo "==> Legacy repository profile injected successfully."
+      {{ b4_os_postinstall_rhel_repo_script['old'] }}
 
 #------------------------------------
 # 2.- Casper Manifesto
@@ -1391,6 +1428,7 @@ b4_casper_template_defaults:
 #------------------------------------
 # 3.- AutoYast Manifesto
 #------------------------------------
+b4_autoyast_user_gid: "{{ b4_user_gid | default('100' }}"
 b4_autoyast_provision_user_groups: >-
    {% if b4_provision_user_groups is defined and b4_provision_user_groups %}
    <groups config:type="list">
@@ -1434,22 +1472,18 @@ b4_autoyast_template_defaults:
       <encrypted config:type="boolean">true</encrypted>
     </user>
     <user>
+      <username>{{ b4_provision_user_name }}</username>
+      <fullname>{{ b4_provision_user_name | title }}</fullname>
+      <user_password>{{ b4_provision_user_password }}</user_password>
+      <encrypted config:type="boolean">true</encrypted>
+      <shell>/bin/bash</shell>
+    </user>
+    <user>
       <username>{{ b4_main_user_name }}</username>
       <fullname>{{ b4_main_user_name | title }}</fullname>
       <user_password>{{ b4_main_user_password }}</user_password>
       <encrypted config:type="boolean">true</encrypted>
       <shell>/bin/bash</shell>
-    </user>
-    <user>
-      <username>{{ b4_provision_user_name }}</username>
-      <fullname>{{ b4_provision_user_name | title }}</fullname>
-      <user_password>{{ b4_provision_user_password }}</user_password>
-      <encrypted config:type="boolean">true</encrypted>
-      <authorized_keys config:type="list">
-        <authorized_key>{{ b4_provision_user_ssh_key }}</authorized_key>
-      </authorized_keys>
-      <shell>/bin/bash</shell>
-      {{ b4_autoyast_provision_user_groups | default('') }}
     </user>
 
   ssh: |
@@ -1473,6 +1507,7 @@ b4_autoyast_template_defaults:
         <interpreter_path>/bin/bash</interpreter_path>
         <source><![CDATA[
     {{ b4_os_postinstall_networkmanager_script }}
+    {{ b4_os_postinstall_script }}
         ]]></source>
       </script>
     </chroot-scripts>
@@ -1512,6 +1547,7 @@ b4_autoyast_template_os_profiles:
             <source><![CDATA[
       #!/bin/bash
       {{ b4_os_postinstall_networkmanager_script }}
+      {{ b4_os_postinstall_script }}
             ]]></source>
           </script>
         </listentry>

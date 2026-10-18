@@ -15,7 +15,7 @@ t1_refresh_environment: "{{ genesis_refresh_environment | default(false) | bool 
 t1_refresh_hypervisor:  "{{ genesis_refresh_hypervisor  | default(false) | bool }}"
 t1_refresh_vms:         "{{ genesis_refresh_vms         | default(true)  | bool }}"
 t1_remove_airgap_zone:  "{{ genesis_remove_airgap_zone  | default(false) | bool }}"
-t1_install_doc:         "{{ genesis_install_doc         | default(false) | bool }}"
+t1_update_doc:          "{{ genesis_update_doc          | default(false) | bool }}"
 
 #------------------
 # 0.- Genesis Node Nics Details
