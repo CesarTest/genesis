@@ -1,2 +1,103 @@
 ---
-# vars file for genesis.doc
+# genesis.doc vart/main.yml
+#  - Web Server Installation parameters
+#     - Defaults of Role are ignored, external roles use theor own defaults.
+#     
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+#########################################################
+#            APACHE SERVER CONFIGURATIONS
+#########################################################
+apache_user: "apache"
+apache_shell: "/bin/bash"
+apache_group: "{{ apache_user | default('apache')}}"
+apache_create_vhosts: true
+apache_vhosts_filename: "vhosts.conf"
+apache_vhosts_template: "vhosts.conf.j2"
+apache_global_vhost_settings: |
+  DirectoryIndex index.php index.html
+apache_allow_override: "All"
+apache_options: "All Indexes FollowSymLinks"
+# Los modulos pueden romper la instalacion, si las dependencias estan mal.
+#apache_mods_enabled:
+#    - rewrite
+#    - ssl
+#    - mpm_itk_module
+apache_mods_disabled: []
+apache_vhosts:
+  - servername: "gitea.{{ server_domain | default('genesis.lab')}}"
+    documentroot: "{{ apache_work_path|default('/var/www/html')}}/gitea"  
+    serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
+    serveralias: "www.gitea.{{server_domain|default('genesis.lab')}}" 
+    extra_parameters:  |
+         ErrorLog  {{ apache_logs | default('/var/log/httpd')}}/gitea/error.log  
+         CustomLog {{ apache_logs | default('/var/log/httpd')}}/gitea/access.log combined  
+  - servername: "training.{{ server_domain | default('genesis.lab') }}"
+    documentroot: "{{ apache_work_path | default('/var/www/html') }}/training"
+    serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
+    serveralias: "www.training.{{ server_domain|default('genesis.lab') }}"
+    extra_parameters:  |
+         ErrorLog  {{ apache_logs | default('/var/log/httpd')}}/training/error.log
+         CustomLog {{ apache_logs | default('/var/log/httpd')}}/training/access.log combined
+
+
+#########################################################
+#            PHP CONFIGURATIONS FOR GRAV
+#########################################################
+#------------
+# 1.- Main Config
+#------------
+php_user:  "{{ apache_user | default('apache') }}"
+php_group: "{{ php_user    | default('apache') }}"
+php_install_from_source: false
+php_enable_webserver: true
+php_webserver_daemon: "httpd"
+php_packages_state: "present"
+php_install_recommends: true
+php_executable: "php"
+php_version: '8.3'
+php_packages:
+    - php
+    - php-cli
+    - php-common
+    - php-devel
+    - php-gd
+    - php-mbstring
+    - php-pdo
+    - php-pecl-apcu
+    - php-xml
+    - php-curl 
+    - php-ctype
+    - php-dom
+    - php-gd
+    - php-json
+    - php-mbstring
+    - php-openssl
+    - php-session
+    - php-simplexml
+    - php-xml
+    - php-zip
+
+#------------
+# 2.- PHP ini
+#------------- 
+php_memory_limit: "128M"
+php_max_execution_time: "90"
+php_upload_max_filesize: "256M"
+
+#---------
+# 3.- OPT Cache
+#--------
+php_opcache_zend_extension: "opcache.so"
+php_opcache_enable: "1"
+php_opcache_enable_cli: "0"
+php_opcache_memory_consumption: "96"
+php_opcache_interned_strings_buffer: "16"
+php_opcache_max_accelerated_files: "4096"
+php_opcache_max_wasted_percentage: "5"
+php_opcache_validate_timestamps: "1"
+php_opcache_revalidate_path: "0"
+php_opcache_revalidate_freq: "2"
+php_opcache_max_file_size: "0"  

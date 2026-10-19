@@ -1,0 +1,18 @@
+---
+# genesis.doc web/2_install.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "B6 - PROVISION DOC NODE -2- WEB: PHP & Apache - Deploy Integrated Web Stack"
+  block:
+
+    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Install Documentation Web Server"
+      ansible.builtin.include_role: 
+        name: geerlingguy.php
+
+    - name: "B6 - PROVISION DOC NODE -2- WEB: Apache - Install Documentation Web Server"
+      ansible.builtin.include_role: 
+        name: geerlingguy.apache
+

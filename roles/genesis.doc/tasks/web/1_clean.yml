@@ -1,0 +1,80 @@
+---
+# genesis.doc web/1_clean.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#-------------------------------------------------------------------------------
+# 1. - Detect PHP Version
+#-------------------------------------------------------------------------------
+- name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Detect PHP Version"
+  block:
+
+    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Inspect current host active version"
+      ansible.builtin.command: "php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;'"
+      register: b6_php_active_version
+      failed_when: false
+      changed_when: false
+
+    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Parse installed version status"
+      ansible.builtin.set_fact:
+        b6_php_installed_version: "{{ b6_host_php_version }}"
+      vars:
+        # Step 1: Clean output using the correct registered object from above
+        b6_clean_stdout: "{{ b6_php_active_version.stdout | trim }}"
+        # Step 2: Extract binary availability based on return code status
+        b6_php_is_missing: "{{ b6_php_active_version.rc != 0 }}"
+        # Step 3: Compile final safe string using the corrected local variables
+        b6_host_php_version: "{{ 'none' if b6_php_is_missing | bool else b6_clean_stdout }}"
+
+#-------------------------------------------------------------------------------
+# 2. - Clean PHP Version
+#-------------------------------------------------------------------------------
+- name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Sanitize and Switch Modular Stream"
+  vars:
+    b6_php_stream_emergency_commands:
+      - "dnf module reset -y php"
+      - "dnf module enable -y php:{{ php_version | default('8.3') }}"
+
+  block:
+
+    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Purge obsolete PHP 8.0 stack agnostically"
+      ansible.builtin.package:
+        name: "php*"
+        state: absent
+      register: php_purge_status
+   
+    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Clear residual configuration directories from 8.0"
+      ansible.builtin.file:
+        path: "{{ current_dir }}"
+        state: absent
+      loop:
+        - /etc/php.d
+        - /etc/php.ini
+        - /etc/php-fpm.d
+        - /etc/php-fpm.conf
+      loop_control:
+        loop_var: current_dir
+      when: php_purge_status.changed
+
+    # Force a validation task to trigger the rescue block if a module stream mismatch is detected
+    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Validate native DNF stream version"
+      ansible.builtin.command: "dnf module list php --enabled | grep -q '{{ php_version | default('8.3') }}'"
+      changed_when: false
+      when: ansible_facts.os_family == 'RedHat'
+
+  rescue:
+
+    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - [RESCUE] Force local ISO modular stream via loop sequence"
+      ansible.builtin.shell: "{{ emergency_command }}"
+      loop: "{{ b6_php_stream_emergency_commands }}"
+      loop_control:
+        loop_var: emergency_command
+      when: ansible_facts.os_family == 'RedHat'
+      changed_when: true
+
+  when: 
+    - php_version is defined
+    - php_version | trim != b6_php_installed_version
+
