@@ -355,6 +355,7 @@ b4_genesis_port:
 b4_enroll_nics:      "{{ enroll['nics'] | default({}) }}"
 b4_enroll_node_inband_nics:  "{{ b4_enroll_nics['inband']  | default([]) }}"
 b4_enroll_node_outband_nics: "{{ b4_enroll_nics['outband'] | default([]) }}" 
+b4_enroll_node_internet_nics: "{{ b4_enroll_nics['internet'] | default([]) }}" 
 b4_enroll_nics_list: "{{ b4_enroll_node_inband_nics + b4_enroll_node_outband_nics }}"
 
 # ---- Filter according to flag - provision: yes/true
@@ -363,6 +364,7 @@ b4_enroll_default_provision: "{{ b4_enroll_nics_list | selectattr('provision', '
 # ---- NIC selection from list (BMC y Provisión)
 b4_enroll_nic_bmc:   "{{ b4_enroll_node_outband_nics[0] | default(b4_enroll_default_provision[0] | default({})) }}"
 b4_enroll_nic_provision: "{{ b4_enroll_default_provision[0] | default(b4_enroll_node_inband_nics[0] | default(b4_enroll_nic_bmc | default(b4_enroll_nics_list[0] | default({})))) }}"
+b4_enroll_nic_internet:   "{{ b4_enroll_node_internet_nics[0] | default({}) }}"
 
 # 1.2.- BMC NIC Particulars
 b4_enroll_nic_bmc_mac:     "{{ b4_enroll_nic_bmc['mac'] | default('') | lower }}"
@@ -381,6 +383,15 @@ b4_enroll_nic_provision_netmask: "{{ b4_enroll_nic_provision_ipv4  | ansible.uti
 b4_enroll_nic_provision_prefix:  "{{ b4_enroll_nic_provision_ipv4  | ansible.utils.ipaddr('prefix') }}"
 b4_enroll_nic_provision_default_gateway: "{{ b4_url_genesis_ip | default(b4_enroll_nic_provision_ipv4 | ansible.utils.ipaddr('last_usable'), true) }}"
 b4_enroll_nic_provision_gateway: "{{ b4_enroll_nic_provision['gateway'] | default(b4_enroll_nic_provision_default_gateway, true) }}"
+
+# 1.4.- Internet NIC Particulars
+b4_enroll_nic_internet_mac:     "{{ b4_enroll_nic_internet['mac'] | default('') | lower }}"
+b4_enroll_nic_internet_ipv4:    "{{ b4_enroll_nic_internet['ipv4'] | default('127.0.0.1/24')  }}"
+b4_enroll_nic_internet_ip:      "{{ b4_enroll_nic_internet_ipv4  | ansible.utils.ipaddr('address') }}"
+b4_enroll_nic_internet_netmask: "{{ b4_enroll_nic_internet_ipv4  | ansible.utils.ipaddr('netmask') }}"
+b4_enroll_nic_internet_prefix:  "{{ b4_enroll_nic_internet_ipv4  | ansible.utils.ipaddr('prefix') }}"
+b4_enroll_nic_internet_default_gateway: "{{ b4_enroll_nic_internet_ipv4 | ansible.utils.ipaddr('last_usable') }}"
+b4_enroll_nic_internet_gateway: "{{ b4_enroll_nic_internet['gateway'] | default(b4_enroll_nic_internet_default_gateway, true) }}"
 
 # 1.4.- List of NICs for OpenStack Ansible Module
 b4_enroll_node_nics_raw: 
@@ -1325,10 +1336,14 @@ b4_kickstart_template_defaults:
     tar
     bzip2
 
-  network: |
+  network: |   
     network --bootproto=static --ip={{ b4_enroll_nic_provision_ip }} --netmask={{ b4_enroll_nic_provision_netmask }} --gateway={{ b4_url_genesis_ip }} --onboot=on --hostname={{ b4_enroll_node_name }} --device={{ b4_enroll_nic_provision_mac }}
+    
+    {% if b4_enroll_nic_internet_mac | default('') | trim | length > 0  %}
+    network --bootproto=static --ip={{ b4_enroll_nic_internet_ip }} --netmask={{ b4_enroll_nic_internet_netmask }} --gateway={{ b4_enroll_nic_internet_gateway }} --onboot=on --device={{ b4_enroll_nic_internet_mac }}
+    {% endif %}
 
-  storage: |	
+  storage: |
     {% set b4_disk = b4_enroll_node_chassis_properties.root_device | default('sda') %}
     {% if '__omit_place_holder__' in b4_disk or b4_disk == "" %}{% set b4_disk = 'sda' %}{% endif %}
     
