@@ -1,0 +1,21 @@
+---
+# genesis.doc 3_package.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+###########################################
+#  TEMPLATES
+###########################################
+- name: "B6 - PROVISION DOC NODE - 3.- Package: Include deployment environment orchestration tasks"
+  block:
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 1) Create Folders"
+      ansible.builtin.include_tasks: "package/1_folder.yml"
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball"
+      ansible.builtin.include_tasks: "package/2_tarball.yml"
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 3) Dump Configuration File"
+      ansible.builtin.include_tasks: "package/3_config.yml"

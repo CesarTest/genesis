@@ -1,0 +1,64 @@
+---
+# genesis.doc grav/2_config.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "B6 - PROVISION DOC NODE - 3.- Package: 3) Config: Main Orchestration Block"
+  vars:
+    config_emergency_commands:
+      - "echo 'WARNING ALERT: Native copy configuration module failed. Triggering raw shell rescue...'"
+      - |
+        cat << 'EOF' > {{ package.template.dest | default('/tmp/grav_fallback.conf') }}
+        {{ package.template.content | default('# Empty or missing fallback configuration data') }}
+        EOF
+      - "chmod {{ package.mode | default('0644') }} {{ package.template.dest | default('/tmp/grav_fallback.conf') }}"
+      - "chown {{ package.owner | default('apache') }}:{{ package.group | default('apache') }} {{ package.template.dest | default('/tmp/grav_fallback.conf') }}"
+
+  block:
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 3) Config: Dump Configuration File"
+      ansible.builtin.copy:
+        dest:    "{{ dump.dest | default(omit) }}"
+        content: "{{ dump.content | default(omit) }}"
+        mode:    "{{ dump.mode | default(omit) }}"
+        owner:   "{{ dump.owner | default(omit) }}"
+        group:   "{{ dump.group | default(omit) }}"
+      loop:
+        - dest:    "{{ package.template.dest | default(omit) }}"
+          content: "{{ package.template.content | default(omit) }}"
+          mode:    "{{ package.mode | default(omit) }}"
+          owner:   "{{ package.owner | default(omit) }}"
+          group:   "{{ package.group | default(omit) }}"
+      loop_control:
+        loop_var: "dump"
+      when:
+        - "package.template is defined"
+        - "package.template is not none"
+        - "package.template is not string"
+        - "package.template is mapping"
+        - "package.template.dest is defined"
+        - "package.template.dest is not none"
+        - "package.template.dest is string"
+        - "package.template.content is defined"
+        - "package.template.content is not none"
+        - "package.template.content is string"
+
+  rescue:
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 3) Config: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ emergency_command }}"
+      loop: "{{ config_emergency_commands }}"
+      loop_control:
+        loop_var: "emergency_command"
+      failed_when: false
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 3) Config: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Configuration deployment tasks experienced an exception on host {{ inventory_hostname }}.
+          Fallback dump was executed via shell template string. Execution will CONTINUE in non-blocking mode.
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 3) Config: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

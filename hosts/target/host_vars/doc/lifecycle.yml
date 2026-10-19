@@ -51,6 +51,10 @@ enroll:
          ipv4: "{{ ansible_host }}/24"
          network_interface: "noop" # No-Operation = No network Setup
          provision: yes
+     internet:
+       - mac: "BC:25:12:3F:E5:15"
+         ipv4: "192.168.1.76/24"
+         network_interface: "noop" # No-Operation = No network Setup
 
 #-----------------
 # 5.- Deploy Stage

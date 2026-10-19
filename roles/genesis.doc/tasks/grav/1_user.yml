@@ -1,0 +1,54 @@
+---
+# genesis.doc grav/3_user.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: 1) User: Main Orchestration Block"
+  vars: 
+    grav_user_emergency_commands:
+      - "echo 'WARNING ALERT: Native template module failed. Triggering raw shell rescue...'"
+      - |
+        cat << 'EOF' > {{ upload_dest | default('/tmp/grav_user_fallback.yaml') }}
+        username: "{{ b4_provision_user_name | default('gravadmin') }}"
+        email: "{{ b4_provision_user_email | default('admin@genesis.local') }}"
+        fullname: "{{ b4_provision_user_name | default('Grav Admin') | title }}"
+        title: Administrator
+        state: enabled
+        access:
+          admin:
+            login: true
+            super: true
+          site:
+            login: true
+        EOF
+      - "chmod 0644 {{ upload_dest | default('/tmp/grav_user_fallback.yaml') }}"
+      - "chown {{ apache_user | default('apache') }}:{{ apache_group | default('apache') }} {{ upload_dest | default('/tmp/grav_user_fallback.yaml') }}"
+
+  block:
+
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: 1) User - Create GRAV User Account at |{{ upload_dest | default('Empty') }}|"
+      ansible.builtin.template:
+        src: "user.j2"
+        dest:  "{{ upload_dest  | default('') }}"
+        owner: "{{ apache_user  | default('root') }}"
+        group: "{{ apache_group | default('root') }}"
+
+  rescue:
+
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: 1) User: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ emergency_command }}"
+      loop: "{{ grav_user_emergency_commands }}"
+      loop_control:
+        loop_var: "emergency_command"
+      failed_when: false
+
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: 1) User: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Grav user deployment tasks experienced an exception on host {{ inventory_hostname }}.
+          Fallback account layout was dumped via shell string. Execution will CONTINUE in non-blocking mode.
+
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: 1) User: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

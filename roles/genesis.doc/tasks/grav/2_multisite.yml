@@ -4,7 +4,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: "Upload Multisite Template |{{ grav_multisite | default('Vacio') }}|"
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: 2) MultiSite - Upload Multisite Template |{{ grav_multisite | default('Vacio') }}|"
   vars:
     upload_path: "{{ grav_work_path | default('/var/www/html/training') }}"
     upload_src:  "{{ grav_multisite | default('setup_subdirectory') }}.j2"

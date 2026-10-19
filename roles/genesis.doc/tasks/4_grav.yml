@@ -5,7 +5,7 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "PREPARE GRAV INSTALLATION"
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: PREPARE GRAV INSTALLATION"
   vars:
     multisite_defined: "{{ (grav_multisite is defined) and ( grav_multisite is not none )   }}"
     multisite_none:    "{{ (multisite_defined is true) and (grav_multisite is string)       }}"
@@ -14,22 +14,11 @@
 
   block:
 
-    ######################################
-    #           INSTALLATION
-    ######################################
-    - name: "Install GRAV Package"
-      include_tasks: "grav/1_package.yml"
-      loop: "{{ grav_deploy | default([]) }}"
-      loop_control:
-         loop_var: "grav_package"
-      vars:
-         package:  "{{ grav_package }}"
-
     #######################################
     #         GRAV USERS ACCOUNT
     #######################################
-    - name: "Install  Grav Users Account"
-      include_tasks: "grav/3_user.yml"
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: 1) Install  Grav Users Account"
+      ansible.builtin.include_tasks: "grav/1_user.yml"
       loop: "{{ grav_users | default([]) }}"
       loop_control:
           loop_var: "grav_user"
@@ -39,11 +28,11 @@
     #######################################
     #            CREATE SITES 
     #######################################
-    - name: "Enable Multisite"
-      include_tasks: "grav/4_multisite.yml"
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: 2) Enable Multisite"
+      ansible.builtin.include_tasks: "grav/2_multisite.yml"
       when: "isMultisite is true"
 
-    - name: "Create Sites"
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Create Sites"
       vars:
          root_defined: "{{ (grav_site.root is defined) and ( grav_site.root is not none )   }}"
          isRoot:       "{{ (root_defined is true) and (grav_site.root is true) }}"
@@ -59,7 +48,7 @@
             plugins: "{{ site_work_path }}/plugins"
             config: "{{ site_work_path }}/config"    
 
-      include_tasks: "grav/5_site.yml"
+      ansible.builtin.include_tasks: "grav/3_site.yml"
       loop: "{{ grav_sites | default([]) }}"
       loop_control:
           loop_var: "grav_site"
@@ -67,7 +56,7 @@
 
   rescue:
 
-    - name: "ERROR - PREPARING GRAV INSTALLATION"
+    - name: "B6 - PROVISION DOC NODE - 4.- Grav: ERROR - PREPARING GRAV INSTALLATION"
       debug:
         msg:
           - "Missing Definitions: |grav_deploy|"

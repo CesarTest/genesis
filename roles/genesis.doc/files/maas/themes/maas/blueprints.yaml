@@ -1,4 +1,4 @@
-name: MaaS
+name: MaaS 
 version: 1.0.0
 description: "Metal as a Service Lab Theme"
 icon: crosshairs
@@ -11,26 +11,6 @@ form:
   validation: loose
   fields:
 
-    custom_logo:
-      type: file
-      label: Custom Logo
-      size: large
-      destination: 'theme://images/logo.svg'
-      multiple: false
-      markdown: true
-      description: Will be used instead of default logo `theme://images/grav-logo.svg`
-      accept:
-        - image/*
-
-    custom_logo_mobile:
-      type: file
-      label: Mobile Custom Logo
-      size: large
-      destination: 'theme://images/logo.svg'
-      multiple: false
-      accept:
-        - image/*
-        
     gitsyncoptions:
       type: section
       title: 'Git Sync Link Options'
@@ -63,7 +43,7 @@ form:
 
     siteandpageoptions:
       type: section
-      title: 'Enaire Theme Options'
+      title: 'MaaS Theme Options'
       underline: true
 
     enable_doc_versioning:
@@ -114,8 +94,8 @@ form:
 
     home_url:
         type: text
-        label: Ironic Bare Metal
-        placeholder: https://ironicbaremetal.org/
+        label: Home URL
+        placeholder: http://getgrav.org
         validate:
           type: text
 

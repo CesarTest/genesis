@@ -305,15 +305,16 @@ function defineMenu() {
 	          if [ ! -n "${TARGET}" ]    ; then local TARGET=''                    ; fi
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/provision.log"  ; fi
 	          MENU_TEXT="(7)___________ ${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}"
-	          PARAMETRO=(     "TARGET"     "LOG_FILE")
-              VALOR_DEFECTO=(  "${TARGET}"  "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
+	          PARAMETRO=(     "TARGET"    "DOCUMENTATION_UPDATE"   "LOG_FILE")
+              VALOR_DEFECTO=(  "${TARGET}"  "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Target Machines             [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Log File                    [${VALOR_DEFECTO[2]}]:" \
                              )
               RETURNING_MENU="0"
               RUN_ACTION="7"
 			  EXTRA_VARS="genesis_stage='B6'"
-              unset INVENTORY TARGET LOG_FILE
+              unset INVENTORY TARGET DOCUMENTATION_UPDATE LOG_FILE 
 		  ;;
 
        8|"${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}")
@@ -2822,10 +2823,20 @@ function 6_ansible() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 7_provision() {
-         
+
+   # 1.- Documentatio Update Capture
+   local DOCUMENTATION_UPDATE_NORM=$(echo "${DOCUMENTATION_UPDATE}" | tr '[:upper:]' '[:lower:]')
+   case "${DOCUMENTATION_UPDATE_NORM}" in
+    y|yes|si|s|true|1)
+        local REFRESH_DOCUMENTATION='true'
+        ;;
+   esac
+   EXTRA_VARS="${EXTRA_VARS}#genesis_update_documentation=${REFRESH_DOCUMENTATION}"
+
+   # 2.- Provision Call
    0_call "${PROVISION}" 
    state_status "${PROVISION}"
-   unset TARGET LOG_FILE EXTRA_VARS
+   unset TARGET LOG_FILE EXTRA_VARS DOCUMENTATION_UPDATE
 }
 
 #========================================================

@@ -9,7 +9,7 @@
 ######################################################
 # WEB FOLDERS
 ######################################################
-- name: "B6 - 1- MAC PERMISSION - 3:  Web Folders"
+- name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - 3:  Web Folders"
   become: true  
   vars:
     vhost_documentroot: "{{ ((apache_vhosts|default([])) | map(attribute='documentroot') ) | default([]) }}"
@@ -53,7 +53,7 @@
         {% endfor %}
 
   block:
-    - name: "B6 - 1- MAC PERMISSION - Create Group"
+    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Create Group"
       group:
         name:  "{{ groupname | default(omit) }}" 
       loop:
@@ -62,7 +62,7 @@
       loop_control:
         loop_var: "groupname"
 
-    - name: "B6 - 1- MAC PERMISSION - Create a user |{{ apache_user | default('Empty=root') }}|:|{{ apache_group | default('Empty=root') }}|"
+    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Create a user |{{ apache_user | default('Empty=root') }}|:|{{ apache_group | default('Empty=root') }}|"
       user:
         name:    "{{ userproperties.username | default(omit) }}"
         groups:  "{{ userproperties.usergroup| default(omit) }}"
@@ -81,7 +81,7 @@
       loop_control:
         loop_var: "userproperties"
 
-    - name: "B6 - 1- MAC PERMISSION - Remove vhost directory according apache_refresh flag"
+    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Remove vhost directory according apache_refresh flag"
       file:
         path: "{{ vhost_www_folder | default('/tmp') }}"
         state: "absent"
@@ -94,7 +94,7 @@
        - "apache_refresh is boolean"
        - "apache_refresh is true"
 
-    - name: "B6 - 1- MAC PERMISSION - Create vhost directory if they don't exist"
+    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Create vhost directory if they don't exist"
       file:
          path: "{{ vhost_www_folder | default('/tmp') }}"
          state: "directory"
@@ -107,7 +107,7 @@
  
   rescue:
 
-    - name: "B6 - 1- MAC PERMISSION -[RESCUE] - Permissions by CLI"
+    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION -[RESCUE] - Permissions by CLI"
       ansible.builtin.shell: "{{ emergency_command }}"
       loop: "{{ folder_emergency_commands }}"
       loop_control:

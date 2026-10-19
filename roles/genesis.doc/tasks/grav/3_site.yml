@@ -8,7 +8,7 @@
 ##################################
 #       CREATE FOLDERS
 ##################################
-- name: "Create Site Folders"
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Create Site Folders"
   file:
     path: "{{ cp_path }}"
     owner: "{{ apache_user  | default('apache') }}"
@@ -24,7 +24,7 @@
     - "isMultisite is true"
     - "isRoot is false"
 
-- name: "Copy Site Folders"
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Copy Site Folders"
   copy:
     src:  "{{ grav_work_path }}/user/{{ cp_name }}"
     dest: "{{ cp_path }}"
@@ -44,8 +44,8 @@
 ##################################
 #         UPLOAD CONTENT
 ##################################
-- name: "Site Configurations"
-  include_tasks: "6_content.yml"
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Site Configurations"
+  include_tasks: "4_content.yml"
   loop: "{{ grav_site.contents | default([]) }}"
   loop_control:
     loop_var: "site_content"
@@ -57,7 +57,7 @@
 ##################################
 ##       CONFIGURATIONS 
 ###################################
-- name: "Site Configurations"
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Site Configurations"
   lineinfile:
     path:   "{{ site_work_path | default('') }}/{{ site_config.file   | default('') }}"
     regexp: "{{ site_config.regexp | default('') }}"
@@ -68,8 +68,8 @@
   when:
     - "(isMultisite is true) or (isRoot is true)"
 
-- name: "Dump Configuration Files"
-  include_tasks: "2_config.yml"
+- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Dump Configuration Files"
+  include_tasks: "../package/3_config.yml"
   loop: "{{ grav_site.dumps | default([]) }}"
   loop_control:
     loop_var: "pkg"

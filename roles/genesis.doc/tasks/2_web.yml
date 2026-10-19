@@ -5,12 +5,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-- name: "B6 - PROVISION - Install Documentation Web Server"
+- name: "B6 - PROVISION DOC NODE -2- WEB: Install Documentation Web Server"
   ansible.builtin.include_role: 
     name: "{{ b6_install_web_role.name }}"
   when: 
-    - b5_install_web_role.name is defined
-    - b5_install_web_role.condition | default(true) | bool
-  loop: "{{ b5_install_web_roles | default([]) }}"
+    - b6_install_web_role.name is defined
+    - b6_install_web_role.condition | default(true) | bool
+  loop: "{{ b6_install_web_roles | default([]) }}"
   loop_control:
-    loop_var: "b5_install_web_role"  
+    loop_var: "b6_install_web_role"

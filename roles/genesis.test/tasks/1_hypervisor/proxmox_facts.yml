@@ -25,22 +25,23 @@
       vars:
         t1_captured_hostname: "{{ t1_pve_detected_node.stdout | trim | default('pve') }}"
 
-
     #-----------------------------------------------------------------------
     # 2.- Internet Bridge
     #-----------------------------------------------------------------------
-    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.3) Extract Internet Bridge from Ansible Facts"
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.2) Extract Internet Bridge"
+      become: true
+      ansible.builtin.shell: |
+        set -o pipefail
+        ip route show default | awk '/default/ {print $5}'
+      register: t1_pve_detected_bridge
+      changed_when: false
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+    - name: "T1 - PROXMOX_FACTS -1- Hypervisor: 4.3) Set Internet Bridge Fact"
       set_fact:
-        t1_proxmox_internet_bridge: >-
-          {{
-            ansible_facts | dict2items
-            | selectattr('value.device', 'defined')
-            | selectattr('value.type', 'defined')
-            | selectattr('value.type', 'equalto', 'bridge')
-            | selectattr('value.active', 'equalto', true)
-            | map(attribute='key')
-            | first | default('vmbr0')
-          }}
+        t1_proxmox_internet_bridge: "{{ t1_internet_bridge | default('vmbr0', true) }}"
+      vars:
+        t1_internet_bridge:  "{{ t1_pve_detected_bridge.stdout | trim | default('vmbr0', true) }}"
 
     #-----------------------------------------------------------------------
     # 2.- Declared SDN Zones

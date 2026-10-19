@@ -1,0 +1,104 @@
+---
+# genesis.doc package/2_tarball.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: Main Orchestration Block"
+  vars:
+    tarball_emergency_commands:
+      - "echo 'WARNING ALERT: Native copy/unarchive module failed. Triggering raw shell rescue...'"
+      - "mkdir -p {{ package.dest | default('/tmp/grav') }}"
+      - "tar -xzf {{ package.tmp | default('/tmp/grav') }}/{{ (package.src | default('')) | basename }} -C {{ package.dest | default('/tmp/grav') }} 2>/dev/null || cp -rf {{ package.src | default('/tmp/grav') }} {{ package.dest | default('/tmp/grav') }}"
+      - "chown -R {{ apache_user | default('apache') }}:{{ apache_group | default('apache') }} {{ package.dest | default('/tmp/grav') }}"
+
+  block:
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: Upload Package : |{{ package.src | default('Empty') }}| -> |{{ package.tmp | default('Empty') }}|"
+      ansible.builtin.copy:
+        dest: "{{ package.tmp | default('/tmp/grav') }}"
+        src:  "{{ package.src | default('') }}"
+        owner: "{{ apache_user | default('root') }}"
+        group: "{{ apache_group | default('root') }}"
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: Unarchive Package on Remote Machine"
+      ansible.builtin.unarchive:
+        src:   "{{ tarball.src }}"
+        dest:  "{{ tarball.dest }}"
+        owner: "{{ tarball.owner }}"
+        group: "{{ tarball.group }}"  
+        remote_src: true
+      loop:
+        - src:   "{{ package.tmp | default('/tmp/grav') }}/{{ (package.src | default('')) | basename }}"
+          dest:  "{{ package.dest | default('/tmp/grav') }}"
+          owner: "{{ apache_user | default('apache') }}"
+          group: "{{ apache_group | default('root') }}"
+      loop_control:
+        loop_var: "tarball"    
+      when:
+        - "package.isTarball is not defined"
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: Copy File" 
+      ansible.builtin.copy:
+        dest:  "{{ pkg.dest }}"
+        src:   "{{ pkg.src }}"
+        owner: "{{ pkg.owner }}"
+        group: "{{ pkg.group }}"
+        mode:  "{{ pkg.mode }}"
+      loop: 
+        - src: "{{ package.src | default('/tmp/grav') }}"
+          dest: "{{ package.dest | default('/tmp/grav') }}"
+          owner: "{{ package.owner | default('root') }}"
+          group:  "{{ package.group | default('root') }}"
+          mode: "{{ package.mode | default(omit) }}"
+      loop_control:
+        loop_var: "pkg"
+      when: 
+        - "package.isTarball is defined" 
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: Rename Package Folder"
+      vars: 
+        cmd_path: "{{ package.dest | default('/tmp/grav') }}"
+        cmd_orig: "{{ cmd_path }}/{{ package.original | default('test') }}"
+        cmd_dest: "{{ cmd_path }}/{{ package.rename | default('test') }}"
+      ansible.builtin.command: "{{ command }}"
+      loop: 
+        - "mv --force {{ cmd_orig }} {{ cmd_dest }}"
+        - "rm -rf {{ cmd_orig }}"
+      loop_control:
+        loop_var: "command"
+      when:
+        - "package.rename is defined"
+        - "package.rename is not none"
+        - "package.rename is string"
+        - "package.rename is not mapping" 
+        - "package.rename|length > 0"
+        - "package.original is defined"
+        - "package.original is not none"
+        - "package.original is string"
+        - "package.original is not mapping" # Corregido typo 'packager'
+        - "package.original|length > 0"
+
+  rescue:
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ emergency_command }}"
+      loop: "{{ tarball_emergency_commands }}"
+      loop_control:
+        loop_var: "emergency_command"
+      failed_when: false
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Tarball deployment tasks experienced an exception on host {{ inventory_hostname }}.
+          Fallback extraction was executed via shell. Execution will CONTINUE in non-blocking mode.
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 2) Tarball: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors
+
+  when:
+    - "package.src is defined"
+    - "package.src is not none"
+    - "package.src is string"

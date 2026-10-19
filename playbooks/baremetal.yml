@@ -54,36 +54,38 @@
 #---------------------------------
 #  PROVISION
 #---------------------------------
-#- hosts: "baremetal"
-#  become: no
-#  gather_facts: no
-#  connection: ssh # IMPORTANT! Allow genesis unattended lifecycle 
-#  vars:
-#    genesis_repo_path:   "{{ playbook_dir }}/../repo"
-#    genesis_hosts_path:  "{{ playbook_dir }}/../hosts"
-#    genesis_target_path: "{{ genesis_hosts_path | realpath }}/target"
-#    genesis_target_vars: "{{ genesis_target_path | realpath }}/group_vars/target"
-#    genesis_default_inventory_source: "{{ genesis_hosts_path | realpath }}/tests/host_vars/baremetal.yml"
-#    genesis_baremetal_vars: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or genesis_default_inventory_source }}"
-#    ironic_http_path:   "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
-#
-#  pre_tasks:
-#
-#    - name: "B6 - PROVISION - Permanent switch to Host Interpreter and Clean SSH settings"
-#        ansible.builtin.set_fact:
-#          ansible_python_interpreter: "/usr/bin/python3"
-#          ansible_ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=no"
-#    
-#    - name: "B6 PROVISION - Reset existing connection sockets"
-#      ansible.builtin.meta: reset_connection
-#
-#    - name: "B6 PROVISION - Force gather fresh facts from the new OS"
-#      ansible.builtin.setup:
-#    
-#  roles:
+- hosts: "documentation"
+  become: no
+  gather_facts: no
+  connection: ssh # IMPORTANT! Allow genesis unattended lifecycle 
+  vars:
+    genesis_repo_path:   "{{ playbook_dir }}/../repo"
+    genesis_hosts_path:  "{{ playbook_dir }}/../hosts"
+    genesis_target_path: "{{ genesis_hosts_path | realpath }}/target"
+    genesis_target_vars: "{{ genesis_target_path | realpath }}/group_vars/target"
+    genesis_default_inventory_source: "{{ genesis_hosts_path | realpath }}/tests/host_vars/baremetal.yml"
+    genesis_baremetal_vars: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or genesis_default_inventory_source }}"
+    ironic_http_path:   "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
 
+  pre_tasks:
+
+    - name: "B6 - PROVISION - Permanent switch to Host Interpreter and Clean SSH settings"
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: "/usr/bin/python3"
+        ansible_ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=no"
+        genesis_update_doc: "{{ genesis_update_documentation | default(false) | bool }}"
+    
+    - name: "B6 PROVISION - Reset existing connection sockets"
+      ansible.builtin.meta: reset_connection
+
+    - name: "B6 PROVISION - Force gather fresh facts from the new OS"
+      ansible.builtin.setup:
+    
+  roles:
 
     # -----> B6 - PROVISION
+    - role: "genesis.doc"
+      when: genesis_update_doc | default(false) | bool
     #- role: "genesis.sylva"
-    #  when: 
-    #  - (genesis_stage is not defined)  or  (genesis_stage=='B6')
+      #when: 
+      #- (genesis_stage is not defined)  or  (genesis_stage=='B6')

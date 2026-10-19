@@ -1,0 +1,76 @@
+---
+# genesis.doc package/1_folder.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------------------------------------------
+# B6 - PROVISION DOC NODE - PACKAGE: 1) Folder Management
+#---------------------------------------------------------------------------
+- name: "B6 - PROVISION DOC NODE - 3.- Package: 1) Folder: Main Orchestration Block"
+  vars:
+    package_emergency_commands:
+      - "echo 'WARNING ALERT: Native file module failed. Triggering raw shell rescue...'"
+      - "rm -rf {{ package.dest | default('/tmp/grav_failed') }}"
+      - "mkdir -p {{ package.dest | default('/tmp/grav') }} {{ package.tmp | default('/tmp/grav_tmp') }}"
+      - "chown -R {{ package.owner | default(apache_user) | default('apache') }}:{{ package.group | default(apache_group) | default('apache') }} {{ package.dest | default('/tmp/grav') }}"
+
+  block:
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 1) Folder: Delete Old Contents"
+      ansible.builtin.file:
+        path: "{{ package.dest | default('') }}"
+        state: "absent"
+      when:
+        - "package.refresh is defined"
+        - "package.refresh is not none"
+        - "package.refresh|bool is true"
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 1) Folder: Create Package Folder |{{ package.dest | default('Empty') }}|"
+      vars:
+        pkg_folders:
+          - path:  "{{ package.dest  | default('/tmp/grav') }}"
+            owner: "{{ package.owner | default(apache_user) | default('apache') }}"
+            group: "{{ package.group | default(apache_group) | default('apache') }}"
+            mode:  "{{ package.folder_mode | default(omit) }}"
+          - path:  "{{ package.tmp   | default('/tmp/grav') }}"
+            owner: "{{ apache_user   | default('apache') }}"
+            group: "{{ apache_group  | default('apache') }}"
+      ansible.builtin.file:
+        path: "{{ pkg_dir.path | default(omit) }}"
+        state: "directory"
+        owner: "{{ pkg_dir.owner | default(omit) }}"
+        group: "{{ pkg_dir.group | default(omit) }}"
+        mode: "{{ pkg_dir.mode | default(omit) }}"
+      loop: "{{ pkg_folders | default([]) }}"
+      loop_control:
+        loop_var: "pkg_dir"
+      when:
+        - "pkg_dir.path is defined"
+        - "pkg_dir.path is not none"
+        - "pkg_dir.path is string"
+
+  rescue:
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 1) Folder: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ emergency_command | default('id') }}"
+      loop: "{{ package_emergency_commands | default([]) }}"
+      loop_control:
+        loop_var: "emergency_command"
+      failed_when: false
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 1) Folder: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Package folder tasks experienced an exception on host {{ inventory_hostname }}.
+          Recovery script was executed via shell. Execution will CONTINUE in non-blocking mode.
+
+    - name: "B6 - PROVISION DOC NODE - 3.- Package: 1) Folder: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors
+
+  when:
+    - "package.dest is defined"
+    - "package.dest is not none"
+    - "package.dest is string"
+

@@ -8,52 +8,79 @@
 ######################################################
 #   SELINUX
 ######################################################
-- name: "PREPARE SERVER - STAGE 1: SElinux"
+- name: "B6 - PROVISION DOC NODE -1- MAC SElinux"
   become: true
   vars:
+
     selinux_emergency_commands:
-      # Operación 1: Instalación de dependencias del OS base
+      # Operación 1: Instalación de dependencias del OS base (Corregido con join)
       - |
         if command -v dnf &> /dev/null; then
-          dnf install -y policycoreutils-python3 unzip tar
+          dnf install -y {{ b6_mac_selinux_dependencies_packages | default([]) | join(' ') }}
         elif command -v apt-get &> /dev/null; then
           apt-get update && apt-get install -y policycoreutils-python-utils unzip tar
         fi
-
+    
       # Operación 2: Configuración del fichero nativo y setenforce en caliente
       - |
         if [ -n "{{ server_selinux_mode.state | default('') }}" ]; then
           sed -i 's/^SELINUX=.*/SELINUX={{ server_selinux_mode.state }}/' {{ server_selinux_mode.configfile | default("/etc/selinux/config") }}
           if [ "{{ server_selinux_mode.state }}" = "disabled" ] || [ "{{ server_selinux_mode.state }}" = "permissive" ]; then
-            setenforce 0
+            setenforce 0 2>/dev/null || true
           elif [ "{{ server_selinux_mode.state }}" = "enforcing" ]; then
-            setenforce 1
+            setenforce 1 2>/dev/null || true
+          fi
+        fi
+    
+      # Operación 3: Forzar Autorelabel y remover el bloqueo de SELinux en el Kernel Command Line
+      - |
+        CURRENT_STATE=$(getenforce 2>/dev/null || echo "Disabled")
+        TARGET_STATE="{{ server_selinux_mode.state | default('') }}"
+        
+        if [ "$CURRENT_STATE" = "Disabled" ] && { [ "$TARGET_STATE" = "enforcing" ] || [ "$TARGET_STATE" = "permissive" ]; }; then
+          echo "[GENESIS] Detectado cambio de SELinux desde Disabled. Forzando autorelabel del sistema de archivos..."
+          touch /.autorelabel
+          
+          # REMOVER EL BLOQUEO DE KERNEL EN SISTEMAS MODERNOS (RHEL 9 / ROCKY 9 / CENTOS 9)
+          if command -v grubby &> /dev/null; then
+            echo "[GENESIS] Eliminando argumento selinux=0 del kernel mediante grubby..."
+            grubby --update-kernel ALL --remove-args selinux
+          fi
+      
+          # Compatibilidad por si es un sistema heredado antiguo
+          if grep -q "selinux=0" /etc/default/grub 2>/dev/null; then
+            sed -i 's/selinux=0//g' /etc/default/grub
+            if command -v grub2-mkconfig &> /dev/null; then
+              grub2-mkconfig -o /boot/grub2/grub.cfg
+            fi
           fi
         fi
 
-      # Operación 3: Bucle embebido Jinja para mapear y aplicar políticas con semanage/restorecon
+      # Operación 4: Bucle embebido Jinja para mapear y aplicar políticas con semanage/restorecon
       - |
-        {% for policy in server_selinux_policies | default([]) %}
-        semanage fcontext -a -t {{ policy.setype | default('httpd_sys_content_t') }} "{{ policy.target }}" 2>/dev/null || \
-        semanage fcontext -m -t {{ policy.setype | default('httpd_sys_content_t') }} "{{ policy.target }}"
-        restorecon -irv "{{ policy.target }}"
-        {% endfor %}
+        CURRENT_STATE=$(getenforce 2>/dev/null || echo "Disabled")
+        if [ "$CURRENT_STATE" != "Disabled" ]; then
+          {% for policy in server_selinux_policies | default([]) %}
+          semanage fcontext -a -t {{ policy.setype | default('httpd_sys_content_t') }} "{{ policy.target }}" 2>/dev/null || \
+          semanage fcontext -m -t {{ policy.setype | default('httpd_sys_content_t') }} "{{ policy.target }}"
+          restorecon -irv "{{ policy.target }}"
+          {% endfor %}
+        else
+          echo "[GENESIS] SELinux está Disabled en memoria. Las políticas se aplicarán automáticamente tras el reboot del rescue."
+        fi
 
   block:
-    - name: "SELinux Python Dependencies"
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux : Python Dependencies"
       package:
-        name:
-          - policycoreutils-python3 
-          - unzip
-          - tar
+        name: "{{ b6_mac_selinux_dependencies_packages | default('') }}"
         state: present 
       
-    - name: "SELinux Mode" 
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux Mode" 
       ansible.posix.selinux:
         policy:      "{{server_selinux_mode.policy     | default(omit)}}"
         state:       "{{server_selinux_mode.state      | default(omit)}}"
         configfile:  "{{server_selinux_mode.configfile | default(omit)}}"
-        update_kernel_param: "{{ server_selinux_mode.selinux_update_kernel_param | default(omit)}}"
+        update_kernel_param: "{{ server_selinux_mode.update_kernel_param | default(omit)}}"
       ignore_errors: yes 
       register: "selinux_mode_switch"
       when:
@@ -61,7 +88,7 @@
         - "server_selinux_mode.state is defined"
         - "server_selinux_mode.state is string"
 
-    - name: "Trigger File System Autorelabel when state changed from disabled"
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux: Trigger File System Autorelabel when state changed from disabled"
       ansible.builtin.file:
         path: "/.autorelabel"
         state: touch
@@ -71,7 +98,7 @@
         - "selinux_mode_switch.changed is defined"
         - "selinux_mode_switch.changed is true"
 
-    - name: "Rebooting when SELinux Mode changed"
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux: Rebooting when SELinux Mode changed"
       ansible.builtin.reboot:
       when:
         - "selinux_mode_switch is defined"
@@ -80,7 +107,14 @@
         - "(selinux_mode_switch.reboot_required is not none)"
         - "(selinux_mode_switch.reboot_required is true) "
 
-    - name: "SElinux Policies"
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux: Refresh facts after reboot"
+      ansible.builtin.setup:
+      when:
+        - "selinux_mode_switch is defined"
+        - "selinux_mode_switch.reboot_required is defined"
+        - "selinux_mode_switch.reboot_required is true"
+
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux Policies"
       community.general.sefcontext:
         target:     "{{ selinux_policy.target     | default(omit)}}"
         substitute: "{{ selinux_policy.substitute | default(omit)}}"
@@ -102,7 +136,7 @@
         - "server_selinux_policies is not mapping"
         - "server_selinux_policies is iterable"
 
-    - name   : "Apply SELinux Policies to target"            
+    - name   : "B6 - PROVISION DOC NODE -1- MAC SElinux: Apply Policies to target"            
       ansible.builtin.shell  : "restorecon -irv {{ secontext | default('.') }}"
       loop: "{{ selinux_apply_policy.results | default([]) }}"
       loop_control:
@@ -117,14 +151,14 @@
 
   rescue:
 
-    - name: "B6 - SELINUX [RESCUE] - Execute raw shell recovery sequence from block vars"
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux [RESCUE] - Execute raw shell recovery sequence from block vars"
       ansible.builtin.shell: "{{ emergency_command }}"
       loop: "{{ selinux_emergency_commands }}"
       loop_control:
         loop_var: "emergency_command"
       failed_when: false
 
-    - name: "B6 - SELINUX [RESCUE] - Emergency reboot if state was modified"
+    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux [RESCUE] - Emergency reboot if state was modified"
       ansible.builtin.reboot:
       when:
         - server_selinux_mode is defined

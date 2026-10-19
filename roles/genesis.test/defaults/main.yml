@@ -236,8 +236,8 @@ t1_proxmox_redfish_remote_tarball: "/tmp/{{ t1_proxmox_redfish_tarball_name }}"
 
 # 3. Network Properties
 t1_proxmox_storage: "local-lvm"
-t1_proxmox_provision_bridge: "{{ t1_airgap_zone.bridges[1].name | default('provision') }}"
-t1_proxmox_bmc_bridge: "{{ t1_airgap_zone.bridges[0].name | default('redfish') }}"
+t1_proxmox_provision_bridge: "{{ t1_airgap_zone.bridges[1].name | default('inband') }}"
+t1_proxmox_bmc_bridge: "{{ t1_airgap_zone.bridges[0].name | default('outband') }}"
 
 # 4. Baremetal Emulation Properties
 t1_proxmox_boot_type:

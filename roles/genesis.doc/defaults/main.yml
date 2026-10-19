@@ -36,6 +36,24 @@ b6_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
 b6_repo_sylva_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva') }}"
 b6_repo_sylva_oci_path:  "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva/oci') }}"
 b6_repo_doc_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['doc'] | default('doc') }}"
+b6_mac_selinux_dependencies:
+  redhat:
+    - policycoreutils-python3
+    - selinux-policy-targeted
+    - unzip
+    - tar
+  debian:
+    - policycoreutils-python-utils   
+    - apparmor-utils                
+    - unzip
+    - tar
+  suse:
+    - policycoreutils-python3
+    - selinux-policy-targeted
+    - unzip
+    - tar
+b6_node_target_family: "{{ (ansible_os_family | lower) | default('redhat') }}"
+b6_mac_selinux_dependencies_packages: "{{ b6_mac_selinux_dependencies[b6_node_target_family] | default([]) }}"
 
 #########################################################
 ##             GLOBAL PROPERTIES
@@ -56,9 +74,10 @@ server_services:
 server_selinux_mode:      
    policy: "targeted"
    state: "enforcing"
+   update_kernel_param: true 
 
 server_selinux_policies:
-  - target: "{{apache_work_path | default('/var/www/html') }}(/.*)?"
+  - target: "{{ apache_work_path | default('/var/www/html') }}(/.*)?"
     setype: "httpd_sys_rw_content_t"
     seuser: "unconfined_u"
     state: "present"
@@ -92,27 +111,20 @@ apache_options: "All Indexes FollowSymLinks"
 #    - mpm_itk_module
 apache_mods_disabled: []
 apache_vhosts:
-  - servername: "gitea.{{server_domain|default('genesis.lab')}}"
-    documentroot: "{{apache_work_path|default('/var/www/html')}}/vcloud"  
+  - servername: "gitea.{{ server_domain | default('genesis.lab')}}"
+    documentroot: "{{ apache_work_path|default('/var/www/html')}}/vcloud"  
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
     serveralias: "www.gitea.{{server_domain|default('genesis.lab')}}" 
     extra_parameters:  |
-         ErrorLog  {{apache_logs|default('/var/log/httpd')}}/gitea/error.log  
-         CustomLog {{apache_logs|default('/var/log/httpd')}}/gitea/access.log combined  
+         ErrorLog  {{ apache_logs | default('/var/log/httpd')}}/gitea/error.log  
+         CustomLog {{ apache_logs | default('/var/log/httpd')}}/gitea/access.log combined  
   - servername: "training.{{ server_domain|default('genesis.lab') }}"
     documentroot: "{{ apache_work_path | default('/var/www/html') }}/training"
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
     serveralias: "www.training.{{ server_domain|default('genesis.lab') }}"
     extra_parameters:  |
-         ErrorLog  {{apache_logs|default('/var/log/httpd')}}/training/error.log
-         CustomLog {{apache_logs|default('/var/log/httpd')}}/training/access.log combined
-  - servername: "formacion.{{ server_domain|default('genesis.lab') }}"
-    documentroot: "{{ apache_work_path | default('/var/www/html') }}/formación"
-    serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
-    serveralias: "www.formacion.{{ server_domain|default('genesis.lab') }}"
-    extra_parameters:  |
-         ErrorLog  {{apache_logs|default('/var/log/httpd')}}/formacion/error.log
-         CustomLog {{apache_logs|default('/var/log/httpd')}}/formacion/access.log combined    
+         ErrorLog  {{ apache_logs | default('/var/log/httpd')}}/training/error.log
+         CustomLog {{ apache_logs | default('/var/log/httpd')}}/training/access.log combined
 
 
 #########################################################
@@ -276,12 +288,10 @@ grav_deploy:
           slug_maxlen: 25           # Max length of slugs used for anchors
           slug_prefix:              # A prefix used in front of generated slugs              
 
-
 # 2.4.- Grav Sites
 grav_multisite: "setup_subdirectory"
 grav_multisite_path:
-  - "training"
-  - "formacion"
+  - "maas"
   
 grav_sites:
   - title: "MaaS Training Labs"
@@ -289,13 +299,13 @@ grav_sites:
     root: yes
     
     contents:
-      - src: "sites/{{grav_multisite_path[0]|default('genesis')}}/home/themes/labs"
+      - src: "home/themes/labs"
         dest: "themes/labs"
         refresh: yes 
-      - src: "sites/{{grav_multisite_path[0]|default('genesis')}}/{{grav_multisite_path[0]|default('genesis')}}/themes/maas"
+      - src: "{{ grav_multisite_path[0] | default('genesis') }}/themes/maas"
         dest: "themes/maas"
         refresh: yes         
-      - src: "sites/{{grav_multisite_path[0]|default('genesis')}}/home/pages"
+      - src: "home/pages"
         dest: "pages"
         refresh: yes        
     
@@ -308,22 +318,22 @@ grav_sites:
         line: '  theme: "labs"'
       - file: "config/site.yaml"
         regexp: 'title:'
-        line: 'title: "Sylva Training Labs"'
+        line: 'title: "Sylva MaaS Training Labs"'
       - file: "config/system.yaml"
         regexp: 'alias:'
         line: '  alias: /home'
       - file: "themes/labs/labs.yaml"
         regexp: 'home_url:'
-        line: "home_url:  http://training.{{server_domain|default('genesis.lab')}}"          
+        line: "home_url:  http://training.{{ server_domain | default('genesis.lab') }}"
 
   - title: "Metal as a Service Lab"
-    path: "{{grav_multisite_path[0]|default('genesis')}}"
+    path: "{{ grav_multisite_path[0] | default('genesis')}}"
     
     contents:
-      - src: "sites/{{grav_multisite_path[0]|default('genesis')}}/{{grav_multisite_path[0]|default('genesis')}}/pages" 
+      - src: "{{ grav_multisite_path[0] | default('genesis') }}/pages" 
         dest: "pages"
         refresh: yes
-      - src: "sites/{{grav_multisite_path[0]|default('genesis')}}/{{grav_multisite_path[0]|default('genesis')}}/images"
+      - src: "{{ grav_multisite_path[0] | default('genesis') }}/images"
         dest: "images"
         refresh: yes
         
