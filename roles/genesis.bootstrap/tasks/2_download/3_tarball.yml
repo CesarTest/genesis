@@ -5,71 +5,125 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- block:
-  
+- name: "G1 - BOOTSTRAP - 2.- Downlolad - 3) Tarball Deployment Management"
+  vars:
+    g1_owner: "{{ ansible_user | default('ironic') }}"
+    g1_group: "{{ ansible_user | default('ironic') }}"
+    g1_unzip_tarball_detect: "{{ g1_tarball.unzip | default(g1_unzip_tarball, true) | default(false, true) }}"
+    g1_tarball_filename: "{{ g1_tarball.url | default('') | basename }}"
+    g1_tarball_src:      "{{ g1_tarball.dest }}"
+    g1_tarball_dest:     "{{ g1_tarball.path | default(g1_image_os_local_folder) | default('') }}"
+    g1_dest_name:        "{{ g1_tarball.name | default('') }}"
+    g1_dest_rename:      "{{ g1_tarball.rename | default('') }}"
+    g1_rescue_commands:
+      # Comando 1: Descarga manual
+      - |
+        if [ -n "{{ g1_tarball.url | default('') }}" ] && [ -n "{{ g1_tarball.dest | default('') }}" ]; then
+            curl -sSL -o "{{ g1_tarball.dest }}" "{{ g1_tarball.url }}"
+            chown {{ g1_owner }}:{{ g1_group }} "{{ g1_tarball.dest }}"
+            chmod 0644 "{{ g1_tarball.dest }}"
+        fi
+
+      # Comando 2: Extracción según formato detectado
+      - |
+        if {{ g1_unzip_tarball_detect | lower }}; then
+            if [[ "{{ g1_tarball_src }}" == *.zip ]]; then
+                unzip -o "{{ g1_tarball_src }}" -d "{{ g1_tarball_dest }}"
+            else
+                tar -xf "{{ g1_tarball_src }}" -C "{{ g1_tarball_dest }}" --no-same-owner --no-same-permissions
+            fi
+        fi
+
+      # Comando 3: Renombrado dinámico
+      - |
+        if {{ g1_unzip_tarball_detect | lower }} && [ -n "{{ g1_dest_name }}" ] && [ -n "{{ g1_dest_rename }}" ]; then
+            rm -rf "{{ g1_tarball_dest }}/{{ g1_dest_rename }}"
+            mv "{{ g1_tarball_dest }}/{{ g1_dest_name }}" "{{ g1_tarball_dest }}/{{ g1_dest_rename }}"
+        fi
+
+      # Comando 4: Permisos globales aplicados al destino
+      - |
+        if {{ g1_unzip_tarball_detect | lower }}; then
+            chown -R {{ g1_owner }}:{{ g1_group }} "{{ g1_tarball_dest }}"
+            chmod -R a+rX "{{ g1_tarball_dest }}"
+        fi
+
+  block:
+
+    #-------------------------------------------------------------------------------
+    # 1. - Download Tarball and Unarchive through Ansible Modules
+    #-------------------------------------------------------------------------------
+    - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.0) Variables Control Trace"
+      ansible.builtin.debug:
+        msg: "{{ g1_tarball_log.splitlines() }}"
+      vars:
+        g1_tarball_log: |
+          -------- TARBALL DETAILS --------
+          File Owner and Group configuration -> g1_owner / g1_group:     [{{ g1_owner | default('g1_owner not defined') }}] : [{{ g1_group | default('g1_group not defined') }}]
+          Unpack detection flag status       -> g1_unzip_tarball_detect: [{{ g1_unzip_tarball_detect | default('g1_unzip_tarball_detect not defined') }}]
+          Extracted baseline filename        -> g1_tarball_filename:     [{{ g1_tarball_filename | default('g1_tarball_filename not defined') }}]
+          Download destination target path   -> g1_tarball.dest:         [{{ (g1_tarball | default({})).dest | default('g1_tarball.dest not defined') }}]
+          Source file path for extraction    -> g1_tarball_src:          [{{ g1_tarball_src | default('g1_tarball_src not defined') }}]
+          Target directory for extraction    -> g1_tarball_dest:         [{{ g1_tarball_dest | default('g1_tarball_dest not defined') }}]
+          Original internal folder name      -> g1_dest_name:            [{{ g1_dest_name | default('g1_dest_name not defined') }}]
+          New renamed internal folder name   -> g1_dest_rename:          [{{ g1_dest_rename | default('g1_dest_rename not defined') }}]
+
     - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.1) Download Source Code"
       get_url:
          url:      "{{ g1_tarball.url      | default(omit) }}"
          dest:     "{{ g1_tarball.dest     | default(omit) }}"
          checksum: "{{ g1_tarball.checksum | default(omit) }}"
-         owner:    "{{ ansible_user        | default('ironic') }}"
-         group:    "{{ ansible_user        | default('ironic') }}"
+         owner:    "{{ g1_owner }}"
+         group:    "{{ g1_group }}"
          mode: '0644'
-      loop: "{{ g1_tarball_download | default([]) }}"
-      loop_control:
-        loop_var: "g1_tarball"
-    
+
     - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.2) Untar Source Code"
       ansible.builtin.unarchive:
-        src:  "{{ g1_tarball_src           | default(omit) }}"
-        dest: "{{ g1_image_os_local_folder | default(omit) }}"
-        owner: "{{ansible_user | default('ironic') }}"
-        group: "{{ansible_user | default('ironic') }}"
+        src:  "{{ g1_tarball_src  | default(omit) }}"
+        dest: "{{ g1_tarball_dest | default(omit) }}"
+        owner: "{{ g1_owner }}"
+        group: "{{ g1_group }}"
         remote_src: true
         mode: "a+rX"
-        extra_opts:
-          - '--no-same-owner'       
-          - '--no-same-permissions'
-      vars:
-        g1_unzip_tarball_detect: "{{ g1_tarball.unzip | default(g1_unzip_tarball, true) | default(false, true)  }}"
-        g1_tarball_filename: "{{ g1_tarball.url | default('')  | basename }}"
-        g1_tarball_src:      "{{ g1_image_os_local_folder }}/{{ g1_tarball_filename }}"	
-      loop: "{{ g1_tarball_download | default([]) }}"
-      loop_control:
-        loop_var: "g1_tarball"
       when: 
-        - g1_unzip_tarball_detect | default(false) | bool
+        - g1_unzip_tarball_detect | bool
         - g1_tarball.dest is defined
         - g1_tarball.dest is not none
         - g1_tarball.dest | length > 0
 
+    - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.3) Copy new Path"
+      ansible.builtin.copy:
+        src: "{{ g1_tarball_dest }}/{{ g1_dest_name }}/"
+        dest: "{{ g1_tarball_dest }}/{{ g1_dest_rename }}"
+        remote_src: true
+        owner: "{{ g1_owner }}"
+        group: "{{ g1_group }}"
+        mode: "a+rX"
+      when:
+        - g1_unzip_tarball_detect | bool
+        - g1_tarball.dest is defined
+        - g1_dest_name | length > 0
+        - g1_dest_rename | length > 0
+
+    - name: "G1 - BOOTSTRAP - 2.- Download Tarball: - 3.4) Remove Old Path"
+      ansible.builtin.file:
+        path: "{{ g1_tarball_dest }}/{{ g1_dest_name }}"
+        state: absent
+      when:
+        - g1_unzip_tarball_detect | bool
+        - g1_tarball.dest is defined
+        - g1_dest_name | length > 0
+        - g1_dest_rename | length > 0
+
+  #-------------------------------------------------------------------------------
+  # 2. - Download Tarball and Unarchive through Shell Commands
+  #-------------------------------------------------------------------------------
   rescue:
-    - name: "G1 - BOOTSTRAP - RESCUE - 2.- Download Tarball: - 3.3) Download Source Code via Shell"
-      ansible.builtin.shell: |
-        curl -sSL -o "{{ g1_tarball.dest }}" "{{ g1_tarball.url }}"
-        chown {{ ansible_user | default('ironic') }}:{{ ansible_user | default('ironic') }} "{{ g1_tarball.dest }}"
-        chmod 0644 "{{ g1_tarball.dest }}"
-      loop: "{{ g1_tarball_download | default([]) }}"
-      loop_control:
-        loop_var: "g1_tarball"
-      when: 
-        - g1_tarball.url is defined and g1_tarball.url | length > 0
-        - g1_tarball.dest is defined and g1_tarball.dest | length > 0
 
-    - name: "G1 - BOOTSTRAP - RESCUE - 2.- Download Tarball: - 3.4) Untar Source Code via Shell"
-      ansible.builtin.shell: |
-        tar -xf "{{ g1_tarball_src }}" -C "{{ g1_image_os_local_folder | default(omit) }}" --no-same-owner --no-same-permissions
-        chown -R {{ ansible_user | default('ironic') }}:{{ ansible_user | default('ironic') }} "{{ g1_image_os_local_folder }}"
-        chmod -R a+rX "{{ g1_image_os_local_folder }}"
-      vars:
-        g1_unzip_tarball_detect: "{{ g1_tarball.unzip | default(g1_unzip_tarball, true) | default(false, true) }}"
-        g1_tarball_filename: "{{ g1_tarball.url | default('') | basename }}"
-        g1_tarball_src: "{{ g1_image_os_local_folder }}/{{ g1_tarball_filename }}"
-      loop: "{{ g1_tarball_download | default([]) }}"
-      loop_control:
-        loop_var: "g1_tarball"
-      when: 
-        - g1_unzip_tarball_detect | default(false) | bool
+    - name: "G1 - BOOTSTRAP - RESCUE - 2.-  Download Tarball: - 3.5) Download & Extract Tarball via Iterated Shell"
+      ansible.builtin.shell: "{{ item }}"
+      failed_when: false 
+      loop: "{{ g1_rescue_commands | default([]) }}"
+      when:
         - g1_tarball.dest is defined
         - g1_tarball.dest is not none
-        - g1_tarball.dest | length > 0

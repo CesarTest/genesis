@@ -36,6 +36,8 @@ b6_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
 b6_repo_sylva_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva') }}"
 b6_repo_sylva_oci_path:  "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva/oci') }}"
 b6_repo_doc_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['doc'] | default('doc') }}"
+b6_repo_doc_content_path: "{{ b6_repo_doc_path }}/content"
+
 b6_mac_selinux_dependencies:
   redhat:
     - policycoreutils-python3
@@ -211,7 +213,7 @@ grav_sites:
       - src: "{{ grav_multisite_path[0] | default('genesis') }}/themes/maas"
         dest: "themes/maas"
         refresh: yes         
-      - src: "home/pages"
+      - src: "{{ b6_repo_doc_content_path }}/home/pages"
         dest: "pages"
         refresh: yes        
     
@@ -236,10 +238,10 @@ grav_sites:
     path: "{{ grav_multisite_path[0] | default('genesis')}}"
     
     contents:
-      - src: "{{ grav_multisite_path[0] | default('genesis') }}/pages" 
+      - src: "{{ b6_repo_doc_content_path }}/{{ grav_multisite_path[0] | default('genesis') }}/pages" 
         dest: "pages"
         refresh: yes
-      - src: "{{ grav_multisite_path[0] | default('genesis') }}/images"
+      - src: "{{ b6_repo_doc_content_path }}/{{ grav_multisite_path[0] | default('genesis') }}/images"
         dest: "images"
         refresh: yes
         

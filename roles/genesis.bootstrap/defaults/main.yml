@@ -496,13 +496,13 @@ download_image_sources: "{{ genesis_download_images | default(genesis_all_instal
 oras_arch_map:
   x86_64: "amd64"
   aarch64: "arm64"
-oras_arch: "{{ oras_arch_map[ansible_architecture] }}"           
+oras_arch: "{{ oras_arch_map[ansible_architecture] }}"
 oras_version: "1.3.0"
 oras_checksums:
   linux_amd64: "6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64"
   linux_arm64: "7649738b48fde10542bcc8b0e9b460ba83936c75fb5be01ee6d4443764a14352"
 oras_tarball_name: "oras_{{ oras_version }}_linux_{{ oras_arch }}.tar.gz"
-oras_tarball_path: "v{{ oras_version }}/{{oras_tarball_name}}" 
+oras_tarball_path: "v{{ oras_version }}/{{ oras_tarball_name }}" 
 oras_checksum: "{{ oras_checksums['linux_' + oras_arch] }}"
 oras_git_url: "https://github.com/oras-project/oras/releases/download"
 oras_download_url: "{{ oras_git_url }}/{{ oras_tarball_path }}/{{ oras_tarball_name }}"
@@ -510,26 +510,49 @@ oras_download_url: "{{ oras_git_url }}/{{ oras_tarball_path }}/{{ oras_tarball_n
 proxmox_download_url: "https://github.com/v1k0d3n/proxmox-redfish/archive/refs/heads/release/0.2.1.zip"
 proxmox_download_name: "proxmox-redfish.zip"
 
+b1_gitea_version: "{{ genesis_gitea_version | default('28.2.0') }}"
+b1_gitea_arch_capture: "{{ genesis_gitea_arch | default(ansible_architecture) | default('amd64') }}"
+b1_gitea_arch: "{{ 'amd64' if b1_gitea_arch_capture == 'x86_64' else b1_gitea_arch_capture }}"
+b1_gitea_os:   "{{ genesis_gitea_os | default('linux') | lower }}"
+b1_gitea_url:  "https://dl.gitea.com/gitea/{{ b1_gitea_version }}/gitea-{{ b1_gitea_version }}-{{ b1_gitea_os }}-{{ b1_gitea_arch }}"
+b1_grav_url:
+  skeleton: "https://getgrav.org/download/skeletons/learn2-with-git-sync-site"
+  doc:      "https://github.com/getgrav/grav-theme-learn4/archive/refs/heads/master.zip"
+  root:     "https://github.com/getgrav/grav-theme-quark/archive/refs/heads/master.zip"
+  toc:      "https://github.com/trilbymedia/grav-plugin-page-toc/archive/refs/heads/master.zip"
+
+b1_grav_content: "https://github.com/CesarTest/maas/archive/refs/heads/main.zip"
+
 ######################################################
-#  TARBALL DEPENDENCENCIES
+#  TARBALL DEPENDENCIES
 ######################################################
 g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
 g1_proxmox_default_tarball_name: "{{ proxmox_download_url | basename }}" 
 g1_proxmox_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ proxmox_download_name | default(g1_proxmox_default_tarball_name) }}"
+
 g1_tarball_download:
  - url:  "{{ oras_download_url }}"
    dest: "{{ g1_oras_dest_path }}"
    checksum: "sha256:{{ oras_checksum }}"
+ - url:  "{{ b1_gitea_url }}"
+   dest: "{{ g1_repo_doc_path | realpath }}"
  - url:  "{{ proxmox_download_url }}"
    dest: "{{ g1_proxmox_dest_path }}"
- - url:  "https://getgrav.org/download/skeletons/learn2-with-git-sync-site"
+ - url:  "{{ b1_grav_url.skeleton }}"
    dest: "{{ g1_repo_doc_path | realpath }}/learn2-skeleton.zip"
- - url:  "https://github.com/getgrav/grav-theme-learn4/archive/refs/heads/develop.zip"
+ - url:  "{{ b1_grav_url.doc }}"
    dest: "{{ g1_repo_doc_path | realpath }}/learn4-theme.zip"
- - url:  "https://github.com/getgrav/grav-theme-quark/archive/refs/heads/develop.zip"
+ - url:  "{{ b1_grav_url.root }}"
    dest: "{{ g1_repo_doc_path | realpath }}/quark.zip"
- - url:  "https://github.com/trilbymedia/grav-plugin-page-toc/archive/refs/heads/master.zip"
+ - url:  "{{ b1_grav_url.toc }}"
    dest: "{{ g1_repo_doc_path | realpath }}/page-toc.zip"
+ - url:  "{{ b1_grav_content }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/content.zip"
+   path: "{{ g1_repo_doc_path | realpath }}"
+   name: "maas-main"
+   rename: "content"
+   unzip: true
+
 
 ######################################################
 #  SILVA REPOSITORIES

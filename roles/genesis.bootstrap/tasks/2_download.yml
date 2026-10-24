@@ -101,6 +101,9 @@
 #--------------------------------------- 
 - name: "G1 - BOOTSTRAP - 2.- Download: 3) Tarballs"
   ansible.builtin.include_tasks: "2_download/3_tarball.yml"
+  loop: "{{ g1_tarball_download | default([]) }}"
+  loop_control:
+     loop_var: "g1_tarball"
  
 #---------------------------------------
 # 4. OCI
