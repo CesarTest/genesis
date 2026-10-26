@@ -9,11 +9,34 @@
    - name: "G1 - BOOTSTRAP - 2.- Download: 1) OpenStack Components"
      ansible.builtin.include_role: 
        name: "bifrost-prep-for-install"
+     vars:
+       copy_from_local_path: false
+       ironicclient_source_install: true
+       openstacksdk_source_install: true
+       ironicinspector_source_install: true
+       ironicinspectorclient_source_install: true
+       sushy_source_install: true
+       staging_drivers_source_install: true
+       prometheus_exporter_source_install: true
+       enable_inspector: true
+       enable_keystone: true
+       enable_prometheus_exporter: true
+       staging_drivers_include: true
+       enable_networking_generic_switch_driver: true
+       staging_drivers_git_branch: "master"
+       dib_git_branch: "master"
    
    - name: "G1 - BOOTSTRAP - 2.- Download: 2) Sylva Components"
      ansible.builtin.include_role: 
        name: "bifrost-prep-for-install"
      vars:
-       bifrost_install_sources: "{{ b1_sylva_git_repos | default([]) }}"
-       
+       bifrost_install_sources: "{{ g1_sylva_git_repos | default([]) }}"
+
+  rescue:
+    - name: "G1 - BOOTSTRAP - 2.- Download: Component Download Failed"
+      ansible.builtin.fail:
+        msg: >
+          [GENESIS ERROR]: The Git clone or checkout process failed while syncing OpenStack or Sylva components.
+          Please verify your internet connection to opendev.org/github.com, and double-check that the defined branches or tags exist.
+
   when: not (skip_install | default(false) | bool)

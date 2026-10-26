@@ -383,24 +383,6 @@ g1_nic_outband_prefix:  "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('prefix')
 g1_nic_outband_gw:      "{{ g1_nics.outband.gateway | default(g1_nic_outband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
 
 ######################################################
-#  DOWNLOAD OPENSTACK COMPONENTS FROM GIT
-######################################################
-copy_from_local_path: false
-ironicclient_source_install: true
-openstacksdk_source_install: true
-ironicinspector_source_install: true
-ironicinspectorclient_source_install: true
-sushy_source_install: true
-staging_drivers_source_install: true
-prometheus_exporter_source_install: true
-enable_inspector: true
-enable_keystone: true
-enable_prometheus_exporter: true
-staging_drivers_include: true
-enable_networking_generic_switch_driver: true
-staging_drivers_git_branch: "master"
-
-######################################################
 #  OS IMAGES RESPOSITORIES
 ######################################################
 create_image_via_dib: true
@@ -493,8 +475,12 @@ genesis_all_installers_download: "{{ g1_native_os_installer + g1_cloud_os_instal
 download_image_sources: "{{ genesis_download_images | default(genesis_all_installers_download) | default([]) }}"
 
 ######################################################
-#  ORAS URL
+#  TARBALL URL
 ######################################################
+
+#-----------------------------------------------------------------------
+# 1.- ORAS
+#-----------------------------------------------------------------------
 oras_arch_map:
   x86_64: "amd64"
   aarch64: "arm64"
@@ -508,159 +494,166 @@ oras_tarball_path: "v{{ oras_version }}/{{ oras_tarball_name }}"
 oras_checksum: "{{ oras_checksums['linux_' + oras_arch] }}"
 oras_git_url: "https://github.com/oras-project/oras/releases/download"
 oras_download_url: "{{ oras_git_url }}/{{ oras_tarball_path }}/{{ oras_tarball_name }}"
+g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
 
+#-----------------------------------------------------------------------
+# 2.- ProxMox Redfish Emulator
+#-----------------------------------------------------------------------
 proxmox_download_url: "https://github.com/v1k0d3n/proxmox-redfish/archive/refs/heads/release/0.2.1.zip"
 proxmox_download_name: "proxmox-redfish.zip"
+g1_proxmox_default_tarball_name: "{{ proxmox_download_url | basename }}" 
+g1_proxmox_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ proxmox_download_name | default(g1_proxmox_default_tarball_name) }}"
 
-b1_gitea_version: "{{ genesis_gitea_version | default('28.2.0') }}"
-b1_gitea_arch_capture: "{{ genesis_gitea_arch | default(ansible_architecture) | default('amd64') }}"
-b1_gitea_arch: "{{ 'amd64' if b1_gitea_arch_capture == 'x86_64' else b1_gitea_arch_capture }}"
-b1_gitea_os:   "{{ genesis_gitea_os | default('linux') | lower }}"
-b1_gitea_url:  "https://dl.gitea.com/gitea/{{ b1_gitea_version }}/gitea-{{ b1_gitea_version }}-{{ b1_gitea_os }}-{{ b1_gitea_arch }}"
-b1_grav_url:
+#-----------------------------------------------------------------------
+# 3.- Gitea
+#-----------------------------------------------------------------------
+g1_gitea_version: "{{ genesis_gitea_version | default('28.2.0') }}"
+g1_gitea_arch_capture: "{{ genesis_gitea_arch | default(ansible_architecture) | default('amd64') }}"
+g1_gitea_arch: "{{ 'amd64' if g1_gitea_arch_capture == 'x86_64' else g1_gitea_arch_capture }}"
+g1_gitea_os:   "{{ genesis_gitea_os | default('linux') | lower }}"
+g1_gitea_url:  "https://dl.gitea.com/gitea/{{ g1_gitea_version }}/gitea-{{ g1_gitea_version }}-{{ g1_gitea_os }}-{{ g1_gitea_arch }}"
+
+#-----------------------------------------------------------------------
+# 4.- GRAV
+#-----------------------------------------------------------------------
+g1_grav_content: "https://github.com/CesarTest/maas/archive/refs/heads/main.zip"
+g1_grav_url:
   skeleton: "https://getgrav.org/download/skeletons/learn2-with-git-sync-site"
   doc:      "https://github.com/getgrav/grav-theme-learn4/archive/refs/heads/master.zip"
   root:     "https://github.com/getgrav/grav-theme-quark/archive/refs/heads/master.zip"
   toc:      "https://github.com/trilbymedia/grav-plugin-page-toc/archive/refs/heads/master.zip"
 
-b1_grav_content: "https://github.com/CesarTest/maas/archive/refs/heads/main.zip"
-
 ######################################################
 #  TARBALL DEPENDENCIES
 ######################################################
-g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
-g1_proxmox_default_tarball_name: "{{ proxmox_download_url | basename }}" 
-g1_proxmox_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ proxmox_download_name | default(g1_proxmox_default_tarball_name) }}"
-
 g1_tarball_download:
  - url:  "{{ oras_download_url }}"
    dest: "{{ g1_oras_dest_path }}"
    checksum: "sha256:{{ oras_checksum }}"
- - url:  "{{ b1_gitea_url }}"
+ - url:  "{{ g1_gitea_url }}"
    dest: "{{ g1_repo_doc_path | realpath }}"
  - url:  "{{ proxmox_download_url }}"
    dest: "{{ g1_proxmox_dest_path }}"
- - url:  "{{ b1_grav_url.skeleton }}"
+ - url:  "{{ g1_grav_url.skeleton }}"
    dest: "{{ g1_repo_doc_path | realpath }}/learn2-skeleton.zip"
- - url:  "{{ b1_grav_url.doc }}"
+ - url:  "{{ g1_grav_url.doc }}"
    dest: "{{ g1_repo_doc_path | realpath }}/learn4-theme.zip"
- - url:  "{{ b1_grav_url.root }}"
+ - url:  "{{ g1_grav_url.root }}"
    dest: "{{ g1_repo_doc_path | realpath }}/quark.zip"
- - url:  "{{ b1_grav_url.toc }}"
+ - url:  "{{ g1_grav_url.toc }}"
    dest: "{{ g1_repo_doc_path | realpath }}/page-toc.zip"
- - url:  "{{ b1_grav_content }}"
+ - url:  "{{ g1_grav_content }}"
    dest: "{{ g1_repo_doc_path | realpath }}/content.zip"
    path: "{{ g1_repo_doc_path | realpath }}"
    name: "maas-main"
    rename: "content"
    unzip: true
 
-
 ######################################################
 #  SILVA REPOSITORIES
 ######################################################
-b1_sylva_git_branch: "release-1.8"
-b1_sylva_oci_branch: "latest"
-b1_sylva_os_branch:  "1.8.0"
-b1_sylva_registry_user:  "{{ genesis_secret_gitlab_user  | default('43372026') }}"
-b1_sylva_registry_token: "{{ genesis_secret_gitlab_token | default('683930') }}"
+g1_sylva_git_branch: "release-1.8"
+g1_sylva_oci_branch: "latest"
+g1_sylva_os_branch:  "1.8.0"
+g1_sylva_registry_user:  "{{ genesis_secret_gitlab_user  | default('43372026') }}"
+g1_sylva_registry_token: "{{ genesis_secret_gitlab_token | default('683930') }}"
 
 #-----------------------------------------------------------------------
 # 1.- Sylva GIT
 #-----------------------------------------------------------------------
-b1_sylva_git_sylva_core_name: "sylva-core"
-b1_sylva_git_sylva_core_url: "https://gitlab.com/sylva-projects/sylva-core.git"
-b1_sylva_git_sylva_core_folder:  "{{ g1_repo_sylva_path | default('/tmp') }}/{{ b1_sylva_git_sylva_core_name }}"
-b1_sylva_git_repos:
-  - git_folder: "{{ b1_sylva_git_sylva_core_folder | default('/tmp') }}"
-    git_url:    "{{ b1_sylva_git_sylva_core_url    | default('') }}"
-    git_branch: "{{ b1_sylva_git_branch            | default('main') }}"
-    name:       "{{ b1_sylva_git_sylva_core_name   | default('sylva_core') }}"
+g1_sylva_git_sylva_core_name: "sylva-core"
+g1_sylva_git_sylva_core_url: "https://gitlab.com/sylva-projects/sylva-core.git"
+g1_sylva_git_sylva_core_folder:  "{{ g1_repo_sylva_path | default('/tmp') }}/{{ g1_sylva_git_sylva_core_name }}"
+g1_sylva_git_repos:
+  - git_folder: "{{ g1_sylva_git_sylva_core_folder | default('/tmp') }}"
+    git_url:    "{{ g1_sylva_git_sylva_core_url    | default('') }}"
+    git_branch: "{{ g1_sylva_git_branch            | default('main') }}"
+    name:       "{{ g1_sylva_git_sylva_core_name   | default('sylva_core') }}"
 
 #-----------------------------------------------------------------------
 # 2.- Sylva OCI - Structured Base Variables
 #-----------------------------------------------------------------------
-b1_sylva_oci_root_url: "registry.gitlab.com/sylva-projects/sylva-elements"
-b1_sylva_oci_local_repo: "{{ g1_repo_sylva_oci_path | default('/tmp') }}"
+g1_sylva_oci_root_url: "registry.gitlab.com/sylva-projects/sylva-elements"
+g1_sylva_oci_local_repo: "{{ g1_repo_sylva_oci_path | default('/tmp') }}"
 
 # Official GitLab Registry Subgroups
-b1_sylva_oci_images_url: "{{ b1_sylva_oci_root_url }}/container-images"
-b1_sylva_oci_charts_url: "{{ b1_sylva_oci_root_url }}/helm-charts"
-b1_sylva_oci_os_url:     "{{ b1_sylva_oci_root_url }}/diskimage-builder"
+g1_sylva_oci_images_url: "{{ g1_sylva_oci_root_url }}/container-images"
+g1_sylva_oci_charts_url: "{{ g1_sylva_oci_root_url }}/helm-charts"
+g1_sylva_oci_os_url:     "{{ g1_sylva_oci_root_url }}/diskimage-builder"
 
 # Block 1 Pre-constructed Variables (Container Images)
-b1_sylva_oci_sylva_toolbox: "sylva-toolbox:{{ b1_sylva_oci_branch }}"
-b1_sylva_oci_sylva_toolbox_path: "{{ b1_sylva_oci_local_repo }}/sylva-toolbox"
-b1_sylva_oci_sylva_toolbox_url: "{{ b1_sylva_oci_images_url }}/{{ b1_sylva_oci_sylva_toolbox }}"
+g1_sylva_oci_sylva_toolbox: "sylva-toolbox:{{ g1_sylva_oci_branch }}"
+g1_sylva_oci_sylva_toolbox_path: "{{ g1_sylva_oci_local_repo }}/sylva-toolbox"
+g1_sylva_oci_sylva_toolbox_url: "{{ g1_sylva_oci_images_url }}/{{ g1_sylva_oci_sylva_toolbox }}"
 
-b1_sylva_oci_sylva_units: "sylva-units:{{ b1_sylva_oci_branch }}"
-b1_sylva_oci_sylva_units_path: "{{ b1_sylva_oci_local_repo }}/sylva-units"
-b1_sylva_oci_sylva_units_url: "{{ b1_sylva_oci_images_url }}/{{ b1_sylva_oci_sylva_units }}"
+g1_sylva_oci_sylva_units: "sylva-units:{{ g1_sylva_oci_branch }}"
+g1_sylva_oci_sylva_units_path: "{{ g1_sylva_oci_local_repo }}/sylva-units"
+g1_sylva_oci_sylva_units_url: "{{ g1_sylva_oci_images_url }}/{{ g1_sylva_oci_sylva_units }}"
 
 # Block 2 Pre-constructed Variables (Helm Charts)
-b1_sylva_oci_capi_cluster_name: "sylva-capi-cluster"
-b1_sylva_oci_capi_cluster_path: "{{ b1_sylva_oci_local_repo }}/{{ b1_sylva_oci_capi_cluster_name }}"
-b1_sylva_oci_capi_cluster_url:  "{{ b1_sylva_oci_charts_url }}/{{ b1_sylva_oci_capi_cluster_name }}:{{ b1_sylva_oci_branch }}"
+g1_sylva_oci_capi_cluster_name: "sylva-capi-cluster"
+g1_sylva_oci_capi_cluster_path: "{{ g1_sylva_oci_local_repo }}/{{ g1_sylva_oci_capi_cluster_name }}"
+g1_sylva_oci_capi_cluster_url:  "{{ g1_sylva_oci_charts_url }}/{{ g1_sylva_oci_capi_cluster_name }}:{{ g1_sylva_oci_branch }}"
 
-b1_sylva_oci_image_server_name: "os-image-server"
-b1_sylva_oci_image_server_path: "{{ b1_sylva_oci_local_repo }}/{{ b1_sylva_oci_image_server_name }}"
-b1_sylva_oci_image_server_url:  "{{ b1_sylva_oci_charts_url }}/{{ b1_sylva_oci_image_server_name }}:{{ b1_sylva_oci_branch }}"
+g1_sylva_oci_image_server_name: "os-image-server"
+g1_sylva_oci_image_server_path: "{{ g1_sylva_oci_local_repo }}/{{ g1_sylva_oci_image_server_name }}"
+g1_sylva_oci_image_server_url:  "{{ g1_sylva_oci_charts_url }}/{{ g1_sylva_oci_image_server_name }}:{{ g1_sylva_oci_branch }}"
 
 #-----------------------------------------------------------------------
 # OCI Artifacts Repository List
 #-----------------------------------------------------------------------
-b1_sylva_oci_repos:
+g1_sylva_oci_repos:
 
   # --- BLOCK 1: UTILITIES AND BINARIES ---
   - name: "sylva-toolbox"
-    local_path: "{{ b1_sylva_oci_sylva_toolbox_path }}"
-    oci_folder: "{{ b1_sylva_oci_sylva_toolbox_path }}:{{ b1_sylva_oci_branch }}"
-    oci_url:    "{{ b1_sylva_oci_sylva_toolbox_url }}"
+    local_path: "{{ g1_sylva_oci_sylva_toolbox_path }}"
+    oci_folder: "{{ g1_sylva_oci_sylva_toolbox_path }}:{{ g1_sylva_oci_branch }}"
+    oci_url:    "{{ g1_sylva_oci_sylva_toolbox_url }}"
     auth: false
 
   - name: "sylva-units"
-    local_path: "{{ b1_sylva_oci_sylva_units_path }}"
-    oci_folder: "{{ b1_sylva_oci_sylva_units_path }}:{{ b1_sylva_oci_branch }}"
-    oci_url:    "{{ b1_sylva_oci_sylva_units_url }}"
+    local_path: "{{ g1_sylva_oci_sylva_units_path }}"
+    oci_folder: "{{ g1_sylva_oci_sylva_units_path }}:{{ g1_sylva_oci_branch }}"
+    oci_url:    "{{ g1_sylva_oci_sylva_units_url }}"
     auth: true 
 
   # --- BLOCK 2: CRITICAL OCI HELM CHARTS ---
   - name: "sylva-capi-cluster-chart"
-    local_path: "{{ b1_sylva_oci_capi_cluster_path }}"
-    oci_folder: "{{ b1_sylva_oci_capi_cluster_path }}:{{ b1_sylva_os_branch }}"
-    oci_url:    "{{ b1_sylva_oci_capi_cluster_url }}"
+    local_path: "{{ g1_sylva_oci_capi_cluster_path }}"
+    oci_folder: "{{ g1_sylva_oci_capi_cluster_path }}:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_capi_cluster_url }}"
     auth: false
 
   - name: "os-image-server-chart"
-    local_path: "{{ b1_sylva_oci_image_server_path }}"
-    oci_folder: "{{ b1_sylva_oci_image_server_path }}:{{ b1_sylva_os_branch }}"
-    oci_url:    "{{ b1_sylva_oci_image_server_url }}"
+    local_path: "{{ g1_sylva_oci_image_server_path }}"
+    oci_folder: "{{ g1_sylva_oci_image_server_path }}:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_image_server_url }}"
     auth: false
 
   # --- BLOCK 3: NODE OPERATING SYSTEMS ---
   - name: "ubuntu-jammy"
     local_path: "{{ g1_repo_os_path }}/ubuntu/22.04"
-    oci_folder: "{{ g1_repo_os_path }}/ubuntu/22.04:{{ b1_sylva_os_branch }}"
-    oci_url:    "{{ b1_sylva_oci_os_url }}/ubuntu-jammy:{{ b1_sylva_os_branch }}"
+    oci_folder: "{{ g1_repo_os_path }}/ubuntu/22.04:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/ubuntu-jammy:{{ g1_sylva_os_branch }}"
     auth: false
 
   - name: "rhel9"
     local_path: "{{ g1_repo_os_path }}/rhel/9"
-    oci_folder: "{{ g1_repo_os_path }}/rhel/9:{{ b1_sylva_os_branch }}"
-    oci_url:    "{{ b1_sylva_oci_os_url }}/rhel9:{{ b1_sylva_os_branch }}"
+    oci_folder: "{{ g1_repo_os_path }}/rhel/9:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/rhel9:{{ g1_sylva_os_branch }}"
     auth: true 
 
   - name: "rocky9"
     local_path: "{{ g1_repo_os_path }}/rocky/9"
-    oci_folder: "{{ g1_repo_os_path }}/rocky/9:{{ b1_sylva_os_branch }}"
-    oci_url:    "{{ b1_sylva_oci_os_url }}/rocky9:{{ b1_sylva_os_branch }}"
+    oci_folder: "{{ g1_repo_os_path }}/rocky/9:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/rocky9:{{ g1_sylva_os_branch }}"
     auth: false
 
   # --- BLOCK 4: IRONIC PYTHON AGENT (IPA) FOR METAL3 ---
   - name: "ironic-python-agent"
     local_path: "{{ g1_repo_os_path }}/ironic-python-agent"
-    oci_folder: "{{ g1_repo_os_path }}/ironic-python-agent:{{ b1_sylva_os_branch }}"
-    oci_url:    "{{ b1_sylva_oci_os_url }}/ironic-python-agent:{{ b1_sylva_os_branch }}"
+    oci_folder: "{{ g1_repo_os_path }}/ironic-python-agent:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/ironic-python-agent:{{ g1_sylva_os_branch }}"
     auth: false
 
 ######################################################

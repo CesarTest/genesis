@@ -2889,8 +2889,8 @@ function 8_test() {
    updateInventory
    
    # 2.- Refresh Emulation Environment 
-   if [[ "${REFRESH_INSTALL}" == 'yes' ]] ; then prepareLocalMachine ; fi
-   if [[ "${REFRESH_ENVIRONMENT}" == 'yes' ]] ; then
+   if [[ "${REFRESH_INSTALL}" == 'true' ]] ; then prepareLocalMachine ; fi
+   if [[ "${REFRESH_ENVIRONMENT}" == 'true' ]] ; then
       BAREMETAL_ROOT_PASSWORD="${genesis_hypervisor_become_pass}"
       local INVENTORY_LIST=( "${genesis_hypervisor_ip}" )
 	  trust_relationships 'root'
