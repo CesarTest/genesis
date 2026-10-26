@@ -41,13 +41,13 @@
     #  - Local Generation of Bootloader/Installer Files
     #  - Enroll to Ironic 
     #  - Transition to Available State
-    - role: "genesis.setup"
+    - role: "genesis.stage.setup"
       when: 
       - (genesis_stage is not defined)  or  (genesis_stage=='B4')
       
     # -----> B5 - DEPLOY 
     #   - Unattended OS Installation
-    - role: "genesis.deploy"
+    - role: "genesis.stage.deploy"
       when: 
       - (genesis_stage is not defined)  or  (genesis_stage=='B5')    
 
@@ -84,7 +84,7 @@
   roles:
 
     # -----> B6 - PROVISION
-    - role: "genesis.doc"
+    - role: "genesis.stage.doc"
       when: genesis_update_doc | default(false) | bool
     #- role: "genesis.sylva"
       #when: 

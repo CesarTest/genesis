@@ -9,7 +9,9 @@
 #########################################################
 ##             GLOBAL PROPERTIES
 ##########################################################
-genesis_repo_path:     "{{ role_path | dirname | dirname | realpath }}/repo"
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 genesis_default_repos:
   os: "os"

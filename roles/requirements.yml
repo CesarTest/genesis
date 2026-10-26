@@ -13,7 +13,7 @@
 #   https://docs.ansible.com/ansible/latest/galaxy/user_guide.html#installing-multiple-roles-from-multiple-files
 
 roles:
-  - name: "genesis.bifrost"
+  - name: "openstack.bifrost"
     src: "https://github.com/openstack/bifrost"
     version: "stable/2026.1"
   - name: geerlingguy.apache

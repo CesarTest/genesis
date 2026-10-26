@@ -30,7 +30,7 @@
         genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
         genesis_remove_airgap_zone: "{{ true if airgap_remove is defined else false }}"
   roles: 
-    - role: "genesis.test"
+    - role: "genesis.stage.test"
 
 #---------------------------------
 # CREATE GENESIS NODE
@@ -49,7 +49,7 @@
         genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
         genesis_remove_airgap_zone: "{{ true if airgap_remove is defined else false }}"
   roles: 
-    - role: "genesis.test"
+    - role: "genesis.stage.test"
 
 #---------------------------------
 # REMOVE BAREMETAL NODE
@@ -68,5 +68,5 @@
         genesis_hypervisor: "{{ target_hypervisor | default('proxmox') }}"
         genesis_remove_airgap_zone: "{{ true if airgap_remove is defined else false }}"
   roles: 
-    - role: "genesis.test"
+    - role: "genesis.stage.test"
       when: (genesis_remove_airgap_zone | default(false)) | bool

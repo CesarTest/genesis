@@ -25,7 +25,7 @@
   become: no
   gather_facts: no 
   roles: 
-    - role: "genesis.setup"
+    - role: "genesis.stage.setup"
       vars:
         b4_skip_setup: yes
         uuid: "{{ enroll.uuid }}" 
@@ -41,7 +41,7 @@
       ansible.builtin.set_fact:
         genesis_refresh_environment: "{{ genesis_refresh_testenv | default(false) | bool }}"
   roles: 
-    - role: "genesis.test"
+    - role: "genesis.stage.test"
       vars:
         genesis_hypervisor: "proxmox"
         genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"
@@ -58,7 +58,7 @@
         genesis_refresh_environment: "{{ genesis_refresh_testenv | default(false) | bool }}"
         genesis_update_doc: "{{ genesis_update_documentation | default(false) | bool }}"
   roles: 
-    - role: "genesis.test"
+    - role: "genesis.stage.test"
       vars:
         genesis_hypervisor: "proxmox"
         genesis_hypervisor_node: "{{ groups['hypervisor'][0] | default('localhost') }}"

@@ -12,16 +12,18 @@
 #  GENESIS PATHS (global for update all genesis roles at once)
 ######################################################
 # 1.- Repos Paths
-genesis_repo_path: "{{ role_path | default('') | dirname | dirname | realpath }}/repo"
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
 genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 genesis_rsyslog_port: "5456"
 file_url_port_tls: "8083"
 
 # 2.- Bifrost Role Paths
-genesis_bifrost_role_name: "genesis.bifrost"
-genesis_bifrost_path:  "{{ role_path | dirname }}/{{ genesis_bifrost_role_name }}"
-genesis_bifrost_roles: "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
-genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_role_name: "openstack.bifrost"
+genesis_bifrost_path:  "{{ genesis_roles_path }}/{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles: "{{ genesis_bifrost_path }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path }}/files"
 genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
 
 # 4.- Default Image Names (for URL subpath) 

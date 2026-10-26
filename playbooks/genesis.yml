@@ -19,7 +19,7 @@
         genesis_refresh_install: "{{ genesis_reinstall | default(true) | bool }}"
 
   roles:
-    - role: "genesis.bootstrap"
+    - role: "genesis.stage.bootstrap"
       when: 
         - genesis_refresh_install | default(true) | bool
         - (genesis_stage is not defined)  or  (genesis_stage=='G1') 
@@ -87,13 +87,13 @@
   roles:
     
     # ----> G2: Create
-    - role: "genesis.create"
+    - role: "genesis.stage.create"
       when: 
         - genesis_refresh_install | default(true) | bool
         - (genesis_stage is not defined)  or  (genesis_stage=='G2')   
  
     # ----> G3: Init
-    - role: "genesis.init"
+    - role: "genesis.stage.init"
       when: 
         - genesis_refresh_install | default(true) | bool
         - (genesis_stage is not defined)  or  (genesis_stage=='G3')          
