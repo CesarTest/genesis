@@ -1,0 +1,63 @@
+---
+# genesis.doc defaults
+#   - Prepare Documentation Node
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+#########################################################
+##             GLOBAL PROPERTIES
+##########################################################
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+mac_selinux_dependencies:
+  redhat:
+    - policycoreutils-python3
+    - selinux-policy-targeted
+    - unzip
+    - tar
+  debian:
+    - policycoreutils-python-utils   
+    - apparmor-utils                
+    - unzip
+    - tar
+  suse:
+    - policycoreutils-python3
+    - selinux-policy-targeted
+    - unzip
+    - tar
+mac_node_target_family: "{{ (ansible_os_family | lower) | default('redhat') }}"
+mac_selinux_dependencies_packages: "{{ mac_selinux_dependencies[mac_node_target_family] | default([]) }}"
+
+#########################################################
+#            SERVER PROPERGIES
+#########################################################
+mac_services:
+  - name: "firewalld"
+    enabled: yes 
+    state: "started"
+
+mac_selinux_mode:      
+   policy: "targeted"
+   state: "enforcing"
+   update_kernel_param: true 
+
+mac_selinux_policies:
+  - target: "{{ apache_work_path | default('/var/www/html') }}(/.*)?"
+    setype: "httpd_sys_rw_content_t"
+    seuser: "unconfined_u"
+    state: "present"
+
+mac_firewall_rules:
+  - service: "http"
+    permanent: true
+    state: "enabled"
+
+  - service: "https"
+    permanent: true
+    state: "enabled"
+

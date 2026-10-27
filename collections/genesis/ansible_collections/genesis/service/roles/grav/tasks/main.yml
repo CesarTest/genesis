@@ -1,0 +1,34 @@
+---
+# genesis.service.grav main
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "B6 - PROVISION DOC NODE: Certification Testing Documentation Server"
+  become: true
+  block:
+
+    - name: "B6 - PROVISION DOC NODE: 0) Refresh facts"
+      ansible.builtin.setup:
+
+    - name: "B6 - PROVISION DOC NODE: 1) Deploy Package into Web Server"
+      ansible.builtin.include_tasks: "1_package.yml"
+      loop: "{{ grav_deploy | default([]) }}"
+      loop_control:
+         loop_var: "grav_package"
+      vars:
+         package:  "{{ grav_package }}"
+
+    - name: "B6 - PROVISION DOC NODE: 2) Finalize environment deploying Grav CMS instance"
+      ansible.builtin.include_tasks: "2_grav.yml"
+
+  rescue:
+
+    - name: "B6 - PROVISION DOC NODE: [RESCUE] Print non-blocking provisioning failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: An exception has been detected during the B6 provisioning phase on host {{ inventory_hostname }}.
+          Execution will CONTINUE in non-blocking mode. Please review previous tasks to audit potential inconsistencies.
+
+    - name: "B6 - PROVISION DOC NODE: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

@@ -1,11 +1,34 @@
 ---
-# genesis.doc vart/main.yml
+# genesis.service.web defaults/main.yml
 #  - Web Server Installation parameters
 #     - Defaults of Role are ignored, external roles use theor own defaults.
 #     
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
+#########################################################
+#             GLOBAL PROPERTIES
+##########################################################
+
+# 1.- Web Server Defaults
+server_domain: "genesis.lab"
+apache_work_path: "/var/www/html"
+apache_logs: "/var/log/httpd"
+
+# 2.-Genesis Paths
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+genesis_default_repos:
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+  sylva: "sylva"
+  oci: "sylva/oci"
+  doc: "doc" 
 
 #########################################################
 #            APACHE SERVER CONFIGURATIONS
@@ -41,7 +64,6 @@ apache_vhosts:
     extra_parameters:  |
          ErrorLog  {{ apache_logs | default('/var/log/httpd')}}/training/error.log
          CustomLog {{ apache_logs | default('/var/log/httpd')}}/training/access.log combined
-
 
 #########################################################
 #            PHP CONFIGURATIONS FOR GRAV

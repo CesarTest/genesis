@@ -12,7 +12,10 @@
   block:
 
     - name: "B6 - PROVISION DOC NODE -2- WEB -1- Clean: Wipe Old Versions"
-      ansible.builtin.include_tasks: "web/1_clean.yml"
+      ansible.builtin.include_tasks: "web/1_folder.yml"
+
+    - name: "B6 - PROVISION DOC NODE -2- WEB -1- Clean: Wipe Old Versions"
+      ansible.builtin.include_tasks: "web/2_clean.yml"
 
     - name: "B6 - PROVISION DOC NODE -2- WEB -2- Install: PHP + Apache"
-      ansible.builtin.include_tasks: "web/2_install.yml"
+      ansible.builtin.include_tasks: "web/3_install.yml"

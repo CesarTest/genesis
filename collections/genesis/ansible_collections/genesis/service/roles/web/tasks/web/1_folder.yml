@@ -1,5 +1,5 @@
 ---
-# genesis.doc mac/permissions.yml
+# genesis.service_permission mac/permissions.yml
 #   - Mandatory Access Control Setup
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
@@ -16,7 +16,7 @@
     vhost_names: "{{ (vhost_documentroot | map('basename') | list) | default([]) }}"
     vhost_logs: "{{  [] | zip_longest(vhost_names, fillvalue=apache_logs + '/') | map('join') | list  }}"
     folders: "{{ (vhost_logs|default([])) +(vhost_documentroot|default([])) }}"
-    folder_emergency_commands:
+    mac_emergency_commands:
       # Operación 1: Creación forzada de grupos en Bash puro si falla la API
       - |
         {% for group in [apache_group | default('root'), php_group | default('root')] %}
@@ -67,7 +67,7 @@
         name:    "{{ userproperties.username | default(omit) }}"
         groups:  "{{ userproperties.usergroup| default(omit) }}"
         shell:   "{{ userpropeties.usershell | default(omit) }}"
-        create_home: "{{userproperties.create_home | default(omit)}}"
+        create_home: "{{ userproperties.create_home | default(omit)}}"
       loop:
         - username:  "{{ apache_user |default('root')}}"
           usergroup: "{{ apache_group|default('root')}}"
@@ -108,8 +108,8 @@
   rescue:
 
     - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION -[RESCUE] - Permissions by CLI"
-      ansible.builtin.shell: "{{ emergency_command }}"
-      loop: "{{ folder_emergency_commands }}"
+      ansible.builtin.shell: "{{ mac_cmd }}"
+      loop: "{{ mac_emergency_commands }}"
       loop_control:
-        loop_var: "emergency_command"
+        loop_var: "mac_cmd"
       failed_when: false

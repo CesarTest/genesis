@@ -1,0 +1,279 @@
+---
+# genesis.service.grav defaults
+#   - Prepare Documentation Node
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+#########################################################
+##             GLOBAL PROPERTIES
+##########################################################
+
+# 1.- Web Server Defaults
+server_domain: "genesis.lab"
+apache_work_path: "/var/www/html"
+apache_logs: "/var/log/httpd"
+
+# 2.-Genesis Paths
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+genesis_default_repos:
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+  sylva: "sylva"
+  oci: "sylva/oci"
+  doc: "doc" 
+
+# 3.- Grav Paths
+grav_install_web_roles:
+  - name: "geerlingguy.apache"
+  - name: "geerlingguy.php"  
+
+grav_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+grav_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default('os') }}"
+grav_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
+grav_repo_ipa_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['ipa'] | default('dib/files')}}"
+grav_repo_openstack_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['components'] | default('dib/files')}}"
+grav_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
+grav_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
+grav_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
+grav_repo_sylva_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva') }}"
+grav_repo_sylva_oci_path:  "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva/oci') }}"
+grav_repo_doc_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['doc'] | default('doc') }}"
+grav_repo_doc_content_path: "{{ grav_repo_doc_path }}/content"
+
+#########################################################
+#                  WEB CONTENTS DEFINTIONS
+#########################################################
+
+# -------------------------------------------------------
+# 1.- Grav Installation
+# -------------------------------------------------------
+# 1.1.- Install GRAV
+grav_work_path: "{{ apache_work_path|default('/var/www/html') }}/training"
+grav_users_path: "{{ grav_work_path }}/user/accounts" 
+
+# 1.2.- Grav Customizations (password=Training_2025)
+grav_users:
+  - username: "cdg"
+    fullname: "Cesar Delgado"
+    adminuser: yes
+    hashed_password: "$2y$10$B7eEPyeiWQe9X3nyEnSCU.F03mOhp7KDP2BvBtvNFH6SVBauT5C.C"
+    email: "cesar.delgado.gonzalez@alumnos.upm.es"
+    title: "Administrador"
+
+# 1.3.- Grav Deploy
+grav_deploy:
+
+  - name: "Learn2 Skeleton"
+    src: "{{ grav_repo_doc_path }}/learn2-skeleton.zip"
+    dest: "{{ grav_work_path | default('/tmp') }}"
+    template:
+      dest: "/etc/hosts"
+      content: |
+        {{ hostvars[groups['target'][0]]['ansible_host'] | default('127.0.0.1') }} seed.genesis.lab
+        {{ ansible_host | default('127.0.0.1') }} gitea.genesis.lab
+        {{ ansible_host | default('127.0.0.1') }} training.genesis.lab
+
+  - name: "Learn4 Theme"
+    src: "{{ grav_repo_doc_path }}/learn4-theme.zip"
+    dest: "{{ grav_work_path | default('/tmp') }}/user/themes" 
+    rename: "learn4"
+    original: "grav-theme-learn4-develop"
+    template:
+      dest: "{{ grav_work_path | default('/tmp') }}/user/config/themes/maas.yaml"
+      content: |
+         enabled: true
+         top_level_version: false
+         github:
+           position: top
+         default_taxonomy_category: docs
+         streams:
+            schemes:
+               theme:
+                  type: ReadOnlyStream
+                  prefixes: 
+                    '': [user/themes/maas,user/themes/learn4]
+         style: default
+         hide_site_title: false
+         enable_doc_versioning: false
+
+  - name: "Quark Theme"
+    src: "{{ grav_repo_doc_path }}/quark.zip"
+    dest: "{{ grav_work_path | default('/tmp') }}/user/themes"
+    rename: "quark"
+    original: "grav-theme-quark-develop"
+    template:
+      dest: "{{ grav_work_path | default('/tmp') }}/user/config/themes/labs.yaml"
+      content: |
+        enabled: true                 # Enable the theme
+        production-mode: true         # In production mode, only minified CSS is used. When disabled, nested CSS with sourcemaps are enabled
+        grid-size: grid-lg            # The max-width of the theme, options include: `grid-xl`, `grid-lg`, and `grid-md`
+        header-fixed: true            # Cause the header to be fixed at the top of the browser
+        header-animated: true         # Allows the fixed header to resize to a smaller header when scrolled
+        header-dark: true             # Inverts the text/logo to work better on dark backgrounds
+        header-transparent: true      # Allows the fixed header to be transparent over the page
+        sticky-footer: false          # Causes the footer to be sticky at the bottom of the page
+        blog-page: '/blog'            # The route to the blog listing page, useful for a blog style layout with sidebar
+        custom_logo:                  # A custom logo rather than the default (see below)  
+        custom_logo_mobile:           # A custom logo to use for mobile navigation'
+
+  - name: "Quick Menu Plugin"
+    src: "{{ grav_repo_doc_path }}/page-toc.zip"
+    dest: "{{ grav_work_path | default('/tmp') }}/user/plugins"
+    rename: "page-toc"
+    original: "grav-plugin-page-toc-master"
+    template:
+      dest: "{{ grav_work_path | default('/tmp') }}/user/config/plugins/page-toc.yaml"
+      content: |
+        enabled: true               # Plugin enabled
+        include_css: true           # Include CSS
+        active: true                # Anchor IDs processed and generated for all pages
+        templates:                  # Templates for which anchors should be generated if default is disabled
+        start: 1                    # Start header tag level (1 = h1) for TOC
+        depth: 6                    # Depth from start (2 = 2 levels deep) for TOC
+        hclass:                     # Custom Header TOC styling classes
+        anchors:                    # Anchor configuration
+          start: 1                  # Start header tag level (1 = h1)
+          depth: 6                  # Depth from start (2 = 2 levels deep)
+          link: true                # Enabled auto-generation of clickable link with fragment
+          aria: Anchor              # Aria label to use
+          class:                    # Custom Header anchor styling classes
+          icon: '#'                 # Icon to use, can be a symbol, emoji, ascii etc.
+          position: after           # Position to put the anchor, `before|after`
+          copy_to_clipboard: true   # Copy to clipboard functionality (coming soon)
+          slug_maxlen: 25           # Max length of slugs used for anchors
+          slug_prefix:              # A prefix used in front of generated slugs              
+
+# 2.4.- Grav Sites
+grav_multisite: "setup_subdirectory"
+grav_multisite_path:
+  - "maas"
+  
+grav_sites:
+  - title: "MaaS Training Labs"
+    path: "home"
+    root: yes
+    
+    contents:
+      - src: "home/themes/labs"
+        dest: "themes/labs"
+        refresh: yes 
+      - src: "{{ grav_multisite_path[0] | default('genesis') }}/themes/maas"
+        dest: "themes/maas"
+        refresh: yes         
+      - src: "{{ grav_repo_doc_content_path }}/home/pages"
+        dest: "pages"
+        refresh: yes        
+    
+    configs:
+      - file: "../.htaccess"
+        regexp: "RewriteBase"
+        line: "RewriteBase /"      
+      - file: "config/system.yaml" 
+        regexp: 'theme:' 
+        line: '  theme: "labs"'
+      - file: "config/site.yaml"
+        regexp: 'title:'
+        line: 'title: "Sylva MaaS Training Labs"'
+      - file: "config/system.yaml"
+        regexp: 'alias:'
+        line: '  alias: /home'
+      - file: "themes/labs/labs.yaml"
+        regexp: 'home_url:'
+        line: "home_url:  http://training.{{ server_domain | default('genesis.lab') }}"
+
+  - title: "Metal as a Service Lab"
+    path: "{{ grav_multisite_path[0] | default('genesis')}}"
+    
+    contents:
+      - src: "{{ grav_repo_doc_content_path }}/{{ grav_multisite_path[0] | default('genesis') }}/pages" 
+        dest: "pages"
+        refresh: yes
+      - src: "{{ grav_repo_doc_content_path }}/{{ grav_multisite_path[0] | default('genesis') }}/images"
+        dest: "images"
+        refresh: yes
+        
+    configs:
+      - file: "config/system.yaml"
+        regexp: 'theme:'
+        line: '  theme: "maas"'
+      - file: "config/site.yaml"
+        regexp: 'title:'
+        line: 'title: "Metal as a Service Lab"'
+      - file: "config/system.yaml"
+        regexp: 'alias:'
+        line: '  alias: /intro'
+      #- file: "themes/learn4/learn4.php"
+      #  regexp: " ?: 'purple';"
+      #  line: "           $color = filter_input(INPUT_COOKIE, 'sidebar-pref') ?: 'green';"
+      - file: "plugins/git-sync/blueprints.yaml"
+        regexp: "placeholder: https://github.com/user/repository.git"
+        line: "      placeholder: https://gitlab.proteo.internal/cdelgadog/{{grav_multisite_path[0]|default('linux')}}-doc.git"
+      - file: "plugins/git-sync/blueprints.yaml"
+        regexp: "gituser: Use Git User Name"
+        line:   "        gituser: cdelgadog"
+      - file: "plugins/git-sync/blueprints.yaml"
+        regexp: "gitsync: Use GitSync Committer Name"
+        line:   "        gitsync: cdelgadog"
+
+    dumps:
+      - template:
+           dest: "config/themes/maas.yaml"      
+           content: |
+             enabled: true
+             production-mode: false
+             grid-size: grid-lg
+             github:
+              note: true
+              link: true
+              tree: https://github.com/getgrav/grav-learn/blob/develop/
+              commits: https://github.com/getgrav/grav-learn/commits/develop/
+             spectre:
+              exp: false               
+              icons: false
+             custom_logo:
+                 - name: 'logo.svg'
+             custom_logo_mobile:
+                 - name: 'logo.svg'
+                 
+      - template: 
+           dest: "plugins/git-sync/git-sync.yaml"
+           content: |
+              enabled: true
+              folders:
+               - pages
+              SyncNotice: null
+              sync:
+                on_save: true
+                on_delete: true
+                on_media: true
+                cron_enable: false
+                cron_at: '0 12,23 * * *'
+              local_repository: null
+              repository: 'git@gitlab.proteo.internal:cdelgadog/linux-doc.git'
+              no_user: '1'
+              user: null
+              password: null
+              webhook: /_git-sync-6b113cfd91d1
+              webhook_enabled: '0'
+              webhook_secret: e5e95756fb10abb90faef3fc4a3f2e4eb87a5d951bf5f2b2
+              branch: master
+              remote:
+                name: origin
+                branch: master
+              git:
+                author: gituser
+                message: '(Grav GitSync) Automatic Commit'
+                name: GitSync
+                email: git-sync@trilby.media
+                bin: git
+                ignore: null
+                private_key: null
+              logging: false

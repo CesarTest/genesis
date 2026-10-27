@@ -12,10 +12,10 @@
 - name: "B6 - PROVISION DOC NODE -1- MAC: Server Services"
   become: true
   vars:
-    services_emergency_commands:
+    mac_emergency_commands:
       # Operación 1: Gestión de servicios del sistema vía systemctl puro
       - |
-        {% for service in server_services | default([]) %}
+        {% for service in mac_services | default([]) %}
         {% if service.name is defined and service.name is string %}
         if systemctl list-unit-files | grep -q "^{{ service.name }}.service"; then
           {% if service.state | default('stopped') in ['started', 'running'] %}
@@ -32,7 +32,7 @@
       # Operación 2: Inyección de reglas de Firewalld por CLI directa
       - |
         if systemctl is-active firewalld &>/dev/null; then
-          {% for rule in server_firewall_rules | default([]) %}
+          {% for rule in mac_firewall_rules | default([]) %}
           {% if rule.service is defined %}
           firewall-cmd --permanent --add-service="{{ rule.service }}"
           {% elif rule.port is defined %}
@@ -47,21 +47,21 @@
     - name: 'B6 - PROVISION DOC NODE -1- MAC: 1) Enable/Disable Server Services'
       ignore_errors: yes
       service:
-        name:   "{{ server_service.name }}"
-        state:  "{{ server_service.state | default('stopped') }}" 
-        enabled: "{{ server_service.state | bool }}" 
-      loop: "{{ server_services | default([]) }}"
+        name:   "{{ mac_service.name }}"
+        state:  "{{ mac_service.state | default('stopped') }}" 
+        enabled: "{{ mac_service.state | bool }}" 
+      loop: "{{ mac_services | default([]) }}"
       loop_control:
-        loop_var: "server_service"
+        loop_var: "mac_service"
       when: 
-        - "server_services is defined"
-        - "server_services is not none"
-        - "server_services is not string"
-        - "server_services is not mapping"
-        - "server_service.name is defined"
-        - "server_service.name is not none"
-        - "server_service.name is string"  
-        #- ansible_facts.services[server_service.name] is defined
+        - "mac_services is defined"
+        - "mac_services is not none"
+        - "mac_services is not string"
+        - "mac_services is not mapping"
+        - "mac_service.name is defined"
+        - "mac_service.name is not none"
+        - "mac_service.name is string"  
+        #- ansible_facts.services[mac_service.name] is defined
 
     - name: "B6 - PROVISION DOC NODE -1- MAC: 2)Apply Firewall Rules"
 
@@ -72,15 +72,15 @@
         permanent: "{{ firewall_rule.permanent | default(omit) }}"
         immediate: "{{ firewall_rule.immediate | default(omit) }}"
         offline:   "{{ firewawall_rule.offline | default(omit) }}"
-      loop: "{{ server_firewall_rules | default([]) }}"
+      loop: "{{ mac_firewall_rules | default([]) }}"
       loop_control:
         loop_var: "firewall_rule"
       when:
-        - "server_firewall_rules is defined"
-        - "server_firewall_rules is not none"
-        - "server_firewall_rules is not string"
-        - "server_firewall_rules is iterable"
-        - "server_firewall_rules is not mapping"
+        - "mac_firewall_rules is defined"
+        - "mac_firewall_rules is not none"
+        - "mac_firewall_rules is not string"
+        - "mac_firewall_rules is iterable"
+        - "mac_firewall_rules is not mapping"
         - "(firewall_rule.port is defined) or (firewall_rule.service is defined)"
         - "(firewall_rule.port is not none) or (firewall_rule.service is not none)"
 
@@ -92,8 +92,8 @@
   rescue:
 
     - name: "B6 - SELINUX [RESCUE] - Firewall Rules by CLI"
-      ansible.builtin.shell: "{{ emergency_command }}"
-      loop: "{{ services_emergency_commands }}"
+      ansible.builtin.shell: "{{ mac_cmd }}"
+      loop: "{{ mac_emergency_commands }}"
       loop_control:
-        loop_var: "emergency_command"
+        loop_var: "mac_cmd"
       failed_when: false
