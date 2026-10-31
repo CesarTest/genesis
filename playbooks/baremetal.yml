@@ -54,7 +54,7 @@
 #---------------------------------
 #  PROVISION
 #---------------------------------
-- hosts: "documentation"
+- hosts: "baremetal,documentation"
   become: no
   gather_facts: no
   connection: ssh # IMPORTANT! Allow genesis unattended lifecycle 
@@ -83,9 +83,13 @@
     
   roles:
 
-    # -----> B6 - PROVISION
-    - role: "genesis.stage.doc"
-      when: genesis_update_doc | default(false) | bool
-    #- role: "genesis.sylva"
-      #when: 
-      #- (genesis_stage is not defined)  or  (genesis_stage=='B6')
+    - role: "genesis.stage.provision"
+      when: 
+        - genesis_update_doc | default(false) | bool
+        - inventory_hostname in groups['documentation'] | default([])
+
+    - role: "genesis.stage.provision"
+      when: 
+        - (genesis_stage is not defined) or (genesis_stage == 'B6')
+        - inventory_hostname not in groups['documentation'] | default([])
+        - ( b6_software_profile is defined ) or ( b6_environment_profile is defined )

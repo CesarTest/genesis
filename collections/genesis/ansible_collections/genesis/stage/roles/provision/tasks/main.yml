@@ -1,5 +1,5 @@
 ---
-# genesis.doc main
+# genesis.provision main
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -8,29 +8,21 @@
   become: true
   block:
 
-    - name: "B6 - PROVISION DOC NODE: 0) Refresh facts"
-      ansible.builtin.setup:
-
-    - name: "B6 - PROVISION DOC NODE: 1) Deploy Mandatory Access Control and security policies"
-      ansible.builtin.include_tasks: "1_mac.yml"
-
-    - name: "B6 - PROVISION DOC NODE: 2) Configure HTTP server and web runtime baseline"
-      ansible.builtin.include_tasks: "2_web.yml"
-
-    - name: "B6 - PROVISION DOC NODE: 3) Deploy Package into Web Server"
-      ansible.builtin.include_tasks: "3_package.yml"
-      loop: "{{ grav_deploy | default([]) }}"
+    - name: "B6 - PROVISION : 1) Environment Components that need a Machine Reboot (drivers, network, mac)"
+      ansible.builtin.include_tasks: "component.yml"
+      loop: "{{ b6_environment_profile | default([]) }}"
       loop_control:
-         loop_var: "grav_package"
-      vars:
-         package:  "{{ grav_package }}"
+        loop_var: "b6_component_role"    
 
-    - name: "B6 - PROVISION DOC NODE: 4) Finalize environment deploying Grav CMS instance"
-      ansible.builtin.include_tasks: "4_grav.yml"
+    - name: "B6 - PROVISION : 2) Software Components that just need Services Restart"
+      ansible.builtin.include_tasks: "component.yml"
+      loop: "{{ b6_software_profile | default([]) }}"
+      loop_control:
+        loop_var: "b6_component_role"  
 
   rescue:
 
-    - name: "B6 - PROVISION DOC NODE: [RESCUE] Print non-blocking provisioning failure alert message"
+    - name: "B6 - PROVISION: [RESCUE] Print non-blocking provisioning failure alert message"
       ansible.builtin.debug:
         msg: |
           WARNING ALERT: An exception has been detected during the B6 provisioning phase on host {{ inventory_hostname }}.

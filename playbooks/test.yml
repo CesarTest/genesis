@@ -40,6 +40,7 @@
     - name: "GENESIS API: Cast global string variables to native booleans"
       ansible.builtin.set_fact:
         genesis_refresh_environment: "{{ genesis_refresh_testenv | default(false) | bool }}"
+        genesis_update_doc: false
   roles: 
     - role: "genesis.stage.test"
       vars:

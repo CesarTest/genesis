@@ -526,6 +526,15 @@ g1_grav_url:
 ######################################################
 #  TARBALL DEPENDENCIES
 ######################################################
+g1_tarball_packages_distro:
+  debian:
+    - unzip
+    - tar
+    - xz-utils
+  redhat:
+    - unzip
+    - tar
+    - xz
 g1_tarball_download:
  - url:  "{{ oras_download_url }}"
    dest: "{{ g1_oras_dest_path }}"

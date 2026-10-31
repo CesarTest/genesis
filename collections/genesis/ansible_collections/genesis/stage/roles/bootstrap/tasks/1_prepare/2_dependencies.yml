@@ -1,0 +1,48 @@
+---
+# genesis.bootstrap 1_prepare/2_dependencies.yml
+#   - Create local repositories folders
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "G1 - BOOSTRAP: 1.- Prepare: 2) Dependencies"
+  become: true
+  vars:
+  
+    # 1.- Definitions according to OS Family
+    g1_os_family: "{{ ansible_os_family | default('debian') | lower | trim }}"
+    g1_packages: "{{ g1_tarball_packages_distro[g1_os_family] | default([]) }}"
+
+    # 2.- Rescue Commands
+    g1_packages_string: "{{ g1_packages | join(' ') }}"
+    g1_rescue_commands_distro:
+      debian:
+        - "apt-get update && apt-get install -y {{ g1_packages_string }}"
+      redhat:
+        - "dnf install -y  {{ g1_packages_string }} || yum install -y  {{ g1_packages_string }}"
+    g1_rescue_commands: "{{ g1_rescue_commands_distro[g1_os_family] | default([]) }}"
+
+  #--------------------------------------------------
+  #  1.- Install Depencies via Ansible Modules
+  #--------------------------------------------------
+  block:
+  
+    - name: "G1 - BOOSTRAP: 1.- Prepare: 2.1) Install Dependencies via Ansible Module"
+      ansible.builtin.package:
+        name: "{{ g1_pkg | default('') }}"
+        state: present
+      loop: "{{ g1_packages | default([]) }}"
+      loop_control:
+        loop_var: "g1_pkg"
+
+  #--------------------------------------------------
+  #  2.- Install Depencies via Shell
+  #--------------------------------------------------
+  rescue:
+
+    - name: "G1 - BOOTSTRAP - RESCUE - 1.- Prepare: - 2.2) Install dependencies via Iterated Shell"
+      ansible.builtin.shell: "{{ g1_cmd | default('') }}"
+      failed_when: false 
+      loop: "{{ g1_rescue_commands | default([]) }}"
+      loop_control:
+        loop_var: "g1_cmd"
