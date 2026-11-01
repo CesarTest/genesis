@@ -9,14 +9,23 @@
 ######################################################
 # WEB FOLDERS
 ######################################################
-- name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - 3:  Web Folders"
+- name: "[genesis.service.web] - WEB -1- Folder: 1) Web Folders"
   become: true  
   vars:
     vhost_documentroot: "{{ ((apache_vhosts|default([])) | map(attribute='documentroot') ) | default([]) }}"
     vhost_names: "{{ (vhost_documentroot | map('basename') | list) | default([]) }}"
     vhost_logs: "{{  [] | zip_longest(vhost_names, fillvalue=apache_logs + '/') | map('join') | list  }}"
     folders: "{{ (vhost_logs|default([])) +(vhost_documentroot|default([])) }}"
-    mac_emergency_commands:
+    web_server_users:
+      - username:  "{{ apache_user |default('root')}}"
+        usergroup: "{{ apache_group|default('root')}}"
+        usershell: "{{ apache_shell|default('/sbin/nologin')}}"
+        create_home: "yes"
+      - username:  "{{ php_user    |default('root')}}"
+        usergroup: "{{ php_group   |default('root')}}"
+        usershell: "{{ apache_shell|default('/sbin/nologin')}}"
+        create_home: "yes"
+    web_emergency_commands:
       # Operación 1: Creación forzada de grupos en Bash puro si falla la API
       - |
         {% for group in [apache_group | default('root'), php_group | default('root')] %}
@@ -53,35 +62,34 @@
         {% endfor %}
 
   block:
-    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Create Group"
+    - name: "[genesis.service.web] - WEB -1- Folder: 1) Create Group"
       group:
-        name:  "{{ groupname | default(omit) }}" 
-      loop:
-        - "{{ apache_group|default('root')}}"
-        - "{{ php_group   |default('root')}}"
+        name:  "{{ userproperties.usergroup | default(omit) }}"
+      loop: "{{ web_server_users | default([]) }}"
       loop_control:
-        loop_var: "groupname"
+        loop_var: "userproperties"
+      when: 
+        - userproperties.usergroup is defined
+        - userproperties.usergroup is not none
+        - userproperties.usergroup is string
+        - userproperties.usergroup | length > 0
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Create a user |{{ apache_user | default('Empty=root') }}|:|{{ apache_group | default('Empty=root') }}|"
+    - name: "[genesis.service.web] - WEB -1- Folder: 2) Create a user |{{ apache_user | default('Empty=root') }}|:|{{ apache_group | default('Empty=root') }}|"
       user:
         name:    "{{ userproperties.username | default(omit) }}"
         groups:  "{{ userproperties.usergroup| default(omit) }}"
         shell:   "{{ userpropeties.usershell | default(omit) }}"
         create_home: "{{ userproperties.create_home | default(omit)}}"
-      loop:
-        - username:  "{{ apache_user |default('root')}}"
-          usergroup: "{{ apache_group|default('root')}}"
-          usershell: "{{ apache_shell|default('/sbin/nologin')}}"
-          create_home: "yes"
-        - username:  "{{ php_user    |default('root')}}"
-          usergroup: "{{ php_group   |default('root')}}"
-          usershell: "{{ apache_shell|default('/sbin/nologin')}}"
-          create_home: "yes"
-
+      loop: "{{ web_server_users | default([]) }}"
       loop_control:
         loop_var: "userproperties"
+      when: 
+        - userproperties.username is defined
+        - userproperties.username is not none
+        - userproperties.username is string
+        - userproperties.username | length > 0
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Remove vhost directory according apache_refresh flag"
+    - name: "[genesis.service.web] - WEB -1- Folder: 3) Remove vhost directory according apache_refresh flag"
       file:
         path: "{{ vhost_www_folder | default('/tmp') }}"
         state: "absent"
@@ -94,7 +102,7 @@
        - "apache_refresh is boolean"
        - "apache_refresh is true"
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION - Create vhost directory if they don't exist"
+    - name: "[genesis.service.web] - WEB -1- Folder: 4) Create vhost directory if they don't exist"
       file:
          path: "{{ vhost_www_folder | default('/tmp') }}"
          state: "directory"
@@ -107,9 +115,9 @@
  
   rescue:
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC PERMISSION -[RESCUE] - Permissions by CLI"
+    - name: "[genesis.service.web] - WEB -1- Folder: [RESCUE]  5) Permissions by CLI"
       ansible.builtin.shell: "{{ mac_cmd }}"
-      loop: "{{ mac_emergency_commands }}"
+      loop: "{{ web_emergency_commands }}"
       loop_control:
-        loop_var: "mac_cmd"
+        loop_var: "web_cmd"
       failed_when: false

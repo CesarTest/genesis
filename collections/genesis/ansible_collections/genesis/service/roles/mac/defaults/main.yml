@@ -1,10 +1,9 @@
 ---
-# genesis.doc defaults
+# genesis.service.mac defaults
 #   - Prepare Documentation Node
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-
 
 #########################################################
 ##             GLOBAL PROPERTIES
@@ -41,12 +40,12 @@ mac_services:
     enabled: yes 
     state: "started"
 
-mac_selinux_mode:      
+mac_server_selinux_mode:      
    policy: "targeted"
    state: "enforcing"
    update_kernel_param: true 
 
-mac_selinux_policies:
+mac_server_selinux_policies:
   - target: "{{ apache_work_path | default('/var/www/html') }}(/.*)?"
     setype: "httpd_sys_rw_content_t"
     seuser: "unconfined_u"

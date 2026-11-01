@@ -85,11 +85,12 @@
 
     - role: "genesis.stage.provision"
       when: 
-        - genesis_update_doc | default(false) | bool
-        - inventory_hostname in groups['documentation'] | default([])
+        - (genesis_stage is not defined) or (genesis_stage == 'B6')
+        - inventory_hostname not in groups['documentation'] | default([])
+        - (hostvars[inventory_hostname]['b6_software_profile'] is defined) or 
+          (hostvars[inventory_hostname]['b6_environment_profile'] is defined)
 
     - role: "genesis.stage.provision"
       when: 
-        - (genesis_stage is not defined) or (genesis_stage == 'B6')
-        - inventory_hostname not in groups['documentation'] | default([])
-        - ( b6_software_profile is defined ) or ( b6_environment_profile is defined )
+        - genesis_update_doc | default(false) | bool
+        - inventory_hostname in groups['documentation'] | default([])

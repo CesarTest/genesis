@@ -8,14 +8,14 @@
 # ==============================================================================
 # PHASE 2: WEB COMPONENTS ORCHESTRATION LAYER
 # ==============================================================================
-- name: "B6 - PROVISION DOC NODE -2- WEB: Initialization Layer"
+- name: "[genesis.service.web] - WEB: Apache + PHP"
   block:
 
-    - name: "B6 - PROVISION DOC NODE -2- WEB -1- Clean: Wipe Old Versions"
+    - name: "[genesis.service.web] - WEB: 1) Create Folders"
       ansible.builtin.include_tasks: "web/1_folder.yml"
 
-    - name: "B6 - PROVISION DOC NODE -2- WEB -1- Clean: Wipe Old Versions"
+    - name: "[genesis.service.web] - WEB: 2) Clean: Wipe Old Versions"
       ansible.builtin.include_tasks: "web/2_clean.yml"
 
-    - name: "B6 - PROVISION DOC NODE -2- WEB -2- Install: PHP + Apache"
+    - name: "[genesis.service.web] - WEB: 3) Install: PHP + Apache"
       ansible.builtin.include_tasks: "web/3_install.yml"

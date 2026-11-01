@@ -1,18 +1,15 @@
 ---
-# genesis.doc 1_mac.yml
+# genesis.service.mac main.yml
 #   - Mandatory Access Control Setup
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "B6 - PROVISION DOC NODE - MAC: Mandatory Access Control"
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: firewall, SELinux, AppArmor, Cryptographic Policies"
   block:
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC: Include Security Policies and SELinux engine setup"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 1) Include Security Policies and SELinux engine setup"
       ansible.builtin.include_tasks: "mac/selinux.yml"
 
-    - name: "B6 - PROVISION DOC NODE -2- MAC: Include Netfilter Firewall rules orchestration"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 2) Include Netfilter Firewall rules orchestration"
       ansible.builtin.include_tasks: "mac/firewall.yml"
-
-    - name: "B6 - PROVISION DOC NODE -3- MAC: Include Strict Filesystem Permissions audit"
-      ansible.builtin.include_tasks: "mac/permissions.yml"

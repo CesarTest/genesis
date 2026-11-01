@@ -1,6 +1,6 @@
 ---
-# genesis.doc mac/firewall.yml
-#   - Mandatory Access Control Setup
+# genesis.service.mac mac/firewall.yml
+#   - Mandatory Access Control Setup - Firewall
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -9,7 +9,7 @@
 ######################################################
 # SERVER SERVICES 
 ######################################################
-- name: "B6 - PROVISION DOC NODE -1- MAC: Server Services"
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL: Server Services"
   become: true
   vars:
     mac_emergency_commands:
@@ -44,7 +44,7 @@
           firewall-cmd --reload
         fi
   block:
-    - name: 'B6 - PROVISION DOC NODE -1- MAC: 1) Enable/Disable Server Services'
+    - name: 'genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL 1) Enable/Disable Server Services'
       ignore_errors: yes
       service:
         name:   "{{ mac_service.name }}"
@@ -63,7 +63,7 @@
         - "mac_service.name is string"  
         #- ansible_facts.services[mac_service.name] is defined
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC: 2)Apply Firewall Rules"
+    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL 2)Apply Firewall Rules"
 
       firewalld:
         port:      "{{ firewall_rule.port   | default(omit) }}"
@@ -84,14 +84,14 @@
         - "(firewall_rule.port is defined) or (firewall_rule.service is defined)"
         - "(firewall_rule.port is not none) or (firewall_rule.service is not none)"
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC: 3) Always reload firewalld"
+    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL: 3) Always reload firewalld"
       ansible.builtin.service:
         name: "firewalld"
         state: "reloaded"    
 
   rescue:
 
-    - name: "B6 - SELINUX [RESCUE] - Firewall Rules by CLI"
+    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL [RESCUE] - Firewall Rules by CLI"
       ansible.builtin.shell: "{{ mac_cmd }}"
       loop: "{{ mac_emergency_commands }}"
       loop_control:

@@ -8,7 +8,7 @@
 ##################################
 #       CREATE FOLDERS
 ##################################
-- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Create Site Folders"
+- name: "[genesis.service.grav] - GRAV -3- Site: 1) Create Site Folders"
   file:
     path: "{{ cp_path }}"
     owner: "{{ apache_user  | default('apache') }}"
@@ -24,7 +24,7 @@
     - "isMultisite is true"
     - "isRoot is false"
 
-- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Copy Site Folders"
+- name: "[genesis.service.grav] - GRAV -3- Site: 2) Copy Site Folders"
   copy:
     src:  "{{ grav_work_path }}/user/{{ cp_name }}"
     dest: "{{ cp_path }}"
@@ -44,7 +44,7 @@
 ##################################
 #         UPLOAD CONTENT
 ##################################
-- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Site Configurations"
+- name: "[genesis.service.grav] - GRAV -3- Site: 3) Site Configurations"
   include_tasks: "4_content.yml"
   loop: "{{ grav_site.contents | default([]) }}"
   loop_control:
@@ -57,7 +57,7 @@
 ##################################
 ##       CONFIGURATIONS 
 ###################################
-- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Site Configurations"
+- name: "[genesis.service.grav] - GRAV -3- Site: 4) Site Configurations"
   lineinfile:
     path:   "{{ site_work_path | default('') }}/{{ site_config.file   | default('') }}"
     regexp: "{{ site_config.regexp | default('') }}"
@@ -68,7 +68,7 @@
   when:
     - "(isMultisite is true) or (isRoot is true)"
 
-- name: "B6 - PROVISION DOC NODE - 4.- Grav: 3) Site - Dump Configuration Files"
+- name: "[genesis.service.grav] - GRAV -3- Site: 5) Dump Configuration Files"
   include_tasks: "../package/3_config.yml"
   loop: "{{ grav_site.dumps | default([]) }}"
   loop_control:

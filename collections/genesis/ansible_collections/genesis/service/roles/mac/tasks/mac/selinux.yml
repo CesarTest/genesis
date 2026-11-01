@@ -1,6 +1,6 @@
 ---
-# genesis.doc mac/selinux.yml
-#   - Mandatory Access Control Setup
+#  genesis.service.mac mac/selinux.yml
+#   - Mandatory Access Control Setup - SELinux
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -8,26 +8,26 @@
 ######################################################
 #   SELINUX
 ######################################################
-- name: "B6 - PROVISION DOC NODE -1- MAC SElinux"
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux"
   become: true
   vars:
 
-    selinux_emergency_commands:
+    mac_selinux_emergency_commands:
       # Operación 1: Instalación de dependencias del OS base (Corregido con join)
       - |
         if command -v dnf &> /dev/null; then
-          dnf install -y {{ b6_mac_selinux_dependencies_packages | default([]) | join(' ') }}
+          dnf install -y {{ mac_selinux_dependencies_packages | default([]) | join(' ') }}
         elif command -v apt-get &> /dev/null; then
           apt-get update && apt-get install -y policycoreutils-python-utils unzip tar
         fi
     
       # Operación 2: Configuración del fichero nativo y setenforce en caliente
       - |
-        if [ -n "{{ server_selinux_mode.state | default('') }}" ]; then
-          sed -i 's/^SELINUX=.*/SELINUX={{ server_selinux_mode.state }}/' {{ server_selinux_mode.configfile | default("/etc/selinux/config") }}
-          if [ "{{ server_selinux_mode.state }}" = "disabled" ] || [ "{{ server_selinux_mode.state }}" = "permissive" ]; then
+        if [ -n "{{ mac_server_selinux_mode.state | default('') }}" ]; then
+          sed -i 's/^SELINUX=.*/SELINUX={{ mac_server_selinux_mode.state }}/' {{ mac_server_selinux_mode.configfile | default("/etc/selinux/config") }}
+          if [ "{{ mac_server_selinux_mode.state }}" = "disabled" ] || [ "{{ mac_server_selinux_mode.state }}" = "permissive" ]; then
             setenforce 0 2>/dev/null || true
-          elif [ "{{ server_selinux_mode.state }}" = "enforcing" ]; then
+          elif [ "{{ mac_server_selinux_mode.state }}" = "enforcing" ]; then
             setenforce 1 2>/dev/null || true
           fi
         fi
@@ -35,7 +35,7 @@
       # Operación 3: Forzar Autorelabel y remover el bloqueo de SELinux en el Kernel Command Line
       - |
         CURRENT_STATE=$(getenforce 2>/dev/null || echo "Disabled")
-        TARGET_STATE="{{ server_selinux_mode.state | default('') }}"
+        TARGET_STATE="{{ mac_server_selinux_mode.state | default('') }}"
         
         if [ "$CURRENT_STATE" = "Disabled" ] && { [ "$TARGET_STATE" = "enforcing" ] || [ "$TARGET_STATE" = "permissive" ]; }; then
           echo "[GENESIS] Detectado cambio de SELinux desde Disabled. Forzando autorelabel del sistema de archivos..."
@@ -60,7 +60,7 @@
       - |
         CURRENT_STATE=$(getenforce 2>/dev/null || echo "Disabled")
         if [ "$CURRENT_STATE" != "Disabled" ]; then
-          {% for policy in server_selinux_policies | default([]) %}
+          {% for policy in mac_server_selinux_policies | default([]) %}
           semanage fcontext -a -t {{ policy.setype | default('httpd_sys_content_t') }} "{{ policy.target }}" 2>/dev/null || \
           semanage fcontext -m -t {{ policy.setype | default('httpd_sys_content_t') }} "{{ policy.target }}"
           restorecon -irv "{{ policy.target }}"
@@ -70,96 +70,96 @@
         fi
 
   block:
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux : Python Dependencies"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux: Python Dependencies"
       package:
-        name: "{{ b6_mac_selinux_dependencies_packages | default('') }}"
+        name: "{{ mac_selinux_dependencies_packages | default('') }}"
         state: present 
       
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux Mode" 
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux Mode" 
       ansible.posix.selinux:
-        policy:      "{{server_selinux_mode.policy     | default(omit)}}"
-        state:       "{{server_selinux_mode.state      | default(omit)}}"
-        configfile:  "{{server_selinux_mode.configfile | default(omit)}}"
-        update_kernel_param: "{{ server_selinux_mode.update_kernel_param | default(omit)}}"
+        policy:      "{{ mac_server_selinux_mode.policy     | default(omit)}}"
+        state:       "{{ mac_server_selinux_mode.state      | default(omit)}}"
+        configfile:  "{{ mac_server_selinux_mode.configfile | default(omit)}}"
+        update_kernel_param: "{{ mac_server_selinux_mode.update_kernel_param | default(omit)}}"
       ignore_errors: yes 
-      register: "selinux_mode_switch"
+      register: "mac_selinux_mode_switch"
       when:
-        - "server_selinux_mode is defined"
-        - "server_selinux_mode.state is defined"
-        - "server_selinux_mode.state is string"
+        - "mac_server_selinux_mode is defined"
+        - "mac_server_selinux_mode.state is defined"
+        - "mac_server_selinux_mode.state is string"
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux: Trigger File System Autorelabel when state changed from disabled"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux: Trigger File System Autorelabel when state changed from disabled"
       ansible.builtin.file:
         path: "/.autorelabel"
         state: touch
         mode: '0644'
       when:
-        - "selinux_mode_switch is defined"
-        - "selinux_mode_switch.changed is defined"
-        - "selinux_mode_switch.changed is true"
+        - "mac_selinux_mode_switch is defined"
+        - "mac_selinux_mode_switch.changed is defined"
+        - "mac_selinux_mode_switch.changed is true"
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux: Rebooting when SELinux Mode changed"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux: Rebooting when SELinux Mode changed"
       ansible.builtin.reboot:
       when:
-        - "selinux_mode_switch is defined"
-        - "selinux_mode_switch is not none"    
-        - "(selinux_mode_switch.reboot_required is defined)"
-        - "(selinux_mode_switch.reboot_required is not none)"
-        - "(selinux_mode_switch.reboot_required is true) "
+        - "mac_selinux_mode_switch is defined"
+        - "mac_selinux_mode_switch is not none"    
+        - "(mac_selinux_mode_switch.reboot_required is defined)"
+        - "(mac_selinux_mode_switch.reboot_required is not none)"
+        - "(mac_selinux_mode_switch.reboot_required is true) "
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux: Refresh facts after reboot"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux: Refresh facts after reboot"
       ansible.builtin.setup:
       when:
-        - "selinux_mode_switch is defined"
-        - "selinux_mode_switch.reboot_required is defined"
-        - "selinux_mode_switch.reboot_required is true"
+        - "mac_selinux_mode_switch is defined"
+        - "mac_selinux_mode_switch.reboot_required is defined"
+        - "mac_selinux_mode_switch.reboot_required is true"
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux Policies"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux Policies"
       community.general.sefcontext:
-        target:     "{{ selinux_policy.target     | default(omit)}}"
-        substitute: "{{ selinux_policy.substitute | default(omit)}}"
-        state:      "{{ selinux_policy.state      | default(omit)}}"  
-        ftype:      "{{ selinux_policy.fftyp      | default(omit)}}"
-        ignore_selinux_state: "{{ selinux_policy.ignore_selinux_state | default(omit)}}"
-        reload:  "{{ selinux_policy.reload        | default(omit)}}"
-        selevel: "{{ selinux_policy.selevel       | default(omit)}}"
-        setype:  "{{ selinux_policy.setype        | default(omit)}}"
-        seuser:  "{{ selinux_policy.seuser        | default(omit)}}"
-      register: selinux_apply_policy
-      loop: "{{ server_selinux_policies | default([]) }}"
+        target:     "{{ mac_selinux_policy.target     | default(omit)}}"
+        substitute: "{{ mac_selinux_policy.substitute | default(omit)}}"
+        state:      "{{ mac_selinux_policy.state      | default(omit)}}"  
+        ftype:      "{{ mac_selinux_policy.fftyp      | default(omit)}}"
+        reload:     "{{ mac_selinux_policy.reload     | default(omit)}}"
+        selevel:    "{{ mac_selinux_policy.selevel    | default(omit)}}"
+        setype:     "{{ mac_selinux_policy.setype     | default(omit)}}"
+        seuser:     "{{ mac_selinux_policy.seuser     | default(omit)}}"
+        ignore_mac_selinux_state: "{{ mac_selinux_policy.ignore_mac_selinux_state | default(omit)}}"
+      register: mac_selinux_apply_policy
+      loop: "{{ mac_server_selinux_policies | default([]) }}"
       loop_control:
-        loop_var: "selinux_policy"
+        loop_var: "mac_selinux_policy"
       when:
-        - "server_selinux_policies is defined"
-        - "server_selinux_policies is not none"
-        - "server_selinux_policies is not string"
-        - "server_selinux_policies is not mapping"
-        - "server_selinux_policies is iterable"
+        - "mac_server_selinux_policies is defined"
+        - "mac_server_selinux_policies is not none"
+        - "mac_server_selinux_policies is not string"
+        - "mac_server_selinux_policies is not mapping"
+        - "mac_server_selinux_policies is iterable"
 
-    - name   : "B6 - PROVISION DOC NODE -1- MAC SElinux: Apply Policies to target"            
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux: Apply Policies to target"            
       ansible.builtin.shell  : "restorecon -irv {{ secontext | default('.') }}"
-      loop: "{{ selinux_apply_policy.results | default([]) }}"
+      loop: "{{ mac_selinux_apply_policy.results | default([]) }}"
       loop_control:
-        loop_var: "selinux_apply"
+        loop_var: "mac_selinux_apply"
       vars:
-        secontext: "{{ (selinux_apply.target | default('.')) | dirname | dirname }}"
+        secontext: "{{ (mac_selinux_apply.target | default('.')) | dirname | dirname }}"
       when:
-        - "selinux_apply_policy.results is defined"
-        - "selinux_apply_policy.results is not none"    
-        - "selinux_apply.changed is defined"
-        - "selinux_apply.changed is not none"
+        - "mac_selinux_apply_policy.results is defined"
+        - "mac_selinux_apply_policy.results is not none"    
+        - "mac_selinux_apply.changed is defined"
+        - "mac_selinux_apply.changed is not none"
 
   rescue:
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux [RESCUE] - Execute raw shell recovery sequence from block vars"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux [RESCUE] - Execute raw shell recovery sequence from block vars"
       ansible.builtin.shell: "{{ emergency_command }}"
-      loop: "{{ selinux_emergency_commands }}"
+      loop: "{{ mac_selinux_emergency_commands }}"
       loop_control:
         loop_var: "emergency_command"
       failed_when: false
 
-    - name: "B6 - PROVISION DOC NODE -1- MAC SElinux [RESCUE] - Emergency reboot if state was modified"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux [RESCUE] - Emergency reboot if state was modified"
       ansible.builtin.reboot:
       when:
-        - server_selinux_mode is defined
-        - server_selinux_mode.state is defined
+        - mac_server_selinux_mode is defined
+        - mac_server_selinux_mode.state is defined

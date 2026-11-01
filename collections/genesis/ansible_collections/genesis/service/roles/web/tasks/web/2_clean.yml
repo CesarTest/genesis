@@ -8,16 +8,16 @@
 #-------------------------------------------------------------------------------
 # 1. - Detect PHP Version
 #-------------------------------------------------------------------------------
-- name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Detect PHP Version"
+- name: "[genesis.service.web] - WEB -2- Clean: 1) PHP - Detect PHP Version"
   block:
 
-    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Inspect current host active version"
+    - name: "[genesis.service.web] - WEB -2- Clean: 1.1) PHP - Inspect current host active version"
       ansible.builtin.command: "php -r 'echo PHP_MAJOR_VERSION.\".\".PHP_MINOR_VERSION;'"
       register: b6_php_active_version
       failed_when: false
       changed_when: false
 
-    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Parse installed version status"
+    - name: "[genesis.service.web] - WEB -2- Clean: 1.2) PHP - Parse installed version status"
       ansible.builtin.set_fact:
         b6_php_installed_version: "{{ b6_host_php_version }}"
       vars:
@@ -31,7 +31,7 @@
 #-------------------------------------------------------------------------------
 # 2. - Clean PHP Version
 #-------------------------------------------------------------------------------
-- name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Sanitize and Switch Modular Stream"
+- name: "[genesis.service.web] - WEB -2- Clean: 2) PHP - Sanitize and Switch Modular Stream"
   vars:
     b6_php_stream_emergency_commands:
       - "dnf module reset -y php"
@@ -39,13 +39,13 @@
 
   block:
 
-    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Purge obsolete PHP 8.0 stack agnostically"
+    - name: "[genesis.service.web] - WEB -2- Clean: 2.1) PHP - Purge obsolete PHP 8.0 stack agnostically"
       ansible.builtin.package:
         name: "php*"
         state: absent
       register: php_purge_status
    
-    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Clear residual configuration directories from 8.0"
+    - name: "[genesis.service.web] - WEB -2- Clean: 2.2) PHP - Clear residual configuration directories from 8.0"
       ansible.builtin.file:
         path: "{{ current_dir }}"
         state: absent
@@ -59,14 +59,14 @@
       when: php_purge_status.changed
 
     # Force a validation task to trigger the rescue block if a module stream mismatch is detected
-    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - Validate native DNF stream version"
+    - name: "[genesis.service.web] - WEB -2- Clean: 2.3) PHP - Validate native DNF stream version"
       ansible.builtin.command: "dnf module list php --enabled | grep -q '{{ php_version | default('8.3') }}'"
       changed_when: false
       when: ansible_facts.os_family == 'RedHat'
 
   rescue:
 
-    - name: "B6 - PROVISION DOC NODE -2- WEB: PHP - [RESCUE] Force local ISO modular stream via loop sequence"
+    - name: "[genesis.service.web] - WEB -2- Clean: 2.4) PHP - [RESCUE] Force local ISO modular stream via loop sequence"
       ansible.builtin.shell: "{{ emergency_command }}"
       loop: "{{ b6_php_stream_emergency_commands }}"
       loop_control:
