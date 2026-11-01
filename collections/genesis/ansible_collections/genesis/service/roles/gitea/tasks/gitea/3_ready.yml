@@ -1,0 +1,51 @@
+---
+# genesis.service.gitea gitea/4_ready.yml
+#   - Core Stack Finalization and Socket Verification
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.gitea] - GITEA READY: Core Stack Finalization"
+  become: true
+  vars:
+    gitea_ready_emergency_commands:
+      - "echo 'WARNING ALERT: Native Systemd service startup failed on host {{ inventory_hostname }}. Triggering CLI recovery...'"
+      
+      # Operación 1: Purgar procesos huérfanos para liberar el socket 3000
+      - "pkill -u git -f gitea || true"
+      
+      # Operación 2: Forzar recarga de systemd y reintento de arranque del demonio
+      - "systemctl daemon-reload && systemctl restart gitea || true"
+      
+      # Operación 3: Ejecución manual de contingencia en background si falla systemd
+      - |
+        if ! systemctl is-active --quiet gitea; then
+          echo 'Systemd unit unusable. Executing manual emergency background execution...'
+          nohup {{ gitea_bin_path | default('/usr/local/bin') }}/gitea web --config {{ gitea_conf_path | default('/etc/gitea') }}/app.ini > /dev/null 2>&1 &
+          sleep 3
+        fi
+        true
+
+  block:
+
+    - name: "[genesis.service.gitea] - GITEA READY: Force immediate service execution"
+      ansible.builtin.meta: flush_handlers
+
+    - name: "[genesis.service.gitea] - GITEA READY: 4.1) Verify: Ensure Gitea Daemon is Responding"
+      ansible.builtin.wait_for:
+        port: "{{ gitea_port | default(3000, true) | int }}"
+        delay: 3
+        timeout: 20
+        msg: "Gitea daemon failed to bind port {{ gitea_port | default(3000) }} after initialization."
+
+  rescue:
+
+    - name: "[genesis.service.gitea] - GITEA READY: [RESCUE] 4.2) Emergency service activation via CLI list loop"
+      ansible.builtin.shell: "{{ gitea_ready_cmd }}"
+      loop: "{{ gitea_ready_emergency_commands }}"
+      loop_control:
+        loop_var: "gitea_ready_cmd"
+      failed_when: false
+
+    - name: "[genesis.service.gitea] - GITEA READY: [RESCUE] 4.3) Clear host error state to keep execution non-blocking"
+      ansible.builtin.meta: clear_host_errors

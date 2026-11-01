@@ -1,2 +1,24 @@
 ---
-# tasks file for gitea
+# genesis.service.gitea tasks/main.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.gitea] - GITEA: Grav Documentation Database for GitOps"
+  block:
+
+    - name: "[genesis.service.gitea] - GITEA: 1) Install Dependencies"
+      ansible.builtin.include_tasks: "server/1_dependency.yml"
+
+    - name: "[genesis.service.gitea] - GITEA: 2) Create Folders"
+      ansible.builtin.include_tasks: "server/2_folder.yml"
+
+    - name: "[genesis.service.gitea] - GITEA: 3) Install: Deploy Gitea Core Binary"
+      ansible.builtin.include_tasks: "gitea/1_install.yml"
+
+    - name: "[genesis.service.gitea] - GITEA: 4) Setup: Configure Service"
+      ansible.builtin.include_tasks: "gitea/2_setup.yml"
+
+    - name: "[genesis.service.gitea] - GITEA: 5) Ready: Verify and Finalize Service"
+      ansible.builtin.include_tasks: "gitea/3_ready.yml"

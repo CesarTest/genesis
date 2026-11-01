@@ -98,3 +98,11 @@ all:
       vars:
         ansible_user: "cesar"
         ansible_become_pass: "cesar"
+        mac_services_config: 
+          - name: "firewalld"
+            enabled: yes 
+            state: "started"
+        mac_selinux_mode_config:
+          policy: "targeted"
+          state: "enforcing"
+          update_kernel_param: true

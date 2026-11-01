@@ -1,0 +1,9 @@
+---
+# genesis.service.mac 2_file.yml
+#   - Mandatory Access Control Setup
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 2) File Permissions: 2) SELinux, AppArmor"
+  ansible.builtin.include_tasks: "file/selinux.yml"

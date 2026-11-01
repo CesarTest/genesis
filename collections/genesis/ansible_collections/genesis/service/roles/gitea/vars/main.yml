@@ -1,2 +1,117 @@
 ---
-# vars file for gitea
+# genesis.service.gitea vars/main.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+#########################################################
+#              GENESIS PATHS
+#########################################################
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+genesis_default_repos:
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+  sylva: "sylva"
+  oci: "sylva/oci"
+  doc: "doc" 
+
+
+#########################################################
+#           DEPENDENCIES (AUTOMATIC & INTERNAL)
+#########################################################
+gitea_dependencies:
+  - git
+ 
+ 
+#########################################################
+#            GITEA AIR-GAPPED API INTERFACE
+#########################################################
+gitea_port: "{{ web_gitea_port | default(3000, true) | int }}"
+gitea_domain: "gitea.{{ web_server_domain | default('genesis.lab', true) }}"
+
+# Origen local del Binario (Heredado de la carpeta doc del repositorio de Genesis)
+gitea_version: "{{ genesis_gitea_version | default('28.2.0') }}"
+gitea_arch_capture: "{{ genesis_gitea_arch | default(ansible_architecture) | default('amd64') }}"
+gitea_arch: "{{ 'amd64' if gitea_arch_capture == 'x86_64' else gitea_arch_capture }}"  # <--- CORREGIDO: g1_gitea_arch_capture por gitea_arch_capture
+gitea_os:   "{{ genesis_gitea_os | default('linux') | lower }}"
+
+# Destinos en el Nodo de Documentación
+gitea_repos: "{{ genesis_repos | default(genesis_default_repos) | default({}) }}"
+gitea_repo_doc_path: "{{ genesis_repo_path | realpath }}/{{ gitea_repos['doc'] | default('doc') }}"
+gitea_work_path: "{{ web_gitea_work_path | default('/var/lib/gitea', true) }}"
+gitea_conf_path: "{{ web_gitea_conf_path | default('/etc/gitea', true) }}"
+gitea_bin_path: "{{ web_gitea_bin_path | default('/usr/bin', true) }}"
+
+# Gestión Dinámica de Usuarios y Permisos Multi-OS
+gitea_user: "git"
+gitea_group: "git"
+gitea_apache_user: "{{ (ansible_os_family | default('Debian') == 'Debian') | ternary('www-data', 'apache') }}"
+gitea_apache_group: "{{ gitea_apache_user }}"
+gitea_local_binary_source: "{{ gitea_repo_doc_path }}/gitea-{{ gitea_version }}-{{ gitea_os }}-{{ gitea_arch }}"
+gitea_default_folders_tree:
+
+  - path: "{{ gitea_work_path }}"
+    owner: "git"
+    group: "git"
+    mode: "0750"
+    setype: "var_lib_t"
+
+  - path: "{{ gitea_work_path }}/data"
+    owner: "git"
+    group: "git"
+    mode: "0750"
+    setype: "var_lib_t"
+
+  - path: "{{ gitea_work_path }}/log"
+    owner: "git"
+    group: "git"
+    mode: "0750"
+    setype: "var_log_t"
+
+  - path: "{{ gitea_conf_path }}"
+    owner: "git"
+    group: "{{ gitea_apache_group }}"
+    mode: "0770"
+    setype: "httpd_sys_rw_content_t"
+
+gitea_folders_tree: "{{ gitea_folders_tree_config | default(gitea_default_folders_tree, true) }}"
+
+#########################################################
+#               GITEA MAC CONFIGURATION MODELS
+#########################################################
+
+# 1. Defaults (Tus respaldos locales de seguridad para este Stack)
+gitea_mac_default_server_users:
+  - username: "{{ gitea_user }}"
+    usergroup: "{{ gitea_group }}"
+    usershell: "/bin/bash"
+    create_home: "yes"
+    folders: "{{ gitea_folders_tree }}"
+
+gitea_mac_default_selinux_policies_config:
+  - target: "{{ gitea_work_path }}(/.*)?"
+    setype: "var_lib_t"
+    seuser: "system_u"
+    state: "present"
+  - target: "{{ gitea_conf_path }}(/.*)?"
+    setype: "httpd_sys_rw_content_t"
+    seuser: "system_u"
+    state: "present"
+
+gitea_mac_default_firewall_rules_config:
+  - port: "{{ gitea_port }}/tcp"
+    permanent: true
+    state: "enabled"
+
+# 2. End Values (La API que finalmente adopta el rol de MAC por herencia)
+mac_refresh: "{{ gitea_refresh | default(false, true) | bool }}"
+mac_user_rbac_config: "{{ gitea_mac_server_users | default(gitea_mac_default_server_users, true) }}"
+mac_selinux_policies_config: "{{ gitea_mac_selinux_policies_config | default(gitea_mac_default_selinux_policies_config, true) }}"
+mac_firewall_rules_config: "{{ gitea_mac_firewall_rules_config | default(gitea_mac_default_firewall_rules_config, true) }}"

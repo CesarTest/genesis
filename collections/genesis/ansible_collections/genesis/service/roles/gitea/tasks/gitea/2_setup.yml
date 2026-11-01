@@ -1,0 +1,130 @@
+---
+# genesis.service.gitea gitea/3_install.yml
+#   - Binary deployment and inline systemd unit compilation (API Synced)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.gitea] - GITEA INSTALL: Main Installation Block"
+  become: true
+  vars:
+
+    gitea_default_inline_templates:
+     # -----------------------------------------------------
+     # 1. Gitea Application Core Configuration (app.ini)
+     # -----------------------------------------------------
+     - name: "Application Configuration (app.ini)"
+       dest: "{{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini"
+       owner: "{{ gitea_user | default('git', true) }}"
+       group: "{{ gitea_apache_group | default('apache', true) }}"
+       mode: "0660"
+       content: |
+         # CONFIGURACIÓN AUTOMATIZADA GENERADA POR GENESIS SYSTEM
+         APP_NAME = Genesis GitOps Code Repository
+         RUN_MODE = prod
+         RUN_USER = {{ gitea_user | default('git', true) }}
+         
+         [database]
+         DB_TYPE  = sqlite3
+         PATH     = {{ gitea_work_path | default('/var/lib/gitea', true) }}/data/gitea.db
+         SSL_MODE = disable
+         
+         [repository]
+         ROOT = {{ gitea_work_path | default('/var/lib/gitea', true) }}/gitea-repositories
+        
+         [server]
+         SSH_DOMAIN       = {{ gitea_domain }}
+         HTTP_INT_MEM_MODE= true
+         DOMAIN           = {{ gitea_domain }}
+         HTTP_ADDR        = 0.0.0.0
+         HTTP_PORT        = {{ gitea_port | default(3000, true) }}
+         ROOT_URL         = http://{{ gitea_domain }}:{{ gitea_port | default(3000, true) }}/
+         DISABLE_SSH      = false
+         SSH_PORT         = 22
+         LFS_START_SERVER = false
+        
+         [security]
+         INSTALL_LOCK   = true
+         SECRET_KEY     = {{ 'genesis_secret_token_key_generation' | hash('sha256') }}
+         REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
+         
+         [service]
+         DISABLE_REGISTRATION   = false
+         REQUIRE_SIGNIN_VIEW     = false
+         REGISTER_EMAIL_CONFIRM = false
+         ENABLE_NOTIFY_MAIL     = false
+         
+         [session]
+         PROVIDER = file
+         
+         [log]
+         MODE      = file
+         LEVEL     = info
+         ROOT_PATH = {{ gitea_work_path | default('/var/lib/gitea', true) }}/log
+   
+     # -----------------------------------------------------
+     # 2. Systemd Service Unit Configuration (gitea.service)
+     # -----------------------------------------------------
+     - name: "Systemd Service Unit (gitea.service)"
+       dest: "/etc/systemd/system/gitea.service"
+       owner: "root"
+       group: "root"
+       mode: "0644"
+       content: |
+         [Unit]
+         Description=Gitea (Git with a cup of tea)
+         After=network.target
+        
+         [Service]
+         Type=simple
+         User={{ gitea_user | default('git', true) }}
+         Group={{ gitea_group | default('git', true) }}
+         WorkingDirectory={{ gitea_work_path | default('/var/lib/gitea', true) }}
+         ExecStart={{ gitea_bin_path | default('/usr/local/bin', true) }}/gitea web --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+         Restart=always
+         Environment=USER={{ gitea_user | default('git', true) }} HOME={{ gitea_work_path | default('/var/lib/gitea', true) }} GITEA_WORK_DIR={{ gitea_work_path | default('/var/lib/gitea', true) }}
+         
+         [Install]
+         WantedBy=multi-user.target
+   
+    gitea_inline_templates: "{{ gitea_inline_templates_config | default(gitea_default_inline_templates, true) }}"
+
+
+    # COMANDOS DE CONTINGENCIA PLANOS UTILIZANDO TUS VARIABLES OFICIALES
+    gitea_install_emergency_commands:
+      - "echo 'WARNING ALERT: Native deployment files copy failed on host {{ inventory_hostname }}. Initiating CLI backup...'"
+      - "mkdir -p {{ gitea_bin_path }}"
+      - "cp -f {{ gitea_local_binary_source }} {{ gitea_bin_path }}/gitea && chmod +x {{ gitea_bin_path }}/gitea"
+      - |
+        mkdir -p {{ gitea_conf_path | default('/etc/gitea', true) }}
+        cat << 'EOF' > {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+        INSTALL_LOCK = true
+        EOF
+        chmod 0660 {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+
+  block:
+
+    # CORRECCIÓN DE LA LOGICA DEL BLOCK: Ejecuta en bucle la lista unificada (app.ini + gitea.service)
+    - name: "[genesis.service.gitea] - GITEA INSTALL: 3.2) Config: Inline Deploy Core Service Templates"
+      ansible.builtin.copy:
+        content: "{{ gitea_tmpl.content }}"
+        dest: "{{ gitea_tmpl.dest }}"
+        owner: "{{ gitea_tmpl.owner }}"
+        group: "{{ gitea_tmpl.group }}"
+        mode: "{{ gitea_tmpl.mode }}"
+      loop: "{{ gitea_inline_templates | default([], true) }}"
+      loop_control:
+        loop_var: "gitea_tmpl"
+      notify: "genesis_service_gitea_restart"
+
+  rescue:
+
+    - name: "[genesis.service.gitea] - GITEA INSTALL: [RESCUE] 3.3) Emergency storage deployment sequence"
+      ansible.builtin.shell: "{{ gitea_shell_cmd }}"
+      loop: "{{ gitea_install_emergency_commands }}"
+      loop_control:
+        loop_var: "gitea_shell_cmd"
+      failed_when: false
+
+    - name: "[genesis.service.gitea] - GITEA INSTALL: [RESCUE] 3.4) Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

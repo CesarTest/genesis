@@ -1,2 +1,61 @@
 ---
-# vars file for mac
+# genesis.service.mac vars/main.yml
+#   - Prepare Documentation Node (Elevated Priority via vars API)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#########################################################
+#           DEPENDENCIES (AUTOMATIC & INTERNAL)
+#########################################################
+mac_selinux_dependencies:
+  redhat:
+    - policycoreutils-python3
+    - selinux-policy-targeted
+    - unzip
+    - tar
+  debian:
+    - policycoreutils-python-utils   
+    - apparmor-utils                
+    - unzip
+    - tar
+  suse:
+    - policycoreutils-python3
+    - selinux-policy-targeted
+    - unzip
+    - tar
+
+mac_node_target_family: "{{ (ansible_os_family | lower) | default('redhat', true) }}"
+mac_selinux_dependencies_packages: "{{ mac_selinux_dependencies[mac_node_target_family] | default([], true) }}"
+
+#########################################################
+#                 DEFAULTS
+#########################################################
+
+# Respaldo por defecto para Servicios del Sistema
+mac_default_services: []
+  #- name: "firewalld"
+  #  enabled: yes 
+  #  state: "started"
+mac_default_selinux_mode: {}
+   #policy: "targeted"
+   #state: "enforcing"
+   #update_kernel_param: true 
+mac_default_user_rbac: []
+mac_default_selinux_policies: []
+mac_default_firewall_rules: []
+
+
+#########################################################
+#            SERVER PROPERTIES & API INTERFACE
+#########################################################
+
+# 1.- Control de Cortafuegos y Modos de Seguridad Universales
+mac_services: "{{ mac_services_config | default(mac_default_services, true) }}"
+mac_server_selinux_mode: "{{ mac_selinux_mode_config | default(mac_default_selinux_mode, true) }}"
+
+# 2.- Reglas de negocio y Modelos de datos principales (Priorizan la entrada externa)
+mac_user_rbac: "{{ mac_user_rbac_config | default(mac_default_user_rbac, true) }}"
+mac_server_selinux_policies: "{{ mac_selinux_policies_config | default(mac_default_selinux_policies, true) }}"
+mac_firewall_rules: "{{ mac_firewall_rules_config | default(mac_default_firewall_rules, true) }}"
+

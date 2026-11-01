@@ -1,27 +1,41 @@
 ---
 # genesis.service.grav package/2_tarball.yml
+#   - Dynamic Package Deployment and Lifecycle Management (API Synced)
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-#
 
 - name: "[genesis.service.grav] - GRAV -2- Package: 2) Tarball: Main Orchestration Block"
   vars:
+    # 1. Parámetros de extracción consolidados para mitigar filtros inline repetitivos
+    grav_target_src_basename: "{{ (grav_package.src | default('')) | basename }}"
+    grav_calculated_tmp_dir: "{{ grav_package.tmp | default('/tmp/grav', true) }}"
+    grav_calculated_tmp_file: "{{ grav_calculated_tmp_dir }}/{{ grav_target_src_basename }}"
+    grav_calculated_dest_dir: "{{ grav_package.dest | default(grav_work_path) | default('/tmp/grav', true) }}"
+
+    # 2. Comandos de contingencia en Bash puro estructurados localmente
     grav_tarball_emergency_commands:
       - "echo 'WARNING ALERT: Native copy/unarchive module failed. Triggering raw shell rescue...'"
-      - "mkdir -p {{ grav_package.dest | default('/tmp/grav') }}"
-      - "tar -xzf {{ grav_package.tmp | default('/tmp/grav') }}/{{ (grav_package.src | default('')) | basename }} -C {{ grav_package.dest | default('/tmp/grav') }} 2>/dev/null || cp -rf {{ grav_package.src | default('/tmp/grav') }} {{ grav_package.dest | default('/tmp/grav') }}"
-      - "chown -R {{ apache_user | default('apache') }}:{{ apache_group | default('apache') }} {{ grav_package.dest | default('/tmp/grav') }}"
+      - "mkdir -p {{ grav_calculated_dest_dir }}"
+      - "tar -xzf {{ grav_calculated_tmp_file }} -C {{ grav_calculated_dest_dir }} 2>/dev/null || unzip -o {{ grav_calculated_tmp_file }} -d {{ grav_calculated_dest_dir }} 2>/dev/null || cp -rf {{ grav_calculated_tmp_file }} {{ grav_calculated_dest_dir }}"
+      - "chown -R {{ apache_user | default('apache', true) }}:{{ apache_group | default('apache', true) }} {{ grav_calculated_dest_dir }}"
 
   block:
 
-    - name: "[genesis.service.grav] - GRAV -2- Package: 2.1) Tarball: Upload Package : |{{ grav_package.src | default('Empty') }}| -> |{{ grav_package.tmp | default('Empty') }}|"
+    # ---------------------------------
+    #  1.- Upload File 
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -2- Package: 2.1) Tarball: Upload Package : |{{ grav_package.src | default('Empty') }}| -> |{{ grav_calculated_tmp_file }}|"
       ansible.builtin.copy:
-        dest: "{{ grav_package.tmp | default('/tmp/grav') }}"
         src:  "{{ grav_package.src | default('') }}"
-        owner: "{{ apache_user | default('root') }}"
-        group: "{{ apache_group | default('root') }}"
+        dest: "{{ grav_calculated_tmp_file }}" 
+        owner: "{{ apache_user | default('root', true) }}"
+        group: "{{ apache_group | default('root', true) }}"
+        mode: "0644"
 
+    # ---------------------------------
+    #  2.- Unzip
+    # ---------------------------------
     - name: "[genesis.service.grav] - GRAV -2- Package: 2.2) Tarball: Unarchive Package on Remote Machine"
       ansible.builtin.unarchive:
         src:   "{{ grav_tarball.src }}"
@@ -30,82 +44,31 @@
         group: "{{ grav_tarball.group }}"  
         remote_src: true
       loop:
-        - src:   "{{ grav_package.tmp | default('/tmp/grav') }}/{{ (grav_package.src | default('')) | basename }}"
-          dest:  "{{ grav_package.dest | default(grav_work_path) | default('/tmp/grav') }}"
-          owner: "{{ apache_user | default('apache') }}"
-          group: "{{ apache_group | default('root') }}"
+        - src:   "{{ grav_calculated_tmp_file }}"
+          dest:  "{{ grav_calculated_dest_dir }}"
+          owner: "{{ apache_user | default('apache', true) }}"
+          group: "{{ apache_group | default('apache', true) }}"
       loop_control:
         loop_var: "grav_tarball"    
       when:
         - "grav_package.isTarball is not defined"
 
-    - name: "[genesis.service.grav] - GRAV -2- Package: 2.3) Tarball: Copy File" 
-      ansible.builtin.copy:
-        dest:  "{{ grav_pkg.dest }}"
-        src:   "{{ grav_pkg.src }}"
-        owner: "{{ grav_pkg.owner }}"
-        group: "{{ grav_pkg.group }}"
-        mode:  "{{ grav_pkg.mode }}"
-      loop: 
-        - src: "{{ grav_package.src | default('/tmp/grav') }}"
-          dest: "{{ grav_package.dest | default('/tmp/grav') }}"
-          owner: "{{ grav_package.owner | default('root') }}"
-          group:  "{{ grav_package.group | default('root') }}"
-          mode: "{{ grav_package.mode | default(omit) }}"
-      loop_control:
-        loop_var: "grav_pkg"
-      when: 
-        - "grav_package.isTarball is defined" 
-
-    - name: "[genesis.service.grav] - GRAV -2- Package: 2.4) Tarball: Clean Existing Target Directory Before Rename"
-      ansible.builtin.file:
-        path: "{{ grav_package.dest | default('/tmp/grav') }}/{{ grav_package.rename }}"
-        state: absent
-      when:
-        - "grav_package.rename is defined"
-        - "grav_package.rename is not none"
-        - "grav_package.rename is string"
-        - "grav_package.rename|length > 0"
-
-    - name: "[genesis.service.grav] - GRAV -2- Package: 2.5) Tarball: Rename Package Folder"
-      vars: 
-        grav_cmd_path: "{{ grav_package.dest | default('/tmp/grav') }}"
-        grav_cmd_orig: "{{ grav_cmd_path }}/{{ grav_package.original | default('test') }}"
-        grav_cmd_dest: "{{ grav_cmd_path }}/{{ grav_package.rename | default('test') }}"
-      ansible.builtin.command: "{{ grav_command }}"
-      loop: 
-        - "mv --force {{ grav_cmd_orig }} {{ grav_cmd_dest }}"
-        - "rm -rf {{ grav_cmd_orig }}"
-      loop_control:
-        loop_var: "grav_command"
-      when:
-        - "grav_package.rename is defined"
-        - "grav_package.rename is not none"
-        - "grav_package.rename is string"
-        - "grav_package.rename is not mapping" 
-        - "grav_package.rename|length > 0"
-        - "grav_package.original is defined"
-        - "grav_package.original is not none"
-        - "grav_package.original is string"
-        - "grav_package.original is not mapping"
-        - "grav_package.original|length > 0"
-
   rescue:
 
-    - name: "[genesis.service.grav] - GRAV -2- Package: 2.6) Tarball: [RESCUE] Execute raw shell recovery sequence from block vars"
+    - name: "[genesis.service.grav] - GRAV -2- Package: 2.3) Tarball: [RESCUE] Execute raw shell recovery sequence from block vars"
       ansible.builtin.shell: "{{ grav_emergency_command }}"
       loop: "{{ grav_tarball_emergency_commands }}"
       loop_control:
         loop_var: "grav_emergency_command"
       failed_when: false
 
-    - name: "[genesis.service.grav] - GRAV -2- Package: 2.7) Tarball: [RESCUE] Print non-blocking failure alert message"
+    - name: "[genesis.service.grav] - GRAV -2- Package: 2.4) Tarball: [RESCUE] Print non-blocking failure alert message"
       ansible.builtin.debug:
         msg: |
           WARNING ALERT: Tarball deployment tasks experienced an exception on host {{ inventory_hostname }}.
           Fallback extraction was executed via shell. Execution will CONTINUE in non-blocking mode.
 
-    - name: "[genesis.service.grav] - GRAV -2- Package: 2.8) Tarball: [RESCUE] Clear host error state to avoid interrupting execution"
+    - name: "[genesis.service.grav] - GRAV -2- Package: 2.5) Tarball: [RESCUE] Clear host error state to avoid interrupting execution"
       ansible.builtin.meta: clear_host_errors
 
   when:

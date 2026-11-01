@@ -17,5 +17,8 @@
     - name: "[genesis.service.grav] - GRAV -1- Package: 2) Tarball"
       ansible.builtin.include_tasks: "package/2_tarball.yml"
 
-    - name: "[genesis.service.grav] - GRAV -1- Package: 3) Dump Configuration File"
-      ansible.builtin.include_tasks: "package/3_config.yml"
+    - name: "[genesis.service.grav] - GRAV -1- Package: 3) Rename Destination"
+      ansible.builtin.include_tasks: "package/3_rename.yml"
+
+    - name: "[genesis.service.grav] - GRAV -1- Package: 4) Dump Configuration File"
+      ansible.builtin.include_tasks: "package/4_config.yml"

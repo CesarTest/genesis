@@ -69,7 +69,7 @@
     - "(isMultisite is true) or (isRoot is true)"
 
 - name: "[genesis.service.grav] - GRAV -3- Site: 5) Dump Configuration Files"
-  include_tasks: "../package/3_config.yml"
+  include_tasks: "../package/4_config.yml"
   loop: "{{ grav_site.dumps | default([]) }}"
   loop_control:
     loop_var: "pkg"

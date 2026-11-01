@@ -5,11 +5,17 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: firewall, SELinux, AppArmor, Cryptographic Policies"
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: Users, Files and Connections Accessl Control"
   block:
 
-    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 1) Include Security Policies and SELinux engine setup"
-      ansible.builtin.include_tasks: "mac/selinux.yml"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 1) User Permissions: RBAC and Folders"
+      ansible.builtin.include_tasks: "1_user.yml"
+      loop: "{{ mac_user_rbac | default([]) | list }}"
+      loop_control:
+        loop_var: "mac_user"
 
-    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 2) Include Netfilter Firewall rules orchestration"
-      ansible.builtin.include_tasks: "mac/firewall.yml"
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 2) File Permissions: 2) SELinux, AppArmor"
+      ansible.builtin.include_tasks: "2_file.yml"
+
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 3) Connection Permissions: Firewall, Cryto Policies"
+      ansible.builtin.include_tasks: "3_connection.yml"

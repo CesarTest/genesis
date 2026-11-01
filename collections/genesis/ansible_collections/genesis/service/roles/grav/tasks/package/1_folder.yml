@@ -1,45 +1,61 @@
 ---
 # genesis.service.grav package/1_folder.yml
+#   - Infrastructure Storage & Temp Space Orchestration (API Synced)
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
-#
 
 - name: "[genesis.service.grav] - GRAV -1- Package: 1) Folder: Main Orchestration Block"
   vars:
+    grav_calculated_dest_dir: "{{ grav_package.dest | default('/tmp/grav', true) }}"
+    grav_calculated_tmp_dir: "{{ grav_package.tmp | default('/tmp/grav', true) }}"
+    grav_purge_targets:
+      - path: "{{ grav_calculated_dest_dir  | default('/tmp/grav', true) }}"
+        should_purge: "{{ grav_package.refresh | default(false, true) | bool }}"
     grav_package_emergency_commands:
       - "echo 'WARNING ALERT: Native file module failed. Triggering raw shell rescue...'"
-      - "rm -rf {{ grav_package.dest | default('/tmp/grav_failed') }}"
-      - "mkdir -p {{ grav_package.dest | default('/tmp/grav') }} {{ grav_package.tmp | default('/tmp/grav_tmp') }}"
-      - "chown -R {{ grav_package.owner | default(apache_user) | default('apache') }}:{{ grav_package.group | default(apache_group) | default('apache') }} {{ grav_package.dest | default('/tmp/grav') }}"
+      - "rm -rf {{ grav_calculated_dest_dir }} {{ grav_calculated_tmp_dir }} /tmp/grav"
+      - "mkdir -p {{ grav_calculated_dest_dir }} {{ grav_calculated_tmp_dir }}"
+      - "chown -R {{ grav_package.owner | default(apache_user, true) | default('apache', true) }}:{{ grav_package.group | default(apache_group, true) | default('apache', true) }} {{ grav_calculated_dest_dir }}"
 
   block:
 
-    - name: "[genesis.service.grav] - GRAV -1- Package: 1.1) Folder: Delete Old Contents"
+    # ---------------------------------
+    #  1.- Delete Old Contents (Optional Refresh)
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -1- Package: 1.1) Pre-requisite: Selective atomic absent state based on iteration context"
+      become: true
       ansible.builtin.file:
-        path: "{{ grav_package.dest | default('') }}"
-        state: "absent"
+        path: "{{ grav_purge.path }}"
+        state: absent
+      loop: "{{ grav_purge_targets | default([], true) }}"
+      loop_control:
+        loop_var: "grav_purge"
       when:
-        - "grav_package.refresh is defined"
-        - "grav_package.refresh is not none"
-        - "grav_package.refresh|bool is true"
+        - grav_purge.path is defined
+        - grav_purge.path is not none
+        - grav_purge.path is not string
+        - grav_purge.should_purge | bool 
 
-    - name: "[genesis.service.grav] - GRAV -1- Package: 1.2) Folder: Create Package Folder |{{ grav_package.dest | default('Empty') }}|"
+    # ---------------------------------
+    #  2.- Create Main Package Folders
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -1- Package: 1.2) Folder: Create Package Folder |{{ grav_calculated_dest_dir }}|"
       vars:
         grav_pkg_folders:
-          - path:  "{{ grav_package.dest  | default('/tmp/grav') }}"
-            owner: "{{ grav_package.owner | default(apache_user) | default('apache') }}"
-            group: "{{ grav_package.group | default(apache_group) | default('apache') }}"
-            mode:  "{{ grav_package.folder_mode | default(omit) }}"
-          - path:  "{{ grav_package.tmp   | default('/tmp/grav') }}"
-            owner: "{{ apache_user   | default('apache') }}"
-            group: "{{ apache_group  | default('apache') }}"
+          - path:  "{{ grav_calculated_dest_dir  | default('/tmp/grav', true) }}"
+            owner: "{{ grav_package.owner | default(apache_user, true) | default('apache', true) }}"
+            group: "{{ grav_package.group | default(apache_group, true) | default('apache', true) }}"
+            mode:  "{{ grav_package.folder_mode | default(omit, true) }}"
+          - path:  "{{ grav_calculated_tmp_dir  | default('/tmp/grav', true) }}"
+            owner: "{{ apache_user | default('apache', true) }}"
+            group: "{{ apache_group | default('apache', true) }}"
       ansible.builtin.file:
-        path: "{{ grav_pkg_dir.path | default(omit) }}"
+        path: "{{ grav_pkg_dir.path | default(omit, true) }}"
         state: "directory"
-        owner: "{{ grav_pkg_dir.owner | default(omit) }}"
-        group: "{{ grav_pkg_dir.group | default(omit) }}"
-        mode: "{{ grav_pkg_dir.mode | default(omit) }}"
+        owner: "{{ grav_pkg_dir.owner | default(omit, true) }}"
+        group: "{{ grav_pkg_dir.group | default(omit, true) }}"
+        mode: "{{ grav_pkg_dir.mode | default(omit, true) }}"
       loop: "{{ grav_pkg_folders | default([]) }}"
       loop_control:
         loop_var: "grav_pkg_dir"
@@ -50,23 +66,18 @@
 
   rescue:
 
-    - name: "[genesis.service.grav] - GRAV -1- Package: 1.3) Folder: [RESCUE] Execute raw shell recovery sequence from block vars"
-      ansible.builtin.shell: "{{ grav_emergency_command | default('id') }}"
+    - name: "[genesis.service.grav] - GRAV -1- Package: 1.4) Folder: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ grav_emergency_command | default('id', true) }}"
       loop: "{{ grav_package_emergency_commands | default([]) }}"
       loop_control:
         loop_var: "grav_emergency_command"
       failed_when: false
 
-    - name: "[genesis.service.grav] - GRAV -1- Package: 1.4) Folder: [RESCUE] Print non-blocking failure alert message"
+    - name: "[genesis.service.grav] - GRAV -1- Package: 1.5) Folder: [RESCUE] Print non-blocking failure alert message"
       ansible.builtin.debug:
         msg: |
           WARNING ALERT: Package folder tasks experienced an exception on host {{ inventory_hostname }}.
           Recovery script was executed via shell. Execution will CONTINUE in non-blocking mode.
 
-    - name: "[genesis.service.grav] - GRAV -1- Package: 1.5) Folder: [RESCUE] Clear host error state to avoid interrupting execution"
+    - name: "[genesis.service.grav] - GRAV -1- Package: 1.6) Folder: [RESCUE] Clear host error state to avoid interrupting execution"
       ansible.builtin.meta: clear_host_errors
-
-  when:
-    - "grav_package.dest is defined"
-    - "grav_package.dest is not none"
-    - "grav_package.dest is string"

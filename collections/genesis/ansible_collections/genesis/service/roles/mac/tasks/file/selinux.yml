@@ -1,6 +1,6 @@
 ---
 #  genesis.service.mac mac/selinux.yml
-#   - Mandatory Access Control Setup - SELinux
+#   - Mandatory Access Control Setup - SELinux & Booleans Unified Lifecycle
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -137,7 +137,7 @@
         - "mac_server_selinux_policies is iterable"
 
     - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SElinux: Apply Policies to target"            
-      ansible.builtin.shell  : "restorecon -irv {{ secontext | default('.') }}"
+      ansible.builtin.shell: "restorecon -irv {{ secontext | default('.') }}"
       loop: "{{ mac_selinux_apply_policy.results | default([]) }}"
       loop_control:
         loop_var: "mac_selinux_apply"

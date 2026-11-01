@@ -12,7 +12,7 @@ server_domain: "{{ web_server_domain | default('genesis.lab', true) }}"
 apache_work_path: "{{ web_apache_work_path | default('/var/www/html', true) }}"
 apache_logs: "{{ web_apache_logs | default('/var/log/httpd', true) }}"
 apache_refresh: "{{ web_apache_refresh | default('true') | bool }}"
-
+  
 #########################################################
 #            APACHE SERVER CONFIGURATIONS
 #########################################################
@@ -20,35 +20,32 @@ apache_service: "{{ web_apache_service | default((ansible_os_family | default('D
 apache_user: "{{ web_apache_user | default((ansible_os_family | default('Debian') == 'Debian') | ternary('www-data', 'apache'), true) }}"
 apache_shell: "{{ web_apache_shell | default('/bin/bash', true) }}"
 apache_group: "{{ web_apache_group | default(apache_user, true) }}"
-
 apache_create_vhosts: "{{ web_apache_create_vhosts | default(true, true) | bool }}"
 apache_vhosts_filename: "{{ web_apache_vhosts_filename | default('vhosts.conf', true) }}"
 apache_vhosts_template: "{{ web_apache_vhosts_template | default('vhosts.conf.j2', true) }}"
 apache_global_vhost_settings: "{{ web_apache_global_vhost_settings | default('DirectoryIndex index.php index.html', true) }}"
 apache_allow_override: "{{ web_apache_allow_override | default('All', true) }}"
 apache_options: "{{ web_apache_options | default('All Indexes FollowSymLinks', true) }}"
-
 apache_mods_disabled: "{{ web_apache_mods_disabled | default([], true) }}"
-
-# Lista de Virtual Hosts que prioriza la entrada externa 'web_apache_vhosts'
-apache_vhosts: "{{ web_apache_vhosts | default(grav_default_vhosts, true) }}"
-
-# Tus Virtual Hosts internos por defecto en caso de no parametrizar desde fuera
 grav_default_vhosts:
-  - servername: "gitea.{{ server_domain }}"
-    documentroot: "{{ apache_work_path }}/gitea"  
+  - servername: "gitea.{{ server_domain | default('genesis.lab') }}"
+    documentroot: "{{ apache_work_path | default('/var/www/html') }}/gitea"  
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
-    serveralias: "www.gitea.{{ server_domain }}" 
+    serveralias: "www.gitea.{{ server_domain | default('genesis.lab') }}" 
     extra_parameters: |
-         ErrorLog  {{ apache_logs }}/gitea/error.log  
-         CustomLog {{ apache_logs }}/gitea/access.log combined  
-  - servername: "training.{{ server_domain }}"
-    documentroot: "{{ apache_work_path }}/training"
+         ErrorLog  {{ apache_logs | default('/var/log/httpd', true) }}/gitea/error.log  
+         CustomLog {{ apache_logs | default('/var/log/httpd', true) }}/gitea/access.log combined  
+         Redirect 301 / http://gitea.{{ server_domain | default('genesis.lab', true) }}:3000/
+
+  - servername: "training.{{ server_domain | default('genesis.lab') }}"
+    documentroot: "{{ apache_work_path | default('/var/www/html') }}/training"
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
-    serveralias: "www.training.{{ server_domain }}"
+    serveralias: "www.training.{{ server_domain | default('genesis.lab') }}"
     extra_parameters: |
-         ErrorLog  {{ apache_logs }}/training/error.log
-         CustomLog {{ apache_logs }}/training/access.log combined
+         ErrorLog  {{ apache_logs | default('/var/log/httpd') }}/training/error.log
+         CustomLog {{ apache_logs | default('/var/log/httpd') }}/training/access.log combined
+
+apache_vhosts: "{{ web_apache_vhosts | default(grav_default_vhosts, true) }}"
 
 #########################################################
 #            PHP CONFIGURATIONS FOR GRAV
@@ -65,9 +62,7 @@ php_packages_state: "{{ web_php_packages_state | default('present', true) }}"
 php_install_recommends: "{{ web_php_install_recommends | default(true, true) | bool }}"
 php_executable: "{{ web_php_executable | default('php', true) }}"
 php_version: "{{ web_php_version | default('8.3', true) }}"
-
 php_packages: "{{ web_php_packages | default(grav_default_php_packages, true) }}"
-
 grav_default_php_packages:
   - php
   - php-cli
@@ -111,3 +106,71 @@ php_opcache_validate_timestamps: "{{ web_php_opcache_validate_timestamps | defau
 php_opcache_revalidate_path: "{{ web_php_opcache_revalidate_path | default('0', true) }}"
 php_opcache_revalidate_freq: "{{ web_php_opcache_revalidate_freq | default('2', true) }}"
 php_opcache_max_file_size: "{{ web_php_opcache_max_file_size | default('0', true) }}"
+
+
+#########################################################         
+#               WEB SERVER INFRASTRUCTURE
+#########################################################
+web_default_folders_tree:
+
+  - path: "{{ apache_work_path | default('/var/www/html', true) }}/gitea"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: "0755"
+    setype: "httpd_sys_rw_content_t"
+
+  - path: "{{ apache_work_path | default('/var/www/html', true) }}/training"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: "0755"
+    setype: "httpd_sys_rw_content_t"
+
+  - path: "{{ apache_logs | default('/var/log/httpd', true) }}/gitea"
+    owner: "root"
+    group: "root"
+    mode: "0750"
+    setype: "httpd_log_t"
+
+  - path: "{{ apache_logs | default('/var/log/httpd', true) }}/training"
+    owner: "root"
+    group: "root"
+    mode: "0750"
+    setype: "httpd_log_t"
+
+web_folders_tree: "{{ web_folders_tree_config | default(web_default_folders_tree, true) }}"
+
+#########################################################
+#               WEB MAC CONFIGURATION MODELS
+#########################################################
+
+# 1. Defaults (Tus respaldos locales de seguridad para este Stack)
+web_mac_default_server_users:
+  - username: "{{ apache_user }}"
+    usergroup: "{{ apache_group }}"
+    usershell: "{{ apache_shell | default('/sbin/nologin', true) }}"
+    folders: "{{ web_folders_tree }}"
+    create_home: "yes"
+  - username: "{{ php_user | default(apache_user, true) }}"
+    usergroup: "{{ php_group | default(apache_group, true) }}"
+    usershell: "{{ php_shell | default('/sbin/nologin', true) }}"
+    create_home: "yes"
+
+web_mac_default_selinux_policies_config:
+  - target: "{{ apache_work_path | default('/var/www/html', true) }}(/.*)?"
+    setype: "httpd_sys_rw_content_t"
+    seuser: "unconfined_u"
+    state: "present"
+
+web_mac_default_firewall_rules_config:
+  - service: "http"
+    permanent: true
+    state: "enabled"
+  - service: "https"
+    permanent: true
+    state: "enabled"
+
+# 2. End Values (La API que finalmente adopta el rol de MAC por herencia directa)
+mac_rbac_refresh: "{{ apache_refresh | default(false, true) | bool }}"
+mac_user_rbac_config: "{{ web_mac_server_users | default(web_mac_default_server_users, true) }}"
+mac_selinux_policies_config: "{{ web_mac_selinux_policies_config | default(web_mac_default_selinux_policies_config, true) }}"
+mac_firewall_rules_config: "{{ web_mac_firewall_rules_config | default(web_mac_default_firewall_rules_config, true) }}"

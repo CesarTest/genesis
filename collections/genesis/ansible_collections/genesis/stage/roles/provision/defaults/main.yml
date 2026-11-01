@@ -16,11 +16,17 @@ genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
 #########################################################
 ##       DEFAULT COMPONENTS (documentation server)
 #########################################################
+# 1. SERVER SECURITY  
+#    Server environment management may involve reboots
 b6_environment_profile: 
    - name: "genesis.service.mac"
      #condition: "{{ not (skip_install | default(false) | bool) }}" 
 
+# 2. INTEGRATED SOFTWARE STACK IN SEQUENTIAL ORDER
+#    - Web: Installs Apache/PHP and exposes Multi-OS variables.
+#    - Gitea: Provisions the GitOps database and port 3000 reverse proxy.
+#    - Grav: Deploys documentation skeletons onto the web hosting path.
 b6_software_profile: 
    - name: "genesis.service.web"
+   - name: "genesis.service.gitea"
    - name: "genesis.service.grav"
-   #- name: "genesis.service.gitea"
