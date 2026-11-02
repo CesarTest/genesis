@@ -10,6 +10,7 @@
   vars:
 
     gitea_default_inline_templates:
+
      # -----------------------------------------------------
      # 1. Gitea Application Core Configuration (app.ini)
      # -----------------------------------------------------
@@ -19,7 +20,12 @@
        group: "{{ gitea_apache_group | default('apache', true) }}"
        mode: "0660"
        content: |
-         # CONFIGURACIÓN AUTOMATIZADA GENERADA POR GENESIS SYSTEM
+         # ==============================================================================
+         # AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                           
+         # Generated dynamically by Genesis Core Engine Mesh                              
+         # Deployment Context: Gitea Setup    
+         # Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }} 
+         # ==============================================================================
          APP_NAME = Genesis GitOps Code Repository
          RUN_MODE = prod
          RUN_USER = {{ gitea_user | default('git', true) }}
@@ -39,13 +45,22 @@
          HTTP_ADDR        = 0.0.0.0
          HTTP_PORT        = {{ gitea_port | default(3000, true) }}
          ROOT_URL         = http://{{ gitea_domain }}:{{ gitea_port | default(3000, true) }}/
+         
+         # PARÁMETROS CRIPTOGRÁFICOS COMPLETOS DE GENESIS SYSTEM
          DISABLE_SSH      = false
-         SSH_PORT         = 22
+         START_SSH_SERVER = true
+         SSH_LISTEN_PORT  = {{ gitea_ssh_port | default(2222, true) | int }}
+         SSH_PORT         = {{ gitea_ssh_port | default(2222, true) | int }}
          LFS_START_SERVER = false
+         
+         # CONTROL DE HOOKS INTERNOS (SINTAXIS OFICIAL INMUTABLE DE GITEA)
+         APP_DATA_PATH      = {{ gitea_work_path | default('/var/lib/gitea', true) }}
+         gitea_AbsolutePATH = {{ gitea_bin_path | default('/usr/bin', true) }}/gitea
+         GITEA_WORK_DIR     = {{ gitea_work_path | default('/var/lib/gitea', true) }}
         
          [security]
          INSTALL_LOCK   = true
-         SECRET_KEY     = {{ 'genesis_secret_token_key_generation' | hash('sha256') }}
+         SECRET_KEY     = GenesisSystemStableSecretTokenKey2026BaseForge
          REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
          
          [service]
@@ -61,7 +76,8 @@
          MODE      = file
          LEVEL     = info
          ROOT_PATH = {{ gitea_work_path | default('/var/lib/gitea', true) }}/log
-   
+
+
      # -----------------------------------------------------
      # 2. Systemd Service Unit Configuration (gitea.service)
      # -----------------------------------------------------
@@ -80,15 +96,20 @@
          User={{ gitea_user | default('git', true) }}
          Group={{ gitea_group | default('git', true) }}
          WorkingDirectory={{ gitea_work_path | default('/var/lib/gitea', true) }}
-         ExecStart={{ gitea_bin_path | default('/usr/local/bin', true) }}/gitea web --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+         ExecStart={{ gitea_bin_path | default('/usr/bin', true) }}/gitea web --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
          Restart=always
-         Environment=USER={{ gitea_user | default('git', true) }} HOME={{ gitea_work_path | default('/var/lib/gitea', true) }} GITEA_WORK_DIR={{ gitea_work_path | default('/var/lib/gitea', true) }}
+         # ENTORNO DE INITIALIZACIÓN AUTOMÁTICA EN FRÍO DE GENESIS SYSTEM
+         Environment=USER={{ gitea_user | default('git', true) }}
+         Environment=HOME={{ gitea_work_path | default('/var/lib/gitea', true) }}
+         Environment=GITEA_WORK_DIR={{ gitea_work_path | default('/var/lib/gitea', true) }}
+         Environment=GITEA__admin__USER={{ gitea_admin_user | default('genesis', true) }}
+         Environment=GITEA__admin__PASSWORD={{ gitea_admin_password | default('genesis', true) }}
+         Environment=GITEA__admin__EMAIL={{ gitea_admin_user | default('genesis', true) }}@{{ gitea_domain }}
          
          [Install]
          WantedBy=multi-user.target
    
     gitea_inline_templates: "{{ gitea_inline_templates_config | default(gitea_default_inline_templates, true) }}"
-
 
     # COMANDOS DE CONTINGENCIA PLANOS UTILIZANDO TUS VARIABLES OFICIALES
     gitea_install_emergency_commands:

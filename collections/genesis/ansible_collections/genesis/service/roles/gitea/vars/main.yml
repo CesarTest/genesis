@@ -26,6 +26,7 @@ genesis_default_repos:
 #########################################################
 #           DEPENDENCIES (AUTOMATIC & INTERNAL)
 #########################################################
+gitea_content_path: "{{ genesis_repo_path | realpath }}/{{ genesis_default_repos['doc'] | default('doc') }}/content"
 gitea_dependencies:
   - git
  
@@ -52,31 +53,32 @@ gitea_bin_path: "{{ web_gitea_bin_path | default('/usr/bin', true) }}"
 # Gestión Dinámica de Usuarios y Permisos Multi-OS
 gitea_user: "git"
 gitea_group: "git"
+gitea_password: "{{ genesis_provision_user_password | default('genesis') }}"
 gitea_apache_user: "{{ (ansible_os_family | default('Debian') == 'Debian') | ternary('www-data', 'apache') }}"
 gitea_apache_group: "{{ gitea_apache_user }}"
 gitea_local_binary_source: "{{ gitea_repo_doc_path }}/gitea-{{ gitea_version }}-{{ gitea_os }}-{{ gitea_arch }}"
 gitea_default_folders_tree:
 
   - path: "{{ gitea_work_path }}"
-    owner: "git"
-    group: "git"
+    owner: "{{ gitea_user }}"
+    group: "{{ gitea_group }}"
     mode: "0750"
     setype: "var_lib_t"
 
   - path: "{{ gitea_work_path }}/data"
-    owner: "git"
-    group: "git"
+    owner: "{{ gitea_user }}"
+    group: "{{ gitea_group }}"
     mode: "0750"
     setype: "var_lib_t"
 
   - path: "{{ gitea_work_path }}/log"
-    owner: "git"
-    group: "git"
+    owner: "{{ gitea_user }}"
+    group: "{{ gitea_group }}"
     mode: "0750"
     setype: "var_log_t"
 
   - path: "{{ gitea_conf_path }}"
-    owner: "git"
+    owner: "{{ gitea_user }}"
     group: "{{ gitea_apache_group }}"
     mode: "0770"
     setype: "httpd_sys_rw_content_t"
@@ -91,6 +93,7 @@ gitea_folders_tree: "{{ gitea_folders_tree_config | default(gitea_default_folder
 gitea_mac_default_server_users:
   - username: "{{ gitea_user }}"
     usergroup: "{{ gitea_group }}"
+    passrword: "{{ gitea_password }}"
     usershell: "/bin/bash"
     create_home: "yes"
     folders: "{{ gitea_folders_tree }}"
@@ -106,12 +109,207 @@ gitea_mac_default_selinux_policies_config:
     state: "present"
 
 gitea_mac_default_firewall_rules_config:
-  - port: "{{ gitea_port }}/tcp"
+  # 1. Canal Web (API REST, Interfaz Gráfica y Webhooks)
+  - port: "{{ gitea_port | default(3000, true) }}/tcp"
     permanent: true
     state: "enabled"
 
+  # 2. Canal Criptográfico (FALTA CRÍTICA CORREGIDA: Abre el túnel para Git Push/Pull remotos)
+  - port: "{{ web_gitea_ssh_port | default(2222, true) }}/tcp"
+    permanent: true
+    state: "enabled"
+
+
 # 2. End Values (La API que finalmente adopta el rol de MAC por herencia)
-mac_refresh: "{{ gitea_refresh | default(false, true) | bool }}"
+mac_rbac_refresh: "{{ gitea_refresh | default(true, true) | bool }}"
 mac_user_rbac_config: "{{ gitea_mac_server_users | default(gitea_mac_default_server_users, true) }}"
 mac_selinux_policies_config: "{{ gitea_mac_selinux_policies_config | default(gitea_mac_default_selinux_policies_config, true) }}"
 mac_firewall_rules_config: "{{ gitea_mac_firewall_rules_config | default(gitea_mac_default_firewall_rules_config, true) }}"
+
+#########################################################
+#               GITEA USER DETAILS
+#########################################################
+# 1.- Admin User and Password
+gitea_admin_user: "{{ genesis_provision_user | default('genesis') }}"
+gitea_admin_password: "{{ genesis_provision_password | default('genesis') }}"
+
+# 2.- Provision User SSH Key for Trust Relationship 
+gitea_genesis_home: "{{ lookup('ansible.builtin.env', 'HOME') }}"
+gitea_genesis_ssh_home: "{{ gitea_genesis_home }}/.ssh"
+gitea_ssh_pub_detection: "{{ lookup('ansible.builtin.fileglob', gitea_genesis_ssh_home ~ '/*.pub') }}"
+
+# Buscar Llaves SSH Públicas Existentes
+gitea_ssh_pub_capture: >-
+  {% if gitea_ssh_pub_detection %}
+  {{ gitea_ssh_pub_detection | split(',') | first }}
+  {% else %}
+  {{ gitea_genesis_ssh_home }}/id_rsa.pub
+  {% endif %}
+  
+# Leer Llave Existente o Generar una Nueva Ed25519 si no hay ninguna
+gitea_genesis_ssh_home: "{{ ansible_env.HOME }}/.ssh"
+gitea_ssh_key_name: "{{ gitea_provision_user_default_ssh_key_filename | default('id_ed25519', true) }}"
+gitea_final_priv_path: "{{ gitea_genesis_ssh_home }}/{{ gitea_ssh_key_name }}"
+gitea_final_pub_path: "{{ gitea_final_priv_path }}.pub"
+gitea_provision_user_default_ssh_key: "{{ lookup('ansible.builtin.file', gitea_final_pub_path, errors='ignore') | default('', true) | trim }}"
+gitea_admin_ssh_public_key: "{{ genesis_provision_user_ssh_key | default(gitea_provision_user_default_ssh_key) }}"
+
+
+#########################################################
+#               GITEA LIFECYCLE API CALLS
+#########################################################
+gitea_default_lifecycle_repo_api_calls:
+  # -----------------------------------------------------------------------
+  # 0.- Token: Purgar rastro anterior y generar un Token SHA-1 fresco
+  # -----------------------------------------------------------------------
+  get_token:
+    api:
+      - method: DELETE
+        endpoint: "api/v1/users/{{ gitea_admin_user | default('genesis') }}/tokens/genesis-automation-token"
+        status_code: [204, 404]          # Tolera si no existía previamente
+        force_basic_auth: true
+      - method: POST
+        endpoint: "api/v1/users/{{ gitea_admin_user | default('genesis') }}/tokens"
+        status_code: [201]
+        force_basic_auth: true
+        body:
+          name: "genesis-automation-token"
+          scopes: ["all"]
+    shell:
+      - cmd: |
+          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin \
+            --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini \
+            user generate-access-token \
+            --username "{{ gitea_admin_user | default('genesis') }}" \
+            --token-name "genesis-automation-token" \
+            --scopes "all" \
+            --raw 2>/dev/null || true
+
+  # -----------------------------------------------------------------------
+  # 1.- Usuario: Verificar o inyectar al administrador global en frío
+  # -----------------------------------------------------------------------
+  create_user:
+    api:
+      - method: POST
+        endpoint: api/v1/admin/users
+        body:
+          username: "{{ gitea_admin_user | default('genesis') }}"      
+          email: "{{ gitea_admin_user | default('genesis') }}@{{ gitea_domain }}"  
+          password: "{{ gitea_admin_password | default('genesis') }}" 
+          must_change_password: false     
+          send_notify: false              
+          admin: true                      
+    shell:
+      - cmd: >
+          python3 -c "import sqlite3;
+          conn = sqlite3.connect('{{ gitea_work_path | default('/var/lib/gitea', true) }}/data/gitea.db');
+          c = conn.cursor();
+          c.execute(\"DELETE FROM user WHERE name = '{{ gitea_admin_user | default('genesis') }}'\");
+          c.execute(\"DELETE FROM email_address WHERE email = '{{ gitea_admin_user | default('genesis') }}@{{ gitea_domain }}'\");
+          c.execute(\"DELETE FROM access_token WHERE uid NOT IN (SELECT id FROM user)\");
+          conn.commit(); conn.close();"
+      - cmd: >
+          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin
+          --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+          user create --username '{{ gitea_admin_user | default('genesis') }}' --password '{{ gitea_admin_password | default('genesis') }}' --email '{{ gitea_admin_user | default('genesis') }}@{{ gitea_domain }}' --must-change-password=false --admin
+
+  # -----------------------------------------------------------------------
+  # 2.- Llave SSH: PURGA INCONDICIONAL por ID/API y reasentamiento físico
+  # -----------------------------------------------------------------------
+  add_ssh_key:
+    api:
+      # Operación 2.1: Purga incondicional por API eliminando la llave si ya existía (ID 1 suele ser la inicial)
+      - method: DELETE
+        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys/1"
+        status_code: [204, 404]          # Verde directo tanto si se borra como si no existía
+      # Operación 2.2: Alta limpia del llavero autorizado
+      - method: POST
+        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys"   
+        status_code: [201]
+        body:
+          title: "{{ gitea_admin_user | default('genesis') }}-local-key"       
+          key: "{{ gitea_admin_ssh_public_key | default('') }}"  
+          read_only: false                              
+    shell:
+      - cmd: |
+          curl -X DELETE -s -k -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys/1" || true
+          curl -X POST -s -k -H "Content-Type: application/json" -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" -d '{"title":"{{ gitea_admin_user | default('genesis') }}-local-key","key":"{{ gitea_admin_ssh_public_key | default('') }}","read_only":false}' "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys" || true
+      - cmd: |
+          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini admin regenerate keys
+
+  # -----------------------------------------------------------------------
+  # 3.- Repositorio: PURGA INCONDICIONAL del repositorio anterior y re-creación
+  # -----------------------------------------------------------------------
+  create_repo:
+    api:
+      # Operación 3.1: Purga incondicional eliminando el repositorio previo para evitar colisiones 'already exists'
+      - method: DELETE
+        endpoint: "api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}"
+        status_code: [204, 404]          # Exito garantizado si se purga o si el entorno nace virgen
+      # Operación 3.2: Alta inmaculada del repositorio GitOps
+      - method: POST
+        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/repos"  
+        status_code: [201]
+        body:
+          name: "{{ gitea_repo_name | default('maas') }}"
+          description: "MaaS Documentation Server"
+          private: false
+          auto_init: false  
+    shell:
+      - cmd: |
+          curl -X DELETE -s -k -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}" || true
+          curl -X POST -s -k -H "Content-Type: application/json" -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" -d '{"name":"{{ gitea_repo_name | default('maas') }}","description":"MaaS Documentation Server","private":false,"auto_init":true}' "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/user/repos" || true
+      - cmd: |
+          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini admin regenerate hooks
+
+gitea_lifecycle_repo_api_calls: "{{ gitea_lifecycle_config | default(gitea_default_lifecycle_repo_api_calls, true) }}"
+
+#########################################################
+#               GIT CONTENTS CONFIG
+#########################################################
+gitea_ssh_proto: "ssh://git"
+gitea_ssh_host: "{{ gitea_api_host | default(hostvars[inventory_hostname]['ansible_host']) | default('127.0.0.1', true) }}"
+gitea_ssh_port: "{{ web_gitea_ssh_port | default(2222, true) | int }}"
+gitea_ssh_owner: "{{ gitea_admin_user | default('genesis', true) }}"
+gitea_ssh_repo: "{{ gitea_repo_name | default('maas', true) }}"
+gitea_repo_ssh_url: "{{ gitea_ssh_proto }}@{{ gitea_ssh_host }}:{{ gitea_ssh_port | string }}/{{ gitea_ssh_owner }}/{{ gitea_ssh_repo }}.git"
+#########################################################
+#               GIT CONTENTS CONFIG
+#########################################################
+gitea_ssh_proto: "ssh://git"
+gitea_ssh_host: "{{ gitea_api_host | default(hostvars[inventory_hostname]['ansible_host']) | default('127.0.0.1', true) }}"
+gitea_ssh_port: "{{ web_gitea_ssh_port | default(22, true) | int }}"
+gitea_ssh_owner: "{{ gitea_admin_user | default('genesis', true) }}"
+gitea_ssh_repo: "{{ gitea_repo_name | default('maas', true) }}"
+gitea_repo_ssh_url: "{{ gitea_ssh_proto }}@{{ gitea_ssh_host }}/{{ gitea_ssh_owner }}/{{ gitea_ssh_repo }}.git"
+gitea_default_git_config:
+  - key: "remote.origin.url"
+    value: ""
+    state: "absent"
+  - key: "user.name"
+    value: "{{ gitea_ssh_owner }}"
+    state: "present"
+  - key: "user.email"
+    value: "{{ gitea_ssh_owner }}@{{ gitea_domain }}"
+    state: "present"
+  - key: "remote.origin.url"
+    value: "{{ gitea_repo_ssh_url }}"
+    state: "present"
+gitea_git_config: "{{ gitea_git_config_config | default(gitea_default_git_config, true) }}"
+
+gitea_git_push:
+  block:
+    - "git init -b main || git init"
+    - "git add ."
+    - "git commit -m 'Genesis Core Engine Mesh - Initial Infrastructure Commit ({{ now().strftime('%Y-%m-%d %H:%M:%S') }})' || true"
+    - "git push -u origin --all --force"
+    - "git push origin --tags --force"
+  rescue:
+    - "git remote remove origin 2>/dev/null || true"
+    - "git init -b main || git init"
+    - "git config --local user.name '{{ gitea_ssh_owner | default('genesis') }}'"
+    - "git config --local user.email '{{ gitea_ssh_owner | default('genesis') }}@{{ gitea_domain }}'"
+    - "git add ."
+    - "git commit -m 'Genesis Core Engine Mesh - Emergency Recovery Commit ({{ now().strftime('%Y-%m-%d %H:%M:%S') }})' || true"
+    - "git remote add origin '{{ gitea_repo_ssh_url }}'"
+    - "git push -u origin --all --force && git push origin --tags --force"

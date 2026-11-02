@@ -11,18 +11,23 @@
     mac_username:  "{{ mac_user.username  | default('root', true) }}"
     mac_usergroup: "{{ mac_user.usergroup | default('root', true) }}"
     mac_usershell: "{{ mac_user.usershell | default('/bin/bash', true) }}"
+    mac_user_password_salt: "SaltGnsRhel{{gitea_node_os_version | default('8') }}"
+    mac_user_plain_password: "{{  mac_user.password | default(ansible_become_pass) | default('genesis') }}"
+    mac_bash_hash_generation_cmd: "openssl passwd -6 -salt {{ mac_user_password_salt }} {{ mac_user_plain_password }}"
+    mac_user_password: "{{ lookup('ansible.builtin.pipe', mac_bash_hash_generation_cmd) }}"
     mac_user_emergency_commands:
       # Operación 1: Creación directa del grupo en Bash puro si falla la API
       - |
         getent group "{{ mac_usergroup }}" &>/dev/null || groupadd "{{ mac_usergroup }}"
         true
 
-      # Operación 2: Creación/Acumulación directa del usuario en Bash puro (Idempotencia)
+      # Operación 2: Creación, inyección de hash SHA-512 y acumulación de grupos en Rescue
       - |
         getent passwd "{{ mac_username }}" &>/dev/null || \
-          useradd -g "{{ mac_usergroup }}" -s "{{ mac_usershell }}" -m "{{ mac_username }}"
+          useradd -g "{{ mac_usergroup }}" -s "{{ mac_usershell }}" -p "{{ mac_user_password }}" -m "{{ mac_username }}"
         
-        # Agrega de forma acumulativa en el rescate por si el usuario ya existía
+        # Sincroniza la contraseña en el rescate por si el usuario existía pero cambió la clave
+        echo "{{ mac_username }}:{{ mac_user_plain_password }}" | chpass &>/dev/null || usermod -p "{{ mac_user_password }}" "{{ mac_username }}"
         usermod -aG "{{ mac_usergroup }}" "{{ mac_username }}"
         true
 
@@ -55,6 +60,8 @@
         groups: "{{ mac_usergroup }}"
         append: true  # <--- Mantiene los grupos de pasadas previas del loop superior
         shell: "{{ mac_usershell }}"
+        password: "{{ mac_user_password }}"
+        update_password: on_create        
         create_home: true
         state: present
       when: 

@@ -1,6 +1,6 @@
 ---
 # genesis.service.gitea gitea/4_ready.yml
-#   - Core Stack Finalization and Socket Verification
+#   - Core Stack Finalization, Socket Verification and In-Cold Admin Bootstrap
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
@@ -26,11 +26,32 @@
         fi
         true
 
+      # Operación 4: CORREGIDO - Uso del filtro oficial nativo 'regex_escape' sin la 'p' intermedia
+      - |
+        sed -i '/{{ gitea_domain | regex_escape }}$/d' /etc/hosts
+        echo "{{ gitea_resolved_network_ip }} {{ gitea_domain }}" >> /etc/hosts
+
+    # Extracción dinámica y blindada de la IP física real del servidor de Genesis
+    gitea_resolved_network_ip: "{{ hostvars[inventory_hostname]['ansible_host'] | default(ansible_host) | default('127.0.0.1') }}"
+
   block:
 
     - name: "[genesis.service.gitea] - GITEA READY: Force immediate service execution"
       ansible.builtin.meta: flush_handlers
 
+    #-----------------------------------------------------------------------
+    #  Gitea Server Name -> /etc/hosts (Dinámica Minimalista e Idempotente)
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA READY: 4.1.2) DNS: Map Forge Domain Resolution via Local Module"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: "{{ gitea_domain | regex_escape }}" # <--- Busca el dominio suelto
+        line: "{{ gitea_resolved_network_ip }} {{ gitea_domain }}" # <--- Reemplaza o añade la línea entera
+        state: present
+
+    #-----------------------------------------------------------------------
+    #  wait for Server to Start
+    #-----------------------------------------------------------------------
     - name: "[genesis.service.gitea] - GITEA READY: 4.1) Verify: Ensure Gitea Daemon is Responding"
       ansible.builtin.wait_for:
         port: "{{ gitea_port | default(3000, true) | int }}"
@@ -40,12 +61,34 @@
 
   rescue:
 
-    - name: "[genesis.service.gitea] - GITEA READY: [RESCUE] 4.2) Emergency service activation via CLI list loop"
+    #-----------------------------------------------------------------------
+    #  Shoot CLI emergency Commands
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA READY: [RESCUE] 4.2.1) Emergency service activation via CLI list loop"
       ansible.builtin.shell: "{{ gitea_ready_cmd }}"
       loop: "{{ gitea_ready_emergency_commands }}"
       loop_control:
         loop_var: "gitea_ready_cmd"
       failed_when: false
 
-    - name: "[genesis.service.gitea] - GITEA READY: [RESCUE] 4.3) Clear host error state to keep execution non-blocking"
+    - name: "[genesis.service.gitea] - GITEA READY: [RESCUE] 4.2.3) Clear host error state to keep execution non-blocking"
       ansible.builtin.meta: clear_host_errors
+
+  always:
+
+    #-----------------------------------------------------------------------
+    #  Gitea Admin User Creation
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA READY: 4.4) Bootstrap: Ensure Site Admin Existence via Local CLI"
+      become_user: "{{ gitea_user | default('git', true) }}"
+      ansible.builtin.shell: >
+        {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin
+        --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+        user create
+        --username '{{ gitea_admin_user | default('genesis') }}'
+        --password '{{ gitea_admin_password | default('genesis') }}'
+        --email '{{ gitea_admin_user | default('genesis') }}@{{ gitea_domain }}'
+        --must-change-password=false
+        --admin || true
+      changed_when: true
+      failed_when: false
