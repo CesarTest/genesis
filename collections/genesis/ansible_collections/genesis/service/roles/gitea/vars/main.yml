@@ -215,7 +215,107 @@ gitea_default_lifecycle_repo_api_calls:
             --raw 2>/dev/null || true
 
   # -----------------------------------------------------------------------
-  # 1.- Usuario: Verificar o inyectar al administrador global en frío
+  # 1.- Llave SSH: PURGA INCONDICIONAL por ID/API y reasentamiento físico
+  # -----------------------------------------------------------------------
+  add_ssh_key:
+    api:
+      # Operación 2.1: Purga incondicional por API eliminando la llave si ya existía (ID 1 suele ser la inicial)
+      - method: DELETE
+        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys/1"
+        status_code: [204, 404]          # Verde directo tanto si se borra como si no existía
+      # Operación 2.2: Alta limpia del llavero autorizado
+      - method: POST
+        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys"   
+        status_code: [201]
+        body:
+          title: "{{ gitea_admin_user | default('genesis') }}-local-key"       
+          key: "{{ gitea_admin_ssh_public_key | default('') }}"  
+          read_only: false                              
+    shell:
+      - cmd: |
+          curl -X DELETE -s -k -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys/1" || true
+          curl -X POST -s -k -H "Content-Type: application/json" -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" -d '{"title":"{{ gitea_admin_user | default('genesis') }}-local-key","key":"{{ gitea_admin_ssh_public_key | default('') }}","read_only":false}' "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys" || true
+      - cmd: |
+          export GITEA_WORK_DIR={{ gitea_work_path | default('/var/lib/gitea', true) }}
+          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin regenerate keys --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+
+  # -----------------------------------------------------------------------
+  # 2.- Repositorio: PURGA INCONDICIONAL del repositorio anterior y re-creación
+  # -----------------------------------------------------------------------
+  create_repo:
+    api:
+      # Operación 3.1: Purga incondicional eliminando el repositorio previo para evitar colisiones 'already exists'
+      - method: DELETE
+        endpoint: "api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}"
+        status_code: [204, 404]          # Exito garantizado si se purga o si el entorno nace virgen
+      # Operación 3.2: Alta inmaculada del repositorio GitOps
+      - method: POST
+        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/repos"  
+        status_code: [201]
+        body:
+          name: "{{ gitea_repo_name | default('maas') }}"
+          description: "MaaS Documentation Server"
+          private: false
+          auto_init: false  
+    shell:
+      - cmd: |
+          curl -X DELETE -s -k -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}" || true
+          curl -X POST -s -k -H "Content-Type: application/json" -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" -d '{"name":"{{ gitea_repo_name | default('maas') }}","description":"MaaS Documentation Server","private":false,"auto_init":true}' "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/user/repos" || true
+      - cmd: |
+          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini admin regenerate hooks
+
+  # -----------------------------------------------------------------------
+  # 3.- Usuario: Verificar o inyectar al administrador global en frío
+  # -----------------------------------------------------------------------
+  add_webhook:
+    api:
+      # Purgamos de forma preventiva el hook inicial para garantizar idempotencia
+      - method: DELETE
+        endpoint: "api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}/hooks/1"
+        status_code: [204, 404]
+      - method: POST
+        endpoint: "api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}/hooks"
+        status_code: [201]
+        body_format: "json"
+        body:
+          type: "gitea" 
+          active: true
+          events:
+            - "push" 
+          config:
+            url: "http://{{ grav_server_ip | default('127.0.0.1') }}:{{ grav_port | default('80') }}/{{ grav_webhook_route | default('webhook-endpoint') }}"
+            content_type: "json"
+            secret: "{{ gitea_webhook_secret | default('GenesisSystemSecureWebhookSecret2026') }}"
+    shell:
+      # FASE 1: Purga incondicional del webhook anterior (ID: 1)
+      - cmd: |
+          curl -X DELETE -s -k \
+            -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" \
+            "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}/hooks/1" || true
+
+      # FASE 2 y 3: Consolidadas en un único script para mantener la variable en memoria
+      - cmd: |
+          # 1. Declaración del Payload JSON en memoria local del intérprete
+          gitea_webhook_payload='{
+            "type": "gitea",
+            "active": true,
+            "events": ["push"],
+            "config": {
+              "url": "http://{{ grav_server_ip | default('127.0.0.1') }}:{{ grav_port | default('80') }}/{{ grav_webhook_route | default('webhook-endpoint') }}",
+              "content_type": "json",
+              "secret": "{{ gitea_webhook_secret | default('GenesisSystemSecureWebhookSecret2026') }}"
+            }
+          }'
+          
+          # 2. Disparo HTTP perimetral e inyección en la forja de Gitea
+          curl -X POST -s -k \
+            -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" \
+            -H "Content-Type: application/json" \
+            -d "$gitea_webhook_payload" \
+            "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}/hooks"
+
+  # -----------------------------------------------------------------------
+  # 4.- Usuario: Verificar o inyectar al administrador global en frío
   # -----------------------------------------------------------------------
   create_user:
     api:
@@ -242,58 +342,9 @@ gitea_default_lifecycle_repo_api_calls:
           --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
           user create --username '{{ gitea_admin_user | default('genesis') }}' --password '{{ gitea_admin_password | default('genesis') }}' --email '{{ gitea_admin_user | default('genesis') }}@{{ gitea_domain }}' --must-change-password=false --admin
 
-  # -----------------------------------------------------------------------
-  # 2.- Llave SSH: PURGA INCONDICIONAL por ID/API y reasentamiento físico
-  # -----------------------------------------------------------------------
-  add_ssh_key:
-    api:
-      # Operación 2.1: Purga incondicional por API eliminando la llave si ya existía (ID 1 suele ser la inicial)
-      - method: DELETE
-        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys/1"
-        status_code: [204, 404]          # Verde directo tanto si se borra como si no existía
-      # Operación 2.2: Alta limpia del llavero autorizado
-      - method: POST
-        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys"   
-        status_code: [201]
-        body:
-          title: "{{ gitea_admin_user | default('genesis') }}-local-key"       
-          key: "{{ gitea_admin_ssh_public_key | default('') }}"  
-          read_only: false                              
-    shell:
-      - cmd: |
-          curl -X DELETE -s -k -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys/1" || true
-          curl -X POST -s -k -H "Content-Type: application/json" -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" -d '{"title":"{{ gitea_admin_user | default('genesis') }}-local-key","key":"{{ gitea_admin_ssh_public_key | default('') }}","read_only":false}' "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/keys" || true
-      - cmd: |
-          export GITEA_WORK_DIR={{ gitea_work_path | default('/var/lib/gitea', true) }}
-          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin regenerate keys --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
 
   # -----------------------------------------------------------------------
-  # 3.- Repositorio: PURGA INCONDICIONAL del repositorio anterior y re-creación
-  # -----------------------------------------------------------------------
-  create_repo:
-    api:
-      # Operación 3.1: Purga incondicional eliminando el repositorio previo para evitar colisiones 'already exists'
-      - method: DELETE
-        endpoint: "api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}"
-        status_code: [204, 404]          # Exito garantizado si se purga o si el entorno nace virgen
-      # Operación 3.2: Alta inmaculada del repositorio GitOps
-      - method: POST
-        endpoint: "api/v1/admin/users/{{ gitea_admin_user | default('genesis') }}/repos"  
-        status_code: [201]
-        body:
-          name: "{{ gitea_repo_name | default('maas') }}"
-          description: "MaaS Documentation Server"
-          private: false
-          auto_init: false  
-    shell:
-      - cmd: |
-          curl -X DELETE -s -k -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/repos/{{ gitea_admin_user | default('genesis') }}/{{ gitea_repo_name | default('maas') }}" || true
-          curl -X POST -s -k -H "Content-Type: application/json" -u "{{ gitea_admin_user | default('genesis') }}:{{ gitea_admin_password | default('genesis') }}" -d '{"name":"{{ gitea_repo_name | default('maas') }}","description":"MaaS Documentation Server","private":false,"auto_init":true}' "http://127.0.0.1:{{ gitea_port | default(3000) }}/api/v1/user/repos" || true
-      - cmd: |
-          {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini admin regenerate hooks
-
-  # -----------------------------------------------------------------------
-  # 4.- Alimentación: Inyección directa de binario .zip vía Módulo Nativo
+  # 5.- Alimentación: Inyección directa de binario .zip vía Módulo Nativo
   # -----------------------------------------------------------------------
   add_content:
     api:
