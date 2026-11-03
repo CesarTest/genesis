@@ -23,7 +23,7 @@
          # ==============================================================================
          # AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                           
          # Generated dynamically by Genesis Core Engine Mesh                              
-         # Deployment Context: Gitea Setup    
+         # Deployment Context: Gitea Conservative Baseline Setup    
          # Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }} 
          # ==============================================================================
          APP_NAME = Genesis GitOps Code Repository
@@ -35,9 +35,18 @@
          PATH     = {{ gitea_work_path | default('/var/lib/gitea', true) }}/data/gitea.db
          SSL_MODE = disable
          
+         [security]
+         INSTALL_LOCK                      = true
+         SECRET_KEY                        = GenesisSystemStableSecretTokenKey2026BaseForge
+         REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
+         ALLOWED_HOSTNAMES                 = *,127.0.0.1,localhost,{{ ansible_host }},{{ gitea_domain }}
+          
+         [webhook]
+         ALLOWED_HOST_LIST = loopback,private
+         
          [repository]
          ROOT = {{ gitea_work_path | default('/var/lib/gitea', true) }}/gitea-repositories
-        
+         
          [server]
          SSH_DOMAIN       = {{ gitea_domain }}
          HTTP_INT_MEM_MODE= true
@@ -45,23 +54,17 @@
          HTTP_ADDR        = 0.0.0.0
          HTTP_PORT        = {{ gitea_port | default(3000, true) }}
          ROOT_URL         = http://{{ gitea_domain }}:{{ gitea_port | default(3000, true) }}/
-         
-         # PARÁMETROS CRIPTOGRÁFICOS COMPLETOS DE GENESIS SYSTEM
+         LOCAL_ROOT_URL   = http://127.0.0.1:{{ gitea_port | default(3000, true)  }} 
+        
+         # PARÁMETROS CRIPTOGRÁFICOS CONSERVADORES DE ARRANQUE EN FRÍO
          DISABLE_SSH      = false
-         START_SSH_SERVER = true
-         SSH_LISTEN_PORT  = {{ gitea_ssh_port | default(2222, true) | int }}
-         SSH_PORT         = {{ gitea_ssh_port | default(2222, true) | int }}
+         START_SSH_SERVER = false
+         SSH_PORT         = {{ gitea_ssh_port | default(22, true) | int }}
          LFS_START_SERVER = false
          
-         # CONTROL DE HOOKS INTERNOS (SINTAXIS OFICIAL INMUTABLE DE GITEA)
-         APP_DATA_PATH      = {{ gitea_work_path | default('/var/lib/gitea', true) }}
-         gitea_AbsolutePATH = {{ gitea_bin_path | default('/usr/bin', true) }}/gitea
-         GITEA_WORK_DIR     = {{ gitea_work_path | default('/var/lib/gitea', true) }}
-        
-         [security]
-         INSTALL_LOCK   = true
-         SECRET_KEY     = GenesisSystemStableSecretTokenKey2026BaseForge
-         REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
+         # BLINDAJE DE LA API WEB (SINTAXIS ESTRICTA EXIGIDA POR EL PARSER DE GO)
+         APP_DATA_PATH    = {{ gitea_work_path | default('/var/lib/gitea', true) }}
+         AbsolutePATH     = {{ gitea_bin_path | default('/usr/bin', true) }}/gitea
          
          [service]
          DISABLE_REGISTRATION   = false
@@ -76,8 +79,6 @@
          MODE      = file
          LEVEL     = info
          ROOT_PATH = {{ gitea_work_path | default('/var/lib/gitea', true) }}/log
-
-
      # -----------------------------------------------------
      # 2. Systemd Service Unit Configuration (gitea.service)
      # -----------------------------------------------------

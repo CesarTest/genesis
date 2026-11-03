@@ -8,41 +8,12 @@
 - name: "[genesis.service.gitea] - GITEA: Grav Documentation Database for GitOps"
   block:
 
-    - name: "[genesis.service.gitea] - GITEA: 1.1) Install Dependencies"
-      ansible.builtin.include_tasks: "server/1_dependency.yml"
+    - name: "[genesis.service.gitea] - GITEA: 1) Server: Setup Global Environment"
+      ansible.builtin.include_tasks: "1_server.yml"
 
-    - name: "[genesis.service.gitea] - GITEA: 1.2) Create Folders"
-      ansible.builtin.include_tasks: "server/2_folder.yml"
+    - name: "[genesis.service.gitea] - GITEA: 2) Gitea: Deploy Service"
+      ansible.builtin.include_tasks: "2_gitea.yml"
 
-    - name: "[genesis.service.gitea] - GITEA: 2.1) Install: Deploy Gitea Core Binary"
-      ansible.builtin.include_tasks: "gitea/1_install.yml"
-
-    - name: "[genesis.service.gitea] - GITEA: 2.2) Setup: Configure Service"
-      ansible.builtin.include_tasks: "gitea/2_setup.yml"
-
-    - name: "[genesis.service.gitea] - GITEA: 2.3) Ready: Verify and Finalize Service"
-      ansible.builtin.include_tasks: "gitea/3_ready.yml"
-
-    - name: "[genesis.service.gitea] - GITEA: 3.1) Repo: Initialization"
-      ansible.builtin.include_tasks: "repo/1_lifecycle.yml"
-      loop:
-        - get_token
-        - add_ssh_key
-        - create_repo
-      loop_control:
-         loop_var: "gitea_action"
-
-    - name: "[genesis.service.gitea] - GITEA: 3.2) Repo: Push Contents"
-      ansible.builtin.include_tasks: "repo/2_push.yml"
-
-    - name: "[genesis.service.gitea] - GITEA: 3.3) Repo: Push Contents"
-      ansible.builtin.include_tasks: "repo/1_lifecycle.yml"
-      loop:
-        - get_token
-        - synchro_master
-      loop_control:
-        loop_var: "gitea_action"
-      when:
-        - gitea_master_repo_url is defined
-        - gitea_master_repo_url is not none
-        - gitea_master_repo_url | length > 0 
+    - name: "[genesis.service.gitea] - GITEA: 3) Repo: Populate Contents"
+      ansible.builtin.include_tasks: "3_repo.yml"
+ 
