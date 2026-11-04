@@ -40,6 +40,7 @@
          SECRET_KEY                        = GenesisSystemStableSecretTokenKey2026BaseForge
          REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
          ALLOWED_HOSTNAMES                 = *,127.0.0.1,localhost,{{ ansible_host }},{{ gitea_domain }}
+         DISABLE_GIT_HOOKS                 = false
           
          [webhook]
          ALLOWED_HOST_LIST = loopback,private

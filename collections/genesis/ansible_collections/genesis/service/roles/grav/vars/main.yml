@@ -12,7 +12,7 @@
 # 1.- Server Properties
 server_domain: "{{ web_server_domain | default('genesis.lab', true) }}"
 apache_logs: "{{ web_apache_logs | default('/var/log/httpd', true) }}"
-apache_work_path: "{{ web_work_path | default('/var/www/html/training',true) }}"
+apache_work_path: "{{ web_work_path | default('/var/www/html/maas',true) }}"
 
 # 2.- Server Paths
 grav_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
@@ -39,6 +39,11 @@ grav_repo_doc_content_path: "{{ grav_repo_doc_path }}/content"
 grav_work_path:  "{{ doc_grav_work_path  | default(apache_work_path) }}"
 grav_users_default_workpath: "{{ grav_work_path }}/user/accounts" 
 grav_users_path: "{{ doc_grav_users_path | default(grav_users_default_workpath, true) }}" 
+doc_default_url: "{{ inventory_hostname_short }}.maas.{{ server_domain | default('genesis.lab') }}"
+doc_default_gitea_url: "127.0.0.1:{{ gitea_port | default('3000') }}"
+grav_site_url:   "{{ doc_grav_url | default(doc_default_url, true) }}"
+grav_gitea_url:  "{{ doc_gitea_url | default(doc_default_gitea_url, true) }}"
+grav_gitea_repo_url: "http://{{ grav_gitea_url }}/{{ gitea_user | default('genesis') }}/{{ gitea_repo | default('maas.git') }}"
 
 # 1.2.- Grav Customizations (password=Training_2025)
 doc_default_users:
@@ -58,8 +63,7 @@ doc_default_deploy:
       dest: "/etc/hosts"
       content: |
         {{ hostvars[groups['target'][0]]['ansible_host'] | default('127.0.0.1') }} seed.genesis.lab
-        {{ ansible_host | default('127.0.0.1') }} gitea.genesis.lab
-        {{ ansible_host | default('127.0.0.1') }} training.genesis.lab
+        {{ ansible_host | default('127.0.0.1') }} {{ grav_site_url }}
 
   - name: "Learn4 Theme"
     src: "{{ grav_repo_doc_path }}/learn4-theme.zip"
@@ -138,7 +142,7 @@ grav_multisite: "{{ doc_grav_multisite | default('setup_subdirectory', true) }}"
 grav_multisite_path: "{{ doc_grav_multisite_path | default(['maas'], true) }}"
 
 doc_default_sites:
-  - title: "MaaS Training Labs"
+  - title: "MaaS Labs"
     path: "home"
     root: yes
     
@@ -168,7 +172,7 @@ doc_default_sites:
         line: '  alias: /home'
       - file: "themes/labs/labs.yaml"
         regexp: 'home_url:'
-        line: "home_url:  http://training.{{ server_domain | default('genesis.lab') }}"
+        line: "home_url:  http://{{ grav_site_url }}"
 
   - title: "Metal as a Service Lab"
     path: "{{ grav_multisite_path[0] | default('genesis')}}"
@@ -193,13 +197,13 @@ doc_default_sites:
         line: '  alias: /intro'
       - file: "plugins/git-sync/blueprints.yaml"
         regexp: "placeholder: https://github.com"
-        line: "      placeholder: https://proteo.internal{{ grav_multisite_path[0] | default('linux') }}-doc.git"
+        line: "      placeholder: {{ grav_gitea_repo_url | default('http://127.0.0.1:3000/genesis/maas.git') }}"
       - file: "plugins/git-sync/blueprints.yaml"
         regexp: "gituser: Use Git User Name"
-        line:   "        gituser: cdelgadog"
+        line:   "        gituser: {{ gitea_user | default('genesis') }}"
       - file: "plugins/git-sync/blueprints.yaml"
         regexp: "gitsync: Use GitSync Committer Name"
-        line:   "        gitsync: cdelgadog"
+        line:   "        gitsync: {{ gitea_user | default('genesis') }}"
 
     dumps:
       - template:
@@ -212,5 +216,39 @@ doc_default_sites:
                note: true
                link: true
                tree: https://github.com
+      - template: 
+          dest: "config/plugins/git-sync.yaml"
+          content: |
+            enabled: true
+            folders:
+              - pages
+            SyncNotice: null
+            sync:
+              on_save: true
+              on_delete: true
+              on_media: true
+              cron_enable: false
+              cron_at: '0 12,23 * * *'
+            local_repository: "user/{{ inventory_hostname_short | default('maas') }}_git_clon"
+            repository: "{{ grav_gitea_repo_url | default('http://127.0.0') }}"
+            no_user: '0'
+            user: "{{ gitea_user | default('genesis') }}"
+            password: "{{ gitea_admin_password | default('genesis') }}"
+            webhook: "/{{ grav_webhook_route | default('webhook-endpoint') }}"
+            webhook_enabled: '1'
+            webhook_secret: "{{ gitea_webhook_secret | default('GenesisSystemSecureWebhookSecret2026') }}"
+            branch: "{{ gitea_branch | default('main') }}"
+            remote:
+              name: origin
+              branch: "{{ gitea_branch | default('main') }}"
+            git:
+              author: "{{ gitea_user | default('genesis') }}"
+              message: '(Grav GitSync) Automatic Commit from Genesis Node'
+              name: "{{ gitea_user | default('genesis') }}"
+              email: "{{ gitea_user | default('genesis') }}@{{ gitea_domain | default('genesis.local') }}"
+              bin: git
+              ignore: null
+              private_key: null
+            logging: true
 
 grav_sites: "{{ doc_grav_sites | default(doc_default_sites, true) }}"

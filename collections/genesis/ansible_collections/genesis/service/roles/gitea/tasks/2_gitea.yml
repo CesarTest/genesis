@@ -24,6 +24,6 @@
         - get_token
         - add_ssh_key
         - create_repo
-        - synchro_master
+        - continous_deployment
       loop_control:
         loop_var: "gitea_action"

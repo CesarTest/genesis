@@ -12,7 +12,9 @@ server_domain: "{{ web_server_domain | default('genesis.lab', true) }}"
 apache_work_path: "{{ web_apache_work_path | default('/var/www/html', true) }}"
 apache_logs: "{{ web_apache_logs | default('/var/log/httpd', true) }}"
 apache_refresh: "{{ web_apache_refresh | default('true') | bool }}"
-  
+apache_gitea_url: "{{ inventory_hostname_short }}.gitea.{{ server_domain | default('genesis.lab') }}"
+apache_maas_url:  "{{ inventory_hostname_short }}.maas.{{  server_domain | default('genesis.lab') }}"
+
 #########################################################
 #            APACHE SERVER CONFIGURATIONS
 #########################################################
@@ -28,22 +30,22 @@ apache_allow_override: "{{ web_apache_allow_override | default('All', true) }}"
 apache_options: "{{ web_apache_options | default('All Indexes FollowSymLinks', true) }}"
 apache_mods_disabled: "{{ web_apache_mods_disabled | default([], true) }}"
 grav_default_vhosts:
-  - servername: "gitea.{{ server_domain | default('genesis.lab') }}"
+  - servername: "{{ apache_gitea_url }}"
     documentroot: "{{ apache_work_path | default('/var/www/html') }}/gitea"  
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
-    serveralias: "www.gitea.{{ server_domain | default('genesis.lab') }}" 
+    serveralias: "www.{{ apache_gitea_url | default('gitea.genesis.lab') }}" 
     extra_parameters: |
          ErrorLog  {{ apache_logs | default('/var/log/httpd', true) }}/gitea/error.log  
          CustomLog {{ apache_logs | default('/var/log/httpd', true) }}/gitea/access.log combined  
-         Redirect 301 / http://gitea.{{ server_domain | default('genesis.lab', true) }}:3000/
+         Redirect 301 / http://{{ apache_gitea_url | default('gitea.genesis.lab') }}:3000/
 
-  - servername: "training.{{ server_domain | default('genesis.lab') }}"
-    documentroot: "{{ apache_work_path | default('/var/www/html') }}/training"
+  - servername:  "{{ apache_maas_url | default('maas.genesis.lab') }}"
+    documentroot: "{{ apache_work_path | default('/var/www/html') }}/maas"
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
-    serveralias: "www.training.{{ server_domain | default('genesis.lab') }}"
+    serveralias: "www.{{ apache_maas_url | default('maas.genesis.lab') }}"
     extra_parameters: |
-         ErrorLog  {{ apache_logs | default('/var/log/httpd') }}/training/error.log
-         CustomLog {{ apache_logs | default('/var/log/httpd') }}/training/access.log combined
+         ErrorLog  {{ apache_logs | default('/var/log/httpd') }}/maas/error.log
+         CustomLog {{ apache_logs | default('/var/log/httpd') }}/maas/access.log combined
 
 apache_vhosts: "{{ web_apache_vhosts | default(grav_default_vhosts, true) }}"
 
@@ -107,7 +109,6 @@ php_opcache_revalidate_path: "{{ web_php_opcache_revalidate_path | default('0', 
 php_opcache_revalidate_freq: "{{ web_php_opcache_revalidate_freq | default('2', true) }}"
 php_opcache_max_file_size: "{{ web_php_opcache_max_file_size | default('0', true) }}"
 
-
 #########################################################         
 #               WEB SERVER INFRASTRUCTURE
 #########################################################
@@ -119,7 +120,7 @@ web_default_folders_tree:
     mode: "0755"
     setype: "httpd_sys_rw_content_t"
 
-  - path: "{{ apache_work_path | default('/var/www/html', true) }}/training"
+  - path: "{{ apache_work_path | default('/var/www/html', true) }}/maas"
     owner: "{{ apache_user }}"
     group: "{{ apache_group }}"
     mode: "0755"
@@ -131,7 +132,7 @@ web_default_folders_tree:
     mode: "0750"
     setype: "httpd_log_t"
 
-  - path: "{{ apache_logs | default('/var/log/httpd', true) }}/training"
+  - path: "{{ apache_logs | default('/var/log/httpd', true) }}/maas"
     owner: "root"
     group: "root"
     mode: "0750"
