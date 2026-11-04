@@ -6,7 +6,7 @@
 #
 - name: "[genesis.service.grav] - GRAV -3- MultiSite: 1) Upload Multisite Template |{{ grav_multisite | default('Vacio') }}|"
   vars:
-    upload_path: "{{ grav_work_path | default('/var/www/html/training') }}"
+    upload_path: "{{ grav_work_path | default('/var/www/html/maas') }}"
     upload_src:  "{{ grav_multisite | default('setup_subdirectory') }}.j2"
     upload_dest: "{{ upload_path }}/setup.php"   
   template:

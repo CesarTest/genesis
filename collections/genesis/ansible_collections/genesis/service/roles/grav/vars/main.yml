@@ -12,7 +12,13 @@
 # 1.- Server Properties
 server_domain: "{{ web_server_domain | default('genesis.lab', true) }}"
 apache_logs: "{{ web_apache_logs | default('/var/log/httpd', true) }}"
-apache_work_path: "{{ web_work_path | default('/var/www/html/maas',true) }}"
+apache_work_path: "{{ web_work_path | default('/var/www/html',true) }}"
+apache_group: "{{ web_apache_group | default(apache_user, true) }}"
+apache_work_path:   "{{ web_apache_work_path | default('/var/www/html', true) }}"
+apache_gitea_path:  "{{ apache_work_path }}/gitea"
+apache_maas_path:  "{{ apache_work_path }}/maas"
+apache_git_cd_path: "{{ apache_gitea_path }}/{{ gitea_repo_name | default('maas') }}"
+
 
 # 2.- Server Paths
 grav_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
@@ -36,7 +42,7 @@ grav_repo_doc_content_path: "{{ grav_repo_doc_path }}/content"
 # 1.- Grav Installation
 # -------------------------------------------------------
 # 1.1.- Install GRAV
-grav_work_path:  "{{ doc_grav_work_path  | default(apache_work_path) }}"
+grav_work_path:  "{{ doc_grav_work_path  | default(apache_maas_path) }}"
 grav_users_default_workpath: "{{ grav_work_path }}/user/accounts" 
 grav_users_path: "{{ doc_grav_users_path | default(grav_users_default_workpath, true) }}" 
 doc_default_url: "{{ inventory_hostname_short }}.maas.{{ server_domain | default('genesis.lab') }}"
@@ -147,13 +153,13 @@ doc_default_sites:
     root: yes
     
     contents:
-      - src: "home/themes/labs"
+      - remote_src: "{{ apache_git_cd_path }}/home/themes/labs"
         dest: "themes/labs"
         refresh: yes 
-      - src: "{{ grav_multisite_path[0] | default('genesis') }}/themes/maas"
+      - remote_src: "{{ apache_git_cd_path }}/maas/themes/maas"
         dest: "themes/maas"
         refresh: yes         
-      - src: "{{ grav_repo_doc_content_path }}/home/pages"
+      - remote_src: "{{ apache_git_cd_path }}/home/pages"
         dest: "pages"
         refresh: yes        
     
@@ -178,10 +184,10 @@ doc_default_sites:
     path: "{{ grav_multisite_path[0] | default('genesis')}}"
     
     contents:
-      - src: "{{ grav_repo_doc_content_path }}/{{ grav_multisite_path[0] | default('genesis') }}/pages" 
+      - remote_src: "{{ apache_git_cd_path }}/maas/pages" 
         dest: "pages"
         refresh: yes
-      - src: "{{ grav_repo_doc_content_path }}/{{ grav_multisite_path[0] | default('genesis') }}/images"
+      - remote_src: "{{ apache_git_cd_path }}/maas/images"
         dest: "images"
         refresh: yes
         
@@ -216,39 +222,6 @@ doc_default_sites:
                note: true
                link: true
                tree: https://github.com
-      - template: 
-          dest: "config/plugins/git-sync.yaml"
-          content: |
-            enabled: true
-            folders:
-              - pages
-            SyncNotice: null
-            sync:
-              on_save: true
-              on_delete: true
-              on_media: true
-              cron_enable: false
-              cron_at: '0 12,23 * * *'
-            local_repository: "user/{{ inventory_hostname_short | default('maas') }}_git_clon"
-            repository: "{{ grav_gitea_repo_url | default('http://127.0.0') }}"
-            no_user: '0'
-            user: "{{ gitea_user | default('genesis') }}"
-            password: "{{ gitea_admin_password | default('genesis') }}"
-            webhook: "/{{ grav_webhook_route | default('webhook-endpoint') }}"
-            webhook_enabled: '1'
-            webhook_secret: "{{ gitea_webhook_secret | default('GenesisSystemSecureWebhookSecret2026') }}"
-            branch: "{{ gitea_branch | default('main') }}"
-            remote:
-              name: origin
-              branch: "{{ gitea_branch | default('main') }}"
-            git:
-              author: "{{ gitea_user | default('genesis') }}"
-              message: '(Grav GitSync) Automatic Commit from Genesis Node'
-              name: "{{ gitea_user | default('genesis') }}"
-              email: "{{ gitea_user | default('genesis') }}@{{ gitea_domain | default('genesis.local') }}"
-              bin: git
-              ignore: null
-              private_key: null
-            logging: true
+
 
 grav_sites: "{{ doc_grav_sites | default(doc_default_sites, true) }}"

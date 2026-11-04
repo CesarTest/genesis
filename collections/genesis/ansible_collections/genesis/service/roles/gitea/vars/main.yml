@@ -115,16 +115,19 @@ gitea_mac_default_server_users:
 gitea_mac_default_selinux_policies_config:
   - target: "{{ gitea_work_path }}(/.*)?"
     setype: "var_lib_t"
-    seuser: "system_u"
+    seuser: "system_u" 
     state: "present"
+
   - target: "{{ gitea_conf_path }}(/.*)?"
     setype: "httpd_sys_rw_content_t"
-    seuser: "system_u"
+    seuser: "unconfined_u" 
     state: "present"
+
   - target: "{{ apache_git_cd_path }}(/.*)?"
     setype: "httpd_sys_rw_content_t"
-    seuser: "system_u"
+    seuser: "unconfined_u" 
     state: "present"
+
 
 gitea_mac_default_firewall_rules_config:
   # 1. Canal Web (API REST, Interfaz Gráfica y Webhooks)

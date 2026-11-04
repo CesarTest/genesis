@@ -80,7 +80,7 @@
       owner: "{{ pkg.owner | default(omit)}}"
       group: "{{ pkg.group | default(omit)}}"
       template: 
-        dest: "{{ site_upload_dest}}/{{ pkg.template.dest | default('')}}"
+        dest: "{{ site_upload_dest }}/{{ pkg.template.dest | default('')}}"
         content: "{{ pkg.template.content | default('') }}"
   when:
        - "(isMultisite is true) or (isRoot is true)" 
