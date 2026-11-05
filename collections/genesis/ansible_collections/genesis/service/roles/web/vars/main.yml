@@ -13,7 +13,9 @@ apache_work_path: "{{ web_apache_work_path | default('/var/www/html', true) }}"
 apache_logs: "{{ web_apache_logs | default('/var/log/httpd', true) }}"
 apache_refresh: "{{ web_apache_refresh | default('true') | bool }}"
 apache_gitea_url: "{{ inventory_hostname_short }}.gitea.{{ server_domain | default('genesis.lab') }}"
+apache_gitea_path: "{{ apache_work_path | default('/var/www/html') }}/gitea"
 apache_maas_url:  "{{ inventory_hostname_short }}.maas.{{  server_domain | default('genesis.lab') }}"
+apache_maas_path: "{{ apache_work_path | default('/var/www/html') }}/maas"
 
 #########################################################
 #            APACHE SERVER CONFIGURATIONS
@@ -31,7 +33,7 @@ apache_options: "{{ web_apache_options | default('All Indexes FollowSymLinks', t
 apache_mods_disabled: "{{ web_apache_mods_disabled | default([], true) }}"
 grav_default_vhosts:
   - servername: "{{ apache_gitea_url }}"
-    documentroot: "{{ apache_work_path | default('/var/www/html') }}/gitea"  
+    documentroot: "{{ apache_gitea_path | default('/var/www/html/gitea') }}"  
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
     serveralias: "www.{{ apache_gitea_url | default('gitea.genesis.lab') }}" 
     extra_parameters: |
@@ -40,7 +42,7 @@ grav_default_vhosts:
          Redirect 301 / http://{{ apache_gitea_url | default('gitea.genesis.lab') }}:3000/
 
   - servername:  "{{ apache_maas_url | default('maas.genesis.lab') }}"
-    documentroot: "{{ apache_work_path | default('/var/www/html') }}/maas"
+    documentroot: "{{ apache_maas_path | default('/var/www/html/maas') }}"
     serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
     serveralias: "www.{{ apache_maas_url | default('maas.genesis.lab') }}"
     extra_parameters: |

@@ -47,7 +47,7 @@
             pages:   "{{ site_work_path }}/pages"
             plugins: "{{ site_work_path }}/plugins"
             config: "{{ site_work_path }}/config"    
-
+    
       ansible.builtin.include_tasks: "grav/3_site.yml"
       loop: "{{ grav_sites | default([]) }}"
       loop_control:
