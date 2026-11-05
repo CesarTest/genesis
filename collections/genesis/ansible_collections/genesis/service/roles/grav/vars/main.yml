@@ -75,7 +75,7 @@ doc_default_deploy:
     src: "{{ grav_repo_doc_path }}/learn4-theme.zip"
     dest: "{{ grav_work_path | default('/tmp') }}/user/themes"
     rename: "learn4"
-    original: "grav-theme-learn4-master"
+    original: "grav-theme-learn4-develop"
     template:
       dest: "{{ grav_work_path | default('/tmp') }}/user/config/themes/maas.yaml"
       content: |
@@ -118,7 +118,7 @@ doc_default_deploy:
     src: "{{ grav_repo_doc_path }}/page-toc.zip"
     dest: "{{ grav_work_path | default('/tmp') }}/user/plugins"
     rename: "page-toc"
-    original: "grav-plugin-page-toc-master"
+    original: "grav-plugin-page-toc-develop"
     template:
       dest: "{{ grav_work_path | default('/tmp') }}/user/config/plugins/page-toc.yaml"
       content: |
@@ -219,9 +219,16 @@ doc_default_sites:
              production-mode: false
              grid-size: grid-lg
              github:
-               note: true
-               link: true
-               tree: https://github.com
-
+              note: true
+              link: true
+              tree: https://github.com/getgrav/grav-learn/blob/develop/
+              commits: https://github.com/getgrav/grav-learn/commits/develop/
+             spectre:
+              exp: false               
+              icons: false
+             custom_logo:
+                 - name: 'logo.svg'
+             custom_logo_mobile:
+                 - name: 'logo.svg'
 
 grav_sites: "{{ doc_grav_sites | default(doc_default_sites, true) }}"

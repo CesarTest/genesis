@@ -41,7 +41,10 @@
          REVERSE_PROXY_AUTHENTICATION_USER = X-WEBAUTH-USER
          ALLOWED_HOSTNAMES                 = *,127.0.0.1,localhost,{{ ansible_host }},{{ gitea_domain }}
          DISABLE_GIT_HOOKS                 = false
-          
+         
+         [ssh.minimum_key_sizes]
+         RSA = 2048
+         
          [webhook]
          ALLOWED_HOST_LIST = loopback,private
          

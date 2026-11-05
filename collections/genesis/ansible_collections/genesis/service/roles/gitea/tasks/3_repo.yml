@@ -52,6 +52,7 @@
     - name: "[genesis.service.gitea] - REPO: 3.3) Push: Populate Repo"
       ansible.builtin.include_tasks: "repo/git_action.yml"
       loop:
+        - commit
         - push
       loop_control:
         loop_var: "action"

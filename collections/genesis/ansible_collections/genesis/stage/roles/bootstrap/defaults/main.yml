@@ -521,7 +521,7 @@ g1_grav_url:
   skeleton: "https://getgrav.org/download/skeletons/learn2-with-git-sync-site"
   doc:      "https://github.com/getgrav/grav-theme-learn4/archive/refs/heads/develop.zip"
   root:     "https://github.com/getgrav/grav-theme-quark/archive/refs/heads/master.zip"
-  toc:      "https://github.com/trilbymedia/grav-plugin-page-toc/archive/refs/heads/master.zip"
+  toc:      "https://github.com/trilbymedia/grav-plugin-page-toc/archive/refs/heads/develop.zip"
 
 ######################################################
 #  TARBALL DEPENDENCIES

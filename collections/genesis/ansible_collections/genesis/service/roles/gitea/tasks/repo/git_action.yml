@@ -27,12 +27,12 @@
         chdir: "{{ gitea_local_repo_dir }}" 
       environment:
         GIT_SSH_COMMAND: "{{ gitea_git_ssh_bypass }}"
-      loop: "{{ gitea_git_push[git_action] | default([], true) }}"
+      loop: "{{ gitea_git_push[action] | default([], true) }}"
       loop_control:
         loop_var: "git_cmd_line"
         label: "Executing: {{ git_cmd_line.split(' ')[0:2] | join(' ') }}..."
       when:
         - gitea_git_push is defined
-        - gitea_git_push[git_action] is defined
+        - gitea_git_push[action] is defined
       ignore_errors: true 
       changed_when: true
