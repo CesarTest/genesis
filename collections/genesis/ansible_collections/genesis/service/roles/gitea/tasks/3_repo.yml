@@ -44,7 +44,7 @@
       loop:
         - init
       loop_control:
-        loop_var: "git_action"
+        loop_var: "action"
 
     - name: "[genesis.service.gitea] - REPO: 3.2) Config: Git Configurations"
       ansible.builtin.include_tasks: "repo/git_config.yml"
@@ -54,7 +54,7 @@
       loop:
         - push
       loop_control:
-        loop_var: "git_action"
+        loop_var: "action"
 
   rescue:
 

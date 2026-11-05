@@ -1,0 +1,66 @@
+---
+# genesis.setup repo/git_config.yml
+#   - First-Time Repository Configuration feeding via Localhost Controller Execution
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.gitea] - GITEA REPO: Execute Git Configuration Engine"
+  delegate_to: localhost
+  become: false 
+  vars:
+    gitea_local_repo_dir: "{{ gitea_content_path | default(genesis_repo_path) | default('/tmp', true) }}"
+    gitea_local_home: "{{ gitea_admin_ssh_private_key_path | default(ansible_env.HOME, true) }}"
+    gitea_local_ssh_key: "{{ gitea_final_priv_filename | default('~/.ssh/id_rsa') }}"
+    gitea_target_ssh_port: "{{ gitea_ssh_port | default(2222) | int }}"
+    gitea_git_ssh_bypass: "ssh -p {{ gitea_target_ssh_port }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o HostKeyAlias={{ gitea_domain }} -i {{ gitea_local_ssh_key }}"
+
+  block:
+  
+    #-----------------------------------------------------------------------
+    # 1.0.- TRAZA DE CONTROL: Conectividad y Handshake Criptográfico SSH
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA REPO: 2.0) Debug: Display SSH & Domain Network Details"
+      ansible.builtin.debug:
+        msg: "{{ debug_gitea_ssh_text.splitlines() }}"
+      vars:
+        debug_gitea_ssh_text: |
+          =================== GITEA REPO SSH DEBUG ===================
+          Target Forge Domain:    [{{ gitea_domain | default('gitea_domain NOT DEFINED OR EMPTY', true) }}]
+          Git Repository:         [{{ gitea_local_repo_dir | default('gitea_local_repo_dir NOT DEFINED OR EMPTY', true) }}]
+          Selected Private Key:   [{{ gitea_local_ssh_key | default('gitea_local_ssh_key NOT DEFINED OR EMPTY', true) }}]
+          Git SSH Command Bypass: [{{ gitea_git_ssh_bypass | default('gitea_git_ssh_bypass NOT DEFINED OR EMPTY', true) }}]
+      ignore_errors: true
+
+    #-----------------------------------------------------------------------
+    # 1.1.- Canal Declarativo: Módulo oficial para inyección atómica de parámetros
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA REPO: 3.1) Git_Config: Apply Git Config Keys Declaratively"
+      ansible.builtin.git_config:
+        name: "{{ git_key.name }}"
+        value: "{{ git_key.value | default(omit, true) }}"
+        state: "{{ git_key.state | default('present') }}"
+        scope: local
+        repo: "{{ gitea_local_repo_dir }}"
+      loop: "{{ gitea_git_config['api'] | default([]) }}"
+      loop_control:
+        loop_var: "git_key"
+        label: "{{ git_key.name }} ({{ git_key.state | default('present') }})"  
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.0.- Canal de Rescate: Caída forzada a comandos locales posicionados en chdir
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA REPO: 3.2) Git_Config: RESCUE EXEC - Fallback Force Execution via Shell"
+      ansible.builtin.shell: "{{ shell_stage }}"
+      args:
+        chdir: "{{ gitea_local_repo_dir }}" 
+      environment:
+        GIT_SSH_COMMAND: "{{ gitea_git_ssh_bypass }}"
+      loop: "{{ gitea_git_config['shell'] | default([]) }}"
+      loop_control:
+        loop_var: "shell_stage"
+      register: gitea_rescue_cli_output
+      failed_when: false
