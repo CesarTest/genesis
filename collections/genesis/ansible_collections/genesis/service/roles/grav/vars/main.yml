@@ -155,27 +155,28 @@ doc_default_sites:
     contents:
       - remote_src: "{{ apache_git_cd_path }}/home/themes/labs"
         dest: "themes/labs"
-        refresh: yes 
-      - remote_src: "{{ apache_git_cd_path }}/maas/themes/maas"
-        dest: "themes/maas"
-        refresh: yes         
+        refresh: yes   
       - remote_src: "{{ apache_git_cd_path }}/home/pages"
         dest: "pages"
         refresh: yes        
     
     configs:
+      # Root Files
       - file: "../.htaccess"
         regexp: "RewriteBase"
-        line: "RewriteBase /"      
+        line: "RewriteBase /" 
+      # Grav System
       - file: "config/system.yaml" 
         regexp: 'theme:' 
         line: '  theme: "labs"'
-      - file: "config/site.yaml"
-        regexp: 'title:'
-        line: 'title: "Sylva MaaS Training Labs"'
       - file: "config/system.yaml"
         regexp: 'alias:'
         line: '  alias: /home'
+      # Grav Site
+      - file: "config/site.yaml"
+        regexp: 'title:'
+        line: 'title: "Sylva MaaS Training Labs"'
+      # Grav Theme
       - file: "themes/labs/labs.yaml"
         regexp: 'home_url:'
         line: "home_url:  http://{{ grav_site_url }}"
@@ -184,6 +185,9 @@ doc_default_sites:
     path: "{{ grav_multisite_path[0] | default('genesis')}}"
     
     contents:
+      - remote_src: "{{ apache_git_cd_path }}/maas/themes/maas"
+        dest: "themes/maas"
+        refresh: yes      
       - remote_src: "{{ apache_git_cd_path }}/maas/pages" 
         dest: "pages"
         refresh: yes
@@ -192,43 +196,20 @@ doc_default_sites:
         refresh: yes
         
     configs:
-      #- file: "config/system.yaml"
-      #  regexp: 'theme:'
-      #  line: '  theme: "maas"'
-      - file: "config/site.yaml"
-        regexp: 'title:'
-        line: 'title: "Metal as a Service Lab"'
+      # Grav System
+      - file: "config/system.yaml"
+        regexp: 'theme:'
+        line: '  theme: "maas"'
       - file: "config/system.yaml"
         regexp: 'alias:'
         line: '  alias: /intro'
-      - file: "plugins/git-sync/blueprints.yaml"
-        regexp: "placeholder: https://github.com"
-        line: "      placeholder: {{ grav_gitea_repo_url | default('http://127.0.0.1:3000/genesis/maas.git') }}"
-      - file: "plugins/git-sync/blueprints.yaml"
-        regexp: "gituser: Use Git User Name"
-        line:   "        gituser: {{ gitea_user | default('genesis') }}"
-      - file: "plugins/git-sync/blueprints.yaml"
-        regexp: "gitsync: Use GitSync Committer Name"
-        line:   "        gitsync: {{ gitea_user | default('genesis') }}"
-
-    dumps:
-      - template:
-           dest: "config/themes/maas.yaml"      
-           content: |
-             enabled: true
-             production-mode: false
-             grid-size: grid-lg
-             github:
-              note: true
-              link: true
-              tree: https://github.com/getgrav/grav-learn/blob/develop/
-              commits: https://github.com/getgrav/grav-learn/commits/develop/
-             spectre:
-              exp: false               
-              icons: false
-             custom_logo:
-                 - name: 'logo.svg'
-             custom_logo_mobile:
-                 - name: 'logo.svg'
+      # Grav Site
+      - file: "config/site.yaml"
+        regexp: 'title:'
+        line: 'title: "Metal as a Service Lab"'
+      # Grav Theme
+      - file: "themes/maas/maas.yaml"
+        regexp: 'home_url:'
+        line: "home_url:  http://{{ grav_site_url }}"
 
 grav_sites: "{{ doc_grav_sites | default(doc_default_sites, true) }}"
