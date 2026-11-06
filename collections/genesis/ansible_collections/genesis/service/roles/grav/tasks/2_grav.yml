@@ -32,28 +32,6 @@
       ansible.builtin.include_tasks: "grav/2_multisite.yml"
       when: "isMultisite is true"
 
-    - name: "[genesis.service.grav] - GRAV -2- Grav: 3) Create Sites"
-      vars:
-         root_defined: "{{ (grav_site.root is defined) and ( grav_site.root is not none )   }}"
-         isRoot:       "{{ (root_defined is true) and (grav_site.root is true) }}"
-         capture_work_path: |
-           {%- if (isRoot|bool is true) -%}{{grav_work_path }}/user
-           {%- else -%}{{ grav_work_path }}/user/env/{{ grav_site.path }}
-           {%- endif -%}
-         site_work_path:    "{{ capture_work_path | trim | replace('\n', '') }}"
-         site_paths:
-            accounts: "{{ site_work_path}}/themes"
-            themes:  "{{ site_work_path}}/themes"
-            pages:   "{{ site_work_path }}/pages"
-            plugins: "{{ site_work_path }}/plugins"
-            config: "{{ site_work_path }}/config"    
-    
-      ansible.builtin.include_tasks: "grav/3_site.yml"
-      loop: "{{ grav_sites | default([]) }}"
-      loop_control:
-          loop_var: "grav_site"
-      when: "(isMultisite is true) or (isRoot is true)"
-
   rescue:
 
     - name: "[genesis.service.grav] - GRAV -2- Grav: ERROR - PREPARING GRAV INSTALLATION"

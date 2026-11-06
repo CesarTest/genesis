@@ -1,0 +1,48 @@
+---
+# genesis.service.grav site/3_config.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.grav] - GRAV -3- Site: Configurations Orchestration Block"
+  block:
+
+    - name: "[genesis.service.grav] - GRAV -3- Site: 3.1) Site Configurations"
+      lineinfile:
+        path:   "{{ site_work_path | default('') }}/{{ site_config.file   | default('') }}"
+        regexp: "{{ site_config.regexp | default('') }}"
+        line:   "{{ site_config.line   | default('') }}"
+      loop: "{{ grav_site.configs | default([]) }}"
+      loop_control:
+        loop_var: "site_config"
+      when:
+        - "(isMultisite is true) or (isRoot is true)"
+    
+    - name: "[genesis.service.grav] - GRAV -3- Site: 3.2) Dump Configuration Files"
+      include_tasks: "../package/4_config.yml"
+      loop: "{{ grav_site.dumps | default([]) }}"
+      loop_control:
+        loop_var: "pkg"
+      vars:
+        site_upload_dest: "{{ site_work_path|default('') }}/{{ site_content.dest|default('') }}"
+        grav_package:
+          mode:  "{{ pkg.mode | default(omit)}}"
+          owner: "{{ pkg.owner | default(omit)}}"
+          group: "{{ pkg.group | default(omit)}}"
+          template: 
+            dest: "{{ site_upload_dest }}/{{ pkg.template.dest | default('')}}"
+            content: "{{ pkg.template.content | default('') }}"
+      when:
+           - "(isMultisite is true) or (isRoot is true)" 
+
+  rescue:
+
+    - name: "[genesis.service.grav] - GRAV -3- Site: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Site configuration tuning or sub-task includes experienced an exception on host {{ inventory_hostname }}.
+          Execution will CONTINUE in non-blocking mode.
+
+    - name: "[genesis.service.grav] - GRAV -3- Site: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

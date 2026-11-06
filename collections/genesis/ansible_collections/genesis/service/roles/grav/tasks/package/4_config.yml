@@ -1,11 +1,11 @@
 ---
-# genesis.service.grav grav/2_config.yml
+# genesis.service.grav grav/24config.yml
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 #
 
-- name: "[genesis.service.grav] - GRAV -2- Package: 3) Config: Main Orchestration Block"
+- name: "[genesis.service.grav] - GRAV -1- Package: 4) Config: Main Orchestration Block"
   vars:
     grav_config_emergency_commands:
       - "echo 'WARNING ALERT: Native copy configuration module failed. Triggering raw shell rescue...'"
@@ -17,8 +17,8 @@
       - "chown {{ grav_package.owner | default('apache') }}:{{ grav_package.group | default('apache') }} {{ grav_package.template.dest | default('/tmp/grav_fallback.conf') }}"
 
   block:
-
-    - name: "[genesis.service.grav] - GRAV -2- Package: 3.1) Config: Dump Configuration File"
+  
+    - name: "[genesis.service.grav] - GRAV -1- Package: 4.1) Config: Dump Configuration File"
       ansible.builtin.copy:
         dest:    "{{ grav_dump.dest | default(omit) }}"
         content: "{{ grav_dump.content | default(omit) }}"
@@ -36,29 +36,30 @@
       when:
         - "grav_package.template is defined"
         - "grav_package.template is not none"
-        - "grav_package.template is not string"
         - "grav_package.template is mapping"
-        - "grav_package.template.dest is defined"
-        - "grav_package.template.dest is not none"
-        - "grav_package.template.dest is string"
-        - "grav_package.template.content is defined"
-        - "grav_package.template.content is not none"
-        - "grav_package.template.content is string"
+        - "grav_dump.dest is defined"
+        - "grav_dump.dest is not none"
+        - "grav_dump.dest is string"
+        - "grav_dump.dest | length > 0"
+        - "grav_dump.content is defined"
+        - "grav_dump.content is not none"
+        - "grav_dump.content is string"
+        - "grav_dump.content | length > 0"
 
   rescue:
 
-    - name: "[genesis.service.grav] - GRAV -2- Package: 3.2) Config: [RESCUE] Execute raw shell recovery sequence from block vars"
+    - name: "[genesis.service.grav] - GRAV -1- Package: 4.2) Config: [RESCUE] Execute raw shell recovery sequence from block vars"
       ansible.builtin.shell: "{{ grav_emergency_command }}"
       loop: "{{ grav_config_emergency_commands }}"
       loop_control:
         loop_var: "grav_emergency_command"
       failed_when: false
 
-    - name: "[genesis.service.grav] - GRAV -2- Package:: 3.3) Config: [RESCUE] Print non-blocking failure alert message"
+    - name: "[genesis.service.grav] - GRAV -1- Package:: 4.3) Config: [RESCUE] Print non-blocking failure alert message"
       ansible.builtin.debug:
         msg: |
           WARNING ALERT: Configuration deployment tasks experienced an exception on host {{ inventory_hostname }}.
           Fallback dump was executed via shell template string. Execution will CONTINUE in non-blocking mode.
 
-    - name: "[genesis.service.grav] - GRAV -2- Package: 3.4) Config: [RESCUE] Clear host error state to avoid interrupting execution"
+    - name: "[genesis.service.grav] - GRAV -1- Package: 4.4) Config: [RESCUE] Clear host error state to avoid interrupting execution"
       ansible.builtin.meta: clear_host_errors

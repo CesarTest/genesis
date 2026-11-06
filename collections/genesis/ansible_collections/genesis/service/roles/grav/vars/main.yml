@@ -14,7 +14,6 @@ server_domain: "{{ web_server_domain | default('genesis.lab', true) }}"
 apache_logs: "{{ web_apache_logs | default('/var/log/httpd', true) }}"
 apache_work_path: "{{ web_work_path | default('/var/www/html',true) }}"
 apache_group: "{{ web_apache_group | default(apache_user, true) }}"
-apache_work_path:   "{{ web_apache_work_path | default('/var/www/html', true) }}"
 apache_gitea_path:  "{{ apache_work_path }}/gitea"
 apache_maas_path:  "{{ apache_work_path }}/maas"
 apache_git_cd_path: "{{ apache_gitea_path }}/{{ gitea_repo_name | default('maas') }}"
@@ -48,8 +47,11 @@ grav_users_path: "{{ doc_grav_users_path | default(grav_users_default_workpath, 
 doc_default_url: "{{ inventory_hostname_short }}.maas.{{ server_domain | default('genesis.lab') }}"
 doc_default_gitea_url: "127.0.0.1:{{ gitea_port | default('3000') }}"
 grav_site_url:   "{{ doc_grav_url | default(doc_default_url, true) }}"
+grav_site_url_sync:   "http://{{ grav_site_url }}:{{ gitea_port | default('3000') }}"
 grav_gitea_url:  "{{ doc_gitea_url | default(doc_default_gitea_url, true) }}"
-grav_gitea_repo_url: "http://{{ grav_gitea_url }}/{{ gitea_user | default('genesis') }}/{{ gitea_repo | default('maas.git') }}"
+grav_gitea_user_url: "http://{{ grav_gitea_url }}/{{ gitea_user | default('genesis') }}" 
+grav_gitea_repo_url: "{{ grav_gitea_user_url }}/maas.git"
+grav_gitea_pages_url: "{{ grav_site_url_sync }}/{{ gitea_user | default('genesis') }}/maas/src/branch/main/"
 
 # 1.2.- Grav Customizations (password=Training_2025)
 doc_default_users:
@@ -155,6 +157,9 @@ doc_default_sites:
     contents:
       - remote_src: "{{ apache_git_cd_path }}/home/themes/labs"
         dest: "themes/labs"
+        refresh: yes 
+      - remote_src: "{{ apache_git_cd_path }}/maas/themes/maas"
+        dest: "themes/maas"
         refresh: yes   
       - remote_src: "{{ apache_git_cd_path }}/home/pages"
         dest: "pages"
@@ -179,7 +184,38 @@ doc_default_sites:
       # Grav Theme
       - file: "themes/labs/labs.yaml"
         regexp: 'home_url:'
-        line: "home_url:  http://{{ grav_site_url }}"
+
+    dumps:
+      - template:
+           dest: "config/themes/maas.yaml"      
+           content: |
+             enabled: true
+             production-mode: false
+             grid-size: grid-lg
+             root_page: /pages                                   # optional: set root page of documentation
+             top_level_version: false                            # Use versions for top level navigation
+             google_analytics_code:                              # Enter your `UA-XXXXXXXX-X` code here
+             home_url:  http://{{ grav_site_url }}
+             github:
+                 position: top                                   # top | bottom | off
+                 icon: top                                       # FontAwesome icon
+                 note: true
+                 link: true
+                 tree:  {{ grav_gitea_pages_url }}
+                 commits: {{ grav_gitea_pages_url }}
+             default_taxonomy_category: docs
+             spectre:
+                 exp: false
+                 icons: false
+             
+             streams:
+              schemes:
+                theme:
+                  type: ReadOnlyStream
+                  prefixes:
+                    '':
+                    - 'user://themes/maas'
+                    - 'user://themes/learn4'
 
   - title: "Metal as a Service Lab"
     path: "{{ grav_multisite_path[0] | default('genesis')}}"
@@ -207,9 +243,6 @@ doc_default_sites:
       - file: "config/site.yaml"
         regexp: 'title:'
         line: 'title: "Metal as a Service Lab"'
-      # Grav Theme
-      - file: "themes/maas/maas.yaml"
-        regexp: 'home_url:'
-        line: "home_url:  http://{{ grav_site_url }}"
+
 
 grav_sites: "{{ doc_grav_sites | default(doc_default_sites, true) }}"

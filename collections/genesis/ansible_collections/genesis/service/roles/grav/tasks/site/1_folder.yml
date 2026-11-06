@@ -1,0 +1,69 @@
+---
+# genesis.service.grav site/1_folder.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.grav] - GRAV -1- Package: 4) Config: Main Orchestration Block"
+  vars:
+    grav_folder_emergency_commands:
+      - "echo 'WARNING ALERT: Native folder creation module failed. Triggering raw shell rescue...'"
+      - |
+        {% for target in (site_paths | dict2items) | default([]) %}
+        mkdir -p {{ target.value }}
+        chown -R {{ apache_user | default('apache') }}:{{ apache_group | default('apache') }} {{ target.value }}
+        {% endfor %}
+
+  block:
+
+    - name: "[genesis.service.grav] - GRAV -3- Site: 1) Create Site Folders"
+      file:
+        path: "{{ cp_path }}"
+        owner: "{{ apache_user  | default('apache') }}"
+        group: "{{ apache_group | default('apache') }}"
+        recurse: yes
+      loop: "{{ (site_paths | dict2items) | default([]) }}"
+      loop_control:
+        loop_var: "target_path"
+      vars:
+        cp_name: "{{ target_path.key  }}"
+        cp_path: "{{ target_path.value }}"
+      when:
+        - "isMultisite is true"
+        - "isRoot is false"
+    
+    - name: "[genesis.service.grav] - GRAV -3- Site: 2) Copy Site Folders"
+      copy:
+        src:  "{{ grav_work_path }}/user/{{ cp_name }}"
+        dest: "{{ cp_path }}"
+        owner: "{{ apache_user  | default('apache') }}"
+        group: "{{ apache_group | default('apache') }}"
+        remote_src: yes
+      loop: "{{ (site_paths | dict2items) | default([]) }}"
+      loop_control:
+        loop_var: "target_path"
+      vars:
+        cp_name: "{{ target_path.key  }}"
+        cp_path: "{{ target_path.value | dirname }}"
+      when:
+        - "isMultisite is true"
+        - "isRoot is false"
+
+  rescue:
+
+    - name: "[genesis.service.grav] - GRAV -1- Package: 4.2) Config: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ grav_emergency_command }}"
+      loop: "{{ grav_config_emergency_commands }}"
+      loop_control:
+        loop_var: "grav_emergency_command"
+      failed_when: false
+
+    - name: "[genesis.service.grav] - GRAV -1- Package:: 4.3) Config: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Configuration tasks experienced an exception on host {{ inventory_hostname }}.
+          Fallback shell sequence has triggered to dump config data manually.
+
+    - name: "[genesis.service.grav] - GRAV -1- Package: 4.4) Config: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors
