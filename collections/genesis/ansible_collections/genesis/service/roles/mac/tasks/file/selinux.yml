@@ -130,6 +130,8 @@
       loop_control:
         loop_var: "mac_selinux_policy"
       when:
+        - "ansible_selinux.status is defined"
+        - "ansible_selinux.status != 'disabled'" 
         - "mac_server_selinux_policies is defined"
         - "mac_server_selinux_policies is not none"
         - "mac_server_selinux_policies is not string"
@@ -144,6 +146,8 @@
       vars:
         secontext: "{{ (mac_selinux_apply.target | default('.')) | dirname | dirname }}"
       when:
+        - "ansible_selinux.status is defined"
+        - "ansible_selinux.status != 'disabled'" 
         - "mac_selinux_apply_policy.results is defined"
         - "mac_selinux_apply_policy.results is not none"    
         - "mac_selinux_apply.changed is defined"

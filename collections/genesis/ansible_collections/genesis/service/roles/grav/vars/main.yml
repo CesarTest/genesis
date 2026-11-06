@@ -192,9 +192,9 @@ doc_default_sites:
         refresh: yes
         
     configs:
-      - file: "config/system.yaml"
-        regexp: 'theme:'
-        line: '  theme: "maas"'
+      #- file: "config/system.yaml"
+      #  regexp: 'theme:'
+      #  line: '  theme: "maas"'
       - file: "config/site.yaml"
         regexp: 'title:'
         line: 'title: "Metal as a Service Lab"'

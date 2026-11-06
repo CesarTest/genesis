@@ -5,5 +5,9 @@
 # SPDX-FileCopyrightText: © 2026 Genesis System
 # SPDX-License-Identifier: Apache-2.0
 
-- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 3) Connection Permissions: 1) Firewall"
+
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 3) Connection Permissions: 1) Services, TCP/UDP Port Activation"
+  ansible.builtin.include_tasks: "connection/service.yml"
+
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 3) Connection Permissions: 1) Firewall, TCP/UDP Port Blocking"
   ansible.builtin.include_tasks: "connection/firewall.yml"

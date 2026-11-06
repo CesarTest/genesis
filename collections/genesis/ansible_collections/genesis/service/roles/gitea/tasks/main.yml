@@ -6,16 +6,15 @@
 #
 
 - name: "[genesis.service.gitea] - GITEA: Grav Documentation Database for GitOps"
+  when: 
+    - not gitea_skip_install | default(false) | bool
   block:
 
     - name: "[genesis.service.gitea] - GITEA: 1) Server: Setup Global Environment"
       ansible.builtin.include_tasks: "1_server.yml"
-      when: not gitea_skip_install | default(false) | bool
 
     - name: "[genesis.service.gitea] - GITEA: 2) Gitea: Deploy Service"
       ansible.builtin.include_tasks: "2_gitea.yml"
-      when: not gitea_skip_install | default(false) | bool
 
     - name: "[genesis.service.gitea] - GITEA: 3) Repo: Populate Contents"
       ansible.builtin.include_tasks: "3_repo.yml"
-      when: not gitea_skip_install | default(false) | bool

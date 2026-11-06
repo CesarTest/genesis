@@ -1,5 +1,5 @@
 ---
-# genesis.service.mac mac/firewall.yml
+# genesis.service.mac connection/firewall.yml
 #   - Mandatory Access Control Setup - Firewall
 #
 # SPDX-FileCopyrightText: © 2026 Genesis System
@@ -12,23 +12,11 @@
 - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL: Server Services"
   become: true
   vars:
+  vars:
+    mac_firewalld_dict:       "{{ ansible_facts.services['firewalld.service'] | default({}) }}"
+    mac_firewalld_state:      "{{ mac_firewalld_dict.state | default('unknown') }}"
+    mac_firewalld_is_running: "{{ mac_firewalld_state == 'running' }}"
     mac_emergency_commands:
-      # Operación 1: Gestión de servicios del sistema vía systemctl puro
-      - |
-        {% for service in mac_services | default([]) %}
-        {% if service.name is defined and service.name is string %}
-        if systemctl list-unit-files | grep -q "^{{ service.name }}.service"; then
-          {% if service.state | default('stopped') in ['started', 'running'] %}
-          systemctl enable "{{ service.name }}" --now
-          systemctl start "{{ service.name }}"
-          {% else %}
-          systemctl disable "{{ service.name }}" --now
-          systemctl stop "{{ service.name }}"
-          {% endif %}
-        fi
-        {% endif %}
-        {% endfor %}
-
       # Operación 2: Inyección de reglas de Firewalld por CLI directa
       - |
         if systemctl is-active firewalld &>/dev/null; then
@@ -44,27 +32,8 @@
           firewall-cmd --reload
         fi
   block:
-    - name: 'genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL 1) Enable/Disable Server Services'
-      ignore_errors: yes
-      service:
-        name:   "{{ mac_service.name }}"
-        state:  "{{ mac_service.state | default('stopped') }}" 
-        enabled: "{{ mac_service.state | bool }}" 
-      loop: "{{ mac_services | default([]) }}"
-      loop_control:
-        loop_var: "mac_service"
-      when: 
-        - "mac_services is defined"
-        - "mac_services is not none"
-        - "mac_services is not string"
-        - "mac_services is not mapping"
-        - "mac_service.name is defined"
-        - "mac_service.name is not none"
-        - "mac_service.name is string"  
-        #- ansible_facts.services[mac_service.name] is defined
 
-    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL 2)Apply Firewall Rules"
-
+    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL 1)Apply Firewall Rules"
       firewalld:
         port:      "{{ firewall_rule.port   | default(omit) }}"
         service:   "{{ firewall_rule.service| default(omit) }}"
@@ -76,7 +45,7 @@
       loop_control:
         loop_var: "firewall_rule"
       when:
-        - "mac_firewall_rules is defined"
+        - "mac_firewalld_is_running | bool"
         - "mac_firewall_rules is not none"
         - "mac_firewall_rules is not string"
         - "mac_firewall_rules is iterable"
@@ -84,10 +53,12 @@
         - "(firewall_rule.port is defined) or (firewall_rule.service is defined)"
         - "(firewall_rule.port is not none) or (firewall_rule.service is not none)"
 
-    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL: 3) Always reload firewalld"
+    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL: 2) Always reload firewalld"
       ansible.builtin.service:
         name: "firewalld"
         state: "reloaded"    
+      when:
+        - "mac_firewalld_is_running | bool"
 
   rescue:
 
@@ -97,3 +68,5 @@
       loop_control:
         loop_var: "mac_cmd"
       failed_when: false
+      when:
+        - "mac_firewalld_is_running | bool"
