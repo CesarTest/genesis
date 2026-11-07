@@ -1,0 +1,283 @@
+---
+# genesis.init defaults
+#   - Setup PXE Services
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  GENESIS PATHS (global for update all genesis roles at once)
+######################################################
+# 1.- Repos Paths
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+# 2.- Bifrost Role Paths
+genesis_bifrost_role_name: "openstack.bifrost"
+genesis_bifrost_path: "{{ genesis_roles_path }}/{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles: "{{ genesis_bifrost_path }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path }}/files"
+genesis_bifrost_ironic_init: "{{ genesis_bifrost_roles }}/bifrost-create-dib-image"
+genesis_bifrost_dest_folder:
+  - "{{ ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
+  - "{{ http_boot_folder | default('/var/lib/ironic/httpboot') }}"
+  - "{{ bifrost_iso_folder | default('/var/lib/ironic/isos') }}"
+genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles }}/bifrost-ironic-install"
+genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+
+# 3.- Repositories
+genesis_default_repos:
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+  repo: "mnt"
+ 
+# 3.- Default Image Names (for URL subpath) 
+genesis_default_os_image_name:
+  qcow: "partition.qcow"
+  qcow2: "partition.qcow2"
+  img: "partition.img"
+  raw: "wholedisk.raw" 
+  cd:  "netboot.iso"
+  dvd: "x86_64.iso"
+  kernel: "vmlinuz" 
+  ramdisk: "initrd"
+  rootfs: "image.img"
+  
+######################################################
+# G3 - PARTICULARS
+######################################################
+# 1.- Paths
+g3_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+g3_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
+g3_repo_components_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['components'] | default('openstack') }}"
+g3_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
+g3_repo_mount_path: "{{ genesis_repo_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
+g3_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
+g3_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
+g3_mount_repo_path: "{{ genesis_repo_mount_path | default(g3_repo_mount_path) | default('/mnt') | realpath }}"
+
+# 2.- URL
+g3_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
+
+# 3.- Users
+g3_webserver_user: "{{ genesis_werserver_user | default('www-data') }}"
+g3_webserver_group: "{{ genesis_werserver_group | default('www-data') }}"
+g3_groups_webserver_group: "{{ ansible_user }},{{ g3_webserver_group }},adm,cdrom,sudo,dip,plugdev,lxd,ironic" 
+g3_iso_mount_properties: "loop,ro,uid={{ g3_webserver_user }},gid={{ g3_webserver_group }},mode=0755"
+
+# 4.- Webserver Update
+g3_node_default_os: "{{ genesis_node_default_os | default('CentOS') }}"
+g3_node_default_os_version: "{{ genesis_node_default_version | default('9') }}"
+g3_setup_webserver:
+  - file: "/etc/nginx/conf.d/bifrost-httpboot.conf"
+    regexp: '^\s*disable_symlinks\s+'
+    line: '        disable_symlinks off;'
+    insertafter: 'server {'
+  - file: "/etc/nginx/conf.d/bifrost-httpboot.conf"
+    regexp: '^\s*autoindex\s+'
+    line: '        autoindex on;'
+    insertafter: 'server {'
+  
+######################################################
+#  G3 - OS IMAGES RESPOSITORIES
+######################################################
+g3_extract_os_installer:
+   iso:
+     centos:
+       - src: "images/pxeboot/vmlinuz"
+         dest: "vmlinuz"
+       - src: "images/pxeboot/initrd.img"
+         dest: "initrd"
+       - src: "images/install.img"
+         dest: "install.img"
+     redhat:
+       - src: "images/pxeboot/vmlinuz"
+         dest: "vmlinuz"
+       - src: "images/pxeboot/initrd.img"
+         dest: "initrd"
+       - src: "images/install.img"
+         dest: "install.img" 
+     rocky:
+       - src: "images/pxeboot/vmlinuz"
+         dest: "vmlinuz"
+       - src: "images/pxeboot/initrd.img"
+         dest: "initrd"
+       - src: "images/install.img"
+         dest: "install.img" 
+     ubuntu:
+       - src: "casper/vmlinuz"
+         dest: "vmlinuz"
+       - src: "casper/initrd"
+         dest: "initrd"	
+     fai:
+       - src: "boot/vmlinuz"
+         dest: "vmlinuz"	
+       - src: "boot/initrd.img"
+         dest: "initrd"
+       - src: "LiveOS/squashfs.img" 
+         dest: "install.img"
+     debian:
+       - src: "install.amd/vmlinuz"
+         dest: "linux"	
+       - src: "install.amd/initrd.gz"
+         dest: "initrd.gz"
+     suse: 
+       - src: "boot/[ARCH]/loader/linux"
+         dest: "vmlinuz"
+       - src: "boot/[ARCH]/loader/initrd"
+         dest: "initrd"
+       - src: "LiveOS/squashfs.img"
+         dest: "install.img"
+     sles: 
+       - src: "boot/[ARCH]/loader/linux"
+         dest: "vmlinuz"
+       - src: "boot/[ARCH]/loader/initrd"  
+         dest: "initrd"   
+       - src: "boot/[ARCH]/root"
+         dest: "root"
+   tarball:
+     debian:
+       - src: "debian-installer/[ARCH]/initrd.gz"
+         dest: "initrd.gz"
+       - src: "debian-installer/[ARCH]/linux"
+         dest: "vmlinuz"
+   mini:
+     debian:
+       - src:  "initrd.gz"
+         dest: "initrd.gz"
+       - src:  "linux"
+         dest: "vmlinuz"
+
+
+g3_native_os_installer:
+
+   #-----------------------------------
+   # Server OS
+   #-----------------------------------
+  - distribution: "CentOS"
+    distribution_version: "9"
+    distribution_arch: "x86_64"
+    extract_ramdisk: yes
+    mount: yes
+
+  - distribution: "Ubuntu"
+    distribution_version: "24.04"
+    distribution_version_minor: "5"
+    distribution_arch: "amd64"
+    os_image_name: "amd64.iso" 
+    extract_ramdisk: yes
+    mount: yes
+
+  - distribution: "Debian"
+    distribution_version: "13.7"
+    distribution_arch: "amd64"
+    os_image_name: "netboot.iso"  
+    latest: yes # Debian URLs: current / historical Repository
+    installer: 'cd'
+    netinstall_ramdisk: "mini"
+    extract_ramdisk: yes
+    mount: yes
+
+  - distribution: "Debian"
+    distribution_version: "13.7"
+    distribution_arch: "amd64"
+    os_image_name: "amd64.iso" 
+    latest: yes # Debian URLs: current / historical Repository
+    mount: yes
+
+    # SuSE 16 has different Product Name (for Amanda Installer) / ISO Name (for URL download) 
+    #   Alias for Amanda Installer is a must => URL [ALIAS] pattern replacement will fail 
+  - distribution: "SuSE"
+    distribution_version: "16.0"
+    distribution_minor: "Build178.27"
+    distribution_arch: "x86_64"
+    os_image_name: "x86_64.iso"
+    image: "https://download.opensuse.org/distribution/leap/16.0/offline/Leap-16.0-offline-installer-x86_64-Build178.27.install.iso"
+    extract_ramdisk: yes
+    mount: yes
+
+   #-----------------------------------
+   # Cluster OS
+   #-----------------------------------
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "x86_64.iso"
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "vmlinuz" 
+    installer: 'kernel'
+
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "initrd"
+    installer: 'ramdisk'
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "install.img"
+    installer: 'rootfs'
+    
+g3_cloud_os_installer:
+  - distribution: "CentOS"
+    distribution_version: "9"
+    installer: 'qcow'
+    os_image_name: "partition.qcow2"
+genesis_all_installers_download: "{{ g3_native_os_installer + g3_cloud_os_installer }}"
+
+# Using bifrost internal variable name
+genesis_installers_download: "{{ g3_native_os_installer + g3_cloud_os_installer }}"
+download_image_sources: "{{ genesis_download_images | default(genesis_installers_download) | default([]) }}"
+
+######################################################
+#  G3 - HTTP EXPOSURE DETAILS
+######################################################
+# HTTP Paths particulars    
+g3_base_path: "{{ genesis_repo_path | default('../../../repo') | realpath }}"
+g3_base_list_subfolders_base_path: >-
+  {%- set partes = g3_base_path.split('/') | select('string') | list -%}
+  {%- set lista = [] -%}
+  {%- for i in range(1, partes | length + 1) -%}
+    {%- set _ = lista.append('/' ~ partes[:i] | join('/')) -%}
+  {%- endfor -%}
+  {{ lista }}
+g3_os_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['os'] | default('os') }}"
+g3_os_images_http_path: "{{ g3_http_path | realpath }}/{{ g3_repos['os'] | default('os') }}" 
+g3_cloud_images_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"
+g3_cloud_images_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['cloud'] | default('dib') }}"     
+g3_mnt_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"
+g3_mnt_http_path: "{{ g3_http_path    | realpath }}/{{ g3_repos['repo'] | default('mnt') }}"       
+g3_manifesto_repo_path: "{{ g3_base_path | realpath }}/{{ g3_repos['manifesto'] | default('manifesto') }}"
+g3_manifesto_http_path: "{{ g3_http_path }}/{{ g3_repos['manifesto'] | default('manifesto') }}"  
+g3_paths_to_expose:
+  - repo:   "{{ g3_manifesto_repo_path }}"  
+    expose: "{{ g3_manifesto_http_path }}"
+  - repo:   "{{ g3_os_images_repo_path }}"
+    expose: "{{ g3_os_images_http_path }}"
+  - repo:   "{{ g3_cloud_images_repo_path }}"
+    expose: "{{ g3_cloud_images_http_path }}"
+  - repo:   "{{ g3_mnt_repo_path }}"
+    expose: "{{ g3_mnt_http_path }}"
+
+######################################################
+#  G3 - NAT TO BMC EMULATOR
+######################################################
+
+# 1.- Hypervisor Metadata Resolution
+g3_hypervisor_node: "{{ genesis_hypervisor_node | default((groups['hypervisor'] | default(['localhost']))) }}"
+g3_hypervisor_ip: "{{ genesis_hypervisor_ip | default(hostvars[g3_hypervisor_node]['ansible_host'] | default('127.0.0.1')) }}"

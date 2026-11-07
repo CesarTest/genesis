@@ -1,0 +1,28 @@
+{#############################################################################
+#                    ANSIBLE GENERATED CASPER META FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.0
+#############################################################################} 
+{%- if j2_hostname is defined -%}
+{%-   if j2_hostname is not none -%}
+{###############################
+         RENDERING FILE
+ ##############################}
+# ==============================================================================
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                          
+# Generated dynamically by Genesis Core Engine Mesh                              
+# Deployment Context: Ubuntu Casper / Cloud-init Provisioning Profile            
+# Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}    
+# ==============================================================================
+instance-id: "genesis-{{ j2_hostname }}"
+local-hostname: "{{ j2_hostname }}"
+{###############################
+              END
+ ##############################}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED CASPER META FILE 
+#############################################################################}

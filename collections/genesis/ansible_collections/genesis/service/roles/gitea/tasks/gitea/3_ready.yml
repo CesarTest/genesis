@@ -1,0 +1,92 @@
+---
+# genesis.service.gitea gitea/4_ready.yml
+#   - Core Stack Finalization, Socket Verification and In-Cold Admin Bootstrap
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.gitea] - REPO: 4) Ready: Core Stack Finalization"
+  become: true
+  vars:
+    gitea_ready_emergency_commands:
+      - "echo 'WARNING ALERT: Native Systemd service startup failed on host {{ inventory_hostname }}. Triggering CLI recovery...'"
+      
+      # Operación 1: Purgar procesos huérfanos para liberar el socket 3000
+      - "pkill -u git -f gitea || true"
+      
+      # Operación 2: Forzar recarga de systemd y reintento de arranque del demonio
+      - "systemctl daemon-reload && systemctl restart gitea || true"
+      
+      # Operación 3: Ejecución manual de contingencia en background si falla systemd
+      - |
+        if ! systemctl is-active --quiet gitea; then
+          echo 'Systemd unit unusable. Executing manual emergency background execution...'
+          nohup {{ gitea_bin_path | default('/usr/local/bin') }}/gitea web --config {{ gitea_conf_path | default('/etc/gitea') }}/app.ini > /dev/null 2>&1 &
+          sleep 3
+        fi
+        true
+
+      # Operación 4:  Uso del filtro oficial nativo 'regex_escape' sin la 'p' intermedia
+      - |
+        sed -i '/{{ gitea_domain | regex_escape }}$/d' /etc/hosts
+        echo "{{ gitea_resolved_network_ip }} {{ gitea_domain }}" >> /etc/hosts
+
+    gitea_resolved_network_ip: "{{ hostvars[inventory_hostname]['ansible_host'] | default(ansible_host) | default('127.0.0.1') }}"
+
+  block:
+
+    - name: "[genesis.service.gitea] - REPO: 4) Ready: 1) DNS: Map Forge Domain Resolution via Local Module"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: "{{ gitea_domain | regex_escape }}" # <--- Busca el dominio suelto
+        line: "127.0.0.1 {{ gitea_domain }}" # <--- Reemplaza o añade la línea entera
+        state: present
+  
+    - name: "[genesis.service.gitea] -REPO: 4) Ready: 2) DNS Localhost: Map Forge Domain Resolution via Local Module"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: "{{ gitea_domain | regex_escape }}" # <--- Busca el dominio suelto
+        line: "{{ gitea_resolved_network_ip }} {{ gitea_domain }}" # <--- Reemplaza o añade la línea entera
+        state: present
+      delegate_to: localhost
+
+    - name: "[genesis.service.gitea] - GITEA READY: Force immediate service execution"
+      ansible.builtin.meta: flush_handlers
+
+    - name: "[genesis.service.gitea] - REPO: 4) Ready: 3) Verify: Ensure Gitea Daemon is Responding"
+      ansible.builtin.wait_for:
+        port: "{{ gitea_port | default(3000, true) | int }}"
+        delay: 3
+        timeout: 20
+        msg: "Gitea daemon failed to bind port {{ gitea_port | default(3000) }} after initialization."
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    #  Shoot CLI emergency Commands
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - REPO: 4) Ready: [RESCUE] 4) Emergency service activation via CLI list loop"
+      ansible.builtin.shell: "{{ gitea_ready_cmd }}"
+      loop: "{{ gitea_ready_emergency_commands }}"
+      loop_control:
+        loop_var: "gitea_ready_cmd"
+      failed_when: false
+
+  always:
+
+    #-----------------------------------------------------------------------
+    #  Gitea Admin User Creation
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - REPO: 4) Ready: [RESCUE] 5) Bootstrap: Ensure Site Admin Existence via Local CLI"
+      become_user: "{{ gitea_user | default('git', true) }}"
+      ansible.builtin.shell: >
+        {{ gitea_bin_path | default('/usr/bin', true) }}/gitea admin
+        --config {{ gitea_conf_path | default('/etc/gitea', true) }}/app.ini
+        user create
+        --username '{{ gitea_admin_user | default('genesis') }}'
+        --password '{{ gitea_admin_password | default('genesis') }}'
+        --email '{{ gitea_admin_user | default('genesis') }}@{{ gitea_domain }}'
+        --must-change-password=false
+        --admin || true
+      changed_when: true
+      failed_when: false

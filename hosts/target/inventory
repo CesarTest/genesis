@@ -37,10 +37,10 @@ all:
         dns: "192.168.1.1"
 
     # => 2.- BMC Emulators shared credentials
-    genesis_hypervisor_become_pass: "cesardgm"
+    genesis_hypervisor_become_pass: "javiermalo"
     genesis_bmc_credentials: 
       redfish:
-        ipv4: "192.168.1.133" # Proxmox Hypervisor (force here, instead of node bmc nic)
+        ipv4: "192.168.1.60" # Proxmox Hypervisor (force here, instead of node bmc nic)
         port: "8000"          # Proxmox RedFish Daemon
         verify_ca: false
 
@@ -52,10 +52,13 @@ all:
       ansible_host: "127.0.0.1"
   
     proxmox:
-      ansible_host: "192.168.1.133"
+      ansible_host: "192.168.1.60"
 
     genesis:
       ansible_host: "10.10.51.5"
+
+    doc:
+      ansible_host: "10.10.51.6"
   
   #--------------------------------------------------------------------
   #  GROUP_VARS: SOFTWARE PROFILE ASSIGNATION TO HOSTS
@@ -65,8 +68,8 @@ all:
       hosts: 
         localhost:
       vars:
-        ansible_user: "javier"
-        ansible_become_pass: "malo"
+        ansible_user: "cesar"
+        ansible_become_pass: "cesar"
 
     hypervisor:
       hosts:
@@ -86,5 +89,20 @@ all:
       hosts:
         genesis:
       vars:
-        ansible_user: "javier"
-        ansible_become_pass: "malo"
+        ansible_user: "cesar"
+        ansible_become_pass: "cesar"
+
+    documentation:
+      hosts:
+        doc:
+      vars:
+        ansible_user: "cesar"
+        ansible_become_pass: "cesar"
+        mac_services_config: 
+          - name: "firewalld"
+            enabled: false 
+            state: "stopped"
+        mac_selinux_mode_config:
+          policy: "targeted"
+          state: "disabled"
+          update_kernel_param: true

@@ -1,0 +1,38 @@
+---
+# genesis.bootstrap 1_prepare/2_repos.yml
+#   - Create local repositories folders
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 1) Create an ironic service group"
+  group:
+    name: "ironic"
+
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 2) Create an ironic service user"
+  user:
+    name: "ironic"
+    group: "ironic"
+
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 3) Create Repos Folders"
+  file:
+     path: "{{ genesis_repo_path | default('/tmp') | realpath }}/{{ folder.value | default('repo') }}"
+     state: "directory"
+     recurse: true
+     owner: "{{ansible_user | default('ironic') }}"
+     group: "{{ansible_user | default('ironic') }}"
+     mode: "775"
+  loop: "{{ g1_repos | dict2items | default([]) }}"
+  loop_control:
+    loop_var: "folder"
+    
+- name: "G1 - BOOTSTRAP - 1.- Prepare : 4) Generate Checksums File"
+  copy:
+    dest: "{{ genesis_local_checksum_file.path | default('/tmp/checksum') }}"
+    content: "{{ genesis_local_checksum_file.content | default('None') }}"
+    owner: "{{ ansible_user | default('ironic') }}"
+    group: "{{ ansible_user | default('ironic') }}"
+  when:
+    - genesis_local_checksum_file is defined
+    - genesis_local_checksum_file.path is defined
+    - genesis_local_checksum_file.content is defined

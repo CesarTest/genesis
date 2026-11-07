@@ -1,0 +1,76 @@
+# genesis.setup repo/lifecycle.yml
+#   - Configure Instance Properties
+#      - Autologin & Map lifecycle data model into Gitea API (Pure HTTP JSON)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "[genesis.service.gitea] - GITEA REPO 1) Lifecycle: Set Gitea Instance Lifecycle Stages Particulars"
+  
+  # API Selector  
+  when:  
+    - gitea_lifecycle_repo_api_calls is defined 
+    - gitea_lifecycle_repo_api_calls is not none 
+    - gitea_lifecycle_repo_api_calls is not string
+    - gitea_lifecycle_repo_api_calls | length > 0
+
+  vars:
+    # 1.- Call Instructions	
+    gitea_selector: "{{ gitea_action | default('create_user', true) }}"
+    gitea_api_instructions: "{{ gitea_lifecycle_repo_api_calls[gitea_selector]['api'] | default([], true) }}"
+    gitea_shell_instructions: "{{ gitea_lifecycle_repo_api_calls[gitea_selector]['shell'] | default([], true) }}"
+
+    # 2.- Gitea Instance Details (Sincronizados con tus variables de vars/main.yml)
+    gitea_api_port: "{{ gitea_port | default('3000', true) }}"
+    gitea_api_hostname: "{{ gitea_api_host | default(ansible_host) | default(inventory_hostname) }}"
+    gitea_base_url: "http://{{ gitea_api_hostname }}:{{ gitea_api_port }}"  
+    gitea_api_default_status: [200, 201, 204, 400] # Incluye 400 para tolerar si el token ya existía en la API
+
+  block:
+   
+    #-----------------------------------------------------------------------
+    # 1.1- Canal Principal: Peticiones HTTP REST nativas vía URI
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA REPO 1.1) Lifecycle: Set Gitea Instance Lifecycle Stages vía URI"
+      ansible.builtin.uri:
+        url: "{{ gitea_base_url }}/{{ api_stage.endpoint }}"
+        method: "{{ api_stage.method | default('POST', true) }}"
+        body: "{{ api_stage.body | default(omit) }}"
+        status_code: "{{ api_stage.status_code | default(gitea_api_default_status, true) }}"
+        body_format: "{{ api_stage.body_format | default('json', true) }}"
+        url_username: "{{ gitea_admin_user | default('genesis') if api_stage.force_basic_auth | default(false) else omit }}"
+        url_password: "{{ gitea_admin_password | default('genesis') if api_stage.force_basic_auth | default(false) else omit }}"
+        force_basic_auth: "{{ api_stage.force_basic_auth | default(false) }}"
+        validate_certs: false
+        headers:
+          Authorization: "{{ omit if api_stage.force_basic_auth | default(false) else 'token ' ~ (gitea_admin_token | default('')) }}"
+          Content-Type: "application/json"
+      register: gitea_pipeline_results
+      loop: "{{ gitea_api_instructions | default([]) }}"
+      loop_control:
+        loop_var: "api_stage"
+
+    #-----------------------------------------------------------------------
+    # 1.2.- Registro dinámico y directo del Token Fact
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA REPO 1.2) Lifecycle: Register Dynamic Admin Token"
+      ansible.builtin.set_fact:
+        gitea_admin_token: "{{ gitea_pipeline_results.results.1.json.sha1 | default('') }}"
+      when: 
+        - gitea_action == 'get_token'
+        - gitea_pipeline_results.results.1.json.sha1 is defined
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- Canal de Rescate: Caída forzada a comandos locales/cURL vía Shell
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA REPO 1.3) Lifecycle: RESCUE EXEC - Fallback Force Execution via Local Gitea Admin CLI"
+      become: true
+      become_user: "{{ gitea_user | default('git') }}"
+      ansible.builtin.shell: "{{ shell_stage.cmd }}"
+      register: gitea_rescue_cli_output
+      failed_when: false
+      loop: "{{ gitea_shell_instructions | default([]) }}"
+      loop_control:
+        loop_var: "shell_stage"

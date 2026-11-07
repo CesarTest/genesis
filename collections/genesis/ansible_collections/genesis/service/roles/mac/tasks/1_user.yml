@@ -1,0 +1,15 @@
+---
+# genesis.service.mac 1_user.yml
+#   - Mandatory Access Control Setup
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 1) User Permissions: RBAC"
+  ansible.builtin.include_tasks: "user/rbac.yml"
+  
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL: 2) File Permissions: 1) Folders"
+  ansible.builtin.include_tasks: "file/folder.yml"
+  loop: "{{ mac_user.folders | default([]) | list }}"
+  loop_control:
+    loop_var: "mac_folder"

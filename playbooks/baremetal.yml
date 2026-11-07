@@ -41,17 +41,56 @@
     #  - Local Generation of Bootloader/Installer Files
     #  - Enroll to Ironic 
     #  - Transition to Available State
-    - role: "genesis.setup"
+    - role: "genesis.stage.setup"
       when: 
       - (genesis_stage is not defined)  or  (genesis_stage=='B4')
       
     # -----> B5 - DEPLOY 
     #   - Unattended OS Installation
-    - role: "genesis.deploy"
+    - role: "genesis.stage.deploy"
       when: 
       - (genesis_stage is not defined)  or  (genesis_stage=='B5')    
 
-    # -----> B6 - PROVISION
-    #- role: "genesis.strategy"
-    #  when: 
-    #  - (genesis_stage is not defined)  or  (genesis_stage=='B6')
+#---------------------------------
+#  PROVISION
+#---------------------------------
+- hosts: "baremetal,documentation"
+  become: no
+  gather_facts: no
+  connection: ssh # IMPORTANT! Allow genesis unattended lifecycle 
+  vars:
+    genesis_repo_path:   "{{ playbook_dir }}/../repo"
+    genesis_hosts_path:  "{{ playbook_dir }}/../hosts"
+    genesis_target_path: "{{ genesis_hosts_path | realpath }}/target"
+    genesis_target_vars: "{{ genesis_target_path | realpath }}/group_vars/target"
+    genesis_default_inventory_source: "{{ genesis_hosts_path | realpath }}/tests/host_vars/baremetal.yml"
+    genesis_baremetal_vars: "{{ lookup('env', 'BIFROST_INVENTORY_SOURCE') or genesis_default_inventory_source }}"
+    ironic_http_path:   "{{ http_bootpath | default('/var/lib/ironic/httpboot') }}"
+
+  pre_tasks:
+
+    - name: "B6 - PROVISION - Permanent switch to Host Interpreter and Clean SSH settings"
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: "/usr/bin/python3"
+        ansible_ssh_common_args: "-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o ControlMaster=no"
+        genesis_update_doc: "{{ genesis_update_documentation | default(false) | bool }}"
+    
+    - name: "B6 PROVISION - Reset existing connection sockets"
+      ansible.builtin.meta: reset_connection
+
+    - name: "B6 PROVISION - Force gather fresh facts from the new OS"
+      ansible.builtin.setup:
+    
+  roles:
+
+    - role: "genesis.stage.provision"
+      when: 
+        - (genesis_stage is not defined) or (genesis_stage == 'B6')
+        - inventory_hostname not in groups['documentation'] | default([])
+        - (hostvars[inventory_hostname]['b6_software_profile'] is defined) or 
+          (hostvars[inventory_hostname]['b6_environment_profile'] is defined)
+
+    - role: "genesis.stage.provision"
+      when: 
+        - genesis_update_doc | default(false) | bool
+        - inventory_hostname in groups['documentation'] | default([])

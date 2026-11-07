@@ -1,0 +1,21 @@
+---
+# genesis.genesis.web tasks/main.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# ==============================================================================
+# PHASE 2: WEB COMPONENTS ORCHESTRATION LAYER
+# ==============================================================================
+- name: "[genesis.service.web] - WEB: Apache + PHP"
+  block:
+
+    - name: "[genesis.service.web] - WEB: 1) Create Folders"
+      ansible.builtin.include_tasks: "web/1_folder.yml"
+
+    - name: "[genesis.service.web] - WEB: 2) Clean: Wipe Old Versions"
+      ansible.builtin.include_tasks: "web/2_clean.yml"
+
+    - name: "[genesis.service.web] - WEB: 3) Install: PHP + Apache"
+      ansible.builtin.include_tasks: "web/3_install.yml"

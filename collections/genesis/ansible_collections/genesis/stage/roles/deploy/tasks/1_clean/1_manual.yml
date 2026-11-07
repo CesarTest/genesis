@@ -1,0 +1,75 @@
+---
+# genesis.deploy 1_clean/1_manual.yml
+#  - Power Cycle Manual
+#     - No BMC interactions, fixed boot order
+#     - Force PXE by cleaning disk partition table
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "B5 - DEPLOY - 1.- Clean : 1) Wipe Disks in Manual Power Cycle" 
+  ignore_errors: yes 
+
+  #--------------------------------------------------------------------------  
+  # 1.- Wait to machine to be Ready
+  #--------------------------------------------------------------------------
+  block:
+ 
+    - name: "B5 - DEPLOY - 1.- Clean: 1.1) Wait up to Clean Timeout seconds"
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host | default('localhost') }}"
+        port: 22
+        delay: 10
+        timeout: "{{ b5_wipedisks_delay }}"
+        state: started
+  
+  delegate_to: localhost 
+
+
+  #--------------------------------------------------------------------------  
+  # 2.- Wipe Disks & Reboot
+  #--------------------------------------------------------------------------
+- name: "B5 - DEPLOY - 2.- Wipe Disks & Reboot Block"
+  ignore_unreachable: true  
+  block:
+
+    # 1.1.- Wipe Disks 
+    #....................... 
+    - name: "B5 - DEPLOY - 1.- Clean: 1.2) Raw Disk Zapping"
+      become: yes
+      ansible.builtin.shell:
+        cmd: |
+          ZAPPED_COUNT=0
+          for dev in /sys/class/block/sd* /sys/class/block/vd* /sys/class/block/nvme*n1; do
+              [ -e "$dev" ] || continue
+              if [ -b "/dev/${dev##*/}" ]; then
+                  dd if=/dev/zero of="/dev/${dev##*/}" bs=512 count=100 conv=notrunc 2>/dev/null
+                  ZAPPED_COUNT=$((ZAPPED_COUNT + 1))
+              fi
+          done
+          echo "TOTAL_ZAPPED:${ZAPPED_COUNT}"
+      register: b5_zap_result
+      changed_when: "'TOTAL_ZAPPED:0' not in (b5_zap_result.stdout | default(''))"
+
+    # 1.2.-Reboot
+    #....................... 
+    - name: "B5 - DEPLOY - 1.3) Trigger Hard Reset via Native Ansible Module"
+      become: yes
+      ansible.builtin.reboot:
+        reboot_timeout: 0        # (Fire & Forget)
+        msg: "Genesis Core Engine triggering automated deployment reset"
+      failed_when: false 
+      changed_when: false
+      ignore_unreachable: true 
+
+  rescue:    
+    - name: "B5 - DEPLOY - 1.- Clean: 14) Reboot"
+      ignore_errors: yes
+      become: yes
+      ansible.builtin.shell:
+        cmd: "reboot"
+
+  when:
+    - ansible_connection is defined
+    - ansible_connection != 'local'
+    - ansible_connection == 'ssh'

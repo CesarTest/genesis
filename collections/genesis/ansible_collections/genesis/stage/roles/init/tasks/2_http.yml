@@ -1,0 +1,38 @@
+---
+# genesis.init 2_http.yml
+#   - Load OS images
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "G3 - INIT: 2.- Setup PXE-HTTP - Create OS Images Repositories"
+  vars:  
+
+    # 1.- OS Particulars
+    g3_image_os_distro:                   "{{ g3_image.distribution         | default('RedHat') | lower }}"
+    g3_image_os_distro_version:           "{{ g3_image.distribution_version | default('8') }}"
+    g3_image_os_distro_version_minor:     "{{ g3_image.distribution_version_minor | default('0') }}"
+    g3_image_os_distro_version_main:      "{{ g3_image_os_distro_version    | string | split('.') | first }}"
+    g3_image_os_distro_arch:              "{{ g3_image.distribution_arch    | default('x86_64') | lower }}"
+    g3_deploy_os_path:   "{{ g3_repo_os_path | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}"
+
+    # 2.- Image Name Default Values
+    g3_deploy_default_url_image_name: "{{ g3_image.image | default('') | basename }}"
+    g3_default_os_fix_image_name: "{{ g3_image_os_distro_arch }}.iso"
+    g3_default_os_image_name:     "{{ g3_image.os_image_name | default(g3_default_os_fix_image_name) | default('x86_64.iso') | lower }}"
+    g3_deploy_image_name:         "{{ g3_default_os_image_name | lower }}" 
+
+    # 3.- Mount Points
+    g3_default_mount_folder: "{{ g3_deploy_image_name | ansible.builtin.splitext | first | default('') }}"
+    g3_mount_folder:         "{{ g3_image.mount_path  | default(g3_default_mount_folder,true) }}"      
+    g3_deploy_mount_path:    "{{ g3_repo_mount_path   | realpath }}/{{ g3_image_os_distro }}/{{ g3_image_os_distro_version }}/{{ g3_mount_folder }}"
+
+    # 4.- Sourc ISO File to Mount
+    g3_dest_mount: "{{ g3_deploy_mount_path | default('') }}"
+    g3_src_image:  "{{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}"      
+
+  block:
+  
+    - ansible.builtin.include_tasks: "2_http/1_mount.yml"
+    #- ansible.builtin.include_tasks: "2_http/2_cloud_image.yml"
+    #- ansible.builtin.include_tasks: "2_http/3_ipa.yml"

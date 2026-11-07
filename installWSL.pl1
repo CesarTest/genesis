@@ -9,8 +9,8 @@
 #  cd "$env:USERPROFILE\Desktop"
 
 # ---> CONFIGURACIÓN GLOBAL (VARIABLES CENTRALIZADAS)
-$USUARIO       = "javier"
-$CONTRASENA    = "malo"
+$USUARIO       = "ivan"
+$CONTRASENA    = "pau"
 
 $GIT_NAME      = "Cesar DGM"
 $GIT_EMAIL     = "cesar.delgado.gonzalez@alumnos.upm.es"
@@ -19,6 +19,9 @@ $TARGET_DIR    = "/home/$USUARIO/genesis"
 
 $DISTRO        = "Debian"
 $SSH_PORT      = "2222"
+
+$HOSTS_IP      = "192.168.1.61"
+$HOSTS_DOMAIN  = "training.genesis.lab"
 
 # ------------------------------------------------------------------------------
 # FASE 0: Deteccion Distro ya instalada
@@ -46,6 +49,37 @@ function Detectar-Entorno {
 	
 	# CASO 2 => La distro no esta en el sistema => False=Refrescar Instalacion
     return $false
+}
+
+# ------------------------------------------------------------------------------
+# FASE 0.5: Inyección de entrada DNS en el archivo hosts de Windows
+# ------------------------------------------------------------------------------
+function Actualizar-Hosts-Windows {
+    Write-Host "[0.5/6] Actualizar-Hosts-Windows: Auditando archivo hosts de Windows..." -ForegroundColor Cyan
+    
+    $RutaHosts = "$env:windir\System32\drivers\etc\hosts"
+    $LineaNueva = "$HOSTS_IP`t$HOSTS_DOMAIN"
+    
+    # Verificamos si el dominio ya está mapeado para evitar duplicados
+    if (Test-Path $RutaHosts) {
+        $Contenido = Get-Content $RutaHosts -Raw
+        
+        if ($Contenido -match [regex]::Escape($HOSTS_DOMAIN)) {
+            Write-Host "El dominio '$HOSTS_DOMAIN' ya existe en el archivo hosts. Omitiendo inyección." -ForegroundColor Yellow
+        } else {
+            try {
+                # Añadimos una nueva línea y la entrada al final del fichero
+                Add-Content -Path $RutaHosts -Value "`n$LineaNueva" -ErrorAction Stop
+                Write-Host "Entrada registrada con éxito: $LineaNueva" -ForegroundColor Green
+            } catch {
+                Write-Host "ERROR CRÍTICO: No se pudo escribir en el archivo hosts de Windows." -ForegroundColor Red
+                Write-Host "Asegúrate de ejecutar esta consola PowerShell como ADMINISTRADOR." -ForegroundColor Red
+                throw $_
+            }
+        }
+    } else {
+        Write-Host "ERROR: No se encontró la ruta del archivo hosts ($RutaHosts)." -ForegroundColor Red
+    }
 }
 
 # ------------------------------------------------------------------------------
@@ -160,6 +194,7 @@ function Main {
 
     try {
         if (-not (Detectar-Entorno)) {
+            Actualizar-Hosts-Windows
             Sanear-Entorno
             Instalar-Distribucion
             Reiniciar-Motor

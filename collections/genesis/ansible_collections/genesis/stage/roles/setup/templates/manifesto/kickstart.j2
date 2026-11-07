@@ -1,0 +1,152 @@
+{#############################################################################
+#                    ANSIBLE GENERATED KICKSTART FILE 
+# ----------------------------------------------------------------------------
+# Author: Cesar Delgado
+# Date:   05/08/2026
+# Version: 1.0
+#############################################################################} 
+{%- if j2_input is defined -%}
+{%-   if j2_input is not none -%}
+{%-      if j2_input is not string -%}
+{%-         if j2_input is mapping -%}
+{%-            if j2_input is iterable -%}
+{%-               if j2_input|length > 0 -%}
+{###############################
+         CAPTURE VALUES 
+ ##############################}
+{%-  set blank = " " -%}
+{%-  set eol = "\n" -%}
+{#......... 1.- Node Data Model ..... #}
+{%-  set ks_model    = j2_profile | default('none') -%}
+{%- set preins_candidatos = [
+      j2_node_profiles[ks_model]['preinstall'] | default(none),
+      j2_system_profiles[ks_model]['preinstall'] | default(none),
+      j2_os_profiles[ks_model]['preinstall'] | default(none),
+      j2_input['preinstall'] | default(none)
+    ] 
+-%}
+{%- set system_candidatos = [
+      j2_node_profiles[ks_model]['system'] | default(none),
+      j2_system_profiles[ks_model]['system'] | default(none),
+      j2_os_profiles[ks_model]['system'] | default(none),
+      j2_input['system'] | default(none)
+    ] 
+-%}
+{%- set repos_candidatos = [
+      j2_node_profiles[ks_model]['repos'] | default(none),
+      j2_system_profiles[ks_model]['repos'] | default(none),
+      j2_os_profiles[ks_model]['repos'] | default(none),
+      j2_input['repos'] | default(none)
+    ]
+-%}
+{%- set auth_candidatos = [
+      j2_node_profiles[ks_model]['auth'] | default(none),
+      j2_system_profiles[ks_model]['auth'] | default(none),
+      j2_os_profiles[ks_model]['auth'] | default(none),
+      j2_input['auth'] | default(none)
+    ] 
+-%}
+{%- set user_candidatos = [
+      j2_node_profiles[ks_model]['user'] | default(none),
+      j2_system_profiles[ks_model]['user'] | default(none),
+      j2_os_profiles[ks_model]['user'] | default(none),
+      j2_input['user'] | default(none)
+    ] 
+-%}
+{%- set ssh_candidatos = [
+      j2_node_profiles[ks_model]['ssh'] | default(none),
+      j2_system_profiles[ks_model]['ssh'] | default(none),
+      j2_os_profiles[ks_model]['ssh'] | default(none),
+      j2_input['ssh'] | default(none)
+    ] 
+-%}
+{%- set network_candidatos = [
+      j2_node_profiles[ks_model]['network'] | default(none),
+      j2_system_profiles[ks_model]['network'] | default(none),
+      j2_os_profiles[ks_model]['network'] | default(none),
+      j2_input['network'] | default(none)
+    ] 
+-%}
+{%- set packages_candidatos = [
+      j2_node_profiles[ks_model]['packages'] | default(none),
+      j2_system_profiles[ks_model]['packages'] | default(none),
+      j2_os_profiles[ks_model]['packages'] | default(none),
+      j2_input['packages'] | default(none)
+    ] 
+-%}
+{%- set storage_candidatos = [
+      j2_node_profiles[ks_model]['storage'] | default(none),
+      j2_system_profiles[ks_model]['storage'] | default(none),
+      j2_os_profiles[ks_model]['storage'] | default(none),
+      j2_input['storage'] | default(none)
+    ] 
+-%}
+{%- set postins_candidatos = [
+      j2_node_profiles[ks_model]['postinstall'] | default(none),
+      j2_system_profiles[ks_model]['postinstall'] | default(none),
+      j2_os_profiles[ks_model]['postinstall'] | default(none),
+      j2_input['postinstall'] | default(none)
+    ] 
+-%}
+{%- set logging_candidatos = [
+      j2_node_profiles[ks_model]['logging'] | default(none),
+      j2_system_profiles[ks_model]['logging'] | default(none),
+      j2_os_profiles[ks_model]['logging'] | default(none),
+      j2_input['logging'] | default(none)
+    ] 
+-%}
+{%- set ks_preinstall  = preins_candidatos   | select | first | default('') -%}
+{%- set ks_system      = system_candidatos   | select | first | default('') -%}
+{%- set ks_repos       = repos_candidatos    | select | first | default('') -%}
+{%- set ks_auth        = auth_candidatos     | select | first | default('') -%}
+{%- set ks_user        = user_candidatos     | select | first | default('') -%}
+{%- set ks_ssh         = ssh_candidatos      | select | first | default('') -%}
+{%- set ks_network     = network_candidatos  | select | first | default('') -%}
+{%- set ks_packages    = packages_candidatos | select | first | default('') -%} 
+{%- set ks_storage     = storage_candidatos  | select | first | default('') -%}  
+{%- set ks_postinstall = postins_candidatos  | select | first | default('') -%}
+{%- set ks_logging     = logging_candidatos  | select | first | default('') -%}
+{#......... 2.- Kickstart Sections Definition ..... #}
+{%-  set ks_sections = [  
+        { "header": "# ------> Installer & Initialization",  "content": ks_preinstall },
+        { "header": "# ------> Users & Passwords",           "content": ks_user     },
+        { "header": "# ------> Mirror Repositories",         "content": ks_repos     },
+        { "header": "# ------> System Properties",           "content": ks_system   },
+		{ "header": "# ------> System authorization",        "content": ks_auth     },	  
+        { "header": "# ------> SSH Keys",                    "content": ks_ssh      },	
+        { "header": "# ------> Installation Logging Level",  "content": ks_logging  },
+        { "header": "# ------> Network Information",         "content": ks_network  },
+        { "header": "# ------> Partitions & Storage Layout", "content": ks_storage  },				  
+        { "header": "%packages", "end": "%end\n",            "content": ks_packages },
+        { "header": "%post --log=/root/ks-post-ipmi.log", "end":"%end\n", "content": ks_postinstall }
+      ]			  
+-%}
+{###############################
+         RENDERING FILE
+ ##############################}
+# ==============================================================================
+# AUTOMATICALLY GENERATED CODE - DO NOT EDIT MANUALLY (use API instead)                           
+# Generated dynamically by Genesis Core Engine Mesh                              
+# Deployment Context: Anaconda Kickstart / Automated OS Provisioning Profile    
+# Timestamp: {{ now().strftime('%Y-%m-%d %H:%M:%S') }} 
+# ==============================================================================
+{{ eol }}
+{%- for section in ks_sections -%}
+  {%- if section.content -%}
+{{ section.header | default('') }}
+{{ section.content }}
+{{ section.end | default(eol) }}
+  {%- endif -%}
+{%- endfor -%}
+{###############################
+              END
+ ##############################}
+{%-             endif -%}
+{%-           endif -%}
+{%-         endif -%}
+{%-       endif -%}
+{%-    endif -%}
+{%- endif -%}
+{#############################################################################
+#                    ANSIBLE GENERATED KICKSTART FILE 
+#############################################################################} 

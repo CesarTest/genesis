@@ -1,0 +1,77 @@
+---
+# genesis.test 3_nodes/proxmox_subnet.yml
+#  - Dynamically Ensure Subnets and Hypervisor IPs are present on VNets/Bridges
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- vars:
+    t3_cli_commands:
+      present: >-
+        {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+        pvesh create /cluster/sdn/vnets --vnet "{{ bridge.name }}" --zone "{{ t1_airgap_zone.zone | default('airgap') }}" 2>/dev/null || true;
+        {% endfor -%}
+        pvesh set /cluster/sdn --apply 2>/dev/null || true
+      absent: >-
+        {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+        pvesh delete /cluster/sdn/vnets/{{ bridge.name }} 2>/dev/null || true;
+        {% endfor -%}
+        pvesh set /cluster/sdn --apply 2>/dev/null || true
+
+
+  block:
+  
+    - name: "T3 - PROXMOX_SUBNET -3- Zone: 3) Display SDN Subnets Spec"
+      ignore_errors: true
+      ansible.builtin.debug:
+        msg: "{{ debug_subnets_msg.splitlines() }}"
+      vars:
+        debug_subnets_msg: |
+          --- SDN Subnets Topology Specs ---
+          {% for bridge in t1_airgap_zone.bridges | default([]) %}
+          Subnet [{{ loop.index0 }}] (Target VNET): {{ bridge.name }}
+          ├─ Parent SDN Zone: {{ t1_airgap_zone.zone | default('airgap') }}
+          ├─ Subnet Identity: {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('network/prefix') }}
+          ├─ Network Range:    {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
+          └─ Assigned Gateway: {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }}
+          {% else %}
+          [ No subnets can be mapped. t1_airgap_zone.bridges is empty]
+          {% endfor %}
+      delegate_to: localhost
+
+    #-----------------------------------------------------------------------
+    # 1.- Bridges/VNets Association via Proxmox Module
+    #-----------------------------------------------------------------------
+    - name: "T3 - PROXMOX_SUBNET -3- Zone: 3.1) Ensure Subnets are mapped to VNETs with Hypervisor Gateway IP"
+      community.proxmox.proxmox_subnet:
+        api_host: "127.0.0.1"
+        api_user: "{{ t1_hypervisor_api_user | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        zone: "{{ t1_airgap_zone.zone | default('airgap') }}"
+        vnet: "{{ t3_proxmox_bridge.name | default('bridge' ~ t3_proxmox_index, true) }}"
+        subnet: "{{ t3_proxmox_bridge.ipv4 | ansible.utils.ipaddr('network/prefix') }}"
+        gateway: "{{ t3_proxmox_bridge.ipv4 | ansible.utils.ipaddr('address') }}"
+        state: "{{ t3_zone_state | default('present') }}"
+      loop: "{{ t1_airgap_zone.bridges | default([]) }}"
+      loop_control:
+        loop_var: "t3_proxmox_bridge"
+        index_var: "t3_proxmox_index" 
+      register: t3_subnet_provision_api
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- RECOVERY: Simula exactamente el comportamiento de proxmox_vnet por CLI
+    #-----------------------------------------------------------------------
+    - name: "T3 - PROXMOX_SUBNET -3- Zone: 3.2) SDN Force VNets synchronization via Bash Loop"
+      become: true
+      ansible.builtin.shell: 
+        cmd: "{{ t3_cli_commands[t3_selector] | default('') }}"
+      vars:
+        t3_selector: "{{ t3_zone_state | default('present') }}" 
+      register: t3_zone_cli_fallback
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      failed_when: false
+      changed_when: true

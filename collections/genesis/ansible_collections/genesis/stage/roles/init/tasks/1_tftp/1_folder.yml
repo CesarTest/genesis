@@ -1,0 +1,15 @@
+---
+# genesis.init 1_tftp/1_folder.yml
+#   - Vreate TFTP Folder
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "G3 - INIT: Setup PXE-TFTP: Create OS Installer Folder"
+  become: yes
+  ansible.builtin.file:
+    path: "{{ g3_deploy_tftp_path }}" 
+    state: directory      
+  when: 
+    - g3_image.extract_ramdisk is defined
+    - g3_image.extract_ramdisk   

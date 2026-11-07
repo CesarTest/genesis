@@ -1,0 +1,17 @@
+---
+# genesis.service.web web/2_install.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.web] - WEB -3- Install: PHP & Apache - Deploy Integrated Web Stack"
+  block:
+
+    - name: "[genesis.service.web] - WEB -3- Install: 1) PHP - Install Documentation Web Server"
+      ansible.builtin.include_role: 
+        name: geerlingguy.php
+
+    - name: "[genesis.service.web] - WEB -3- Install: 2) Apache - Install Documentation Web Server"
+      ansible.builtin.include_role: 
+        name: geerlingguy.apache

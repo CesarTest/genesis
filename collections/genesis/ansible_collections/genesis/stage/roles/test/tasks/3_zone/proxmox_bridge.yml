@@ -1,0 +1,105 @@
+---
+# genesis.test 3_nodes/proxmox_bridge.yml
+#  - Dynamically Ensure Provision and RedFish Networks are present on Hypervisor
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- vars:
+    t3_cli_commands:
+      present: >-
+        {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+        awk -v br="{{ bridge.name }}" -v ip="{{ bridge.ipv4 }}" '
+          $1 == "iface" && $2 == br { existe=1 }
+          { print }
+          END {
+            if (!existe) {
+              print ""
+              print "auto " br
+              print "iface " br " inet static"
+              print "\taddress " ip
+              print "\tbridge_ports none"
+              print "\tbridge_stp off"
+              print "\tbridge_fd 0"
+            }
+          }
+        ' /etc/network/interfaces > /etc/network/interfaces.tmp && mv /etc/network/interfaces.tmp /etc/network/interfaces;
+        ifdown {{ bridge.name }} --force 2>/dev/null || true; 
+        ifup {{ bridge.name }} 2>/dev/null || true;
+        ip link set {{ bridge.name }} up 2>/dev/null || true;
+        {% endfor -%}
+        pvesh set /cluster/sdn 2>/dev/null || true;
+        pvesh set /nodes/localhost/network 2>/dev/null || true
+
+      absent: >-
+        if [ -f /etc/network/interfaces ]; then
+          {% for bridge in (t1_airgap_zone.bridges | default([])) -%}
+          ifdown {{ bridge.name }} --force 2>/dev/null || true;
+          ip link set {{ bridge.name }} down 2>/dev/null || true;
+          ip link delete {{ bridge.name }} 2>/dev/null || true;
+          awk -v br="{{ bridge.name }}" '
+            $1 == "auto" && $2 == br { borrar=1; next }
+            $1 == "iface" && $2 == br { borrar=1; next }
+            borrar && /^[ \t]/ { next }
+            borrar && !/^\t/ { borrar=0 }
+            { print }
+          ' /etc/network/interfaces > /etc/network/interfaces.tmp && mv /etc/network/interfaces.tmp /etc/network/interfaces;
+          {% endfor -%}
+        fi;
+        pvesh set /cluster/sdn 2>/dev/null || true;
+        pvesh set /nodes/localhost/network 2>/dev/null || true
+
+  block:
+
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2) Display SDN Bridges Topology"
+      ignore_errors: true
+      ansible.builtin.debug:
+        msg: "{{ debug_topology_msg.splitlines() }}"
+      vars:
+        debug_topology_msg: |
+          --- SDN Bridges Topology Specs ---
+          {% for bridge in t1_airgap_zone.bridges | default([]) %}
+          Net{{ loop.index0 }} (Bridge Name): {{ bridge.name }}
+          ├─ Driver / Type: {{ bridge.type | default('ovs') | upper }}
+          ├─ IPv4 Address:  {{ bridge.ipv4 | default('[ipv4 is NOT DEFINED]') }}
+          └─ Node Gateway:   {{ bridge.ipv4 | default('0.0.0.0/0') | ansible.utils.ipaddr('address') }} (Hypervisor IP)
+          {% else %}
+          [ No bridges are defined in t1_airgap_zone.bridges ]
+          {% endfor %}
+      delegate_to: localhost
+
+    #-----------------------------------------------------------------------
+    # 1.- Bridges Creation via Proxmox SDN (Environment Level)
+    #-----------------------------------------------------------------------
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone 2.1) Ensure Provision and Redfish VNETs are present in Proxmox cluster"
+      community.proxmox.proxmox_vnet:
+        api_host: "127.0.0.1"
+        api_user:     "{{ t1_hypervisor_api_user     | default(omit) }}"
+        api_password: "{{ t1_hypervisor_api_password | default(omit) }}"
+        validate_certs: false
+        vnet: "{{ t3_proxmox_bridge.name | default('bridge' ~ t3_proxmox_index, true) }}"
+        tag:  "{{ t1_proxmox_vnet_tag    | default(omit) }}"
+        zone: "{{ t1_airgap_zone.zone    | default(omit) }}"
+        state: "{{ t3_zone_state | default('present') }}"
+      loop: "{{ t1_airgap_zone.bridges | default([]) }}"
+      loop_control:
+        loop_var: "t3_proxmox_bridge"
+        index_var: "t3_proxmox_index" 
+      register: t3_network_provision_api
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+
+  rescue:
+
+    #-----------------------------------------------------------------------
+    # 2.- Bridges Creation via CLI
+    #-----------------------------------------------------------------------  
+    - name: "T3 - PROXMOX_BRIDGE -3- Zone: 2.2) RESCUE - Force Bridge Creation via CLI"
+      become: true
+      ansible.builtin.shell: 
+        cmd: "{{ t3_cli_commands[t3_selector] | default('') }}"
+      vars:
+        t3_selector: "{{ t3_zone_state | default('present') }}" 
+      register: t3_zone_cli_fallback
+      delegate_to: "{{ t1_hypervisor_node | default('localhost') }}"
+      failed_when: false
+      changed_when: true

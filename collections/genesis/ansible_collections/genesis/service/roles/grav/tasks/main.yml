@@ -1,0 +1,70 @@
+---
+# genesis.service.grav main
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "[genesis.service.grav] - GRAV: MaaS Documentation Server"
+  become: true
+  block:
+
+    #---------------------------------
+    #  0.- Refresh Facts
+    #---------------------------------
+    - name: "[genesis.service.grav] - GRAV: 0) Refresh facts"
+      ansible.builtin.setup:
+
+    #---------------------------------
+    #  1.- Upload Grav ZIP Files 
+    #---------------------------------
+    - name: "[genesis.service.grav] - GRAV: Bootstrap 1) Upload Package into Web Server"
+      ansible.builtin.include_tasks: "1_package.yml"
+      loop: "{{ grav_deploy | default([]) }}"
+      loop_control:
+         loop_var: "grav_package"
+
+    #---------------------------------
+    #  2.- Install Grav Skeleton
+    #---------------------------------
+    - name: "[genesis.service.grav] - GRAV: Install 2) Grav CMS Skeleton"
+      ansible.builtin.include_tasks: "2_grav.yml"
+
+    #---------------------------------
+    #  3.- Create Sites
+    #---------------------------------
+    - name: "[genesis.service.grav] - GRAV: Start 3) Create Sites"  
+      ansible.builtin.include_tasks: "3_site.yml"
+      vars:
+         root_defined: "{{ (grav_site.root is defined) and ( grav_site.root is not none )   }}"
+         isRoot:       "{{ (root_defined is true) and (grav_site.root is true) }}"
+         capture_work_path: |
+           {%- if (isRoot|bool is true) -%}{{grav_work_path }}/user
+           {%- else -%}{{ grav_work_path }}/user/env/{{ grav_site.path }}
+           {%- endif -%}
+         site_work_path:    "{{ capture_work_path | trim | replace('\n', '') }}"
+         site_paths:
+            accounts: "{{ site_work_path}}/themes"
+            themes:  "{{ site_work_path}}/themes"
+            pages:   "{{ site_work_path }}/pages"
+            plugins: "{{ site_work_path }}/plugins"
+            config: "{{ site_work_path }}/config"    
+      loop: "{{ grav_sites | default([]) }}"
+      loop_control:
+          loop_var: "grav_site"
+
+    #---------------------------------
+    #  4.- Validate Grav Installation
+    #---------------------------------
+    - name: "[genesis.service.grav] - GRAV: Init 4) Verify Grav Service"
+      ansible.builtin.include_tasks: "4_ready.yml"
+
+  rescue:
+
+    - name: "[genesis.service.grav] - GRAV: [RESCUE] 5) Print non-blocking provisioning failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: An exception has been detected during the GRAV deployment on host {{ inventory_hostname }}.
+          Execution will CONTINUE in non-blocking mode. Please review previous tasks to audit potential inconsistencies.
+
+    - name: "[genesis.service.grav] - GRAV: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

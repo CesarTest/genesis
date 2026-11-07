@@ -1,0 +1,90 @@
+---
+# genesis.doc grav/3_user.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "[genesis.service.grav] - GRAV -2- User: Install Grav Admin User"
+  vars:
+
+    # 0.- Defaults
+    grav_target: "{{ grav_action | default('user') }}"
+    grav_users_path_fallback: "{{ grav_users_path | default('/tmp') }}"
+    grav_user_default_admin_user_filename: "{{ grav_users_path_fallback }}/admin.yml"
+    
+    # 1.- Template
+    grav_template:
+      user: "user.j2"
+      multisite: "{{ grav_multisite | default('setup_subdirectory') }}.j2"
+      
+    # 2.- Destination File
+    grav_upload_path: "{{ grav_work_path | default('/var/www/html/maas') }}"
+    grav_upload_users_dest: "{{ grav_users_path | default(grav_upload_path) }}/{{ grav_user.username | default('gravadmin') }}.yaml"
+    grav_dest_file:
+      user: "{{ grav_upload_users_dest }}"
+      multisite: "{{ grav_upload_path }}/setup.php"
+
+    # 3.- Default User Structure
+    grav_fallback_user_data:
+      username: "{{ grav_user.username | default('gravadmin') }}"
+      email:    "{{ grav_user.email    | default('admin@genesis.local') }}"
+      fullname: "{{ grav_user.fullname | default('admin') | title }}"
+      title: "Administrator"
+      state: "enabled"
+      access:
+        admin:
+          login: true
+          super: true
+        site:
+          login: true
+      
+    # 4.- Rescue Shell Commands
+    grav_user_emergency_commands:
+      user:
+        - "echo WARNING ALERT: Native template module failed. Triggering raw shell rescue..."
+        - |
+          cat << 'EOF' > {{ grav_dest_file[grav_target] | default(grav_user_default_admin_user_filename) }}
+          {{ grav_fallback_user_data | to_nice_yaml(indent=2) }}
+          EOF
+        - "chmod 0644 {{ grav_dest_file[grav_target] | default(grav_user_default_admin_user_filename) }}"
+        - "chown {{ apache_user | default('apache') }}:{{ apache_group | default('apache') }} {{ grav_dest_file[grav_target] | default(grav_user_default_admin_user_filename) }}"
+      multisite:
+        - "echo WARNING ALERT: Native template module failed. Triggering raw shell rescue..."
+
+  block:
+ 
+    - name: "[genesis.service.grav] - GRAV -2- User: 2) Create GRAV User Account"
+      ansible.builtin.template:
+        src: "{{ grav_src }}"
+        dest: "{{ grav_dest }}"
+        owner: "{{ apache_user | default('root') }}"
+        group: "{{ apache_group | default('root') }}"
+      vars:
+        grav_src: "{{ grav_template[grav_target] | default(omit) }}"
+        grav_dest: "{{ grav_dest_file[grav_target] | default(omit) }}"
+      when:
+        - grav_src is defined
+        - grav_src is not none
+        - grav_src is string
+        - grav_src | length > 0
+        - grav_dest is defined
+        - grav_dest is not none
+        - grav_dest is string
+        - grav_dest | length > 0
+
+  rescue:
+    - name: "[genesis.service.grav] - GRAV -2- User: 3) [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ emergency_command }}"
+      loop: "{{ grav_user_emergency_commands[grav_target] | default() }}"
+      loop_control:
+        loop_var: emergency_command
+      failed_when: false
+
+    - name: "[genesis.service.grav] - GRAV -2- User: 4) [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Grav user deployment tasks experienced an exception on host {{ inventory_hostname }}.
+          Fallback account layout was dumped via shell string. Execution will CONTINUE in non-blocking mode.
+
+    - name: "[genesis.service.grav] - GRAV -2- User: 5): [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

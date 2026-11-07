@@ -1,0 +1,179 @@
+---
+# genesis.service.web vars/main.yml
+#  - Web Server Installation parameters (Elevated Priority via vars)
+#     
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#########################################################
+#            BASE VARIABLES & API INTERFACE
+#########################################################
+server_domain: "{{ web_server_domain | default('genesis.lab', true) }}"
+apache_work_path: "{{ web_apache_work_path | default('/var/www/html', true) }}"
+apache_logs: "{{ web_apache_logs | default('/var/log/httpd', true) }}"
+apache_refresh: "{{ web_apache_refresh | default('true') | bool }}"
+apache_gitea_url: "{{ inventory_hostname_short }}.gitea.{{ server_domain | default('genesis.lab') }}"
+apache_gitea_path: "{{ apache_work_path | default('/var/www/html') }}/gitea"
+apache_maas_url:  "{{ inventory_hostname_short }}.maas.{{  server_domain | default('genesis.lab') }}"
+apache_maas_path: "{{ apache_work_path | default('/var/www/html') }}/maas"
+
+#########################################################
+#            APACHE SERVER CONFIGURATIONS
+#########################################################
+apache_service: "{{ web_apache_service | default((ansible_os_family | default('Debian') == 'Debian') | ternary('apache2', 'httpd'), true) }}"
+apache_user: "{{ web_apache_user | default((ansible_os_family | default('Debian') == 'Debian') | ternary('www-data', 'apache'), true) }}"
+apache_shell: "{{ web_apache_shell | default('/bin/bash', true) }}"
+apache_group: "{{ web_apache_group | default(apache_user, true) }}"
+apache_create_vhosts: "{{ web_apache_create_vhosts | default(true, true) | bool }}"
+apache_vhosts_filename: "{{ web_apache_vhosts_filename | default('vhosts.conf', true) }}"
+apache_vhosts_template: "{{ web_apache_vhosts_template | default('vhosts.conf.j2', true) }}"
+apache_global_vhost_settings: "{{ web_apache_global_vhost_settings | default('DirectoryIndex index.php index.html', true) }}"
+apache_allow_override: "{{ web_apache_allow_override | default('All', true) }}"
+apache_options: "{{ web_apache_options | default('All Indexes FollowSymLinks', true) }}"
+apache_mods_disabled: "{{ web_apache_mods_disabled | default([], true) }}"
+grav_default_vhosts:
+  - servername: "{{ apache_gitea_url }}"
+    documentroot: "{{ apache_gitea_path | default('/var/www/html/gitea') }}"  
+    serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
+    serveralias: "www.{{ apache_gitea_url | default('gitea.genesis.lab') }}" 
+    extra_parameters: |
+         ErrorLog  {{ apache_logs | default('/var/log/httpd', true) }}/gitea/error.log  
+         CustomLog {{ apache_logs | default('/var/log/httpd', true) }}/gitea/access.log combined  
+         Redirect 301 / http://{{ apache_gitea_url | default('gitea.genesis.lab') }}:3000/
+
+  - servername:  "{{ apache_maas_url | default('maas.genesis.lab') }}"
+    documentroot: "{{ apache_maas_path | default('/var/www/html/maas') }}"
+    serveradmin: "cesar.delgado.gonzalez@alumnos.upm.es"
+    serveralias: "www.{{ apache_maas_url | default('maas.genesis.lab') }}"
+    extra_parameters: |
+         ErrorLog  {{ apache_logs | default('/var/log/httpd') }}/maas/error.log
+         CustomLog {{ apache_logs | default('/var/log/httpd') }}/maas/access.log combined
+
+apache_vhosts: "{{ web_apache_vhosts | default(grav_default_vhosts, true) }}"
+
+#########################################################
+#            PHP CONFIGURATIONS FOR GRAV
+#########################################################
+#------------
+# 1.- Main Config
+#------------
+php_user:  "{{ web_php_user | default(apache_user, true) }}"
+php_group: "{{ web_php_group | default(apache_group, true) }}"
+php_install_from_source: "{{ web_php_install_from_source | default(false, true) | bool }}"
+php_enable_webserver: "{{ web_php_enable_webserver | default(true, true) | bool }}"
+php_webserver_daemon: "{{ web_php_webserver_daemon | default(apache_service, true) }}"
+php_packages_state: "{{ web_php_packages_state | default('present', true) }}"
+php_install_recommends: "{{ web_php_install_recommends | default(true, true) | bool }}"
+php_executable: "{{ web_php_executable | default('php', true) }}"
+php_version: "{{ web_php_version | default('8.3', true) }}"
+php_packages: "{{ web_php_packages | default(grav_default_php_packages, true) }}"
+grav_default_php_packages:
+  - php
+  - php-cli
+  - php-common
+  - php-devel
+  - php-gd
+  - php-mbstring
+  - php-pdo
+  - php-pecl-apcu
+  - php-xml
+  - php-curl 
+  - php-ctype
+  - php-dom
+  - php-gd
+  - php-json
+  - php-mbstring
+  - php-openssl
+  - php-session
+  - php-simplexml
+  - php-xml
+  - php-zip
+
+#------------
+# 2.- PHP ini
+#------------- 
+php_memory_limit: "{{ web_php_memory_limit | default('128M', true) }}"
+php_max_execution_time: "{{ web_php_max_execution_time | default('90', true) }}"
+php_upload_max_filesize: "{{ web_php_upload_max_filesize | default('256M', true) }}"
+
+#---------
+# 3.- OPT Cache
+#--------
+php_opcache_zend_extension: "{{ web_php_opcache_zend_extension | default('opcache.so', true) }}"
+php_opcache_enable: "{{ web_php_opcache_enable | default('1', true) }}"
+php_opcache_enable_cli: "{{ web_php_opcache_enable_cli | default('0', true) }}"
+php_opcache_memory_consumption: "{{ web_php_opcache_memory_consumption | default('96', true) }}"
+php_opcache_interned_strings_buffer: "{{ web_php_opcache_interned_strings_buffer | default('16', true) }}"
+php_opcache_max_accelerated_files: "{{ web_php_opcache_max_accelerated_files | default('4046', true) }}"
+php_opcache_max_wasted_percentage: "{{ web_php_opcache_max_wasted_percentage | default('5', true) }}"
+php_opcache_validate_timestamps: "{{ web_php_opcache_validate_timestamps | default('1', true) }}"
+php_opcache_revalidate_path: "{{ web_php_opcache_revalidate_path | default('0', true) }}"
+php_opcache_revalidate_freq: "{{ web_php_opcache_revalidate_freq | default('2', true) }}"
+php_opcache_max_file_size: "{{ web_php_opcache_max_file_size | default('0', true) }}"
+
+#########################################################         
+#               WEB SERVER INFRASTRUCTURE
+#########################################################
+web_default_folders_tree:
+
+  - path: "{{ apache_work_path | default('/var/www/html', true) }}/gitea"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: "0755"
+    setype: "httpd_sys_rw_content_t"
+
+  - path: "{{ apache_work_path | default('/var/www/html', true) }}/maas"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: "0755"
+    setype: "httpd_sys_rw_content_t"
+
+  - path: "{{ apache_logs | default('/var/log/httpd', true) }}/gitea"
+    owner: "root"
+    group: "root"
+    mode: "0750"
+    setype: "httpd_log_t"
+
+  - path: "{{ apache_logs | default('/var/log/httpd', true) }}/maas"
+    owner: "root"
+    group: "root"
+    mode: "0750"
+    setype: "httpd_log_t"
+
+web_folders_tree: "{{ web_folders_tree_config | default(web_default_folders_tree, true) }}"
+
+#########################################################
+#               WEB MAC CONFIGURATION MODELS
+#########################################################
+
+# 1. Defaults (Tus respaldos locales de seguridad para este Stack)
+web_mac_default_server_users:
+  - username: "{{ apache_user }}"
+    usergroup: "{{ apache_group }}"
+    usershell: "{{ apache_shell | default('/sbin/nologin', true) }}"
+    folders: "{{ web_folders_tree }}"
+    create_home: "yes"
+  - username: "{{ php_user | default(apache_user, true) }}"
+    usergroup: "{{ php_group | default(apache_group, true) }}"
+    usershell: "{{ php_shell | default('/sbin/nologin', true) }}"
+    create_home: "yes"
+
+web_mac_default_selinux_policies_config:
+  - target: "{{ apache_work_path | default('/var/www/html', true) }}(/.*)?"
+    setype: "httpd_sys_rw_content_t"
+    seuser: "unconfined_u"
+    state: "present"
+
+web_mac_default_firewall_rules_config:
+  - service: "http"
+    permanent: true
+    state: "enabled"
+  - service: "https"
+    permanent: true
+    state: "enabled"
+
+# 2. End Values (La API que finalmente adopta el rol de MAC por herencia directa)
+mac_rbac_refresh: "{{ apache_refresh | default(false, true) | bool }}"
+mac_user_rbac_config: "{{ web_mac_server_users | default(web_mac_default_server_users, true) }}"
+mac_selinux_policies_config: "{{ web_mac_selinux_policies_config | default(web_mac_default_selinux_policies_config, true) }}"
+mac_firewall_rules_config: "{{ web_mac_firewall_rules_config | default(web_mac_default_firewall_rules_config, true) }}"

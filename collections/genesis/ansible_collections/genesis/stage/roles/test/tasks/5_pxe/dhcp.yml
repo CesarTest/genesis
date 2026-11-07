@@ -1,0 +1,39 @@
+---
+# genesis.setup 5_pxe/dhcp.yml
+#   - Restart DHCP Leases
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "T5 - PXE -5- DHCP: Flush dnsmasq DHCP leases to ensure clean environment"
+  become: true
+  block:
+ 
+    - name: "T5 - PXE -5- DHCP: 1) Stop dnsmasq service temporarily"
+      ansible.builtin.systemd:
+        name: dnsmasq
+        state: stopped
+
+    - name: "T5 - PXE -5- DHCP: 2) Truncate leases database file"
+      ansible.builtin.file:
+        path: /var/lib/misc/dnsmasq.leases
+        state: absent 
+
+    - name: "T5 - PXE -5- DHCP: 3) Restart dnsmasq service clean"
+      ansible.builtin.systemd:
+        name: dnsmasq
+        state: started
+
+  rescue:
+    - name: "T5 - PXE -5- DHCP: [RESCUE] Force flush dnsmasq leases via shell command loop"
+      ansible.builtin.shell: "{{ g3_rescue_cmd }}"
+      loop:
+        - "systemctl stop dnsmasq"
+        - "rm -f /var/lib/misc/dnsmasq.leases"
+        - "systemctl start dnsmasq"
+      loop_control:
+        loop_var: "g3_rescue_cmd"
+
+  delegate_to: localhost
+  connection: local

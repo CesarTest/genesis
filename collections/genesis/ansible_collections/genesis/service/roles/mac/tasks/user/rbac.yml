@@ -1,0 +1,77 @@
+---
+# genesis.service.mac user/rbac.yml
+#   - RBAC Identity Management: Direct Single Element Extraction
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.mac] - RBAC -1- User: Identity Provisioning Orchestration"
+  become: true  
+  vars:
+    mac_username:  "{{ mac_user.username  | default('root', true) }}"
+    mac_usergroup: "{{ mac_user.usergroup | default('root', true) }}"
+    mac_usershell: "{{ mac_user.usershell | default('/bin/bash', true) }}"
+    mac_user_password_salt: "SaltGnsRhel{{gitea_node_os_version | default('8') }}"
+    mac_user_plain_password: "{{  mac_user.password | default(ansible_become_pass) | default('genesis') }}"
+    mac_bash_hash_generation_cmd: "openssl passwd -6 -salt {{ mac_user_password_salt }} {{ mac_user_plain_password }}"
+    mac_user_password: "{{ lookup('ansible.builtin.pipe', mac_bash_hash_generation_cmd) }}"
+    mac_user_emergency_commands:
+      # Operación 1: Creación directa del grupo en Bash puro si falla la API
+      - |
+        getent group "{{ mac_usergroup }}" &>/dev/null || groupadd "{{ mac_usergroup }}"
+        true
+
+      # Operación 2: Creación, inyección de hash SHA-512 y acumulación de grupos en Rescue
+      - |
+        getent passwd "{{ mac_username }}" &>/dev/null || \
+          useradd -g "{{ mac_usergroup }}" -s "{{ mac_usershell }}" -p "{{ mac_user_password }}" -m "{{ mac_username }}"
+        
+        # Sincroniza la contraseña en el rescate por si el usuario existía pero cambió la clave
+        echo "{{ mac_username }}:{{ mac_user_plain_password }}" | chpass &>/dev/null || usermod -p "{{ mac_user_password }}" "{{ mac_username }}"
+        usermod -aG "{{ mac_usergroup }}" "{{ mac_username }}"
+        true
+
+  block:
+
+    - name: "[genesis.service.mac] - RBAC -1- User: [DEBUG TRACE] Display Identity Details"
+      ansible.builtin.debug:
+        msg: "{{ debug_identity_text.splitlines() }}"
+      vars:
+        debug_identity_text: |
+          =================== GENESIS IDENTITY PARTICULARS ===================
+          Source Variable:    mac_user
+          Target Username:    [{{ mac_username | default('mac_username NOT DEFINED OR EMPTY', true) }}]
+          Primary Group:      [{{ mac_usergroup | default('mac_usergroup NOT DEFINED OR EMPTY', true) }}]
+          System Shell:       [{{ mac_usershell | default('mac_usershell NOT DEFINED OR EMPTY', true) }}]
+      ignore_errors: true
+      delegate_to: localhost
+  
+    - name: "[genesis.service.mac] - RBAC -1- User: 1.1) Identity: Build System Group"
+      ansible.builtin.group:
+        name: "{{ mac_usergroup }}"
+        state: present
+      when: 
+        - mac_usergroup | length > 0
+        - mac_usergroup != 'root'
+
+    - name: "[genesis.service.mac] - RBAC -1- User: 1.2) Identity: Provision System User with Cumulative Group"
+      ansible.builtin.user:
+        name: "{{ mac_username }}"
+        groups: "{{ mac_usergroup }}"
+        append: true  # <--- Mantiene los grupos de pasadas previas del loop superior
+        shell: "{{ mac_usershell }}"
+        password: "{{ mac_user_password }}"
+        update_password: on_create        
+        create_home: true
+        state: present
+      when: 
+        - mac_username | length > 0
+        - mac_username != 'root'
+
+  rescue:
+    - name: "[genesis.service.mac] - RBAC -1- User: [RESCUE] 1.3) Emergency identity injection via CLI"
+      ansible.builtin.shell: "{{ mac_shell_user_cmd }}"
+      loop: "{{ mac_user_emergency_commands }}"
+      loop_control:
+        loop_var: "mac_shell_user_cmd"
+      failed_when: false

@@ -1,0 +1,51 @@
+---
+# genesis.service.grav site/3_config.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.grav] - GRAV -3- Site: Configurations Orchestration Block"
+  vars:
+    # Definición directa de rutas y textos para que los comandos de abajo sean cortos
+    cfg_file: "{{ site_work_path | default('') }}/{{ site_config.file | default('') }}"
+    cfg_line: "{{ site_config.line | default('') }}"
+    cfg_regex: "{{ site_config.regexp | default('') }}"
+
+    # Secuencia de rescate limpia y sin condicionales complejos de Bash
+    grav_emergency_shell:
+      - "echo 'WARNING ALERT: Native lineinfile failed. Running simple shell fallback...'"
+      - "sed -i '/{{ cfg_regex }}/d' {{ cfg_file }}"
+      - "echo '{{ cfg_line }}' >> {{ cfg_file }}"
+
+  block:
+
+    # -----------------------------------------------------
+    # 3.1.- Edición de líneas 
+    # -----------------------------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Site: 3.1) Site Configurations (Line in File)"
+      ansible.builtin.lineinfile:
+        path:   "{{ site_work_path | default('') }}/{{ site_config.file | default('') }}"
+        regexp: "{{ site_config.regexp | default('') }}"
+        line:   "{{ site_config.line | default('') }}"
+      when:
+        - "site_config is defined"
+        - "site_config.file is defined"
+        - "(isMultisite is true) or (isRoot is true)"
+
+  rescue:
+
+    # -----------------------------------------------------
+    # 3. Perimeter Fallback: Executes the string loop cleanly
+    # -----------------------------------------------------
+    - name: "[genesis.service.grav] - GRAV -4- Content: Rescue: Trigger System Emergency Shell Contingency Mesh"
+      ansible.builtin.shell:
+        cmd: "{{ grav_cmd }}"
+      loop: "{{ grav_emergency_shell | default([], true) }}"
+      loop_control:
+        loop_var: "grav_cmd"
+        label: "Executing Fallback stage"
+      failed_when: false
+
+    - name: "[genesis.service.grav] - GRAV -3- Site: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

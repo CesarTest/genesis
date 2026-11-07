@@ -1,0 +1,38 @@
+---
+# genesis.service.gitea gitea/3_install.yml
+#   - Binary deployment and inline systemd unit compilation (API Synced)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.gitea] - GITEA INSTALL: Main Installation Block"
+  become: true
+  vars:
+
+    gitea_install_emergency_commands:
+      - "echo 'WARNING ALERT: Native deployment files copy failed on host {{ inventory_hostname }}. Initiating CLI backup...'"
+      - "mkdir -p {{ gitea_bin_path }}"
+      - "cp -f {{ gitea_local_binary_source }} {{ gitea_bin_path }}/gitea && chmod +x {{ gitea_bin_path }}/gitea"
+
+  block:
+
+    - name: "[genesis.service.gitea] - GITEA INSTALL: 3.1) Binary: Copy Local Executable from Genesis Repo"
+      ansible.builtin.copy:
+        src: "{{ gitea_local_binary_source }}"
+        dest: "{{ gitea_bin_path }}/gitea"
+        owner: "root"
+        group: "root"
+        mode: "0755"
+        remote_src: false
+
+  rescue:
+
+    - name: "[genesis.service.gitea] - GITEA INSTALL: [RESCUE] 3.3) Emergency storage deployment sequence"
+      ansible.builtin.shell: "{{ gitea_shell_cmd }}"
+      loop: "{{ gitea_install_emergency_commands }}"
+      loop_control:
+        loop_var: "gitea_shell_cmd"
+      failed_when: false
+
+    - name: "[genesis.service.gitea] - GITEA INSTALL: [RESCUE] 3.4) Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

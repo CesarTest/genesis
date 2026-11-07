@@ -1,0 +1,51 @@
+---
+# genesis.test 1_hypervisor/connectivity.yml
+#  - Unattended OS installation
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "T1 - CONNECTIVITY -1- Hypervisor: 1) Ansible Connection Check"
+  vars:
+    ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    t1_hypervisor_node_ip: "{{ hostvars[t1_hypervisor_node]['ansible_host'] }}"
+  block:
+  
+    - name: "T1 - CONNECTIVITY -1- Hypervisor: 1.1) Remove old SSH host fingerprint to avoid conflicts"
+      connection: local
+      ansible.builtin.known_hosts:
+        name: "{{ t1_hypervisor_node }}"
+        state: absent
+      delegate_to: localhost
+
+    - name: "T1 - CONNECTIVITY -1- Hypervisor: 1.2) Proxmox Ansible Connection Check"
+      ansible.builtin.ping:
+      register: t1_proxmox_probe_result
+      delegate_to: "{{ t1_hypervisor_node_ip | default('localhost') }}"
+      ignore_unreachable: true
+
+    - name: "T1- 1.- TESTING ENVIRONMENT: Handle connection failure"
+      ansible.builtin.fail:
+        msg: |
+          --- CRITICAL ERROR: SSH CONNECTION FAILED ---
+          Ansible cannot establish an SSH session with the Proxmox host.
+          
+          Possible Causes & Fixes:
+           
+          1. MISSING SSH TRUST (Key not authorized)
+             Run this command to copy your public SSH key:
+             ssh-copy-id -o StrictHostKeyChecking=no {{ ansible_user | default('root') }}@{{ t1_hypervisor_node_ip | default('NOT_DEFINED') }}
+         
+          2. INVALID INVENTORY USER
+             The user '{{ ansible_user | default('root') }}' does not exist on the Proxmox host.
+             Fix A: Change 'ansible_user' parameter in your inventory file.
+             Fix B: Create the missing user manually on the hypervisor:
+                    useradd -m -s /bin/bash {{ ansible_user | default('root') }}
+          
+          --- Debug Context ---
+          Target Host IP: {{ t1_hypervisor_node_ip | default('NOT_DEFINED') }}
+          Inventory User: {{ ansible_user | default('root') }}
+      when: 
+        - t1_proxmox_probe_result.unreachable is defined
+        - t1_proxmox_probe_result.unreachable | bool
+      delegate_to: localhost

@@ -1,0 +1,94 @@
+---
+# genesis.service.grav 3_site.yml
+#   - Prepare Documentation Node
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.grav] - GRAV -3- Site: Create Sites"
+  vars:
+    multisite_defined: "{{ (grav_multisite is defined) and ( grav_multisite is not none )   }}"
+    multisite_none:    "{{ (multisite_defined is true) and (grav_multisite is string)       }}"
+    multisite_type:    "{{ (multisite_none is true)    and (grav_multisite is not mapping)  }}" # Corregido 'grav_mulstisite'
+    isMultisite:       "{{ (multisite_type is true)    and (grav_multisite | length > 0)    }}" 
+
+  block:
+
+    # -----------------------------------------------------
+    # 0. Data Model to Read
+    # -----------------------------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Site: Trace input site payload and computed vars"
+      ansible.builtin.debug:
+        msg: "{{ debug_txt.splitlines() }}"
+      vars:
+        debug_txt: |
+          --- [TRACE] GRAV SITE ORCHESTRATION ---
+          variable 'isMultisite':    [{{ isMultisite | default('undefined') }}]
+          variable 'isRoot':         [{{ isRoot | default('undefined') }}]
+          variable 'site_work_path': [{{ site_work_path | default('undefined') }}]
+          variable 'site_paths':
+            accounts: [{{ site_paths.accounts | default('undefined') }}]
+            themes:   [{{ site_paths.themes | default('undefined') }}]
+            pages:    [{{ site_paths.pages | default('undefined') }}]
+            plugins:  [{{ site_paths.plugins | default('undefined') }}]
+            config:   [{{ site_paths.config | default('undefined') }}]
+          variable 'grav_site':
+          {{ grav_site | to_nice_yaml(indent=2) }}
+      delegate_to: localhost
+      ignore_errors: true
+
+    # -----------------------------------------------------
+    # 1. Create site Folder
+    # -----------------------------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Site: 1) Folders"
+      ansible.builtin.include_tasks: "site/1_folder.yml"
+
+    # -----------------------------------------------------
+    # 2. Upload Contents / Symbolic Link to Gitea Repo
+    # -----------------------------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Site: 2) Upload Contents"
+      ansible.builtin.include_tasks: "site/2_content.yml"
+      loop: "{{ grav_site.contents | default([]) }}"
+      loop_control:
+        loop_var: "site_content"
+      when:
+        - "(isMultisite is true) or (isRoot is true)"
+
+    # -----------------------------------------------------
+    # 3. Dump Configuration Files
+    # -----------------------------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Site: 3) Dump Config Files"
+      ansible.builtin.include_tasks: "package/4_config.yml"
+      vars:
+        grav_package:
+          mode:  "{{ site_dump.mode | default(omit) }}"
+          owner: "{{ site_dump.owner | default(omit) }}"
+          group: "{{ site_dump.group | default(omit) }}"
+          template: 
+            dest: "{{ site_work_path | default('') }}/{{ site_dump.template.dest | default('') }}"
+            content: "{{ site_dump.template.content | default('') }}"
+      loop: "{{ grav_site.dumps | default([]) }}" 
+      loop_control:
+        loop_var: "site_dump"
+      when:
+        - "(isMultisite is true) or (isRoot is true)"
+
+    # -----------------------------------------------------
+    # 4. Edit Lines in Configuration Files
+    # -----------------------------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Site: 4) Edit lines in Config Files"
+      ansible.builtin.include_tasks: "site/3_config.yml"
+      loop: "{{ grav_site.configs | default([]) }}"
+      loop_control:
+        loop_var: "site_config"
+      when:
+        - "(isMultisite is true) or (isRoot is true)"
+
+  rescue:
+
+    - name: "[genesis.service.grav] - GRAV -3- Grav: ERROR - PREPARING GRAV INSTALLATION"
+      ansible.builtin.debug:
+        msg:
+          - "Missing Definitions: |grav_deploy|"
+          - "{{ grav_deploy | default('Empty Value') }}"
+

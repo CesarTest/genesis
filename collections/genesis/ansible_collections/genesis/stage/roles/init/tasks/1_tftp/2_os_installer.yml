@@ -1,0 +1,189 @@
+---
+# genesis.init 1_tftp/2_os_installer.yml
+#   - Unpack OS Installers to TFTP + HTTP Folders
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+#---------------------------------------
+# 1. Extract OS Native Installer to HTTP Folder
+#---------------------------------------  
+- vars:
+    # ------------------------
+    # Debian PXE
+    #   -> Reference Documentation: https://wiki.debian.org/DebianInstaller/NetbootFirmware
+    #   -> Tarball/Mini NetInstaller is a must
+    #   -> Proprietary Firmware must be added to the RamDisk
+    # ------------------------
+    g3_distro_definitions: "{{ genesis_os_definitions[g3_image_os_distro] | default({}) }}"
+    g3_image_os_ramdisk: "{{ g3_distro_definitions['ramdisk'] | default(g3_image_os_local_folder ~ 'initrd.gz') | default('') }}"
+    # TODO: g3_image_os_firmware_url detection, currently just default value
+    g3_concat_addition_filename: "{{ g3_image_os_firmware_url | default('') | basename | default('firmware.cpio.gz', true) }}" 
+    g3_concat_addition: "{{ g3_image_os_local_folder | default('') }}/{{ g3_concat_addition_filename }}"
+    g3_concat_src:      "{{ g3_image_os_local_folder | default('') }}/{{ g3_image_os_ramdisk | default('') }}" 
+    g3_concat_dest:     "{{ g3_image_os_local_folder | default('') }}/{{ g3_image_os_ramdisk | default('') }}" 
+    g3_concat_command_validate: |
+      # 1. Validar el archivo origen base
+      if [ ! -f "{{ g3_tarball.concat_src }}" ] || [ ! -r "{{ g3_tarball.concat_src }}" ]; then
+        echo "[ERROR] El archivo origen base no existe o no se puede leer: {{ g3_tarball.concat_src }}" >&2
+        exit 1
+      fi
+     
+      # 2. Validar el archivo de firmware adicionado
+      if [ ! -f "{{ g3_tarball.concat_addition }}" ] || [ ! -r "{{ g3_tarball.concat_addition }}" ]; then
+        echo "[ERROR] El archivo de firmware no existe o no se puede leer: {{ g3_tarball.concat_addition }}" >&2
+        exit 1
+      fi
+      
+      # 3. Validar permisos de escritura en el destino (comprobando el directorio base)
+      TARGET_DIR=$(dirname "{{ g3_tarball.concat_dest }}")
+      if [ ! -d "$TARGET_DIR" ] || [ ! -w "$TARGET_DIR" ]; then
+        echo "[ERROR] El directorio destino no existe o no tiene permisos de escritura: $TARGET_DIR" >&2
+        exit 1
+      fi
+
+    # -> Reference Documentation: https://wiki.debian.org/DebianInstaller/NetbootFirmware
+    g3_concat_command:
+      # Variante 1: Ambos en Gzip (Debian, Ubuntu moderno, CentOS)
+      direct: |
+        # 1. Hacemos el backup .orig si es la primera pasada desde cero
+        if [ ! -f "{{ g3_tarball.concat_src }}.orig" ]; then  
+          cp -p "{{ g3_tarball.concat_src }}" "{{ g3_tarball.concat_src }}.orig"
+        fi
+        # 2. Leemos SIEMPRE del .orig limpio para evitar machacados y duplicados en bucle
+        cat "{{ g3_tarball.concat_src }}.orig" "{{ g3_tarball.concat_addition }}" > "{{ g3_tarball.concat_dest }}"
+      
+      # Variante 2: Firmware descomprimido PRIMERO + Initrd base DESPUÉS (SuSE viejo)
+      traditional: |
+        # 1. Hacemos el backup .orig si es la primera pasada desde cero
+        if [ ! -f "{{ g3_tarball.concat_src }}.orig" ]; then  
+          cp -p "{{ g3_tarball.concat_src }}" "{{ g3_tarball.concat_src }}.orig"
+        fi
+        # 2. Procesamos el firmware en paralelo
+        TMP_CPIO=$(mktemp)
+        zcat "{{ g3_tarball.concat_addition }}" > "$TMP_CPIO" 2>/dev/null || gunzip -c "{{ g3_tarball.concat_addition }}" > "$TMP_CPIO"
+        # 3. Leemos SIEMPRE del .orig limpio
+        cat "$TMP_CPIO" "{{ g3_tarball.concat_src }}.orig" > "{{ g3_tarball.concat_dest }}"
+        rm -f "$TMP_CPIO"
+
+  block:
+    - name: "G3 - INIT: Setup PXE-TFTP: Unpack OS Installer from ISO"
+      ansible.builtin.debug:
+        msg: "{{ debug_raw_text.splitlines() }}"
+      vars:
+        debug_raw_text: |
+          =================== 1.- OS PARTICULARS ===================
+          Detected Distro:    {{ g3_image_os_distro              | default('g3_image_os_distro NOT DEFINED OR EMPTY', true) }}
+          Version (Main):     {{ g3_image_os_distro_version_main | default('g3_image_os_distro_version_main NOT DEFINED OR EMPTY', true) }}
+          Version (Full):     {{ g3_image_os_distro_version      | default('g3_image_os_distro_version NOT DEFINED OR EMPTY', true) }}.{{ g3_image_os_distro_version_minor | default('0') }}
+          Architecture:       {{ g3_image_os_distro_arch         | default('g3_image_os_distro_arch NOT DEFINED OR EMPTY', true) }}
+          
+          =================== 2.- DESTINATION PATHS ===================
+          HTTP Destination:   {{ g3_deploy_os_path               | default('g3_deploy_os_path NOT DEFINED OR EMPTY', true) }}
+          TFTP Destination:   {{ g3_deploy_tftp_path             | default('g3_deploy_tftp_path NOT DEFINED OR EMPTY', true) }}
+          
+          =================== 3.- SOURCE FILENAME ===================
+          Netinstall Ramdisk: {{ g3_default_netinstall_ramdisk   | default('g3_default_netinstall_ramdisk NOT DEFINED OR EMPTY', true) }}
+          Netinstall Img Name:{{ g3_default_netinstall_image_name| default('g3_default_netinstall_image_name NOT DEFINED OR EMPTY', true) }}
+          OS Default Img Name:{{ g3_default_os_image_name        | default('g3_default_os_image_name NOT DEFINED OR EMPTY', true) }}
+          Final Deploy Name:  {{ g3_deploy_image_name            | default('g3_deploy_image_name NOT DEFINED OR EMPTY', true) }}
+         
+          =================== 4.- RAMDISK FILES TO EXTRACT ===================
+          Source Type:        {{ g3_src_type             | default('g3_src_type NOT DEFINED OR EMPTY', true) }}
+          Mapping List:       {{ g3_iso_files     | default('g3_iso_files NOT DEFINED OR EMPTY', true) }}
+          Ramdiskt to extract: {{ g3_ramdisk_files | default('g3_ramdisk_files NOT DEFINED OR EMPTY', true) }}
+      delegate_to: localhost
+      connection: local
+      ignore_errors: yes
+
+    - name: "G3 - INIT: Setup PXE-TFTP: Clean Old Installers"
+      become: true
+      ansible.builtin.file:
+        path: "{{ g3_ramdisk_file_dest | default(omit) }}"
+        state: absent
+      loop: "{{ g3_ramdisk_files | default([]) }}"
+      loop_control:
+        loop_var: "g3_ramdisk_file"
+      vars:
+        g3_ramdisk_filename_src: "{{ g3_ramdisk_file | default('vmlinuz', true) | basename }}"
+        g3_ramdisk_file_dest: "{{ g3_deploy_os_path | realpath }}/{{ g3_ramdisk_filename_src }}"
+
+    - name: "G3 - INIT: Setup PXE-TFTP: Unpack OS Installer from ISO"
+      become: true
+      community.general.iso_extract:
+        image: "{{ g3_repo_image }}"
+        dest:  "{{ g3_deploy_os_path }}"
+        files: "{{ g3_ramdisk_files }}"
+      vars:
+        g3_repo_image: "{{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}"    
+
+    - name: "G3 - INIT: Setup PXE-TFTP: Set Permissions to Installer just extracted"
+      become: true
+      ansible.builtin.file:
+        path:  "{{ g3_ramdisk_file_dest | default(omit) }}"
+        owner: "{{ ansible_user | default('ironic') }}"        
+        group: "{{ ansible_user | default('ironic') }}"
+        mode: "0644"       
+      loop: "{{ g3_ramdisk_files | default([]) }}"
+      loop_control:
+        loop_var: "g3_ramdisk_file"
+      vars:
+        g3_ramdisk_filename_src: "{{ g3_ramdisk_file | default('vmlinuz', true) | basename }}"
+        g3_ramdisk_file_dest: "{{ g3_deploy_os_path | realpath }}/{{ g3_ramdisk_filename_src }}"
+
+    - name: "G3 - INIT: Setup PXE-TFTP: Concatenate Firmware to Initrd"
+      ansible.builtin.shell:
+        cmd: |
+          {{ g3_concat_command_validate | default('') }}
+          {{ g3_cmd_concat              | default('') }}
+      vars: 
+        g3_cmd_type:   "{{ g3_tarball.concat_type | default('direct') }}" 
+        g3_cmd_concat: "{{ g3_concat_command[g3_cmd_type] | default('') }}"
+      loop: "{{ g3_tarball_download | default([]) }}"
+      loop_control:
+        loop_var: "g3_tarball"
+      when: 
+        - g3_tarball.concat_src is defined
+        - g3_tarball.concat_src is not none
+        - g3_tarball.concat_src | length > 0
+        - g3_tarball.concat_addition is defined 
+        - g3_tarball.concat_addition is not none 
+        - g3_tarball.concat_addition | length > 0
+        - g3_tarball.concat_dest is defined 
+        - g3_tarball.concat_dest is not none
+        - g3_tarball.concat_dest | length > 0
+    
+  rescue:
+
+    - name: "G3 - INIT: [CONTINGENCY] Run internal ISO layout diagnostics"
+      ansible.builtin.command: >
+        isoinfo -l -i {{ g3_repo_image }}
+      vars:
+        g3_repo_image: "{{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}"    
+      register: g3_diagnostico_iso
+      failed_when: false
+      changed_when: false
+
+    - name: "G3 - INIT: WARNING: Failed to extract assets from image"
+      ansible.builtin.debug:
+        msg: "{{ rescue_raw_text.splitlines() }}"
+      vars:
+        rescue_raw_text: |
+          [WARNING] PXE-TFTP unpacking skipped or failed for distro '{{ g3_image_os_distro }}'.
+          -> ISO Path: {{ g3_deploy_os_path | realpath }}/{{ g3_deploy_image_name }}
+          -> Expected Files: {{ g3_ramdisk_files }}
+          
+          CAUSE: Custom or minimal ISOs alter internal paths.
+          REMEDY: Check the real structure below and update your mapping variables.
+          
+          --- REAL ISO INTERNAL LAYOUT ---
+          {{ g3_diagnostico_iso.stdout | default('[ERROR] Unable to read ISO layout or file missing') }}
+          --------------------------------
+      delegate_to: localhost
+      connection: local
+      ignore_errors: yes
+
+  when: 
+    - g3_image.extract_ramdisk     | default(false) | bool
+    - "'tarball' not in (g3_image.netinstall_ramdisk | default('iso'))"

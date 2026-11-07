@@ -50,7 +50,7 @@ GENESIS_WORKING_PATH=$(dirname "$(readlink -f "$0")")
 GENESIS_PROJECT_ANSIBLE_CFG="${GENESIS_WORKING_PATH}/ansible.cfg"
 GENESIS_HOSTS_WORKING_PATH="${GENESIS_WORKING_PATH}/hosts"
 GENESIS_HOSTS_TARGET_FILE="${GENESIS_HOSTS_WORKING_PATH}/target/group_vars/target"
-GENESIS_BIFROST_WORKING_PATH="${GENESIS_WORKING_PATH}/roles/genesis.bifrost/genesis.bifrost"
+GENESIS_BIFROST_WORKING_PATH="${GENESIS_WORKING_PATH}/roles/openstack.bifrost/openstack.bifrost"
 IRONIC_BIFROST_DYNAMIC_INVENTORY="${GENESIS_BIFROST_WORKING_PATH}/bifrost/inventory.py"
 IRONIC_CLOUD="bifrost"
 IRONIC_NODES_FILE='host_vars/baremetal.yml'
@@ -133,24 +133,25 @@ GENESIS_PLAYBOOKS_HEADER=( \
         "${COLOR[$NC]}[VIRTUAL] - PROXMOX ENVIRONMENT: Remove Airgap Zone from Hypervisor(E1)${COLOR[$NC]}" \
 )
 
-
 # 2.3.- Dependencies
 PIP=0; SCRIPTS=1; INSTALLER=2
+BIFROST_DEPENDENCIES=( 'roles/requirements.yml' \
+                     )
+BIFROST_INSTALLER=( 'ansible-galaxy role install --force -r ' \
+                  )
+
 GENESIS_DEPENDENCIES=( 'collections/requirements.yml' \
                        'roles/requirements.yml' \
                      )
-
 GENESIS_INSTALLER=( 'ansible-galaxy collection install --force -r ' \
 	                'ansible-galaxy role install --force -r ' \
                   )
 
 PROXMOX_DEPENDENCIES=( '#' \
                      )
-					 
 PROXMOX_INSTALLER=( "ansible-galaxy collection install --force community.proxmox -p ${GENESIS_COLLECTIONS_WORKING_PATH}" \
                   )
-					 
-
+ 
 ########################################################################################
 # MODULE 1 => MENU DEFINITION
 ########################################################################################
@@ -304,15 +305,16 @@ function defineMenu() {
 	          if [ ! -n "${TARGET}" ]    ; then local TARGET=''                    ; fi
 	          if [ ! -n "${LOG_FILE}" ] ; then local LOG_FILE="${HOME}/provision.log"  ; fi
 	          MENU_TEXT="(7)___________ ${GENESIS_PLAYBOOKS_HEADER[${PROVISION}]}"
-	          PARAMETRO=(     "TARGET"     "LOG_FILE")
-              VALOR_DEFECTO=(  "${TARGET}"  "${LOG_FILE}" )
-	          SOLICITA_PARAMETRO=("-----> Target Machines                 [${VALOR_DEFECTO[0]}]:" \
-	                              "-----> Log File                        [${VALOR_DEFECTO[1]}]:" \
+	          PARAMETRO=(     "TARGET"    "DOCUMENTATION_UPDATE"   "LOG_FILE")
+              VALOR_DEFECTO=(  "${TARGET}"  "No" "${LOG_FILE}" )
+	          SOLICITA_PARAMETRO=("-----> Target Machines             [${VALOR_DEFECTO[0]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[1]}]:" \
+	                              "-----> Log File                    [${VALOR_DEFECTO[2]}]:" \
                              )
               RETURNING_MENU="0"
               RUN_ACTION="7"
 			  EXTRA_VARS="genesis_stage='B6'"
-              unset INVENTORY TARGET LOG_FILE
+              unset INVENTORY TARGET DOCUMENTATION_UPDATE LOG_FILE 
 		  ;;
 
        8|"${COLOR[$NC]}[BAREMETAL] - CERTIFICATION MENU: certify HW configuration profiles through testing cycles${COLOR[$NC]}")
@@ -386,6 +388,7 @@ function defineMenu() {
 						  "genesis_internet_ipv4" \
 						  "GENESIS_REFRESH" \
 						  "BAREMETAL_REFRESH" \
+						  "DOCUMENTATION_UPDATE" \
 						  "RUN_BACKGROUND" \
 						  "LOG_FILE" \
 						 )
@@ -393,6 +396,7 @@ function defineMenu() {
 			              "${genesis_hypervisor_ip}" \
 						  "${genesis_hypervisor_become_pass}" \
 						  "${genesis_internet_ipv4}" \
+						  "No" \
 						  "No" \
 						  "No" \
 						  "No" \
@@ -404,28 +408,29 @@ function defineMenu() {
 			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
 			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
-			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[7]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[8]}]:" \
                                  )
 	          CNF_REEMPLAZO=( '#' \
 			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 '' '' '' '' )
+							 '' '' '' '' '' )
 			  CNF_OLD_VALUE=( '#' \
 			                  "${genesis_hypervisor_ip}" \
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
-							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' )
-			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' )
-			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' )
+							  '' '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' '#' )
+			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' '#' )
+			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' '#' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="12"
               unset IRONIC_BAREMETAL_NODES 
-			  unset GENESIS_REFRESH BAREMETAL_REFRESH 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
 			  unset RUN_BACKGROUND LOG_FILE 
               unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
 		      ;;
@@ -440,6 +445,7 @@ function defineMenu() {
 						  "genesis_internet_ipv4" \
 						  "GENESIS_REFRESH" \
 						  "BAREMETAL_REFRESH" \
+						  "DOCUMENTATION_UPDATE" \
 						  "RUN_BACKGROUND" \
 						  "LOG_FILE" \
 						 )
@@ -447,6 +453,7 @@ function defineMenu() {
 			              "${genesis_hypervisor_ip}" \
 						  "${genesis_hypervisor_become_pass}" \
 						  "${genesis_internet_ipv4}" \
+						  "No" \
 						  "No" \
 						  "No" \
 						  "No" \
@@ -458,28 +465,31 @@ function defineMenu() {
 			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
 			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
-			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[7]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[8]}]:" \
                                  )
 	          CNF_REEMPLAZO=( '#' \
 			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 '' '' '' '' )
+							 '' '' '' '' '' )
 			  CNF_OLD_VALUE=( '#' \
 			                  "${genesis_hypervisor_ip}" \
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
-							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' )
-			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' )
-			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' )
+							  '' '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' '#' )
+			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' '#' )
+			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' '#' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="13"
+              unset IRONIC_BAREMETAL_NODES 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
+			  unset RUN_BACKGROUND LOG_FILE 
               unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
-			  unset GENESIS_REFRESH BAREMETAL_REFRESH LOG_FILE 
 		      ;;			  
 			 
         14|"${GENESIS_PLAYBOOKS_HEADER[${T5_CLEAN}]}")
@@ -492,6 +502,7 @@ function defineMenu() {
 						  "genesis_internet_ipv4" \
 						  "GENESIS_REFRESH" \
 						  "BAREMETAL_REFRESH" \
+						  "DOCUMENTATION_UPDATE" \
 						  "RUN_BACKGROUND" \
 						  "LOG_FILE" \
 						 )
@@ -500,7 +511,8 @@ function defineMenu() {
 						  "${genesis_hypervisor_become_pass}" \
 						  "${genesis_internet_ipv4}" \
 						  "No" \
-						  "Yes" \
+						  "No" \
+						  "No" \
 						  "No" \
 						  "${LOG_FILE}" \
 						 )
@@ -510,27 +522,31 @@ function defineMenu() {
 			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
 			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
-			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[7]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[8]}]:" \
                                  )
 	          CNF_REEMPLAZO=( '#' \
 			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-						     "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 '' '' '' '' )
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' '' )
 			  CNF_OLD_VALUE=( '#' \
 			                  "${genesis_hypervisor_ip}" \
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
-							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' )
-			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' )
-			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' )
+							  '' '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' '#' )
+			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' '#' )
+			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' '#' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="14"
-              unset GENESIS_REFRESH LOG_FILE 
+              unset IRONIC_BAREMETAL_NODES 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
+			  unset RUN_BACKGROUND LOG_FILE 
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
 		      ;;
 
         15|"${GENESIS_PLAYBOOKS_HEADER[${T4_ENROLL}]}")
@@ -543,6 +559,7 @@ function defineMenu() {
 						  "genesis_internet_ipv4" \
 						  "GENESIS_REFRESH" \
 						  "BAREMETAL_REFRESH" \
+						  "DOCUMENTATION_UPDATE" \
 						  "RUN_BACKGROUND" \
 						  "LOG_FILE" \
 						 )
@@ -551,7 +568,8 @@ function defineMenu() {
 						  "${genesis_hypervisor_become_pass}" \
 						  "${genesis_internet_ipv4}" \
 						  "No" \
-						  "Yes" \
+						  "No" \
+						  "No" \
 						  "No" \
 						  "${LOG_FILE}" \
 						 )
@@ -561,26 +579,31 @@ function defineMenu() {
 			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
 			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
-			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[7]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[8]}]:" \
                                  )
 	          CNF_REEMPLAZO=( '#' \
 			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 '' '' '' '' )
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' '' )
 			  CNF_OLD_VALUE=( '#' \
 			                  "${genesis_hypervisor_ip}" \
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
-							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' )
-			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' )
-			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' )
+							  '' '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' '#' )
+			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' '#' )
+			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' '#' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="15"
-              unset GENESIS_REFRESH LOG_FILE 
+              unset IRONIC_BAREMETAL_NODES 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
+			  unset RUN_BACKGROUND LOG_FILE 
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
               ;;
 
        16|"${GENESIS_PLAYBOOKS_HEADER[${T4_MANAGE}]}")
@@ -593,6 +616,7 @@ function defineMenu() {
 						  "genesis_internet_ipv4" \
 						  "GENESIS_REFRESH" \
 						  "BAREMETAL_REFRESH" \
+						  "DOCUMENTATION_UPDATE" \
 						  "RUN_BACKGROUND" \
 						  "LOG_FILE" \
 						 )
@@ -601,7 +625,8 @@ function defineMenu() {
 						  "${genesis_hypervisor_become_pass}" \
 						  "${genesis_internet_ipv4}" \
 						  "No" \
-						  "Yes" \
+						  "No" \
+						  "No" \
 						  "No" \
 						  "${LOG_FILE}" \
 						 )
@@ -611,27 +636,31 @@ function defineMenu() {
 			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
 			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
-			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[7]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[8]}]:" \
                                  )
 	          CNF_REEMPLAZO=( '#' \
 			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
 							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 '' '' '' '' )
+							 '' '' '' '' '' )
 			  CNF_OLD_VALUE=( '#' \
 			                  "${genesis_hypervisor_ip}" \
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
-							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' )
-			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' )
-			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' )
+							  '' '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' '#' )
+			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' '#' )
+			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' '#' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="16"
-              unset GENESIS_REFRESH LOG_FILE 
+              unset IRONIC_BAREMETAL_NODES 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
+			  unset RUN_BACKGROUND LOG_FILE 
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
               ;;
 
        17|"${GENESIS_PLAYBOOKS_HEADER[${T4_INSPECT}]}")
@@ -644,6 +673,7 @@ function defineMenu() {
 						  "genesis_internet_ipv4" \
 						  "GENESIS_REFRESH" \
 						  "BAREMETAL_REFRESH" \
+						  "DOCUMENTATION_UPDATE" \
 						  "RUN_BACKGROUND" \
 						  "LOG_FILE" \
 						 )
@@ -652,7 +682,8 @@ function defineMenu() {
 						  "${genesis_hypervisor_become_pass}" \
 						  "${genesis_internet_ipv4}" \
 						  "No" \
-						  "Yes" \
+						  "No" \
+						  "No" \
 						  "No" \
 						  "${LOG_FILE}" \
 						 )
@@ -662,26 +693,31 @@ function defineMenu() {
 			                      "-----> Genesis Internet IPV4 [${VALOR_DEFECTO[3]}]:" \
 			                      "-----> Full Genesis Refresh [${VALOR_DEFECTO[4]}]:" \
                                   "-----> Full Baremetal Virtual Nodes Refresh [${VALOR_DEFECTO[5]}]:" \
-			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[6]}]:" \
-			                      "-----> Log File             [${VALOR_DEFECTO[7]}]:" \
+                                  "-----> Update Documentation Server [${VALOR_DEFECTO[6]}]:" \
+			                      "-----> Run Ansible in Background [${VALOR_DEFECTO[7]}]:" \
+			                      "-----> Log File             [${VALOR_DEFECTO[8]}]:" \
                                  )
 	          CNF_REEMPLAZO=( '#' \
 			                 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \ "${GENESIS_TARGET_INVENTORY_SOURCE}" \
-							 '' '' '' '' )
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 "${GENESIS_TARGET_INVENTORY_SOURCE}" \
+							 '' '' '' '' '' )
 			  CNF_OLD_VALUE=( '#' \
 			                  "${genesis_hypervisor_ip}" \
 							  "${genesis_hypervisor_become_pass}" \
 							  "${genesis_internet_ipv4}"   \
-							  '' '' '' '' )
-			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' )
-			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' )
-			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' )
+							  '' '' '' '' '' )
+			  CNF_REEMPLAZA_LINEA=( '#' '#'   'Yes'  '#'   '#' '#' '#' '#' '#' )
+			  CNF_SIN_COMILLA=(     '#' 'Yes' '#'    'Yes' '#' '#' '#' '#' '#' )
+			  CNF_SEPARADOR_CAMPO=( '#' ': '  ': '   ': '  '#' '#' '#' '#' '#' )
               MENU_SKIP_PATHS="1"
 			  MENU_SKIP_ELEMENT="target"
               RETURNING_MENU="8"
               RUN_ACTION="17"
-              unset GENESIS_REFRESH LOG_FILE 
+              unset IRONIC_BAREMETAL_NODES 
+			  unset GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
+			  unset RUN_BACKGROUND LOG_FILE 
+              unset genesis_hypervisor_ip genesis_hypervisor_become_pass genesis_internet_ipv4
               ;;
 
        22|"${GENESIS_PLAYBOOKS_HEADER[${A5_DEPLOY}]}")
@@ -1029,20 +1065,20 @@ setEnvironment() {
    case "${OS}" in
      "ubuntu"|"debian")
        DEP_INSTALLER=( 'python3' 'git' 'ansible' 'sshpass' ) 
-       DEP_DOCKER=( 'podman-docker' )
+       DEP_DOCKER=( 'podman' )
        INSTALLER_CMD="sudo -H -E apt-get -y install"
        CHECK_CMD="dpkg -s"
        ;;
      "redhat"|"centos")
        DEP_INSTALLER=( 'python3' 'git' 'ansible' 'glibc-locale-source' 'glibc-langpack-en' 'sshpass' )
-       DEP_DOCKER=( 'podman-docker' )
+       DEP_DOCKER=( 'podman' )
        PKG_MANAGER=$(/usr/bin/which dnf || /usr/bin/which yum)
        INSTALLER_CMD="sudo -H -E ${PKG_MANAGER} -y install"
        CHECK_CMD="rpm -q"
        ;;
      "suse"|"opensuse")
        INSTALLER_CMD="zipper"
-       DEP_DOCKER=( 'podman-docker' )
+       DEP_DOCKER=( 'podman' )
        ;;
    esac
 }
@@ -1207,14 +1243,23 @@ bifrostScriptsWorkaround() {
 #===================================================
 prepareLocalMachine() {
   local ARRAY_ELEMENT
+  
+  # 1.- Prepare Bifrost Dependencias
   for ARRAY_ELEMENT in "${DEP_INSTALLER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
-  for ARRAY_ELEMENT in "${GENESIS_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
-  for ARRAY_ELEMENT in "${GENESIS_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${BIFROST_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${BIFROST_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
   runOSfixes
   installDependencies
   firewallZone
   installEnvironment
   bifrostScriptsWorkaround
+  
+  # 2.- Prepare Genesis Dependencies
+  for ARRAY_ELEMENT in "${DEP_DOCKER[@]}"; do PACKAGES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_DEPENDENCIES[@]}"; do DEPENDENCIES+=( "${ARRAY_ELEMENT}" ); done
+  for ARRAY_ELEMENT in "${GENESIS_INSTALLER[@]}"; do DEPENDENCIES_INSTALLER+=( "${ARRAY_ELEMENT}" ); done
+  installDependencies
+  installEnvironment
 }
 
 #===================================================
@@ -2778,10 +2823,20 @@ function 6_ansible() {
 #  - Enroll Nodes to Ironic
 #========================================================
 function 7_provision() {
-         
+
+   # 1.- Documentatio Update Capture
+   local DOCUMENTATION_UPDATE_NORM=$(echo "${DOCUMENTATION_UPDATE}" | tr '[:upper:]' '[:lower:]')
+   case "${DOCUMENTATION_UPDATE_NORM}" in
+    y|yes|si|s|true|1)
+        local REFRESH_DOCUMENTATION='true'
+        ;;
+   esac
+   EXTRA_VARS="${EXTRA_VARS}#genesis_update_documentation=${REFRESH_DOCUMENTATION}"
+
+   # 2.- Provision Call
    0_call "${PROVISION}" 
    state_status "${PROVISION}"
-   unset TARGET LOG_FILE EXTRA_VARS
+   unset TARGET LOG_FILE EXTRA_VARS DOCUMENTATION_UPDATE
 }
 
 #========================================================
@@ -2798,24 +2853,33 @@ function 8_test() {
    local TEST_CYCLE="${1:-0}"
     
    # 2.- Set Shoot Conditions
-   local REFRESH_INSTALL=no
-   local REFRESH_ENVIRONMENT=no   
+   local REFRESH_INSTALL='false'
+   local REFRESH_ENVIRONMENT='false'
+   local REFRESH_DOCUMENTATION='false'
+   
    local GENESIS_REFRESH_NORM=$(echo "${GENESIS_REFRESH}" | tr '[:upper:]' '[:lower:]')
    case "${GENESIS_REFRESH_NORM}" in
     y|yes|si|s|true|1)
-        local REFRESH_INSTALL='yes'
+        local REFRESH_INSTALL='true'
         ;;
    esac
 
    local BAREMETAL_REFRESH_NORM=$(echo "${BAREMETAL_REFRESH}" | tr '[:upper:]' '[:lower:]')
    case "${BAREMETAL_REFRESH_NORM}" in
     y|yes|si|s|true|1)
-        local REFRESH_ENVIRONMENT='yes'
+        local REFRESH_ENVIRONMENT='true'
+        ;;
+    esac
+
+   local DOCUMENTATION_UPDATE_NORM=$(echo "${DOCUMENTATION_UPDATE}" | tr '[:upper:]' '[:lower:]')
+   case "${DOCUMENTATION_UPDATE_NORM}" in
+    y|yes|si|s|true|1)
+        local REFRESH_DOCUMENTATION='true'
         ;;
     esac
 	
    # 3.- Prepare Playbook Call
-   EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}" 
+   EXTRA_VARS="genesis_reinstall=${REFRESH_INSTALL}#genesis_refresh_testenv=${REFRESH_ENVIRONMENT}#genesis_update_documentation=${REFRESH_DOCUMENTATION}" 
    
    #--------------------
    #   ACTIONS
@@ -2825,8 +2889,8 @@ function 8_test() {
    updateInventory
    
    # 2.- Refresh Emulation Environment 
-   if [[ "${REFRESH_INSTALL}" == 'yes' ]] ; then prepareLocalMachine ; fi
-   if [[ "${REFRESH_ENVIRONMENT}" == 'yes' ]] ; then
+   if [[ "${REFRESH_INSTALL}" == 'true' ]] ; then prepareLocalMachine ; fi
+   if [[ "${REFRESH_ENVIRONMENT}" == 'true' ]] ; then
       BAREMETAL_ROOT_PASSWORD="${genesis_hypervisor_become_pass}"
       local INVENTORY_LIST=( "${genesis_hypervisor_ip}" )
 	  trust_relationships 'root'
@@ -2836,7 +2900,7 @@ function 8_test() {
    0_call "${TEST_CYCLE}" 
    
    # 4.- Clean Environment 
-   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH 
+   unset LOG_FILE EXTRA_VARS GENESIS_REFRESH BAREMETAL_REFRESH DOCUMENTATION_UPDATE
    unset INVENTORY_LIST EMULATION EMULATION_IP 
 }
 
