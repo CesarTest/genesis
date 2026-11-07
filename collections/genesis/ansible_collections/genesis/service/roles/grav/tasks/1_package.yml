@@ -11,6 +11,16 @@
 - name: "[genesis.service.grav] - GRAV -1- Package: Include deployment environment orchestration tasks"
   block:
 
+    - name: "[genesis.service.grav] - GRAV -1- Package: Trace input package payload"
+      ansible.builtin.debug:
+        msg: "{{ debug_txt.splitlines() }}"
+      vars:
+        debug_txt: |
+          --- [TRACE] GRAV PACKAGE PAYLOAD ---
+          {{ grav_package | to_nice_yaml(indent=2) }}
+      delegate_to: localhost
+      ignore_errors: true
+
     - name: "[genesis.service.grav] - GRAV -1- Package: 1) Create Folders"
       ansible.builtin.include_tasks: "package/1_folder.yml"
 

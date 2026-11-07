@@ -11,13 +11,13 @@
     apache_port:         "{{ web_server_port | default('80') | int }}"
   block:
 
-    - name: "[genesis.service.grav] - GRAV -3- Ready: Ensure Apache is enabled and restarted"
+    - name: "[genesis.service.grav] - GRAV -4- Ready: 1) Ensure Apache is enabled and restarted"
       ansible.builtin.service:
         name: "{{ apache_service_name }}"
         state: restarted
         enabled: yes
 
-    - name: "[genesis.service.grav] - GRAV -3- Ready: Verify Web Port Availability"
+    - name: "[genesis.service.grav] - GRAV -4- Ready: 2) Verify Web Port Availability"
       ansible.builtin.wait_for:
         port: "{{ apache_port }}"
         delay: 2

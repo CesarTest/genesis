@@ -7,6 +7,7 @@
 
 - name: "[genesis.service.grav] - GRAV -3- Package: 3) Rename: Main Orchestration Block"
   vars:
+
     # 1. Parámetros de extracción consolidados para mitigar filtros inline repetitivos
     grav_calculated_dest_dir: "{{ grav_package.dest | default(grav_work_path) | default('/tmp/grav', true) }}"
     grav_cmd_orig: "{{ grav_calculated_dest_dir }}/{{ grav_package.original | default('test', true) }}"
@@ -15,34 +16,13 @@
     # 2. Comandos de contingencia en Bash puro estructurados localmente para el renombrado
     grav_rename_emergency_commands:
       - "echo 'WARNING ALERT: Native file/command rename failed. Triggering raw shell rescue...'"
-      - "if [ -d '{{ grav_cmd_orig }}' ]; then mv --force '{{ grav_cmd_orig }}' '{{ grav_cmd_dest }}'; fi"
-      - "chown -R {{ apache_user | default('apache', true) }}:{{ apache_group | default('apache', true) }} {{ grav_calculated_dest_dir }}"
+      - "mv --force {{ grav_cmd_orig }} {{ grav_cmd_dest }}"
+      - "rm -rf {{ grav_cmd_orig }}"
 
   block:
 
     # ---------------------------------
-    #  3.1.- Copy File (Fallback para objetos que no son Tarball)
-    # ---------------------------------
-    - name: "[genesis.service.grav] - GRAV -3- Package: 3.1) Rename: Copy File if defined as non-Tarball" 
-      ansible.builtin.copy:
-        src:   "{{ grav_pkg.src }}"
-        dest:  "{{ grav_pkg.dest }}"
-        owner: "{{ grav_pkg.owner }}"
-        group: "{{ grav_pkg.group }}"
-        mode:  "{{ grav_pkg.mode }}"
-      loop: 
-        - src: "{{ grav_package.src | default('/tmp/grav', true) }}"
-          dest: "{{ grav_calculated_dest_dir }}"
-          owner: "{{ grav_package.owner | default('root', true) }}"
-          group: "{{ grav_package.group | default('root', true) }}"
-          mode:  "{{ grav_package.mode | default(omit) }}"
-      loop_control:
-        loop_var: "grav_pkg"
-      when: 
-        - "grav_package.isTarball is defined" 
-
-    # ---------------------------------
-    #  3.2.- Clean Legacy Rename Target
+    #  1.- Clean Legacy Rename Target
     # ---------------------------------
     - name: "[genesis.service.grav] - GRAV -3- Package: 3.2) Rename: Clean Existing Target Directory Before Rename"
       ansible.builtin.file:
@@ -55,26 +35,33 @@
         - "grav_package.rename | length > 0"
 
     # ---------------------------------
-    #  3.3.- Force Folder Rename
+    #  2.- Copiar estructura de origen a destino (Remote to Remote)
     # ---------------------------------
-    - name: "[genesis.service.grav] - GRAV -3- Package: 3.3) Rename: Force Package Folder Structural Realignment"
-      ansible.builtin.command: "{{ grav_command }}"
-      loop: 
-        - "mv --force {{ grav_cmd_orig }} {{ grav_cmd_dest }}"
-        - "rm -rf {{ grav_cmd_orig }}"
-      loop_control:
-        loop_var: "grav_command"
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.3.1) Rename: Copy directory structure to new destination"
+      ansible.builtin.copy:
+        src: "{{ grav_cmd_orig }}/"
+        dest: "{{ grav_cmd_dest }}"
+        owner: "{{ grav_package.owner | default('root', true) }}"
+        group: "{{ grav_package.group | default('root', true) }}"
+        mode:  "{{ grav_package.mode | default(omit) }}"
+        remote_src: true
+      failed_when: false # Evita fallar si el origen ya fue eliminado en una ejecución previa
       when:
         - "grav_package.rename is defined"
-        - "grav_package.rename is not none"
-        - "grav_package.rename is string"
-        - "grav_package.rename is not mapping" 
-        - "grav_package.rename | length > 0"
         - "grav_package.original is defined"
-        - "grav_package.original is not none"
-        - "grav_package.original is string"
-        - "grav_package.original is not mapping"
-        - "grav_package.original | length > 0"
+        - "grav_cmd_orig != grav_cmd_dest"
+
+    # ---------------------------------
+    #  3.- Eliminar el directorio de origen antiguo
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.3.2) Rename: Remove legacy original directory"
+      ansible.builtin.file:
+        path: "{{ grav_cmd_orig }}"
+        state: absent
+      when:
+        - "grav_package.rename is defined"
+        - "grav_package.original is defined"
+        - "grav_cmd_orig != grav_cmd_dest"
 
   rescue:
 

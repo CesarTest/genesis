@@ -34,7 +34,7 @@
         mode: "0644"
 
     # ---------------------------------
-    #  2.- Unzip
+    #  2.- Unzip if Tarball
     # ---------------------------------
     - name: "[genesis.service.grav] - GRAV -2- Package: 2.2) Tarball: Unarchive Package on Remote Machine"
       ansible.builtin.unarchive:
@@ -52,6 +52,27 @@
         loop_var: "grav_tarball"    
       when:
         - "grav_package.isTarball is not defined"
+
+    # ---------------------------------
+    #  3.- Upload File if not Tarball
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -2- Package: 2.3) Copy File if defined as non-Tarball" 
+      ansible.builtin.copy:
+        src:   "{{ grav_pkg.src }}"
+        dest:  "{{ grav_pkg.dest }}"
+        owner: "{{ grav_pkg.owner }}"
+        group: "{{ grav_pkg.group }}"
+        mode:  "{{ grav_pkg.mode }}"
+      loop: 
+        - src: "{{ grav_package.src | default('/tmp/grav', true) }}"
+          dest: "{{ grav_calculated_dest_dir }}"
+          owner: "{{ grav_package.owner | default('root', true) }}"
+          group: "{{ grav_package.group | default('root', true) }}"
+          mode:  "{{ grav_package.mode | default(omit) }}"
+      loop_control:
+        loop_var: "grav_pkg"
+      when: 
+        - "grav_package.isTarball is defined" 
 
   rescue:
 

@@ -14,22 +14,24 @@
 
   block:
 
-    #######################################
-    #         GRAV USERS ACCOUNT
-    #######################################
+    # ---------------------------------
+    #  1.- Create User Accounts
+    # ---------------------------------
     - name: "[genesis.service.grav] - GRAV -2- Grav: 1) Install  Grav Users Account"
-      ansible.builtin.include_tasks: "grav/1_user.yml"
+      ansible.builtin.include_tasks: "grav/instance.yml"
+      vars:
+        grav_action: 'user'
       loop: "{{ grav_users | default([]) }}"
       loop_control:
           loop_var: "grav_user"
-      vars:
-        upload_dest: "{{ grav_users_path | default('/tmp') }}/{{ grav_user.username }}.yaml"
 
-    #######################################
-    #            CREATE SITES 
-    #######################################
+    # ---------------------------------
+    #  2- Enable Multisite
+    # ---------------------------------
     - name: "[genesis.service.grav] - GRAV -2- Grav: 2) Enable Multisite"
-      ansible.builtin.include_tasks: "grav/2_multisite.yml"
+      ansible.builtin.include_tasks: "grav/instance.yml"
+      vars:
+        grav_action: 'multisite'
       when: "isMultisite is true"
 
   rescue:
