@@ -1,0 +1,40 @@
+---
+# genesis.service.gitea gitea/1_dependency.yml
+#   - Install Gitea Dependencies (Pure Minimalism)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.gitea] - GITEA -1- Dependencies: Core System Requirements"
+  become: true
+  vars:
+    gitea_dep_emergency_commands:
+      - "echo 'WARNING ALERT: Native package module failed. Triggering raw shell rescue...'"
+      - |
+        if command -v dnf &> /dev/null; then
+          dnf install -y git
+        elif command -v apt-get &> /dev/null; then
+          apt-get update && apt-get install -y git
+        elif command -v zypper &> /dev/null; then
+          zypper install -y git
+        fi
+
+  block:
+    - name: "[genesis.service.gitea] - GITEA -1- Dependencies: 1.1) Package: Install Platform Specific Core Engine"
+      ansible.builtin.package:
+        name: "{{ gitea_dependencies | default(['git']) }}"  
+        state: present
+      when:
+        - gitea_dependencies is defined
+        - gitea_dependencies | length > 0
+
+  rescue:
+    - name: "[genesis.service.gitea] - GITEA -1- Dependencies: [RESCUE] 1.2) Emergency package installation via raw CLI"
+      ansible.builtin.shell: "{{ gitea_dep_cmd }}"
+      loop: "{{ gitea_dep_emergency_commands }}"
+      loop_control:
+        loop_var: "gitea_dep_cmd"
+      failed_when: false
+
+    - name: "[genesis.service.gitea] - GITEA -1- Dependencies: [RESCUE] 1.3) Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

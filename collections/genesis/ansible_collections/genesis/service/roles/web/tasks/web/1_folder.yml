@@ -1,0 +1,13 @@
+---
+# genesis.service.web web/1_folder.yml
+#   - Mandatory Access Control Setup
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.web] - WEB -1- Folder: 1) Web Folders"
+  become: true
+  block:
+    - name: "[genesis.service.web] - WEB -1- Folder: 1) Invoke Centralized MAC Role"
+      ansible.builtin.include_role:
+        name: "genesis.service.mac"

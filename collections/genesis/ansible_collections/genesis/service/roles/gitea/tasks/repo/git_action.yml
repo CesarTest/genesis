@@ -1,0 +1,38 @@
+---
+# genesis.service.gitea repo/git_action.yml
+#   - Dynamic Lifecycle Execution Engine for Git Imperative Commands (init, push)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.gitea] - GITEA REPO: Execute Core Git Operations Block"
+  delegate_to: localhost
+  become: false 
+  vars:
+    gitea_local_repo_dir: "{{ gitea_content_path | default(genesis_repo_path) | default('/tmp', true) }}"
+    gitea_local_home: "{{ gitea_admin_ssh_private_key_path | default(ansible_env.HOME, true) }}"
+    gitea_local_ssh_key: "{{ gitea_final_priv_filename | default('~/.ssh/id_rsa') }}"
+    gitea_target_ssh_port: "{{ gitea_ssh_port | default(2222) | int }}"
+    gitea_git_ssh_bypass: "ssh -p {{ gitea_target_ssh_port }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o HostKeyAlias={{ gitea_domain }} -i {{ gitea_local_ssh_key }}"
+
+  block:
+
+    #-----------------------------------------------------------------------
+    # 1.0.- Motor de Ejecución Imperativo: Procesa la lista plana de comandos (init o push)
+    #-----------------------------------------------------------------------
+    - name: "[genesis.service.gitea] - GITEA REPO: Run Git Commands for Phase [{{ git_action }}]"
+      ansible.builtin.shell: "{{ git_cmd_line }}"
+      args:
+        chdir: "{{ gitea_local_repo_dir }}" 
+      environment:
+        GIT_SSH_COMMAND: "{{ gitea_git_ssh_bypass }}"
+      loop: "{{ gitea_git_push[action] | default([], true) }}"
+      loop_control:
+        loop_var: "git_cmd_line"
+        label: "Executing: {{ git_cmd_line.split(' ')[0:2] | join(' ') }}..."
+      when:
+        - gitea_git_push is defined
+        - gitea_git_push[action] is defined
+      ignore_errors: true 
+      changed_when: true

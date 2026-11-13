@@ -9,8 +9,8 @@
 #  cd "$env:USERPROFILE\Desktop"
 
 # ---> CONFIGURACIÓN GLOBAL (VARIABLES CENTRALIZADAS)
-$USUARIO       = "javier"
-$CONTRASENA    = "malo"
+$USUARIO       = "ivan"
+$CONTRASENA    = "pau"
 
 $GIT_NAME      = "Cesar DGM"
 $GIT_EMAIL     = "cesar.delgado.gonzalez@alumnos.upm.es"
@@ -19,6 +19,9 @@ $TARGET_DIR    = "/home/$USUARIO/genesis"
 
 $DISTRO        = "Debian"
 $SSH_PORT      = "2222"
+
+$HOSTS_IP      = "192.168.1.76"
+$HOSTS_DOMAIN  = "doc.maas.genesis.lab"
 
 # ------------------------------------------------------------------------------
 # FASE 0: Deteccion Distro ya instalada
@@ -49,10 +52,41 @@ function Detectar-Entorno {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 1: Saneamiento del hipervisor local
+# FASE 1: Inyección de entrada DNS en el archivo hosts de Windows
+# ------------------------------------------------------------------------------
+function Actualizar-Hosts-Windows {
+    Write-Host "[1/7] Actualizar-Hosts-Windows: Auditando archivo hosts de Windows..." -ForegroundColor Cyan
+    
+    $RutaHosts = "$env:windir\System32\drivers\etc\hosts"
+    $LineaNueva = "$HOSTS_IP`t$HOSTS_DOMAIN"
+    
+    # Verificamos si el dominio ya está mapeado para evitar duplicados
+    if (Test-Path $RutaHosts) {
+        $Contenido = Get-Content $RutaHosts -Raw
+        
+        if ($Contenido -match [regex]::Escape($HOSTS_DOMAIN)) {
+            Write-Host "El dominio '$HOSTS_DOMAIN' ya existe en el archivo hosts. Omitiendo inyección." -ForegroundColor Yellow
+        } else {
+            try {
+                # Añadimos una nueva línea y la entrada al final del fichero
+                Add-Content -Path $RutaHosts -Value "`n$LineaNueva" -ErrorAction Stop
+                Write-Host "Entrada registrada con éxito: $LineaNueva" -ForegroundColor Green
+            } catch {
+                Write-Host "ERROR CRÍTICO: No se pudo escribir en el archivo hosts de Windows." -ForegroundColor Red
+                Write-Host "Asegúrate de ejecutar esta consola PowerShell como ADMINISTRADOR." -ForegroundColor Red
+                throw $_
+            }
+        }
+    } else {
+        Write-Host "ERROR: No se encontró la ruta del archivo hosts ($RutaHosts)." -ForegroundColor Red
+    }
+}
+
+# ------------------------------------------------------------------------------
+# FASE 2: Saneamiento del hipervisor local
 # ------------------------------------------------------------------------------
 function Sanear-Entorno {
-    Write-Host "[1/6] Sanear-Entorno: Deteniendo servicios y pulverizando instancias..." -ForegroundColor Cyan
+    Write-Host "[2/7] Sanear-Entorno: Deteniendo servicios y pulverizando instancias..." -ForegroundColor Cyan
     
     # 1. Apagamos el motor WSL para liberar cualquier archivo bloqueado
     wsl --shutdown 2>$null
@@ -75,10 +109,10 @@ function Sanear-Entorno {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 2: Instalacion limpia del sistema operativo (Primer plano visible)
+# FASE 3: Instalacion limpia del sistema operativo (Primer plano visible)
 # ------------------------------------------------------------------------------
 function Instalar-Distribucion {
-    Write-Host "[2/6] Instalar-Distribucion: Lanzando instalacion de $DISTRO en primer plano..." -ForegroundColor Cyan
+    Write-Host "[3/7] Instalar-Distribucion: Lanzando instalacion de $DISTRO en primer plano..." -ForegroundColor Cyan
     
     # Quitamos --no-launch para que Windows inicialice la maquina de forma sincrona y visible
     wsl --install -d $DISTRO 
@@ -89,19 +123,19 @@ function Instalar-Distribucion {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 3: Reinicio y asentamiento del motor
+# FASE 4: Reinicio y asentamiento del motor
 # ------------------------------------------------------------------------------
 function Reiniciar-Motor {
-    Write-Host "[3/6] Reiniciar-Motor: Reiniciando el hipervisor WSL..." -ForegroundColor Cyan
+    Write-Host "[4/7] Reiniciar-Motor: Reiniciando el hipervisor WSL..." -ForegroundColor Cyan
     wsl --terminate $DISTRO
     Start-Sleep -Seconds 2
 }
 
 # ------------------------------------------------------------------------------
-# FASE 4: Inyeccion de herramientas del sistema base
+# FASE 5: Inyeccion de herramientas del sistema base
 # ------------------------------------------------------------------------------
 function Inyectar-Paquetes {
-    Write-Host "[4/6] Inyectar-Paquetes: Actualizando APT e instalando Git..." -ForegroundColor Cyan
+    Write-Host "[5/7] Inyectar-Paquetes: Actualizando APT e instalando Git..." -ForegroundColor Cyan
     $PackScript = @"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -114,7 +148,7 @@ apt-get install -y git curl jq python3-pip python3-venv openssh-server
 # FASE 6: Configuración del Servidor SFTP/SSH para Notepad++
 # ------------------------------------------------------------------------------
 function Configurar-SSH {
-    Write-Host "[5/6] Configurar-SSH: Ajustando puerto $SSH_PORT y habilitando SFTP..." -ForegroundColor Cyan
+    Write-Host "[6/7] Configurar-SSH: Ajustando puerto $SSH_PORT y habilitando SFTP..." -ForegroundColor Cyan
 
     # Encapsulamos las órdenes de Linux limpiando configuraciones previas
     $LinuxCommands = "echo 'Configurando sshd_config...'; " +
@@ -131,10 +165,10 @@ function Configurar-SSH {
 }
 
 # ------------------------------------------------------------------------------
-# FASE 6: Sincronizacion del repositorio de Genesis
+# FASE 7: Sincronizacion del repositorio de Genesis
 # ------------------------------------------------------------------------------
 function Clonar-Repositorio {
-    Write-Host "[6/6] Clonar-Repositorio: Configurando Git y descargando Genesis..." -ForegroundColor Cyan
+    Write-Host "[7/7] Clonar-Repositorio: Configurando Git y descargando Genesis..." -ForegroundColor Cyan
 
     $LinuxCommands = "git config --global user.name '$GIT_NAME'; " +
                      "git config --global user.email '$GIT_EMAIL'; " +
@@ -160,6 +194,7 @@ function Main {
 
     try {
         if (-not (Detectar-Entorno)) {
+            Actualizar-Hosts-Windows
             Sanear-Entorno
             Instalar-Distribucion
             Reiniciar-Motor

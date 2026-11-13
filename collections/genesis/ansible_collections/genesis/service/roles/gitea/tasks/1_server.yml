@@ -1,0 +1,18 @@
+---
+# genesis.service.gitea 1_server.yml
+#   - Core Orchestration: Segmented Lifecycle Initialization & Codebase Synchronization Pipeline
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.gitea] - SERVER: 1) Server Configurations"
+  block:
+  
+    - name: "[genesis.service.gitea] - SERVER: 1.1) Install Dependencies"
+      ansible.builtin.include_tasks: "server/1_dependency.yml"
+
+    - name: "[genesis.service.gitea] - SERVER: 1.2) Create Folders"
+      ansible.builtin.include_tasks: "server/2_folder.yml"
+
+  

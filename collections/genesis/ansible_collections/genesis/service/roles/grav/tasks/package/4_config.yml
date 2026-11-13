@@ -1,0 +1,85 @@
+---
+# genesis.service.grav grav/24config.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.grav.package.4_config.yml] - GRAV -1- Package: 4) Config: Main Orchestration Block"
+  vars:
+    # 1. Campos intermedios limpios
+    _fb_dest:    "{{ grav_package.template.dest    | default('') }}"
+    _fb_content: "{{ grav_package.template.content | default('') }}"
+    _fb_mode:    "{{ grav_package.mode            | default('0644') }}"
+    _fb_owner:   "{{ grav_package.owner           | default('apache') }}"
+    _fb_group:   "{{ grav_package.group           | default('apache') }}"
+
+    # 2. Comandos con inyección segura usando | quote para evitar rotura de comillas
+    grav_config_emergency_commands:
+      - "echo 'WARNING ALERT: Native copy configuration module failed. Triggering raw shell rescue...'"
+      
+      # Volcado condicional seguro
+      - |
+        if [ -n {{ _fb_dest | quote }} ] && [ -n {{ _fb_content | quote }} ]; then
+          echo {{ _fb_content | quote }} > {{ _fb_dest }}
+        fi
+
+      # Aplicación de permisos condicionales
+      - |
+        if [ -n {{ _fb_dest | quote }} ]; then
+          chmod {{ _fb_mode }} {{ _fb_dest }}
+        fi
+
+      # Aplicación de propietarios condicionales
+      - |
+        if [ -n {{ _fb_dest | quote }} ]; then
+          chown {{ _fb_owner }}:{{ _fb_group }} {{ _fb_dest }}
+        fi
+
+  block:
+  
+    - name: "[genesis.service.grav.package.4_config.yml] - GRAV -1- Package: 4.1) Config: Dump Configuration File"
+      ansible.builtin.copy:
+        dest:    "{{ grav_dump.dest | default(omit) }}"
+        content: "{{ grav_dump.content | default(omit) }}"
+        mode:    "{{ grav_dump.mode | default(omit) }}"
+        owner:   "{{ grav_dump.owner | default(omit) }}"
+        group:   "{{ grav_dump.group | default(omit) }}"
+      loop:
+        - dest:    "{{ grav_package.template.dest | default(omit) }}"
+          content: "{{ grav_package.template.content | default(omit) }}"
+          mode:    "{{ grav_package.mode | default(omit) }}"
+          owner:   "{{ grav_package.owner | default(omit) }}"
+          group:   "{{ grav_package.group | default(omit) }}"
+      loop_control:
+        loop_var: "grav_dump"
+      when:
+        - "grav_package.template is defined"
+        - "grav_package.template is not none"
+        - "grav_package.template is mapping"
+        - "grav_dump.dest is defined"
+        - "grav_dump.dest is not none"
+        - "grav_dump.dest is string"
+        - "grav_dump.dest | length > 0"
+        - "grav_dump.content is defined"
+        - "grav_dump.content is not none"
+        - "grav_dump.content is string"
+        - "grav_dump.content | length > 0"
+
+  rescue:
+
+    - name: "[genesis.service.grav.package.4_config.yml] - GRAV -1- Package: 4.2) Config: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ grav_emergency_command }}"
+      loop: "{{ grav_config_emergency_commands }}"
+      loop_control:
+        loop_var: "grav_emergency_command"
+      failed_when: false
+
+    - name: "[genesis.service.grav] - GRAV -1- Package:: 4.3) Config: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Configuration deployment tasks experienced an exception on host {{ inventory_hostname }}.
+          Fallback dump was executed via shell template string. Execution will CONTINUE in non-blocking mode.
+
+    - name: "[genesis.service.grav] - GRAV -1- Package: 4.4) Config: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors

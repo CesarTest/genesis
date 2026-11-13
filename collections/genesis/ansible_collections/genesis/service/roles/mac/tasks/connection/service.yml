@@ -1,0 +1,65 @@
+---
+# genesis.service.mac connection/service.yml
+#   - Mandatory Access Control Setup - Firewall
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+
+######################################################
+# SERVER SERVICES 
+######################################################
+- name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - FIREWALL: Server Services"
+  become: true
+  vars:
+    mac_emergency_commands:
+      # Operación 1: Gestión de servicios del sistema vía systemctl puro
+      - |
+        {% for service in mac_services | default([]) %}
+        {% if service.name is defined and service.name is string %}
+        if systemctl list-unit-files | grep -q "^{{ service.name }}.service"; then
+          {% if service.state | default('stopped') in ['started', 'running'] %}
+          systemctl enable "{{ service.name }}" --now
+          systemctl start "{{ service.name }}"
+          {% else %}
+          systemctl disable "{{ service.name }}" --now
+          systemctl stop "{{ service.name }}"
+          {% endif %}
+        fi
+        {% endif %}
+        {% endfor %}
+  block:
+    - name: 'genesis.service.mac] - MANDATORY ACCESS CONTROL - SERVICE 1) Enable/Disable Server Services'
+      ignore_errors: yes
+      service:
+        name:   "{{ mac_service.name }}"
+        state:  "{{ mac_service.state | default('stopped') }}" 
+        enabled: "{{ mac_service.state | bool }}" 
+      loop: "{{ mac_services | default([]) }}"
+      loop_control:
+        loop_var: "mac_service"
+      when: 
+        - "mac_services is defined"
+        - "mac_services is not none"
+        - "mac_services is not string"
+        - "mac_services is not mapping"
+        - "mac_service.name is defined"
+        - "mac_service.name is not none"
+        - "mac_service.name is string"  
+        #- ansible_facts.services[mac_service.name] is defined
+
+  rescue:
+
+    - name: "genesis.service.mac] - MANDATORY ACCESS CONTROL - SERVICE [RESCUE] - 2) Enable/Disable Server Services by CLI"
+      ansible.builtin.shell: "{{ mac_cmd }}"
+      loop: "{{ mac_emergency_commands }}"
+      loop_control:
+        loop_var: "mac_cmd"
+      failed_when: false
+      when:
+        - "mac_firewall_enabled | bool"
+
+  always:
+
+    - name: "[genesis.service.mac] - MANDATORY ACCESS CONTROL - SERVICE [ALWAYS]: Final Refresh of Service Facts"
+      ansible.builtin.service_facts:

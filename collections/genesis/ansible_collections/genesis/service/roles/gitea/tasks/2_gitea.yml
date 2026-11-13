@@ -1,0 +1,29 @@
+---
+# genesis.service.gitea 2_gitea.yml
+#   - Core Orchestration: Segmented Lifecycle Initialization & Codebase Synchronization Pipeline
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.gitea] - GITEA: 2) Service Deployment"
+  block:
+  
+    - name: "[genesis.service.gitea] - GITEA: 2.1) Install: Deploy Gitea Core Binary"
+      ansible.builtin.include_tasks: "gitea/1_install.yml"
+
+    - name: "[genesis.service.gitea] - GITEA: 2.2) Setup: Configure Service"
+      ansible.builtin.include_tasks: "gitea/2_setup.yml"
+
+    - name: "[genesis.service.gitea] - GITEA: 2.3) Ready: Verify and Finalize Service"
+      ansible.builtin.include_tasks: "gitea/3_ready.yml"
+
+    - name: "[genesis.service.gitea] - GITEA: 2.4) Lifecycle: Prepare Gitea Instance"
+      ansible.builtin.include_tasks: "gitea/4_lifecycle.yml"
+      loop:
+        - get_token
+        - add_ssh_key
+        - create_repo
+        - continous_deployment
+      loop_control:
+        loop_var: "gitea_action"

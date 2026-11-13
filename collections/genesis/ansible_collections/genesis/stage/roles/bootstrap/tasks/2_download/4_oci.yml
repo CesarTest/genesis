@@ -1,0 +1,72 @@
+---
+# genesis.refresh 4_oci.yml
+#   - Download OCI Images with Registry Authentication
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- vars:
+    b1_sylva_registry_user_detected:  "{{ g1_oci.user  | default(b1_sylva_registry_user) }}"
+    b1_sylva_registry_token_detected: "{{ g1_oci.token | default(b1_sylva_registry_token) }}"
+    b1_sylva_user:  "{{  (g1_oci.auth | default(false) | bool) | ternary(b1_sylva_registry_user_detected,omit,omit)  }}"
+    b1_sylva_token: "{{  (g1_oci.auth | default(false) | bool) | ternary(b1_sylva_registry_token_detected,omit,omit)  }}"
+
+    b0_cli_commands_oci: 
+      folder: |
+        mkdir -p "{{ g1_oci.local_path }}"
+        chown -R {{ ansible_user | default('ironic') }}:{{ ansible_user | default('ironic') }} "{{ g1_oci.local_path }}"
+        chmod 0775 "{{ g1_oci.local_path }}"
+      copy: | 
+        {% if g1_oci.auth | default(false) %}
+        podman login -u "{{ b1_sylva_registry_user_detected }}" -p "{{ b1_sylva_registry_token_detected }}" "{{ g1_oci.oci_url.split('/') | first }}"
+        {% endif %}
+        podman pull "{{ g1_oci.oci_url }}"
+        podman image save --format oci-dir -o "{{ g1_oci.local_path }}" "{{ g1_oci.oci_url }}"
+        
+    b0_cli_commands_oci_secuence:
+      - "folder"
+      - "copy"
+
+  block:
+
+    #-----------------------------------------------------------------------
+    # 1.- Ensure local folder exists with appropriate permissions
+    #-----------------------------------------------------------------------
+    - name: "B0 -2- DOWNLOAD -4- OCI: 1) Ensuring local directory exists"
+      ansible.builtin.file:
+        path: "{{ g1_oci.local_path }}"
+        state: directory
+        recurse: true
+        owner: "{{ ansible_user | default('ironic') }}"
+        group: "{{ ansible_user | default('ironic') }}"
+        mode: "0775"
+
+    #-----------------------------------------------------------------------
+    # 2.- Pure Native Formula utilizing registry credentials
+    #-----------------------------------------------------------------------
+    - name: "B0 -2- DOWNLOAD -4- OCI: Downloading Image via Native Podman Collection"
+      containers.podman.podman_image:
+        name: "{{ g1_oci.oci_url }}"     
+        state: present
+        pull: true   
+        push: true 
+        username: "{{ b1_sylva_user  | default(omit) }}"
+        password: "{{ b1_sylva_token | default(omit) }}"
+        push_args:
+          dest: "{{ g1_oci.oci_folder }}" 
+          transport: dir
+
+  rescue:
+  
+    #-----------------------------------------------------------------------
+    # 3.- Download by CLI (Podman CLI authenticated backup strategy)
+    #-----------------------------------------------------------------------
+    - name: "B0 -2- DOWNLOAD -4- OCI: 3) RESCUE: Using Podman CLI"
+      ansible.builtin.shell: 
+        cmd: "{{ b0_cli_commands_oci[b0_cli_oci] | trim | default('true') }}"
+      loop: "{{ b0_cli_commands_oci_secuence | default([]) }}"
+      loop_control:
+         loop_var: "b0_cli_oci"
+      register: b0_cli_oci_result
+      failed_when: false
+      changed_when: true

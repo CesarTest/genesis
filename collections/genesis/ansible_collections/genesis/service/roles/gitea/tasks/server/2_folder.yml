@@ -1,0 +1,13 @@
+---
+# genesis.service.gitea gitea/1_folder.yml
+#   - Mandatory Access Control Setup for Gitea Stack
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.gitea] - GITEA -1- Folder: Mandatory Access Control MAC"
+  become: true
+  block:
+    - name: "[genesis.service.gitea] - GITEA -1- Folder: 1) Invoke Centralized MAC Role for Gitea"
+      ansible.builtin.include_role:
+        name: "genesis.service.mac"

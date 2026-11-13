@@ -1,0 +1,76 @@
+---
+# genesis.service.gitea 3_repo.yml
+#   - Core Orchestration: Segmented Lifecycle Initialization & Codebase Synchronization Pipeline
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+- name: "[genesis.service.gitea] - REPO: 3) Push Local Repo"
+  vars:
+    gitea_api_port: "{{ gitea_port | default('3000', true) }}"
+    gitea_api_hostname: "{{ gitea_domain | default(ansible_host) | default(inventory_hostname) }}"
+    gitea_base_url: "http://{{ gitea_api_hostname }}:{{ gitea_api_port }}"
+    gitea_auth_user: "{{ gitea_admin_user | default('genesis') }}"
+    gitea_auth_token: "{{ gitea_admin_token | default('genesis-automation-token', true) }}"
+    gitea_target_owner: "{{ gitea_admin_user | default('genesis') }}"
+    gitea_target_repo_name: "{{ gitea_repo_name | default('maas') }}"
+    gitea_token_url: "http://{{ gitea_auth_user }}:{{ gitea_auth_token }}@{{ gitea_api_hostname }}:{{ gitea_api_port }}/{{ gitea_target_owner }}/{{ gitea_target_repo_name }}.git"
+    gitea_default_git_config:
+      api: 
+        - name: "remote.origin.url"
+          value: ""
+          state: "absent"
+        - name: "user.name"
+          value: "{{ gitea_ssh_owner | default('genesis') }}"
+          state: "present"
+        - name: "user.email"
+          value: "{{ gitea_ssh_owner | default('genesis') }}@{{ gitea_domain }}"
+          state: "present"
+        - name: "remote.origin.url"
+          value: "{{ gitea_token_url }}"
+          state: "present"
+      shell:
+        - "git remote remove origin 2>/dev/null || true"
+        - "git config --local user.name '{{ gitea_ssh_owner | default(\"genesis\") }}'"
+        - "git config --local user.email '{{ gitea_ssh_owner | default(\"genesis\") }}@{{ gitea_domain }}'"
+        - "git remote add origin '{{ gitea_token_url }}'"
+    gitea_git_config: "{{ gitea_git_config_config | default(gitea_default_git_config, true) }}"
+
+  block:
+
+    - name: "[genesis.service.gitea] - REPO: 3.1) Init Git Repo"
+      ansible.builtin.include_tasks: "repo/git_action.yml"
+      loop:
+        - init
+      loop_control:
+        loop_var: "action"
+
+    - name: "[genesis.service.gitea] - REPO: 3.2) Config: Git Configurations"
+      ansible.builtin.include_tasks: "repo/git_config.yml"
+
+    - name: "[genesis.service.gitea] - REPO: 3.3) Push: Populate Repo"
+      ansible.builtin.include_tasks: "repo/git_action.yml"
+      loop:
+        - commit
+        - push
+      loop_control:
+        loop_var: "action"
+
+  rescue:
+
+    - name: "[genesis.service.gitea] - GITEA: 3.6) [RESCUE TRACE] Display Repository Provisioning Crash Details"
+      ansible.builtin.debug:
+        msg: "{{ rescue_gitea_orchestration_text.splitlines() }}"
+      vars:
+        rescue_gitea_orchestration_text: |
+          =================== GITEA REPO ORCHESTRATION FAILED ===================
+          Alert Status:       CRITICAL EXCEPTION INGESTED
+          Target Host:        [{{ inventory_hostname }}]
+          Target Domain:      [{{ gitea_domain | default('gitea_domain NOT DEFINED', true) }}]
+          Local Workspace:    [{{ gitea_content_path | default('NOT DEFINED', true) }}]
+          Action Triggered:   Encountered an internal error within the provisioning loop.
+          Mitigation Status:  Clearing errors declaratively to ensure non-blocking execution.
+
+    - name: "[genesis.service.gitea] - GITEA: 3.7) [RESCUE] Clear host error state to enforce seamless continuity"
+      ansible.builtin.meta: clear_host_errors

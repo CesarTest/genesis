@@ -10,9 +10,10 @@ facts.d
 repo
 roles/*
 !roles/genesis.*
-roles/genesis.bifrost
 !roles/requirements.yml
 collections/ansible_collections
+!collections/genesis/ansible_collections/genesis/stage/
+!collections/genesis/ansible_collections/genesis/service/
 .ansible
 .idea
 

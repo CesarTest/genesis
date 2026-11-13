@@ -1,0 +1,12 @@
+---
+# genesis.serive.gitea handlers/main.yml
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+- name: "genesis_service_gitea_restart"
+  become: true
+  ansible.builtin.systemd:
+    name: "gitea"
+    state: "restarted"
+    daemon_reload: true

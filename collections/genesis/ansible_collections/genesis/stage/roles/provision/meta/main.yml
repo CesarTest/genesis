@@ -1,0 +1,37 @@
+---
+# ==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Automated Golden Image Provisioning
+#  PLATFORM:     Cloud Deployment (Ubuntu 24.04 LTS)
+#  
+#  DESCRIPTION:
+#  This role installs the software profile required to create a golden image 
+#  hard drive for cloud replication, executed in two sequential stages.
+# ==============================================================================
+
+# Habilitar ejecuciones múltiples del mismo rol en la sección clásica 'roles:'
+allow_duplicates: true
+
+galaxy_info:
+  author: cesar-delgado
+  role_name: genesis.stage.provision
+  description: Install Software Profile in Two Stages (Golden Image Replication)
+  license: Apache-2.0
+  company: none
+  min_ansible_version: "2.10"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "24.04"  
+
+  galaxy_tags:
+    - goldenimage
+    - provision
+    - cloud
+    - replication
+    - stage
+
+dependencies: []
+# - role: geerlingguy.apache
+# - role: geerlingguy.php

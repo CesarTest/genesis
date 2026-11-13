@@ -1,0 +1,85 @@
+---
+# genesis.service.mac file/folder.yml
+#   - RBAC Storage Management: Direct Single Element Extraction
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.mac] - RBAC -2- Folder: Storage Provisioning Orchestration"
+  become: true  
+  vars:
+    # EXTRACCIÓN DIRECTA: Mapeo uno a uno de las propiedades del elemento de la pasada actual
+    mac_target_path:  "{{ mac_folder.path }}"
+    mac_folder_owner: "{{ mac_folder.owner | default('root', true) }}"
+    mac_folder_group: "{{ mac_folder.group | default('root', true) }}"
+    mac_folder_mode:  "{{ mac_folder.mode  | default('0755', true) }}"
+    mac_selinux_user: "{{ mac_folder.seuser | default(omit, true) }}"
+    mac_selinux_type: "{{ mac_folder.setype | default(omit, true) }}"
+    mac_force_refresh: "{{ mac_rbac_refresh | default(false, true) | bool }}"
+    mac_folder_emergency_commands:
+      # Operación 1: Limpieza condicional (Refresh) puramente en Bash directo
+      - |
+        if [ "{{ mac_force_refresh | string | lower }}" = "true" ]; then
+          if [ -d "{{ mac_target_path }}" ] && [ "{{ mac_target_path }}" != "/" ] && [ "{{ mac_target_path }}" != "/tmp" ]; then
+            rm -rf "{{ mac_target_path }}"
+          fi
+        fi
+        true
+
+      # Operación 2: Creación y asignación de permisos crudos puramente en Bash directo
+      - |
+        if [ -n "{{ mac_target_path }}" ]; then
+          mkdir -p "{{ mac_target_path }}"
+          chown -R "{{ mac_folder_owner }}":"{{ mac_folder_group }}" "{{ mac_target_path }}"
+          chmod -R "{{ mac_folder_mode }}" "{{ mac_target_path }}"
+        fi
+        true
+
+  block:
+
+    - name: "[genesis.service.mac] - RBAC -2- Folder: [DEBUG TRACE] Display Storage Details"
+      ansible.builtin.debug:
+        msg: "{{ debug_storage_text.splitlines() }}"
+      vars:
+        debug_storage_text: |
+          =================== MAC FOLDERS ===================
+          Source Variable:    mac_folder
+          Target Path:        [{{ mac_target_path | default('mac_target_path NOT DEFINED OR EMPTY', true) }}]
+          Folder Owner:       [{{ mac_folder_owner | default('mac_folder_owner NOT DEFINED OR EMPTY', true) }}]
+          Folder Group:       [{{ mac_folder_group | default('mac_folder_group NOT DEFINED OR EMPTY', true) }}]
+          Folder Mode:        [{{ mac_folder_mode | default('mac_folder_mode NOT DEFINED OR EMPTY', true) }}]
+          SELinux User:       [{{ mac_selinux_user | default('mac_selinux_user NOT DEFINED OR EMPTY', true) }}]
+          SELinux Type:       [{{ mac_selinux_type | default('mac_selinux_type NOT DEFINED OR EMPTY', true) }}]
+          Force Refresh:      [{{ mac_force_refresh | default('mac_force_refresh NOT DEFINED OR EMPTY', true) }}]
+      ignore_errors: true
+      delegate_to: localhost
+
+    - name: "[genesis.service.mac] - RBAC -2- Folder: 2.1) Storage: Wipe old directory data (Refresh Mode)"
+      ansible.builtin.file:
+        path: "{{ mac_target_path }}"
+        state: absent
+      when:
+        - mac_force_refresh is true
+        - mac_target_path is defined
+        - mac_target_path | length > 0
+        - mac_target_path != "/"
+
+    - name: "[genesis.service.mac] - RBAC -2- Folder: 2.2) Storage: Build Target Directory with Permissions"
+      ansible.builtin.file:
+        path: "{{ mac_target_path }}"
+        state: directory
+        recurse: true
+        owner: "{{ mac_folder_owner }}"
+        group: "{{ mac_folder_group }}"
+        mode: "{{ mac_folder_mode }}"
+      when:
+        - mac_target_path is defined
+        - mac_target_path | length > 0
+ 
+  rescue:
+    - name: "[genesis.service.mac] - RBAC -2- Folder: [RESCUE] 2.3) Emergency storage deployment sequence"
+      ansible.builtin.shell: "{{ mac_shell_folder_cmd }}"
+      loop: "{{ mac_folder_emergency_commands }}"
+      loop_control:
+        loop_var: "mac_shell_folder_cmd"
+      failed_when: false

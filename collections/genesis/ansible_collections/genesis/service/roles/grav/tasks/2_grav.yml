@@ -1,0 +1,43 @@
+---
+# genesis.service.grav 2_grav.yml
+#   - Prepare Documentation Node
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.grav] - GRAV -2- Grav: PREPARE GRAV INSTALLATION"
+  vars:
+    multisite_defined: "{{ (grav_multisite is defined) and ( grav_multisite is not none )   }}"
+    multisite_none:    "{{ (multisite_defined is true) and (grav_multisite is string)       }}"
+    multisite_type:    "{{ (multisite_none is true)    and (grav_mulstisite is not mapping) }}"
+    isMultisite:       "{{ (multisite_type is true)    and (grav_multisite|length > 0)      }}" 
+
+  block:
+
+    # ---------------------------------
+    #  1.- Create User Accounts
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -2- Grav: 1) Install  Grav Users Account"
+      ansible.builtin.include_tasks: "grav/instance.yml"
+      vars:
+        grav_action: 'user'
+      loop: "{{ grav_users | default([]) }}"
+      loop_control:
+          loop_var: "grav_user"
+
+    # ---------------------------------
+    #  2- Enable Multisite
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -2- Grav: 2) Enable Multisite"
+      ansible.builtin.include_tasks: "grav/instance.yml"
+      vars:
+        grav_action: 'multisite'
+      when: "isMultisite is true"
+
+  rescue:
+
+    - name: "[genesis.service.grav] - GRAV -2- Grav: ERROR - PREPARING GRAV INSTALLATION"
+      debug:
+        msg:
+          - "Missing Definitions: |grav_deploy|"
+          - "{{ grav_deploy | default('Empty Value')}}"

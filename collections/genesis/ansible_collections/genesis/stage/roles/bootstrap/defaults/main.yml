@@ -1,0 +1,709 @@
+---
+# genesis.bootstrap defaults
+#   - Adjust Bifrost Variables to Download dependencies 
+#       for Airgap environments
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+#
+
+######################################################
+#  GENESIS PATHS (global for update all genesis roles at once)
+######################################################
+# 1.- Repos Paths
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+# 2.- Bifrost Role Paths
+genesis_bifrost_role_name: "openstack.bifrost"
+genesis_bifrost_path:      "{{ genesis_roles_path }}/{{ genesis_bifrost_role_name }}"
+genesis_bifrost_roles:     "{{ genesis_bifrost_path | realpath }}/{{ genesis_bifrost_role_name }}/playbooks/roles"
+genesis_bifrost_files_path: "{{ genesis_bifrost_path | realpath }}/files"
+genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles }}/bifrost-ironic-install"
+genesis_bifrost_dest_folder:
+  - "{{ ironic_tftp_master_path | default('/var/lib/ironic/master_images') }}"
+  - "{{ http_boot_folder   | default('/var/lib/ironic/httpboot') }}"
+  - "{{ bifrost_iso_folder | default('/var/lib/ironic/isos') }}"
+genesis_bifrost_ironic_install: "{{ genesis_bifrost_roles }}/bifrost-ironic-install"
+genesis_bifrost_venv_dir: "{{ lookup('env', 'VENV') or '/opt/stack/bifrost' }}"
+
+# 3.- Repositories
+genesis_default_repos:
+  os: "os"
+  manifesto: "manifesto" 
+  components: "openstack"
+  cloud: "dib"
+  ipa: "dib/files" 
+  sylva: "sylva"
+  oci: "sylva/oci"
+  doc: "doc" 
+ 
+# 4.- OS Definitions
+genesis_os_definitions:
+
+  redhat: &redhat_keys
+    ansible_distribution: "RedHat"
+    installer: "anaconda"
+    prefix: "ks_"
+    ext: ".ks" 
+
+  centos: *redhat_keys
+  rocky: *redhat_keys
+  rhel: *redhat_keys
+  fedora: *redhat_keys
+
+  esxi:
+    ansible_distribution: "VMwareESXi" 
+    installer: "esxi"
+    prefix: "ks_"
+    ext: ".ks"     
+
+  ubuntu:
+    ansible_distribution: "Ubuntu"
+    installer: "casper"
+    alias:
+      "26.04": "resolute"    
+      "25.04": "plucky"      
+      "24.10": "oracular"    
+      "24.04": "noble"      
+      "22.04": "jammy"      
+      "20.04": "focal"      
+
+  debian:
+    ansible_distribution: "Debian"
+    installer: "preseed"
+    ext: ".cfg"
+    alias:
+      "13": &debian_13 "trixie"
+      "12": &debian_12 "bookworm"
+      "11": &debian_11 "bullseye"
+      "13.9": *debian_13
+      "13.8": *debian_13
+      "13.7": *debian_13
+      "13.6": *debian_13
+      "13.5": *debian_13
+      "13.4": *debian_13
+      "13.3": *debian_13
+      "13.2": *debian_13
+      "13.1": *debian_13
+      "13.0": *debian_13
+      "12.9": *debian_12
+      "12.8": *debian_12
+      "12.7": *debian_12
+      "12.6": *debian_12
+      "12.5": *debian_12
+      "12.4": *debian_12
+      "12.3": *debian_12
+      "12.2": *debian_12
+      "12.1": *debian_12
+      "12.0": *debian_12
+      "11.9": *debian_11
+      "11.8": *debian_11
+      "11.7": *debian_11
+      "11.6": *debian_11
+      "11.5": *debian_11
+      "11.4": *debian_11
+      "11.3": *debian_11
+      "11.2": *debian_11
+      "11.1": *debian_11
+      "11.0": *debian_11
+
+  suse:
+    ansible_distribution: "openSUSE"
+    installer: "amanda"
+    ext: ".xml"
+    prefix: "autoyast_"
+    alias:
+      "16": &suse_16 "openSUSE-Leap"      
+      "15": &suse_15 "openSUSE-Leap"          
+      "12": &suse_12 "SLES"      
+      "15.0": *suse_15
+      "15.1": *suse_15
+      "15.2": *suse_15
+      "15.3": *suse_15
+      "15.4": *suse_15
+      "15.5": *suse_15
+      "15.6": *suse_15
+      "12.0": *suse_12
+      "16.0": *suse_16
+
+  sles:
+    ansible_distribution: "SLES"    
+    installer: "amanda"
+    ext: ".xml"
+    prefix: "autoyast_"
+    alias:
+      "16": &sles_16 "SLES"          
+      "15": &sles_15 "SUSE_SLE"
+      "12": &sles_12 "SLES"
+      "15.0": *sles_15
+      "15.1": *sles_15
+      "15.2": *sles_15
+      "15.3": *sles_15
+      "15.4": *sles_15
+      "15.5": *sles_15
+      "15.6": *sles_15
+      "12.0": *sles_12
+      "12.1": *sles_12
+      "12.2": *sles_12
+      "12.3": *sles_12
+      "12.4": *sles_12
+      "12.5": *sles_12
+      "16.0": *sles_16
+ 
+  coreos:
+    ansible_distribution: "Fedora CoreOS"
+    installer: "ignition"
+    ramdisk: "initramfs"
+    prefix: "ignition_"
+    ext: ".ign"
+ 
+  microos:
+    ansible_distribution: "openSuSE MicroOS"
+    installer: "uos"
+    prefix: "uos_"
+    ext: ".xml"
+ 
+  ubcore:
+    ansible_distribution: "Ubuntu Core"
+    installer: "ubcore"
+    prefix: "ubcore_"
+    ext: ".xml"
+
+# 5.- Locally Generated Checksums File
+genesis_local_checksum_file:
+  path: "{{ genesis_repo_path | realpath }}/checksum"
+  content: |
+   aef4855862bffea1086d59becf67fbe10c90d3d2a21fd74a01770eb75d138ac8 *fedora-coreos-44.20260913.3.2-live-iso.x86_64.iso
+   6a728775cde8cdc5a68de2b1db9ed9a73e2d3a37dc79a6bbc1fb12c075a70fac *fedora-coreos-44.20260913.3.2-live-initramfs.x86_64.img 
+   fc48ea53cf994d2f2e4e3969824a643498b31d9be5540270a53040159a874820 *fedora-coreos-44.20260913.3.2-live-kernel.x86_64
+   f453f83d177fde78ee2630f5769a8c8458137065a67bfa3bff879f27bf0cadaf *fedora-coreos-44.20260913.3.2-live-rootfs.x86_64.img
+   3c0ace903c0a78b13a09d5649ffc4409370f6d8dab2a79fea310b20ac20a2ac2 *Leap-16.0-offline-installer-x86_64-Build178.27.install.iso
+genesis_local_checksum_url: "file://{{ genesis_local_checksum_file.path }}"
+
+ # 3.- Distro URLs
+genesis_os_netinstaller_url:
+
+  # --------------------------------------> SERVER <-------------------------------------
+  debian:
+    latest:
+      dvd:
+        url:           "https://cdimage.debian.org/cdimage/release/current/[ARCH]/iso-dvd/debian-[VERSION].[MINOR]-[ARCH]-DVD-1.iso"
+        checksum:      "https://cdimage.debian.org/cdimage/release/current/[ARCH]/iso-dvd/SHA256SUMS"
+        checksum_algo: "sha256"
+      cd:
+        url:           "https://cdimage.debian.org/cdimage/release/current/[ARCH]/iso-cd/debian-[VERSION].[MINOR]-[ARCH]-netinst.iso"
+        checksum:      "https://cdimage.debian.org/cdimage/release/current/[ARCH]/iso-cd/SHA256SUMS"
+        checksum_algo: "sha256"
+      qcow:
+        url:           "https://cdimage.debian.org/cdimage/cloud/[ALIAS]/latest/debian-[VERSION].[MINOR]-generic-[ARCH].qcow2"
+        checksum:      "https://cdimage.debian.org/cdimage/cloud/[ALIAS]/latest/SHA512SUMS"
+        checksum_algo: "sha512"
+      pxe:
+        mini:          "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/mini.iso"
+        tarball:       "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+        drivers:       "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/udeb.list"
+        checksum:      "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/SHA256SUMS"
+        checksum_algo: "sha256"
+        firmware:      "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"
+    version:
+      dvd:
+        url:           "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-dvd/debian-[VERSION].[MINOR]-[ARCH]-DVD-1.iso"
+        checksum:      "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-dvd/SHA256SUMS"
+        checksum_algo: "sha256"
+      cd:
+        url:           "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-cd/debian-[VERSION].[MINOR]-netinst.iso"
+        checksum:      "https://cdimage.debian.org/mirror/cdimage/archive/[VERSION]/[ARCH]/iso-cd/SHA256SUMS"
+        checksum_algo: "sha256"
+      qcow:
+        url:           "https://cdimage.debian.org/cdimage/cloud/[ALIAS]/latest/debian-[MAIN]-generic-[ARCH].qcow2"
+        checksum:      "https://cdimage.debian.org/cdimage/cloud/[ALIAS]/latest/SHA512SUMS"
+        checksum_algo: "sha512"
+      pxe:
+        mini:          "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/mini.iso"
+        tarball:       "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/netboot/netboot.tar.gz"
+        drivers:       "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/udeb.list"
+        checksum:      "https://deb.debian.org/debian/dists/[ALIAS]/main/installer-[ARCH]/current/images/SHA256SUMS"
+        checksum_algo: "sha256"
+        firmware:      "https://cdimage.debian.org/cdimage/firmware/[ALIAS]/current/firmware.cpio.gz"
+
+
+  ubuntu:
+    version: &ubuntu_data
+      dvd:
+        url:           "https://releases.ubuntu.com/[ALIAS]/ubuntu-[VERSION].[MINOR]-live-server-[ARCH].iso"
+        checksum:      "https://releases.ubuntu.com/[ALIAS]/SHA256SUMS"
+        checksum_algo: "sha256"
+      cd:
+        url:           "https://releases.ubuntu.com/[ALIAS]/ubuntu-[VERSION].[MINOR]-live-server-[ARCH].iso"
+        checksum:      "https://releases.ubuntu.com/[ALIAS]/SHA256SUMS"
+        checksum_algo: "sha256"
+      qcow:
+        url:           "https://cloud-images.ubuntu.com/[ALIAS]/current/[ALIAS]-server-cloudimg-[ARCH].img"
+        checksum:      "https://cloud-images.ubuntu.com/[ALIAS]/current/SHA256SUMS"
+        checksum_algo: "sha256"
+    latest: *ubuntu_data
+
+  centos: # RHEL Testing Bed
+    version: &centos_data
+      dvd:                                                         
+        url:           "https://mirror.stream.centos.org/[MAIN]-stream/BaseOS/[ARCH]/iso/CentOS-Stream-[MAIN]-latest-[ARCH]-dvd1.iso"
+        checksum:      "https://mirror.stream.centos.org/[MAIN]-stream/BaseOS/[ARCH]/iso/CentOS-Stream-[MAIN]-latest-[ARCH]-dvd1.iso.SHA256SUM"
+        checksum_algo: "sha256"
+      cd:
+        url:           "https://mirror.stream.centos.org/[MAIN]-stream/BaseOS/[ARCH]/iso/CentOS-Stream-[MAIN]-latest-[ARCH]-boot.iso"
+        checksum:      "https://mirror.stream.centos.org/[MAIN]-stream/BaseOS/[ARCH]/iso/CentOS-Stream-[MAIN]-latest-[ARCH]-boot.iso.SHA256SUM"
+        checksum_algo: "sha256"
+      qcow:
+        url:           "https://cloud.centos.org/centos/[MAIN]-stream/[ARCH]/images/CentOS-Stream-GenericCloud-[MAIN]-latest.[ARCH].qcow2"
+        checksum:      "https://cloud.centos.org/centos/[MAIN]-stream/[ARCH]/images/CentOS-Stream-GenericCloud-[MAIN]-latest.[ARCH].qcow2.SHA256SUM"
+        checksum_algo: "sha256"
+    latest: *centos_data
+
+  rocky: # RHEL OpenSource
+    version: &rocky_data
+      dvd:                                                         
+        url:           "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-dvd1.iso"
+        checksum:      "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-dvd1.iso.SHA256SUM"
+        checksum_algo: "sha256"
+      cd:
+        url:           "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-boot.iso"
+        checksum:      "https://download.rockylinux.org/pub/rocky/[MAIN]/isos/[ARCH]/Rocky-[VERSION]-[ARCH]-boot.iso.SHA256SUM"
+        checksum_algo: "sha256"
+      qcow:
+        url:           "https://dl.rockylinux.org/pub/rocky/[MAIN]/images/[ARCH]/Rocky-[MAIN]-GenericCloud-Base.latest.[ARCH].qcow2"
+        checksum:      "https://dl.rockylinux.org/pub/rocky/[MAIN]/images/[ARCH]/Rocky-[MAIN]-GenericCloud-Base.latest.[ARCH].qcow2.SHA256SUM"
+        checksum_algo: "sha256"
+    latest: *rocky_data
+
+  suse:
+    version: &suse_data
+      dvd:
+        url: "https://download.opensuse.org/distribution/leap/offline/[ALIAS]-[VERSION]-offline-installer-[ARCH]-[MINOR].install.iso"
+        checksum: "{{ genesis_local_checksum_url }}"
+        checksum_algo: "sha256"
+      cd:
+        url: "https://download.opensuse.org/distribution/leap/online/[ALIAS]-[VERSION]-online-installer-[ARCH]-[MINOR].install.iso"
+        checksum: "{{ genesis_local_checksum_url }}"
+        checksum_algo: "sha256"
+      qcow:
+        url: "https://download.opensuse.org/distribution/leap/appliances/[ALIAS]-[VERSION]-Minimal-VM-[ARCH]-[MINOR].Cloud.qcow2"
+        checksum: "{{ genesis_local_checksum_url }}"
+        checksum_algo: "sha256"
+    latest: *suse_data
+
+  # --------------------------------------> CLUSTER <-------------------------------------  
+  coreos:
+    version: &coreos_data
+      dvd:
+        url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-iso.[ARCH].iso"
+        checksum: "{{ genesis_local_checksum_url }}"
+        checksum_algo: "sha256"
+      kernel:
+        url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-kernel.[ARCH]"
+        checksum: "{{ genesis_local_checksum_url }}"
+        checksum_algo: "sha256"
+      ramdisk:
+        url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-initramfs.[ARCH].img"
+        checksum: "{{ genesis_local_checksum_url }}"
+        checksum_algo: "sha256"
+      rootfs:
+        url: "https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/[MAIN].[MINOR]/[ARCH]/fedora-coreos-[MAIN].[MINOR]-live-rootfs.[ARCH].img"
+        checksum: "{{ genesis_local_checksum_url }}"
+        checksum_algo: "sha256"
+    latest: *coreos_data
+   
+g1_os_netinstaller_url: "{{ genesis_os_netinstaller_url }}"
+
+
+# 7.- Bifrost Root Paths
+git_root: "{{ genesis_repo_path | realpath }}/openstack"
+git_url_root: https://opendev.org
+tarballs_base_url: "https://tarballs.opendev.org/openstack/ironic-python-agent"
+oras_upstream_root: "https://github.com/oras-project/oras/releases/download" 
+
+# 8.- Default OS Names 
+genesis_default_os_image_name:
+  qcow: "partition.qcow"
+  qcow2: "partition.qcow2"
+  img: "partition.img"
+  raw: "wholedisk.raw" 
+  cd:  "netboot.iso"
+  dvd: "x86_64.iso"
+  kernel: "vmlinuz" 
+  ramdisk: "initrd"
+  rootfs: "image.img"
+
+######################################################
+# G1 BOOTSTRAP PATHS
+###################################################### 
+g1_repos: "{{ genesis_airgap_repos | default(genesis_default_repos) }}" 
+g1_repo_os_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['os'] | default('os') }}"
+g1_repo_dib_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['cloud'] | default('dib')}}"
+g1_repo_ipa_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['ipa'] | default('dib/files')}}"
+g1_repo_openstack_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['components'] | default('dib/files')}}"
+g1_tftp_path: "{{ genesis_tftp_path | default(ironic_tftp_master_path) | default('/var/lib/tftpboot') | realpath }}"
+g1_http_path: "{{ genesis_http_path | default(http_boot_folder) | default('/var/lib/ironic/httpboot') | realpath }}"
+g1_local_checksum_url: "file://{{ genesis_repo_path | realpath }}/checksum"
+g1_repo_sylva_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva') }}"
+g1_repo_sylva_oci_path:  "{{ genesis_repo_path | realpath }}/{{ g1_repos['sylva'] | default('sylva/oci') }}"
+g1_repo_doc_path: "{{ genesis_repo_path | realpath }}/{{ g1_repos['doc'] | default('doc') }}"
+
+######################################################
+# G1 BOOTSTRAP NETWORK DETAILS
+######################################################
+
+#--------------------------------------------------------------------------
+# Genesis NICs Particulars 
+#--------------------------------------------------------------------------
+g1_nics: "{{ genesis_nics | default({}) }}"
+
+# => INTERNET NIC
+g1_nic_internet_mac:    "{{ g1_nics.internet.mac | default('') | lower }}"
+g1_nic_internet_ipv4:   "{{ g1_nics.internet.ip  | default('') }}"
+g1_nic_internet_ip:     "{{ g1_nic_internet_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_internet_prefix: "{{ g1_nic_internet_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_internet_gw:     "{{ g1_nics.internet.gateway | default(g1_nic_internet_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+g1_nic_internet_dns:    "{{ g1_nics.internet.dns     | default('') }}"
+
+# => INBAND NIC
+g1_nic_inband_mac:      "{{ g1_nics.inband.mac | default('') | lower }}"
+g1_nic_inband_ipv4:     "{{ g1_nics.inband.ip  | default('') }}"
+g1_nic_inband_ip:       "{{ g1_nic_inband_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_inband_prefix:   "{{ g1_nic_inband_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_inband_gw:       "{{ g1_nics.inband.gateway | default(g1_nic_inband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+
+# => OUTBAND NIC
+g1_nic_outband_mac:     "{{ g1_nics.outband.mac | default('') | lower }}"
+g1_nic_outband_ipv4:    "{{ g1_nics.outband.ip  | default('') }}"
+g1_nic_outband_ip:      "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('address') | default('') }}"
+g1_nic_outband_prefix:  "{{ g1_nic_outband_ipv4 | ansible.utils.ipaddr('prefix')  | int(24) }}"
+g1_nic_outband_gw:      "{{ g1_nics.outband.gateway | default(g1_nic_outband_ipv4 | ansible.utils.ipaddr('last_usable')) | default('') }}"
+
+######################################################
+#  OS IMAGES RESPOSITORIES
+######################################################
+create_image_via_dib: true
+ironic_tftp_master_path: "{{ g1_repo_os_path }}"
+g1_default_checksum_algorithm: "sha256"
+g1_native_os_installer:
+
+   #-----------------------------------
+   # Server OS
+   #-----------------------------------
+  - distribution: "CentOS"
+    distribution_version: "9"
+    distribution_arch: "x86_64"
+    extract_ramdisk: yes
+    mount: yes
+
+  - distribution: "Ubuntu"
+    distribution_version: "24.04"
+    distribution_version_minor: "5"
+    distribution_arch: "amd64"
+    os_image_name: "amd64.iso" 
+    extract_ramdisk: yes
+    mount: yes
+
+  - distribution: "Debian"
+    distribution_version: "13.7"
+    distribution_arch: "amd64"
+    os_image_name: "netboot.iso"  
+    latest: yes # Debian URLs: current / historical Repository
+    installer: 'cd'
+    netinstall_ramdisk: "mini"
+    extract_ramdisk: yes
+    mount: yes
+
+  - distribution: "Debian"
+    distribution_version: "13.7"
+    distribution_arch: "amd64"
+    os_image_name: "amd64.iso" 
+    latest: yes # Debian URLs: current / historical Repository
+    mount: yes
+
+    # SuSE 16 has different Product Name (for Amanda Installer) / ISO Name (for URL download) 
+    #   Alias for Amanda Installer is a must => URL [ALIAS] pattern replacement will fail 
+  - distribution: "SuSE"
+    distribution_version: "16.0"
+    distribution_minor: "Build178.27"
+    distribution_arch: "x86_64"
+    os_image_name: "x86_64.iso"
+    image: "https://download.opensuse.org/distribution/leap/16.0/offline/Leap-16.0-offline-installer-x86_64-Build178.27.install.iso"
+    extract_ramdisk: yes
+    mount: yes
+
+   #-----------------------------------
+   # Cluster OS
+   #-----------------------------------
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "x86_64.iso"
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "vmlinuz" 
+    installer: 'kernel'
+
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "initrd"
+    installer: 'ramdisk'
+
+  - distribution: "CoreOS"
+    distribution_version: "44"
+    distribution_version_minor: "20260913.3.2"
+    distribution_arch: "x86_64"
+    os_image_name: "install.img"
+    installer: 'rootfs'
+   
+g1_cloud_os_installer:
+  - distribution: "CentOS"
+    distribution_version: "9"
+    installer: 'qcow'
+    os_image_name: "partition.qcow2"
+genesis_all_installers_download: "{{ g1_native_os_installer + g1_cloud_os_installer }}"
+download_image_sources: "{{ genesis_download_images | default(genesis_all_installers_download) | default([]) }}"
+
+######################################################
+#  TARBALL URL
+######################################################
+
+#-----------------------------------------------------------------------
+# 1.- ORAS
+#-----------------------------------------------------------------------
+oras_arch_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+oras_arch: "{{ oras_arch_map[ansible_architecture] }}"
+oras_version: "1.3.0"
+oras_checksums:
+  linux_amd64: "6cdc692f929100feb08aa8de584d02f7bcc30ec7d88bc2adc2054d782db57c64"
+  linux_arm64: "7649738b48fde10542bcc8b0e9b460ba83936c75fb5be01ee6d4443764a14352"
+oras_tarball_name: "oras_{{ oras_version }}_linux_{{ oras_arch }}.tar.gz"
+oras_tarball_path: "v{{ oras_version }}/{{ oras_tarball_name }}" 
+oras_checksum: "{{ oras_checksums['linux_' + oras_arch] }}"
+oras_git_url: "https://github.com/oras-project/oras/releases/download"
+oras_download_url: "{{ oras_git_url }}/{{ oras_tarball_path }}/{{ oras_tarball_name }}"
+g1_oras_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ oras_tarball_name }}"
+
+#-----------------------------------------------------------------------
+# 2.- ProxMox Redfish Emulator
+#-----------------------------------------------------------------------
+proxmox_download_url: "https://github.com/v1k0d3n/proxmox-redfish/archive/refs/heads/release/0.2.1.zip"
+proxmox_download_name: "proxmox-redfish.zip"
+g1_proxmox_default_tarball_name: "{{ proxmox_download_url | basename }}" 
+g1_proxmox_dest_path: "{{ g1_repo_openstack_path | realpath }}/{{ proxmox_download_name | default(g1_proxmox_default_tarball_name) }}"
+
+#-----------------------------------------------------------------------
+# 3.- Gitea
+#-----------------------------------------------------------------------
+g1_gitea_version: "{{ genesis_gitea_version | default('28.2.0') }}"
+g1_gitea_arch_capture: "{{ genesis_gitea_arch | default(ansible_architecture) | default('amd64') }}"
+g1_gitea_arch: "{{ 'amd64' if g1_gitea_arch_capture == 'x86_64' else g1_gitea_arch_capture }}"
+g1_gitea_os:   "{{ genesis_gitea_os | default('linux') | lower }}"
+g1_gitea_url:  "https://dl.gitea.com/gitea/{{ g1_gitea_version }}/gitea-{{ g1_gitea_version }}-{{ g1_gitea_os }}-{{ g1_gitea_arch }}"
+
+#-----------------------------------------------------------------------
+# 4.- GRAV
+#-----------------------------------------------------------------------
+g1_grav_content: "https://github.com/CesarTest/maas/archive/refs/heads/main.zip"
+g1_grav_url:
+  skeleton: "https://getgrav.org/download/skeletons/learn2-with-git-sync-site"
+  doc:      "https://github.com/getgrav/grav-theme-learn4/archive/refs/heads/develop.zip"
+  root:     "https://github.com/getgrav/grav-theme-quark/archive/refs/heads/master.zip"
+  ui:       "https://github.com/getgrav/grav-plugin-shortcode-ui/archive/refs/heads/develop.zip"
+  toc:      "https://github.com/trilbymedia/grav-plugin-page-toc/archive/refs/heads/develop.zip"
+  mermaid:  "https://github.com/hibbitts-design/grav-plugin-mermaid/archive/refs/heads/main.zip"
+
+######################################################
+#  TARBALL DEPENDENCIES
+######################################################
+g1_tarball_packages_distro:
+  debian:
+    - unzip
+    - tar
+    - xz-utils
+  redhat:
+    - unzip
+    - tar
+    - xz
+g1_tarball_download:
+ - url:  "{{ oras_download_url }}"
+   dest: "{{ g1_oras_dest_path }}"
+   checksum: "sha256:{{ oras_checksum }}"
+ - url:  "{{ g1_gitea_url }}"
+   dest: "{{ g1_repo_doc_path | realpath }}"
+ - url:  "{{ proxmox_download_url }}"
+   dest: "{{ g1_proxmox_dest_path }}"
+ - url:  "{{ g1_grav_url.skeleton }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/learn2-skeleton.zip"
+ - url:  "{{ g1_grav_url.doc }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/learn4-theme.zip"
+ - url:  "{{ g1_grav_url.root }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/quark.zip"
+ - url:  "{{ g1_grav_url.ui }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/shortcode-ui.zip"
+ - url:  "{{ g1_grav_url.toc }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/page-toc.zip"
+ - url:  "{{ g1_grav_url.mermaid }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/mermaid.zip"
+ - url:  "{{ g1_grav_content }}"
+   dest: "{{ g1_repo_doc_path | realpath }}/content.zip"
+   path: "{{ g1_repo_doc_path | realpath }}"
+   name: "maas-main"
+   rename: "content"
+   unzip: true
+
+######################################################
+#  SILVA REPOSITORIES
+######################################################
+g1_sylva_git_branch: "release-1.8"
+g1_sylva_oci_branch: "latest"
+g1_sylva_os_branch:  "1.8.0"
+g1_sylva_registry_user:  "{{ genesis_secret_gitlab_user  | default('43372026') }}"
+g1_sylva_registry_token: "{{ genesis_secret_gitlab_token | default('683930') }}"
+
+#-----------------------------------------------------------------------
+# 1.- Sylva GIT
+#-----------------------------------------------------------------------
+g1_sylva_git_sylva_core_name: "sylva-core"
+g1_sylva_git_sylva_core_url: "https://gitlab.com/sylva-projects/sylva-core.git"
+g1_sylva_git_sylva_core_folder:  "{{ g1_repo_sylva_path | default('/tmp') }}/{{ g1_sylva_git_sylva_core_name }}"
+g1_sylva_git_repos:
+  - git_folder: "{{ g1_sylva_git_sylva_core_folder | default('/tmp') }}"
+    git_url:    "{{ g1_sylva_git_sylva_core_url    | default('') }}"
+    git_branch: "{{ g1_sylva_git_branch            | default('main') }}"
+    name:       "{{ g1_sylva_git_sylva_core_name   | default('sylva_core') }}"
+
+#-----------------------------------------------------------------------
+# 2.- Sylva OCI - Structured Base Variables
+#-----------------------------------------------------------------------
+g1_sylva_oci_root_url: "registry.gitlab.com/sylva-projects/sylva-elements"
+g1_sylva_oci_local_repo: "{{ g1_repo_sylva_oci_path | default('/tmp') }}"
+
+# Official GitLab Registry Subgroups
+g1_sylva_oci_images_url: "{{ g1_sylva_oci_root_url }}/container-images"
+g1_sylva_oci_charts_url: "{{ g1_sylva_oci_root_url }}/helm-charts"
+g1_sylva_oci_os_url:     "{{ g1_sylva_oci_root_url }}/diskimage-builder"
+
+# Block 1 Pre-constructed Variables (Container Images)
+g1_sylva_oci_sylva_toolbox: "sylva-toolbox:{{ g1_sylva_oci_branch }}"
+g1_sylva_oci_sylva_toolbox_path: "{{ g1_sylva_oci_local_repo }}/sylva-toolbox"
+g1_sylva_oci_sylva_toolbox_url: "{{ g1_sylva_oci_images_url }}/{{ g1_sylva_oci_sylva_toolbox }}"
+
+g1_sylva_oci_sylva_units: "sylva-units:{{ g1_sylva_oci_branch }}"
+g1_sylva_oci_sylva_units_path: "{{ g1_sylva_oci_local_repo }}/sylva-units"
+g1_sylva_oci_sylva_units_url: "{{ g1_sylva_oci_images_url }}/{{ g1_sylva_oci_sylva_units }}"
+
+# Block 2 Pre-constructed Variables (Helm Charts)
+g1_sylva_oci_capi_cluster_name: "sylva-capi-cluster"
+g1_sylva_oci_capi_cluster_path: "{{ g1_sylva_oci_local_repo }}/{{ g1_sylva_oci_capi_cluster_name }}"
+g1_sylva_oci_capi_cluster_url:  "{{ g1_sylva_oci_charts_url }}/{{ g1_sylva_oci_capi_cluster_name }}:{{ g1_sylva_oci_branch }}"
+
+g1_sylva_oci_image_server_name: "os-image-server"
+g1_sylva_oci_image_server_path: "{{ g1_sylva_oci_local_repo }}/{{ g1_sylva_oci_image_server_name }}"
+g1_sylva_oci_image_server_url:  "{{ g1_sylva_oci_charts_url }}/{{ g1_sylva_oci_image_server_name }}:{{ g1_sylva_oci_branch }}"
+
+#-----------------------------------------------------------------------
+# OCI Artifacts Repository List
+#-----------------------------------------------------------------------
+g1_sylva_oci_repos:
+
+  # --- BLOCK 1: UTILITIES AND BINARIES ---
+  - name: "sylva-toolbox"
+    local_path: "{{ g1_sylva_oci_sylva_toolbox_path }}"
+    oci_folder: "{{ g1_sylva_oci_sylva_toolbox_path }}:{{ g1_sylva_oci_branch }}"
+    oci_url:    "{{ g1_sylva_oci_sylva_toolbox_url }}"
+    auth: false
+
+  - name: "sylva-units"
+    local_path: "{{ g1_sylva_oci_sylva_units_path }}"
+    oci_folder: "{{ g1_sylva_oci_sylva_units_path }}:{{ g1_sylva_oci_branch }}"
+    oci_url:    "{{ g1_sylva_oci_sylva_units_url }}"
+    auth: true 
+
+  # --- BLOCK 2: CRITICAL OCI HELM CHARTS ---
+  - name: "sylva-capi-cluster-chart"
+    local_path: "{{ g1_sylva_oci_capi_cluster_path }}"
+    oci_folder: "{{ g1_sylva_oci_capi_cluster_path }}:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_capi_cluster_url }}"
+    auth: false
+
+  - name: "os-image-server-chart"
+    local_path: "{{ g1_sylva_oci_image_server_path }}"
+    oci_folder: "{{ g1_sylva_oci_image_server_path }}:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_image_server_url }}"
+    auth: false
+
+  # --- BLOCK 3: NODE OPERATING SYSTEMS ---
+  - name: "ubuntu-jammy"
+    local_path: "{{ g1_repo_os_path }}/ubuntu/22.04"
+    oci_folder: "{{ g1_repo_os_path }}/ubuntu/22.04:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/ubuntu-jammy:{{ g1_sylva_os_branch }}"
+    auth: false
+
+  - name: "rhel9"
+    local_path: "{{ g1_repo_os_path }}/rhel/9"
+    oci_folder: "{{ g1_repo_os_path }}/rhel/9:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/rhel9:{{ g1_sylva_os_branch }}"
+    auth: true 
+
+  - name: "rocky9"
+    local_path: "{{ g1_repo_os_path }}/rocky/9"
+    oci_folder: "{{ g1_repo_os_path }}/rocky/9:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/rocky9:{{ g1_sylva_os_branch }}"
+    auth: false
+
+  # --- BLOCK 4: IRONIC PYTHON AGENT (IPA) FOR METAL3 ---
+  - name: "ironic-python-agent"
+    local_path: "{{ g1_repo_os_path }}/ironic-python-agent"
+    oci_folder: "{{ g1_repo_os_path }}/ironic-python-agent:{{ g1_sylva_os_branch }}"
+    oci_url:    "{{ g1_sylva_oci_os_url }}/ironic-python-agent:{{ g1_sylva_os_branch }}"
+    auth: false
+
+######################################################
+#  IPA IMAGES RESPOSITORIES
+######################################################
+ipa_local_repo: "{{ g1_repos['ipa'] | default('dib/files') }}"
+update_ipa: true
+ipa_upstream_release: "master"
+ipa_download_headers: {}
+download_ipa: true
+update_ipa: true
+ipa_add_ssh_key: false
+ipa_download_url_username:
+ipa_download_url_password:
+ipa_download_force_basic_auth:
+ipa_download_unredirected_headers:
+ipa_kernel_download_url_username: "{{ ipa_download_url_username }}"
+ipa_kernel_download_url_password: "{{ ipa_download_url_password }}"
+ipa_kernel_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_kernel_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+ipa_ramdisk_download_url_username: "{{ ipa_download_url_username }}"
+ipa_ramdisk_download_url_password: "{{ ipa_download_url_password }}"
+ipa_ramdisk_download_force_basic_auth: "{{ ipa_download_force_basic_auth }}"
+ipa_ramdisk_download_unredirected_headers: "{{ ipa_download_unredirected_headers }}"
+genesis_default_ipa_image_sources:
+  - kernel: "{{ tarballs_base_url }}/dib/files/ipa-debian-master.kernel"
+    kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-{{ ipa_upstream_release }}.kernel.sha256"
+    kernel_checksum_algo: "sha256"
+    ramdisk: "{{tarballs_base_url}}/dib/files/ipa-debian-master.initramfs"
+    ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-debian-{{ ipa_upstream_release }}.initramfs.sha256"
+    ramdisk_checksum_algo: "sha256"
+ #- kernel: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.kernel"
+ #  kernel_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.kernel.sha256"
+ #  kernel_checksum_algo: "sha256"
+ #  ramdisk: "{{tarballs_base_url}}/dib/files/ipa-centos9-master.initramfs"
+ #  ramdisk_checksum_url: "{{ tarballs_base_url }}/dib/files/ipa-centos9-master.initramfs.sha256"
+ #  ramdisk_checksum_algo: "sha256"
+ipa_image_sources: "{{ genesis_ipa_image_sources | default(genesis_default_ipa_image_sources) | default([]) }}"

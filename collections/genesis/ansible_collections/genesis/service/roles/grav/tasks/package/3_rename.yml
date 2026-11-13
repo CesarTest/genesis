@@ -1,0 +1,87 @@
+---
+# genesis.service.grav package/3_rename.yml
+#   - Dynamic Package Deployment and Lifecycle Management (API Synced)
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.service.grav] - GRAV -3- Package: 3) Rename: Main Orchestration Block"
+  vars:
+
+    # 1. Parámetros de extracción consolidados para mitigar filtros inline repetitivos
+    grav_calculated_dest_dir: "{{ grav_package.dest | default(grav_work_path) | default('/tmp/grav', true) }}"
+    grav_cmd_orig: "{{ grav_calculated_dest_dir }}/{{ grav_package.original | default('test', true) }}"
+    grav_cmd_dest: "{{ grav_calculated_dest_dir }}/{{ grav_package.rename | default('test', true) }}"
+
+    # 2. Comandos de contingencia en Bash puro estructurados localmente para el renombrado
+    grav_rename_emergency_commands:
+      - "echo 'WARNING ALERT: Native file/command rename failed. Triggering raw shell rescue...'"
+      - "mv --force {{ grav_cmd_orig }} {{ grav_cmd_dest }}"
+      - "rm -rf {{ grav_cmd_orig }}"
+
+  block:
+
+    # ---------------------------------
+    #  1.- Clean Legacy Rename Target
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.2) Rename: Clean Existing Target Directory Before Rename"
+      ansible.builtin.file:
+        path: "{{ grav_cmd_dest }}"
+        state: absent
+      when:
+        - "grav_package.rename is defined"
+        - "grav_package.rename is not none"
+        - "grav_package.rename is string"
+        - "grav_package.rename | length > 0"
+
+    # ---------------------------------
+    #  2.- Copiar estructura de origen a destino (Remote to Remote)
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.3.1) Rename: Copy directory structure to new destination"
+      ansible.builtin.copy:
+        src: "{{ grav_cmd_orig }}/"
+        dest: "{{ grav_cmd_dest }}"
+        owner: "{{ grav_package.owner | default('root', true) }}"
+        group: "{{ grav_package.group | default('root', true) }}"
+        mode:  "{{ grav_package.mode | default(omit) }}"
+        remote_src: true
+      failed_when: false # Evita fallar si el origen ya fue eliminado en una ejecución previa
+      when:
+        - "grav_package.rename is defined"
+        - "grav_package.original is defined"
+        - "grav_cmd_orig != grav_cmd_dest"
+
+    # ---------------------------------
+    #  3.- Eliminar el directorio de origen antiguo
+    # ---------------------------------
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.3.2) Rename: Remove legacy original directory"
+      ansible.builtin.file:
+        path: "{{ grav_cmd_orig }}"
+        state: absent
+      when:
+        - "grav_package.rename is defined"
+        - "grav_package.original is defined"
+        - "grav_cmd_orig != grav_cmd_dest"
+
+  rescue:
+
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.4) Rename: [RESCUE] Execute raw shell recovery sequence from block vars"
+      ansible.builtin.shell: "{{ grav_emergency_command }}"
+      loop: "{{ grav_rename_emergency_commands }}"
+      loop_control:
+        loop_var: "grav_emergency_command"
+      failed_when: false
+
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.5) Rename: [RESCUE] Print non-blocking failure alert message"
+      ansible.builtin.debug:
+        msg: |
+          WARNING ALERT: Structural rename tasks experienced an exception on host {{ inventory_hostname }}.
+          Fallback realignment was executed via shell. Execution will CONTINUE in non-blocking mode.
+
+    - name: "[genesis.service.grav] - GRAV -3- Package: 3.6) Rename: [RESCUE] Clear host error state to avoid interrupting execution"
+      ansible.builtin.meta: clear_host_errors
+
+  when:
+    - "grav_package.src is defined"
+    - "grav_package.src is not none"
+    - "grav_package.src is string"

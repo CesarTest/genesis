@@ -1,0 +1,32 @@
+---
+# genesis.provision defaults
+#   - Prepare Documentation Node
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+#########################################################
+##             GLOBAL PROPERTIES
+##########################################################
+genesis_root_path: "{{ role_path | dirname | dirname | dirname | dirname | dirname | dirname | dirname | realpath }}"
+genesis_repo_path: "{{ genesis_root_path }}/repo"
+genesis_roles_path: "{{ genesis_root_path }}/roles"
+genesis_local_repo_url: "file://{{ genesis_repo_path | realpath }}"
+
+#########################################################
+##       DEFAULT COMPONENTS (documentation server)
+#########################################################
+# 1. SERVER SECURITY  
+#    Server environment management may involve reboots
+b6_environment_profile: 
+   - name: "genesis.service.mac"
+     #condition: "{{ not (skip_install | default(false) | bool) }}" 
+
+# 2. INTEGRATED SOFTWARE STACK IN SEQUENTIAL ORDER
+#    - Web: Installs Apache/PHP and exposes Multi-OS variables.
+#    - Gitea: Provisions the GitOps database and port 3000 reverse proxy.
+#    - Grav: Deploys documentation skeletons onto the web hosting path.
+b6_software_profile: 
+   - name: "genesis.service.web"
+   - name: "genesis.service.gitea"
+   - name: "genesis.service.grav"

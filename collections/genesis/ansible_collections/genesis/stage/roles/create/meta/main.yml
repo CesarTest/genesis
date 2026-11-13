@@ -1,0 +1,32 @@
+---
+# ==============================================================================
+#  PROJECT:      GENESIS SYSTEM
+#  MODULE:       Bare Metal Provisioning & Infrastructure Creation (Testing Env)
+#  PLATFORM:     OpenStack Ironic / Bifrost
+#  
+#  DESCRIPTION:
+#  This role orchestrates the standalone Ironic Bifrost deployment process to
+#  provision target nodes and establish the core infrastructure environment.
+# ==============================================================================
+galaxy_info:
+  author: cesar-delgado
+  role_name: genesis.create
+  description: Ironic Bifrost Deployment on Target Node
+  license: Apache-2.0
+  company: none
+  min_ansible_version: "2.10"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "24.04"  
+
+  galaxy_tags:
+    - openstack
+    - ironic
+    - bifrost    
+
+dependencies: []
+  #- name: "genesis.bifrost"
+  #  src: "https://github.com/openstack/bifrost"
+  #  version: "stable/2026.1"

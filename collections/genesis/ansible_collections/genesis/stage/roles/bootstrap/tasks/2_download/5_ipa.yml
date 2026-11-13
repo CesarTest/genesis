@@ -1,0 +1,65 @@
+# genesis.refresh 5_ipa.yml
+#   - Download Ironic Python Agent from Internet
+#
+# SPDX-FileCopyrightText: © 2026 Genesis System
+# SPDX-License-Identifier: Apache-2.0
+
+- name: "[genesis.stage.bootstrap.2_download.5_ipa.yml] G1 - BOOTSTRAP - 2.- Download: 5) IPA (Ironic Python Agent) for Cloud OS Installation"
+  vars:
+     ipa_kernel_upstream_url: "{{ g1_ipa_image.kernel | default('') }}"
+     ipa_kernel_upstream_checksum_url: "{{ g1_ipa_image.kernel_checksum_url | default('') }}"
+     ipa_kernel_upstream_checksum_algo: "{{ g1_ipa_image.kernel_checksum_algo | default('') }}"
+     ipa_ramdisk_upstream_url: "{{ g1_ipa_image.ramdisk | default('') }}"
+     ipa_ramdisk_upstream_checksum_url: "{{ g1_ipa_image.ramdisk_checksum_url | default('') }}"
+     ipa_ramdisk_upstream_checksum_algo: "{{ g1_ipa_image.ramdisk_checksum_algo | default('') }}"
+     ipa_kernel: "{{ g1_repo_ipa_path | realpath }}/{{ ipa_kernel_upstream_url | basename }}"
+     ipa_ramdisk: "{{ g1_repo_ipa_path | realpath }}/{{ ipa_ramdisk_upstream_url | basename }}"
+     ipa_components:
+       - "{{ ipa_kernel }}"
+       - "{{ ipa_ramdisk }}"
+  block:
+
+    #-------------------------------------------------------------------------------
+    # 1. - Detect IPA Local Files
+    #-------------------------------------------------------------------------------
+   - name: "[genesis.stage.bootstrap.2_download.5_ipa.yml] G1 - BOOTSTRAP - 2.- Download: 5.1) Verify existing local IPA files"
+     ansible.builtin.stat:
+       path: "{{ g1_ipa_element | default('') }}"
+     loop: "{{ ipa_components | default([]) }}"
+     loop_control:
+       loop_var: "g1_ipa_element"
+     register: g1_ipa_stat_results  
+ 
+    #-------------------------------------------------------------------------------
+    # 2. - Detect if file missing
+    #-------------------------------------------------------------------------------
+   - name: "[genesis.stage.bootstrap.2_download.5_ipa.yml] G1 - BOOTSTRAP - 2.- Download: Check if any IPA file is missing"
+     ansible.builtin.set_fact:
+       g1_any_ipa_file_missing: "{{ g1_ipa_stat_results.results | map(attribute='stat.exists') | select('equalto', false) | list | length > 0 }}"
+
+    #-------------------------------------------------------------------------------
+    # 3. - Download IPA Files (if not already in the server)
+    #------------------------------------------------------------------------------- 
+   - name: "[genesis.stage.bootstrap.2_download.5_ipa.yml] G1 - BOOTSTRAP - 2.- Download: 5.2) IPA (Ironic Python Agent) for Cloud OS Installation"
+     ansible.builtin.include_tasks: "{{ genesis_bifrost_ironic_install }}/tasks/download_ipa_image.yml"
+     when: g1_any_ipa_file_missing
+
+  rescue:
+
+    #-------------------------------------------------------------------------------
+    # 3. - Dump Result if Failed
+    #------------------------------------------------------------------------------- 
+   - name: "[genesis.stage.bootstrap.2_download.5_ipa.yml] G1 - BOOTSTRAP - 2.- Download: RESCUE: 5.3) Print non-blocking IPA alert message"
+     ansible.builtin.debug:
+       msg: "{{ g1_ipa_log.splitlines() }}"
+     vars:
+       g1_ipa_log: |
+          WARNING: Non-blocking exception detected during IPA asset provisioning.
+          ----------------------------------------------------------------------
+          - ipa_kernel_upstream_url:           [{{ ipa_kernel_upstream_url | default('Not defined') }}]
+          - ipa_ramdisk_upstream_url:          [{{ ipa_ramdisk_upstream_url | default('Not defined') }}]
+          - ipa_kernel_upstream_checksum_url:  [{{ ipa_kernel_upstream_checksum_url | default('Not defined') }}]
+          - ipa_ramdisk_upstream_checksum_url: [{{ ipa_ramdisk_upstream_checksum_url | default('Not defined') }}]
+          - ipa_kernel (local target):         [{{ ipa_kernel | default('Not calculated') }}]
+          - ipa_ramdisk (local target):        [{{ ipa_ramdisk | default('Not calculated') }}]
+          ----------------------------------------------------------------------
